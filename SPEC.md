@@ -1,4 +1,4 @@
-# prism_map — Specification
+# strata — Specification
 
 A real, open-source ROS 2 **Humble** lifelong-mapping tool for mobile robots
 that takes **either a 2D LiDAR scan or a 3D LiDAR point cloud** as input and
@@ -7,7 +7,7 @@ environments. One Bayesian-persistence **layered engine** drives **two pluggable
 geometry backends** (2D occupancy grid or 3D voxel), selected at runtime by a
 single parameter. Sensor poses are full 6-DoF.
 
-`prism_map` is **not SLAM**: it does not estimate pose. It consumes an external
+`strata` is **not SLAM**: it does not estimate pose. It consumes an external
 `map → sensor` transform (from the sibling `prism_loc`, another localizer, or a
 plain odometry chain) and maps against it.
 
@@ -24,7 +24,7 @@ periodic** features (a door that is open mornings, a shutter) that are neither
 permanent nor noise. Baking every hit into one occupancy grid corrupts the map
 with everything that ever moved; clearing aggressively erases real structure.
 
-`prism_map` resolves this with a single layered engine that accumulates evidence,
+`strata` resolves this with a single layered engine that accumulates evidence,
 confirms it over time, and **graduates** only durable cells into the static map:
 
 - **Occupancy as log-odds** with hit/miss increments + clamp — the standard
@@ -58,7 +58,7 @@ across 2D and 3D.
 
 ## 2. I/O contract & frames
 
-Modeled on ROS 2 mapping conventions and **REP-105**. `prism_map` is a map
+Modeled on ROS 2 mapping conventions and **REP-105**. `strata` is a map
 *consumer of pose*, not a localizer: the robot pose enters as a TF lookup, never
 as a topic, and there is no `map → odom` output.
 
@@ -70,14 +70,14 @@ as a topic, and there is no `map → odom` output.
 | pose | **TF** `global_frame → <sensor frame_id>` | both | full 6-DoF `Isometry3d`, looked up at the message stamp; *not* a topic |
 | `/tf`, `/tf_static` | `tf2_msgs/TFMessage` | both | the external pose source (e.g. `prism_loc`) must supply this chain |
 
-There is **no `/initialpose`** — `prism_map` does not initialize a filter.
+There is **no `/initialpose`** — `strata` does not initialize a filter.
 
 ### Outputs
 | Name | Type | Backend | Notes |
 |---|---|---|---|
-| `~/map` (`/prism_map/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50, unknown→-1 |
-| `~/map_points` (`/prism_map/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
-| `~/save_map` (`/prism_map/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML; voxel3d → PCD |
+| `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50, unknown→-1 |
+| `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
+| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML; voxel3d → PCD |
 
 ### Frames (REP-105)
 The node looks up `T_global_sensor` (`global_frame → sensor frame_id`) at each
@@ -171,15 +171,15 @@ roll/pitch and approximate for large attitude (documented in §8).
 
 ## 4. Module / file structure
 
-Two ament packages in one repo. **All algorithmic code lives in `prism_map_core`,
+Two ament packages in one repo. **All algorithmic code lives in `strata_core`,
 which has NO ROS and NO PCL dependency** — Eigen3 + gtest only — so it builds and
 unit-tests with the plain system toolchain. The ROS/PCL surface is confined to
-`prism_map`.
+`strata`.
 
 ```
-prism_map_core/                         # pure C++17 + Eigen, no ROS, no PCL
-  include/prism_map_core/
-    version.hpp           # PRISM_MAP_CORE_VERSION "0.1.0"
+strata_core/                         # pure C++17 + Eigen, no ROS, no PCL
+  include/strata_core/
+    version.hpp           # STRATA_CORE_VERSION "0.1.0"
     types.hpp             # Pose2D, Pose3D(=Isometry3d), GridMeta, GridMap, CellId, world<->grid, flatten
     periodicity.hpp       # PeriodicityModel (FreMEn-lite incremental Fourier)
     layered_map.hpp       # LayeredMap + LayeredMapParams + CellClass + CellEvidence (THE HEART)
@@ -190,8 +190,8 @@ prism_map_core/                         # pure C++17 + Eigen, no ROS, no PCL
   test/                   # test_smoke, test_types, test_periodicity, test_layered_map,
                           # test_grid2d_backend, test_voxel3d_backend, test_integration
 
-prism_map/                              # ROS 2 Humble node
-  include/prism_map/mapping_node.hpp
+strata/                              # ROS 2 Humble node
+  include/strata/mapping_node.hpp
   src/mapping_node.cpp    # subs/pub/TF, backend select, save service, calls core
   src/scan_adapter.cpp    # LaserScan + 6-DoF Pose3D -> Observation (map frame)
   src/cloud_adapter.cpp   # PointCloud2 + 6-DoF Pose3D -> Observation (PCL)
@@ -200,7 +200,7 @@ prism_map/                              # ROS 2 Humble node
   launch/voxel3d.launch.py
   params/grid2d.yaml
   params/voxel3d.yaml
-  rviz/prism_map.rviz
+  rviz/strata.rviz
   test/test_grid_math.cpp     # world<->grid roundtrip (gtest, no rclcpp)
   test/test_scan_adapter.cpp  # 6-DoF beam transform (gtest)
 ```
@@ -256,14 +256,14 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `scan_topic` | `/scan` | grid2d input topic |
 | `points_topic` | `/points` | voxel3d input topic |
 | `publish_period` | `1.0` | seconds between map publications |
-| `save_path` | `/tmp/prism_map_2d` (grid2d) / `/tmp/prism_map_3d` (voxel3d) | save-service output path stem |
+| `save_path` | `/tmp/strata_2d` (grid2d) / `/tmp/strata_3d` (voxel3d) | save-service output path stem |
 
 ---
 
 ## 6. Test strategy
 
 Every algorithmic claim has a deterministic gtest (injected window index, no
-wall-clock, no `rand()`) in `prism_map_core/test`, runnable with **no ROS** —
+wall-clock, no `rand()`) in `strata_core/test`, runnable with **no ROS** —
 **22 gtests across 7 suites**:
 
 - **Smoke** (1): version macro is defined.
@@ -286,11 +286,11 @@ wall-clock, no `rand()`) in `prism_map_core/test`, runnable with **no ROS** —
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **2 node gtests** in `prism_map/test`: `test_grid_math` (world↔grid
+Plus **2 node gtests** in `strata/test`: `test_grid_math` (world↔grid
 round-trip, no rclcpp) and `test_scan_adapter` (a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved).
 
-CI-equivalent gates: `prism_map_core` builds + all ctest green with the system
+CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the
 `ros2_humble` env.
 
@@ -300,26 +300,26 @@ toolchain; both packages build clean and test green under colcon in the
 
 **Core only (no ROS):**
 ```bash
-cmake -S /home/cona/kangj/prism_map/prism_map_core -B /home/cona/kangj/prism_map/build/core -DPRISM_MAP_CORE_BUILD_TESTS=ON
-cmake --build /home/cona/kangj/prism_map/build/core -j
-( cd /home/cona/kangj/prism_map/build/core && ctest --output-on-failure )
+cmake -S /home/cona/kangj/strata/strata_core -B /home/cona/kangj/strata/build/core -DSTRATA_CORE_BUILD_TESTS=ON
+cmake --build /home/cona/kangj/strata/build/core -j
+( cd /home/cona/kangj/strata/build/core && ctest --output-on-failure )
 ```
 
 **Full ROS 2 build & test (Humble via micromamba; clean env to avoid distro leak):**
 ```bash
 env -u ROS_DISTRO -u ROS_VERSION -u ROS_PACKAGE_PATH \
   /home/cona/.local/bin/micromamba run -n ros2_humble bash -c '
-    cd /home/cona/kangj/prism_map_ws &&
+    cd /home/cona/kangj/strata_ws &&
     colcon build --symlink-install &&
-    colcon test --packages-select prism_map_core prism_map &&
+    colcon test --packages-select strata_core strata &&
     colcon test-result --verbose'
 ```
 
 **Run (a pose source — e.g. prism_loc — must already publish `map → sensor` TF):**
 ```bash
-ros2 launch prism_map grid2d.launch.py      # 2D occupancy mapping
-ros2 launch prism_map voxel3d.launch.py     # 3D voxel mapping
-ros2 service call /prism_map/save_map std_srvs/srv/Trigger   # persist static map
+ros2 launch strata grid2d.launch.py      # 2D occupancy mapping
+ros2 launch strata voxel3d.launch.py     # 3D voxel mapping
+ros2 service call /strata/save_map std_srvs/srv/Trigger   # persist static map
 ```
 
 ---
@@ -327,11 +327,11 @@ ros2 service call /prism_map/save_map std_srvs/srv/Trigger   # persist static ma
 ## 8. Constraints & non-goals
 
 - ROS 2 **Humble**, **C++17**, **Apache-2.0**.
-- `prism_map_core`: **no rclcpp, no PCL** — Eigen3 + gtest only; builds with
+- `strata_core`: **no rclcpp, no PCL** — Eigen3 + gtest only; builds with
   system gcc/cmake outside any ROS env.
 - Deterministic core: no wall-clock, no `rand()`/`random_device`. "Time" is an
   injected integration tick; FreMEn phase is the window index. Reproducible.
-- **Not SLAM.** `prism_map` does not estimate the robot's pose and has no loop
+- **Not SLAM.** `strata` does not estimate the robot's pose and has no loop
   closure. It **requires an external pose source** publishing `map → sensor` TF
   (e.g. the sibling `prism_loc`, another localizer, or an odometry chain). Drift
   in that pose source corrupts the map; there is no correction here.
