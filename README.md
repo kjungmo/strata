@@ -4,6 +4,11 @@
 layered engine, two LiDAR backends (2D occupancy grid or 3D voxel), full 6-DoF,
 producing a static map plus periodic/transient layers.**
 
+## 💛 Sponsor
+If strata saves you time, consider [sponsoring](https://github.com/sponsors/kjungmo).
+Sponsorship funds maintenance, new features, and faster issue response. Backers are
+listed below — thank you.
+
 `strata` incrementally builds and maintains a robot map from EITHER a **2D
 LiDAR** (`LaserScan` → `OccupancyGrid`) OR a **3D LiDAR** (`PointCloud2` → voxel
 cloud), backend chosen by one parameter. A single Bayesian-persistence engine
