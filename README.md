@@ -1,5 +1,7 @@
 # strata
 
+[![CI](https://github.com/kjungmo/strata/actions/workflows/ci.yml/badge.svg)](https://github.com/kjungmo/strata/actions/workflows/ci.yml) [![License](https://img.shields.io/github/license/kjungmo/strata?color=blue)](LICENSE) ![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-22314E?logo=ros&logoColor=white) [![Sponsor](https://img.shields.io/github/sponsors/kjungmo?logo=githubsponsors&color=ea4aaa)](https://github.com/sponsors/kjungmo)
+
 **A pluggable lifelong mapping tool for ROS 2 Humble — one Bayesian-persistence
 layered engine, two LiDAR backends (2D occupancy grid or 3D voxel), full 6-DoF,
 producing a static map plus periodic/transient layers.**
