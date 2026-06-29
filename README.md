@@ -6,8 +6,8 @@ producing a static map plus periodic/transient layers.**
 
 ## 💛 Sponsor
 If strata saves you time, consider [sponsoring](https://github.com/sponsors/kjungmo).
-Sponsorship funds maintenance, new features, and faster issue response. Backers are
-listed below — thank you.
+Sponsorship funds maintenance, new features, and faster issue response. Backers will
+be acknowledged here — thank you.
 
 `strata` incrementally builds and maintains a robot map from EITHER a **2D
 LiDAR** (`LaserScan` → `OccupancyGrid`) OR a **3D LiDAR** (`PointCloud2` → voxel
@@ -19,7 +19,7 @@ fade. Sensor poses are full 6-DoF.
 
 `strata` is **not a SLAM system** — it does not estimate the robot's pose. It
 consumes an external pose source via TF (`map → sensor`), e.g. the sibling
-[`prism_loc`](../prism_loc) localizer or a plain `odom → base_link` chain, and
+[`prism_loc`](https://github.com/kjungmo/prism_loc) localizer or a plain `odom → base_link` chain, and
 maps against it.
 
 ## Why "STRATA"
@@ -69,13 +69,12 @@ ROS 2 node   (rclcpp / tf2 / PCL here only):
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 
-# 2. Full ROS 2 Humble build & test (micromamba env; clean env to avoid distro leak):
-env -u ROS_DISTRO -u ROS_VERSION -u ROS_PACKAGE_PATH \
-  /home/cona/.local/bin/micromamba run -n ros2_humble bash -c '
-    cd /home/cona/kangj/strata_ws &&
-    colcon build --symlink-install &&
-    colcon test --packages-select strata_core strata &&
-    colcon test-result --verbose'
+# 2. Full ROS 2 Humble build & test (workspace):
+#    place this repo at <ws>/src/strata, then:
+colcon build --symlink-install
+colcon test --packages-select strata_core strata
+colcon test-result --verbose
+#    (RoboStack/conda Humble users: run the above inside your activated env.)
 
 # 3. Run — 2D occupancy-grid mapping:
 ros2 launch strata grid2d.launch.py
