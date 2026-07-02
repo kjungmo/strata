@@ -11,6 +11,24 @@ If strata saves you time, consider [sponsoring](https://github.com/sponsors/kjun
 Sponsorship funds maintenance, new features, and faster issue response. Backers will
 be acknowledged here — thank you.
 
+## Paper
+
+The architecture, persistence model, and experimental validation are documented in
+[**STRATA: One Geometry-Free Persistence-and-Periodicity Engine...**](paper/strata_paper.md).
+See the [`paper/`](paper/) directory for the full writeup, reproducible experiments (E1–E4),
+and all figures. If you use strata in academic work, please cite:
+
+```bibtex
+@misc{kang2026strata,
+  author     = {Jungmo Kang},
+  title      = {{STRATA}: One Geometry-Free Persistence-and-Periodicity Engine
+                Driving Selectable {2D/3D} Lifelong {LiDAR} Mapping in {ROS} 2},
+  year       = {2026},
+  howpublished = {GitHub: \url{https://github.com/kjungmo/strata}},
+  note       = {Open-source ROS 2 software release}
+}
+```
+
 `strata` incrementally builds and maintains a robot map from EITHER a **2D
 LiDAR** (`LaserScan` → `OccupancyGrid`) OR a **3D LiDAR** (`PointCloud2` → voxel
 cloud), backend chosen by one parameter. A single Bayesian-persistence engine

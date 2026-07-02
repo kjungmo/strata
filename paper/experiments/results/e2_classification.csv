@@ -1,0 +1,10 @@
+cell,gt_periodic,final_class,pred_periodic,ref_amplitude,periodic_prob
+#seed,12345,obs_length,64,,
+door_p8_4on4off,1,Periodic,1,0.653281,0
+door_p8_2on6off,1,Transient,0,0.46194,0
+door_p4_2on2off,1,Periodic,1,0.707107,0
+wall_constant,0,Static,0,8.84575e-16,1
+aperiodic_0,0,Transient,0,0.159344,0.653846
+aperiodic_1,0,Periodic,1,0.328854,0.824561
+aperiodic_2,0,Transient,0,0.13855,1
+aperiodic_3,0,Transient,0,0.250889,0.671875
