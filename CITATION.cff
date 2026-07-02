@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use STRATA, please cite both the software and the paper below."
+title: "STRATA: Selectable 2D/3D Lifelong LiDAR Mapping in ROS 2"
+type: software
+authors:
+  - family-names: Kang
+    given-names: Jungmo
+    email: kangjmo91@gmail.com
+version: 0.1.0
+date-released: 2026-07-03
+license: Apache-2.0
+repository-code: "https://github.com/kjungmo/strata"
+url: "https://github.com/kjungmo/strata"
+keywords:
+  - lifelong mapping
+  - occupancy grids
+  - voxel mapping
+  - persistence filtering
+  - FreMEn periodicity
+  - ROS 2
+  - open-source robotics software
+preferred-citation:
+  type: generic
+  title: "STRATA: One Geometry-Free Persistence-and-Periodicity Engine Driving Selectable 2D/3D Lifelong LiDAR Mapping in ROS 2"
+  authors:
+    - family-names: Kang
+      given-names: Jungmo
+  year: 2026
+  url: "https://github.com/kjungmo/strata"
+  notes: "Open-source ROS 2 software release"

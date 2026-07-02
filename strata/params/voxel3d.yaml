@@ -1,0 +1,22 @@
+/**:
+  ros__parameters:
+    backend: "voxel3d"
+    global_frame: "map"
+    points_topic: "/points"
+    publish_period: 1.0
+    save_path: "/tmp/strata_3d"
+    voxel_size: 0.2
+    layer_interval: 10
+    l_hit: 0.85
+    l_miss: -0.4
+    l_min: -5.0
+    l_max: 5.0
+    survival_decay: 0.97
+    graduate_prob: 0.8
+    demote_prob: 0.45
+    min_observations: 3
+    prune_prob: 0.05
+    enable_periodicity: true
+    periodic_amplitude_min: 0.3
+    period_windows: 24
+    n_harmonics: 2

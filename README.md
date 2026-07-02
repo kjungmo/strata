@@ -1,0 +1,263 @@
+<div align="center">
+
+# STRATA
+
+**One geometry-free persistence-and-periodicity engine, two pluggable LiDAR
+backends (2D occupancy grid or 3D voxel), for lifelong mapping in ROS 2 Humble —
+pick a backend with one parameter and get a durable static map plus periodic and
+transient layers, at full 6-DoF.**
+
+[![CI](https://github.com/kjungmo/strata/actions/workflows/ci.yml/badge.svg)](https://github.com/kjungmo/strata/actions/workflows/ci.yml)
+[![License](https://img.shields.io/github/license/kjungmo/strata?color=blue)](LICENSE)
+![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-22314E?logo=ros&logoColor=white)
+[![Paper (PDF)](https://img.shields.io/badge/paper-PDF-b31b1b?logo=adobeacrobatreader&logoColor=white)](paper/latex/main.pdf)
+[![Sponsor](https://img.shields.io/github/sponsors/kjungmo?logo=githubsponsors&color=ea4aaa)](https://github.com/sponsors/kjungmo)
+
+[Overview](#overview) · [Paper](#-paper) · [Install](#-prerequisites) ·
+[Quick start](#-quick-start) · [Evaluation](#-evaluation) · [Docs](#-documentation) · [Roadmap](#-roadmap)
+
+<img src="docs/assets/fig_architecture.png" width="540" alt="STRATA architecture: one shared LayeredMap persistence-and-periodicity engine in strata_core feeding Grid2DBackend and Voxel3DBackend, sitting above the strata ROS 2 node with its scan and cloud adapters and its map, map_points, and save_map interfaces."/>
+
+</div>
+
+`strata` incrementally builds and maintains a robot map from EITHER a **2D
+LiDAR** (`LaserScan` → `OccupancyGrid`) OR a **3D LiDAR** (`PointCloud2` → voxel
+cloud), backend chosen by one parameter. A single Bayesian-persistence engine
+copes with dynamic AND semi-static environments: it **graduates** durably
+occupied cells into a permanent static map, flags **periodically** occupied
+cells (FreMEn) instead of baking them in, and lets **transient** observations
+fade. Sensor poses are full 6-DoF.
+
+> **`strata` is not a SLAM system.** It does not estimate the robot's pose. It
+> consumes an external pose source via TF (`map → sensor`) — e.g. the sibling
+> [`prism_loc`](https://github.com/kjungmo/prism_loc) localizer or a plain
+> `odom → base_link` chain — and maps against it. Drift in that pose source
+> corrupts the map; there is no correction here.
+
+## 📢 News
+- **2026-07** — **v0.1.0 public release**: the `strata_core` engine + both
+  backends, the paper (EN/KR + typeset PDF), and the seeded E1–E4 reproduction
+  harness are all public.
+
+## Overview
+
+One `LayeredMap` persistence core (log-odds occupancy + survival decay +
+Schmitt-trigger graduation) and one `PeriodicityModel` (FreMEn-lite) drive
+**both** backends behind a `MapBackend` interface — the classifier that
+graduates, demotes, prunes, and periodicity-labels every cell is shared by
+composition, not duplicated per dimension. The two backends are the two sensor
+paths a ground robot actually has:
+
+| | **grid2d** | **voxel3d** |
+|---|---|---|
+| Input topic / msg | `/scan` (`sensor_msgs/LaserScan`) | `/points` (`sensor_msgs/PointCloud2`) |
+| Map output | `nav_msgs/OccupancyGrid` | `PointCloud2` / PCD |
+| Geometry & projection | 2D occupancy grid; 6-DoF endpoints projected onto the plane (z dropped) | fully volumetric voxel-hash (x, y, z kept) |
+| Ray clearing | Bresenham ray-trace | ray-sample along the beam |
+
+**Why "STRATA".** Like geological **strata**, the map is built from layers of
+observation that accumulate over time. Durable layers — seen again and again —
+consolidate into the permanent **static** map; **periodic** layers (a door open
+by day, shut by night) are recognized as recurring rather than baked in; and
+**transient** layers erode away.
+
+**Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
+cell id, and is unit-tested with gtest **without ROS or PCL** (22 gtests across 7
+suites, plus 2 node tests). rclcpp, tf2, and PCL live only in the ROS node
+package. Because persistence, hysteresis, and periodicity are implemented once,
+the behavior is identical across the 2D and 3D backends.
+
+<details>
+<summary>Text architecture diagram (the hero figure above, as ASCII)</summary>
+
+```
+strata_core   (pure C++17 + Eigen, no ROS / no PCL, gtest-tested):
+
+  LayeredMap  ── THE HEART ──────────────────────────────────────────
+    log-odds occupancy (l_hit/l_miss + clamp)
+    survival decay  (Persistence Filter forgetting toward unknown)
+    Schmitt trigger graduate(graduate_prob) / demote(demote_prob)   ─► Static
+        │                                                              │
+        └─► PeriodicityModel (FreMEn-lite, incremental Fourier)     ─► Periodic
+                amplitude >= periodic_amplitude_min                    else Transient
+
+  MapBackend  (interface: integrate(obs, sensor_origin) / tick())
+    ├─ Grid2DBackend   6-DoF hits projected to a 2D plane, Bresenham ray clearing
+    └─ Voxel3DBackend  fully volumetric voxel-hash, ray-sample clearing
+
+ROS 2 node   (rclcpp / tf2 / PCL here only):
+
+  strata  ── MappingNode ──  backend = grid2d | voxel3d
+    in :  /scan | /points ,  TF (map -> sensor, full 6-DoF)
+    out:  ~/map (OccupancyGrid) | ~/map_points (PointCloud2) ,  ~/save_map (Trigger)
+```
+
+</details>
+
+See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and test strategy).
+
+## 📄 Paper
+
+> **STRATA: One Geometry-Free Persistence-and-Periodicity Engine Driving
+> Selectable 2D/3D Lifelong LiDAR Mapping in ROS 2**
+> · [Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md) · [PDF](paper/latex/main.pdf)
+
+The architecture, persistence model, and the seeded E1–E4 characterization suite
+are documented in the paper. If you use `strata` in academic work, please cite:
+
+```bibtex
+@misc{kang2026strata,
+  author     = {Jungmo Kang},
+  title      = {{STRATA}: One Geometry-Free Persistence-and-Periodicity Engine
+                Driving Selectable {2D/3D} Lifelong {LiDAR} Mapping in {ROS} 2},
+  year       = {2026},
+  howpublished = {GitHub: \url{https://github.com/kjungmo/strata}},
+  note       = {Open-source ROS 2 software release}
+}
+```
+
+A machine-readable [`CITATION.cff`](CITATION.cff) mirrors this citation.
+
+## ⚙️ Prerequisites
+
+- **ROS 2 Humble**, **C++17**, **Apache-2.0**. No proprietary dependencies.
+- **`strata_core`** builds and unit-tests with the plain system toolchain — it
+  needs only a **C++17** compiler + **Eigen3** + **gtest**, no rclcpp and no PCL.
+- The **`strata`** ROS 2 package additionally needs **rclcpp**, **tf2**, and
+  **PCL** (RoboStack/conda Humble works too — run the build inside the activated env).
+
+## 🚀 Quick start
+
+```bash
+# 1. Map engine — build & test with the plain system toolchain (no ROS):
+cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
+cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
+
+# 2. Full ROS 2 Humble build & test (workspace):
+#    place this repo at <ws>/src/strata, then:
+colcon build --symlink-install
+colcon test --packages-select strata_core strata
+colcon test-result --verbose
+#    (RoboStack/conda Humble users: run the above inside your activated env.)
+
+# 3. Run — 2D occupancy-grid mapping:
+ros2 launch strata grid2d.launch.py
+#    3D voxel mapping:
+ros2 launch strata voxel3d.launch.py
+#    save the current static map (PGM+YAML for grid2d, PCD for voxel3d):
+ros2 service call /strata/save_map std_srvs/srv/Trigger
+```
+
+A pose source must already be publishing TF from `global_frame` (default `map`)
+to the LiDAR's frame. Run `prism_loc` (or any localizer / odometry chain) first.
+
+## 📊 Evaluation
+
+**Scope: this is a seeded synthetic characterization suite, not a field
+dataset.** Every number below comes from a deterministic `strata_core` harness
+seeded from the fixed constant `12345` — no real sensor, no robot motion, no
+field deployment enters any result. All magnitudes are single-seed point
+estimates with no cross-seed variance characterized, so the figures illustrate a
+mechanism rather than a distributional performance claim, and `strata` itself
+performs no SLAM.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+<img src="docs/assets/fig_e1_f1_vs_time.png" width="100%" alt="E1: static-set F1 versus window index, one panel for grid2d and one for voxel3d, one line per clutter density (low, medium, high). Both backends jump to F1 near 1.0 within three windows."/>
+
+**E1 — static-map quality.** Both backends graduate the 161-cell static wall by
+**window 3** and hold **recall 1.0** thereafter. The only map-quality divergence
+is a clutter-induced static-precision gap of **0.9253 (grid2d) vs. 0.9758
+(voxel3d)** at 100 movers/window — and it arises in the backends' native
+sampling, not in the shared classifier.
+
+</td>
+<td width="50%" valign="top">
+
+<img src="docs/assets/fig_e3_sensitivity.png" width="100%" alt="E3: three heatmap panels of flicker-transition count against graduation threshold and hysteresis band, one panel per survival-decay value. The degenerate zero-band column is the hot column."/>
+
+**E3 — hysteresis is the dominant stabilizer.** Removing the hysteresis band
+(degenerate config) inflates flicker from **54** toggles at **F1 1.000** to
+**574** toggles at **F1 0.810** on identical replayed noise. The band alone
+suppresses the flicker.
+
+</td>
+</tr>
+</table>
+
+E4 additionally measures a flat **56 B/cell** footprint and a **5.5–15.0×**
+per-`integrate()` cost gap between `voxel3d` and `grid2d`, and E2 detects
+50%-duty periodic doors at true-positive rate **2/3** and false-positive rate
+**1/5**.
+
+Full setup, all E1–E4 tables, and per-figure notes are in
+[`paper/strata_paper.md`](paper/strata_paper.md) §5. Reproduce end-to-end with
+[`paper/experiments/run_all.sh`](paper/experiments/run_all.sh); every headline
+number is CI-guarded by
+[`paper/experiments/number_guard.py`](paper/experiments/number_guard.py)
+(53 checks against the committed CSVs in `paper/experiments/results/`).
+
+## 🔌 Interface
+
+| | **grid2d** | **voxel3d** |
+|---|---|---|
+| Input topic | `/scan` (`LaserScan`) | `/points` (`PointCloud2`) |
+| Pose input | TF `map → sensor` (full 6-DoF), looked up at the message stamp | TF `map → sensor` (full 6-DoF), looked up at the message stamp |
+| Map output | `~/map` (`OccupancyGrid`, `transient_local`) | `~/map_points` (`PointCloud2`) |
+| Save service | `~/save_map` (`std_srvs/srv/Trigger`) → PGM + map_server YAML | `~/save_map` (`std_srvs/srv/Trigger`) → PCD |
+
+There is **no** `/initialpose` input and **no** `map→odom` output — `strata`
+maps, it does not localize. The robot's pose comes in via TF from an external
+source. Occupancy values render as static→100, periodic→75, transient→50,
+unknown→-1.
+
+See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame conventions.
+
+## 📚 Documentation
+
+| Document | Contents |
+|---|---|
+| [`paper/strata_paper.md`](paper/strata_paper.md) | Full paper (EN) — engine, persistence/periodicity model, E1–E4 validation |
+| [`paper/strata_paper_KR.md`](paper/strata_paper_KR.md) | Korean translation of the paper |
+| [`paper/latex/main.pdf`](paper/latex/main.pdf) | Typeset PDF snapshot for reading and sharing |
+| [`SPEC.md`](SPEC.md) | Design spec — algorithm, parameters, frames, module layout, test strategy |
+| [`paper/experiments/`](paper/experiments/) | Reproduction harness (E1–E4) + `run_all.sh` + `number_guard.py` |
+| [`paper/figures/README.md`](paper/figures/README.md) | Figure design notes and CSV sources |
+
+## 🗺️ Roadmap
+
+v0.1.0 ships one Bayesian-persistence engine (log-odds occupancy + Schmitt-trigger
+graduation to a static layer + FreMEn periodicity classification), full 6-DoF
+sensor poses, and two backends: a 2D occupancy grid and a 3D voxel map. Named
+next steps, drawn from `SPEC.md` §8 and the paper's future-work section:
+
+- [ ] **TSDF surface backend** — replace the voxel-hash with a signed-distance surface
+- [ ] **Multi-session map merge** — combine maps built across separate runs
+- [ ] **Loop closure** — rebase the map on an external pose graph (`strata` consumes pose; it does not close loops itself)
+- [ ] **Pluginlib-style dynamic backend loading** — once the backend count outgrows the current one-parameter `if`/`else`
+- [ ] **Real-robot and multi-session field validation** — close the synthetic-only evaluation gap
+- [ ] **Learned per-cell ephemerality** — a per-cell-learned decay rate replacing the global `survival_decay` scalar
+
+## 🙏 Acknowledgements
+
+`strata` stands on a line of published work:
+
+- **FreMEn** — Krajník et al., *Spatio-Temporal Representation of Dynamic Environments* (IEEE T-RO 2017) — the incremental-Fourier periodicity model.
+- **Persistence Filter** — Rosen, Mason & Leonard, *Towards Lifelong Feature-Based Mapping in Semi-Static Environments* (ICRA 2016) — the survival-decay forgetting model.
+- **ELite** (ICRA 2025) and **LT-mapper** (ICRA 2022) — the closest published lifelong-mapping systems; `strata` isolates their shared persistence-and-classification core into a ROS-free engine.
+- **Removert** (IROS 2020) — motivates the conservative, hysteresis-gated removal that keeps clearing from erasing real structure.
+- **Nav2 STVL** (Macenski et al., 2020) and **OctoMap** (Hornung et al., 2013) — lineage for the voxel backend's decaying-occupancy and log-odds-with-clamping cores.
+- Sibling project [`prism_loc`](https://github.com/kjungmo/prism_loc) — the intended external pose source that publishes the `map → sensor` TF `strata` maps against.
+
+## 💛 Sponsor
+
+If `strata` saves you time, consider
+[sponsoring](https://github.com/sponsors/kjungmo). Sponsorship funds
+maintenance, new features, and faster issue response. Backers will be
+acknowledged here — thank you.
+
+## License
+
+Apache-2.0. See [`LICENSE`](LICENSE).
