@@ -40,9 +40,9 @@ static-precision gap of 0.9253 vs. 0.9758 under 100 movers per window, arises
 in the geometry backends' native sampling, not in the shared classifier);
 that 50%-duty periodic doors are detected at true-positive rate 2/3 from 15
 windows on, with no false positive on Bernoulli clutter at any read-out length
-from 8 to 100 windows; that removing hysteresis inflates flicker from 54 to
+from 8 to 100 windows (one seed, 5 aperiodic cells per length); that removing hysteresis inflates flicker from 54 to
 574 toggles on identical replayed noise (at fixed decay $\lambda=0.90$); and that the unified engine costs a
-flat ~56 B per cell (periodicity storage excluded) with no per-dimension penalty. Evaluation is synthetic and
+fixed ~56 B per cell in the memory estimate (periodicity storage excluded) with no per-dimension penalty. Evaluation is synthetic and
 the tool performs no SLAM; STRATA is the persistence core meant to sit beneath
 an external localizer, released open-source as a ROS 2 package. We also report and correct two defects
 in the periodicity test of the first release. Its Fourier coefficients were not
@@ -51,9 +51,13 @@ coefficients walls stay Static with periodicity on in every experiment. Its
 fixed amplitude threshold was not calibrated against sampling noise, so
 Bernoulli clutter was labelled Periodic at up to 4 of 5 cells per read-out
 length (mean false-positive rate 0.331 after centring). We replace it with a
-Chernoff bound on the periodogram that holds for any clutter occupancy rate and
-sampling pattern, with its nominal level set on held-out seeds. The false-positive
-rate is then 0 at every read-out length, at the cost of detecting the doors
+significance test whose false-alarm probability at one read-out is bounded by a
+Chernoff argument for iid clutter at any occupancy rate and any sampling pattern
+fixed independently of the occupancy. Pruning and repeated read-outs in the live
+map fall outside this guarantee, so its nominal level is set empirically on
+held-out seeds. On the single-seed E2 suite the false-positive rate is then 0 at
+every read-out length (5 aperiodic cells per length, part of it owed to
+pruning), at the cost of detecting the doors
 from 15 windows instead of 8, and total flicker on noisy walls with periodicity
 on falls from 5472 to 3792 toggles (3672 with periodicity off).
 
@@ -150,8 +154,9 @@ and the synthetic suite:
    Persistence-Filter survival decay [@rosen2016persistence], Removert-motivated
    Schmitt hysteresis [@kim2020removert], ReFusion-style negative-evidence ray
    clearing [@palazzolo2019refusion], and a parallel FreMEn-lite periodicity
-   classifier [@krajnik2017fremen] whose false-alarm probability is bounded
-   for any noise rate by a Chernoff argument (§4.4), emitting a four-class label from one
+   classifier [@krajnik2017fremen] whose per-read-out false-alarm probability
+   under iid clutter and occupancy-independent sampling is bounded for any
+   noise rate by a Chernoff argument (§4.4), emitting a four-class label from one
    dependency-light, SLAM-free module — a combination absent, in this form, from
    the surveyed prior art (§2, §4).
 4. **A mechanistic characterization of the shared classifier (measured).**
@@ -163,7 +168,7 @@ and the synthetic suite:
    flicker toggles at F1 0.810 versus 54 toggles at F1 1.000 on identical
    replayed noise at the same decay ($\lambda=0.90$) (§5).
 5. **A unified engine that adds no per-dimension cost, released as a
-   reproducible tool (measured).** Memory is a flat ~56 B per cell and
+   reproducible tool (measured).** Estimated memory is a fixed ~56 B per live cell and
    per-window cost tracks live-cell count linearly; the 5.5–15.0× per-`integrate()`
    gap between backends is entirely 3D free-space voxel proliferation (4.4–10.0×
    more live cells), geometry rather than the engine. The whole system ships as
@@ -497,8 +502,9 @@ later reveals periodicity. That second guard has no band of its own, but with
 the centred amplitude of [@sec:periodicity] it can only fire on a cell that has
 been observed free in a substantial share of its touched windows ($a\le
 4\bar v(1-\bar v)$), never on a wall that is occupied whenever seen, and the
-significance test below makes it fire on a merely noisy wall only with small,
-bounded probability per window. The two rules cannot fight in one window, because
+significance test below makes it fire on a merely noisy wall only rarely (its
+bound covers one read-out of a non-adaptive history, not the pruned, repeatedly
+tested live history). The two rules cannot fight in one window, because
 graduation requires $\lnot\text{periodic}$ and
 $p\ge p_{\text{grad}}>p_{\text{dem}}$.
 
@@ -602,20 +608,29 @@ $H$ harmonics gives probability at most $\delta$. $\square$
 The bound needs no knowledge of $m$, since the constant $\tfrac14$ is the
 Bernoulli worst case $m=\tfrac12$. When $M_k$ is singular the code projects
 onto its range, where the same argument gives a smaller bound. Under uniform
-phase coverage $M_k=\tfrac n2 I_2$ and $d_k=n\,a_{(k)}^2/2$, so the test
+phase coverage at a harmonic with $2(k+1)\not\equiv0 \pmod T$ (so that the sine
+column does not vanish; the defaults satisfy it) $M_k=\tfrac n2 I_2$ and $d_k=n\,a_{(k)}^2/2$, so the test
 becomes an amplitude threshold that shrinks with $n$:
 $a_{(k)}\ge\max(a_{\min},a^\star(n))$ with $a^\star(n)=\sqrt{2r^\star/n}$. For
 $\delta=0.1$ and $H=3$, $r^\star=3.115$, so $a^\star(8)=0.883$ and
-$a^\star(64)=0.312$. Two caveats limit the guarantee. It assumes non-adaptive
+$a^\star(64)=0.312$. Three caveats limit the guarantee. It assumes non-adaptive
 sampling, whereas in the live pipeline a history survives only if pruning did
-not erase it, so there the rate is measured (E0, E2), not guaranteed. And it is
+not erase it, so there the rate is measured (E0, E2), not guaranteed. It bounds
+one read-out: the map re-tests every window, and the probability that a clutter
+cell is labelled Periodic at *some* window of a long run is not bounded by
+$\delta$, by the proposition or by our experiments. And it is
 conservative: in the Gaussian limit at $m=\tfrac12$, $\Pr(d_k\ge r)\to e^{-2r}$,
 a factor $2er$ below $B(r)$, or about 17 at $r^\star$. We therefore treat
 $\delta$ as a nominal level and choose it on a calibration set disjoint from
-every evaluation seed. The rule, fixed before the run, takes the largest
+every evaluation seed. The rule takes the largest
 $\delta\in\{0.01,0.02,0.05,0.1,0.2\}$ whose measured false-alarm rate stays at
 or below 0.01, both over a null grid and in the live pipeline. It selects
-$\delta=0.1$ ([@tbl:e0], §5.1), the shipped default. The price is detection
+$\delta=0.1$ ([@tbl:e0], §5.1), the shipped default. The rule compares point
+estimates: the worst pipeline rate at $\delta=0.1$, 7 of 1000 cells, has a 95%
+Wilson upper limit of 0.0144, so the calibration does not establish the 0.01
+target with confidence. Only $\delta$ is held out; the test itself was
+introduced after the amplitude-only rule produced false positives on the E2
+seed, so E2 is not a blind evaluation of its design. The price is detection
 delay: a 50%-duty door needs about two periods of touches instead of one.
 
 ## 4.5 Cell-class state machine and pruning {#sec:states}
@@ -979,7 +994,7 @@ observation length (`results/e2_classification.csv`,
 | `door_p4_2on2off` (50% duty) | periodic | Periodic | 0.707 | $<10^{-3}$ | correct |
 | `door_p8_2on6off` (25% duty) | periodic | Transient | 0.462 | $<10^{-3}$ | **miss** |
 | `wall_constant` | non-periodic | Static | 0 | 1 | correct |
-| `aperiodic_0` | non-periodic | Static | 0.159 | 1 | correct (Periodic class) |
+| `aperiodic_0` | non-periodic | Static | 0.159 | 1 | **false Static** (not a Periodic FP) |
 | `aperiodic_1` | non-periodic | Unknown | 0.329 | 0.056 | correct |
 | `aperiodic_2`, `_3` | non-periodic | Transient | 0.14–0.25 | 1 / 0.585 | correct |
 
@@ -998,10 +1013,10 @@ wall stays at exactly 0.](figures/fig_e2_periodicity.pdf){#fig:e2}
 
 **Calibration (E0).** The nominal level $\delta$ is chosen first, on held-out
 seeds, by the rule of [@sec:periodicity] (@tbl:e0). The null grid covers iid
-Bernoulli($m$) streams at $T/H\in\{8/3,24/2\}$, $m$ from 0.05 to 0.95 and $n$
-from $T$ to 100 or 240, with 20,000 streams per point; the pipeline check runs
+Bernoulli($m$) streams at $T/H\in\{8/3,24/2\}$, $m$ from 0.05 to 0.95 and 12
+read-out lengths in $8$–100 ($T=8$) or 8 in $24$–240 ($T=24$), with 20,000 streams per point; the pipeline check runs
 3000 clutter cells through the live `LayeredMap` with the E2 parameters and
-reads them out at every $n=8$–100; the door check runs four doors at 40 phases.
+reads them out at every $n=8$–100; the door check runs four doors in 40 runs each at random phase offsets.
 The Chernoff bound is conservative at every candidate level. At $\delta=0.1$ the
 worst null rate is 0.0050 and the worst pipeline rate 0.007, both within the
 0.01 target, whereas $\delta=0.2$ exceeds it (0.0149 and 0.014), so $\delta=0.1$
@@ -1172,9 +1187,10 @@ exact 2D Bresenham clear over the same nominal footprint — the same
 geometric asymmetry that drives the latency gap also drives the cell-count
 gap, and both narrow together as the extent grows and the ray paths (and
 hence the per-ray voxel counts) become a smaller fraction of the total
-volume. Memory is exactly what a flat 56 B/cell predicts: estimated memory
-tracks live-cell count linearly across every row of [@tbl:e4] with no
-additional constant, topping out at 37.0 MB for the largest 3D
+volume. Memory is not measured: the harness multiplies the live-cell count by
+a fixed 56 B/cell (evidence and hash node with periodicity off; table and
+backend overhead excluded), so the estimate tracks live-cell count by
+construction, topping out at 37.0 MB for the largest 3D
 configuration tested (661,410 cells $\times$ 56 B) — inexpensive even at
 the largest map in this sweep. Absolute microsecond values here are
 single-run wall-clock measurements on one machine and are not claimed to be
@@ -1187,7 +1203,7 @@ seed regardless of machine.
 Across E1–E4, the two backends behave as one engine wearing two geometries,
 exactly as C1 asserts by construction: E1's near-identical F1 trajectories
 (both backends graduate the wall by the third window and hold recall 1.0
-through $w{=}39$) and E4's flat 56 B/cell tracking live-cell count are the
+through $w{=}39$) and E4's live-cell counts are the
 empirical face of "no per-dimension logic or cost," since `LayeredMap` and
 `PeriodicityModel` — exercised directly and identically in E2 and E3 — never
 see which backend produced the `CellId` they are updating. The two places
