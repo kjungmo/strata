@@ -11,10 +11,11 @@ TEST(Integration, WallStaticMoverTransientDoorPeriodic) {
   const Eigen::Vector3d sensor(0.5,0.5,0.0);
   const Eigen::Vector3d wall(25.5,0.5,0.0);                 // fixed wall cell (25,0)
   const Eigen::Vector3d door(10.5,0.5,0.0);                 // door cell (10,0): periodic
-  for (int w=0; w<24; ++w) {
+  // 64 windows: the shipped alpha-spending test needs several periods of evidence.
+  for (int w=0; w<64; ++w) {
     Observation obs; obs.hits.push_back(wall);               // wall every window
     if ((w % 8) < 4) obs.hits.push_back(door);               // door occupied first half of period
-    obs.hits.push_back(Eigen::Vector3d(5.5, 5.0 + w, 0.0));  // mover: new cell each window
+    if (w < 24) obs.hits.push_back(Eigen::Vector3d(5.5, 5.0 + w, 0.0));  // mover: new cell each window
     b.integrate(obs, sensor);
     b.tick();
   }

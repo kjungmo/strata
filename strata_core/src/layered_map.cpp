@@ -41,7 +41,7 @@ void LayeredMap::endWindow() {
     // significance (false-alarm probability <= periodic_false_alarm).
     const bool periodic = params_.enable_periodicity &&
         periodicity_.isPeriodic(it->first, params_.periodic_amplitude_min,
-                                params_.periodic_false_alarm);
+                                params_.periodic_false_alarm, params_.periodic_alpha_spending);
     // A strongly-periodic (semi-static) cell is predicted per phase, not baked permanently
     // Static; only non-periodic cells graduate to the persistent static map.
     if (!e.graduated && !periodic && p >= params_.graduate_prob &&
@@ -78,7 +78,8 @@ CellClass LayeredMap::classify(CellId id) const {
   if (it == cells_.end()) return CellClass::Unknown;
   if (it->second.graduated) return CellClass::Static;
   if (params_.enable_periodicity &&
-      periodicity_.isPeriodic(id, params_.periodic_amplitude_min, params_.periodic_false_alarm))
+      periodicity_.isPeriodic(id, params_.periodic_amplitude_min, params_.periodic_false_alarm,
+                              params_.periodic_alpha_spending))
     return CellClass::Periodic;
   if (sigmoid(it->second.log_odds) >= params_.prune_prob) return CellClass::Transient;
   return CellClass::Unknown;

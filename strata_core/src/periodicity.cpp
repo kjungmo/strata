@@ -136,15 +136,22 @@ double PeriodicityModel::falseAlarm(CellId id) const {
   return std::min(1.0, best * std::max(1, params_.n_harmonics));
 }
 
-bool PeriodicityModel::isPeriodic(CellId id, double a_min, double alpha) const {
+double PeriodicityModel::spentLevel(double alpha, double n, int period_windows) {
+  const double T = std::max(1, period_windows);
+  if (n < T) return 0.0;
+  return alpha * T / (n * (n + 1.0));
+}
+
+bool PeriodicityModel::isPeriodic(CellId id, double a_min, double alpha, bool spend) const {
   auto it = cells_.find(id);
   if (it == cells_.end() || gated(it->second)) return false;
   const double H = std::max(1, params_.n_harmonics);
+  const double level = spend ? spentLevel(alpha, it->second.n, params_.period_windows) : alpha;
   for (int k = 0; k < params_.n_harmonics; ++k) {
     const double a = harmonicAmplitude(it->second, k);
     if (a <= 0.0 || a < a_min) continue;               // effect-size screen
     if (alpha >= 1.0) return true;                     // significance test disabled
-    if (H * tailBound(stat(it->second, k).dchi) <= alpha) return true;
+    if (H * tailBound(stat(it->second, k).dchi) <= level) return true;
   }
   return false;
 }

@@ -14,11 +14,18 @@ struct LayeredMapParams {
   int min_observations{3}; double prune_prob{0.05};
   bool enable_periodicity{true}; double periodic_amplitude_min{0.3};
   // Nominal level alpha of the periodic significance test: a Chernoff bound
-  // (Bonferroni over n_harmonics) guarantees a false-alarm probability <= alpha
-  // per read-out for an iid-Bernoulli cell. The bound is conservative; 0.1 is the
-  // largest level whose measured false-alarm rate stayed <= 0.01 on a held-out
-  // calibration set (paper E0). >= 1 disables the test (amplitude rule only).
-  double periodic_false_alarm{0.1};
+  // (Bonferroni over n_harmonics) bounds the false-alarm probability of one read-out
+  // of an iid-Bernoulli cell by alpha. The map re-tests every window, so the shipped
+  // rule spends alpha over the touch count (periodic_alpha_spending): the probability
+  // that such a cell is EVER labelled Periodic during one uninterrupted history is
+  // <= alpha, for any horizon; a pruned and re-created cell starts a new history.
+  // 0.2 is the largest candidate level whose trajectory-level false-alarm rate
+  // (ever Periodic within 1024 windows, Wilson 95% upper limit) stayed <= 0.01 on a
+  // held-out calibration set (paper E5). >= 1 disables the test (amplitude rule only).
+  double periodic_false_alarm{0.2};
+  // Spend periodic_false_alarm over the touch count (PeriodicityModel::spentLevel)
+  // instead of using it at every read-out; false restores the single-read-out rule.
+  bool periodic_alpha_spending{true};
   PeriodicityParams periodicity{};
 };
 struct CellEvidence {

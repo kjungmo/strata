@@ -111,6 +111,7 @@ TEST(LayeredMap, GenuineDoorStillPeriodicE2Params) {
   LayeredMapParams p = P();
   p.graduate_prob = 0.9; p.demote_prob = 0.4; p.min_observations = 5;
   p.l_min = -5; p.l_max = 5; p.periodicity.n_harmonics = 3;
+  p.periodic_alpha_spending = false; p.periodic_false_alarm = 0.1;   // single-read-out rule
   LayeredMap m(p);
   const CellId c = 103;
   for (int w = 0; w < 64; ++w) {
@@ -145,6 +146,7 @@ TEST(LayeredMap, GraduatedDoorIsDemotedOncePeriodic) {
   LayeredMapParams p = P();
   p.graduate_prob = 0.9; p.demote_prob = 0.4; p.min_observations = 5;
   p.l_min = -5; p.l_max = 5; p.periodicity.n_harmonics = 3;
+  p.periodic_alpha_spending = false; p.periodic_false_alarm = 0.1;   // single-read-out rule
   LayeredMap m(p);
   const CellId c = 105;
   bool was_static = false;
@@ -162,13 +164,16 @@ TEST(LayeredMap, GraduatedDoorIsDemotedOncePeriodic) {
 // Bernoulli(0.5) clutter cells go through pruning and re-creation (which resets
 // their Fourier history); the calibrated test must still keep the per-read-out
 // Periodic rate at or below alpha. Seeds 830000+ are test-only.
+#include <algorithm>
 #include <random>
+#include <vector>
 
 TEST(LayeredMap, BernoulliClutterRarelyPeriodicWithPruning) {
   LayeredMapParams p = P();
   p.graduate_prob = 0.9; p.demote_prob = 0.4; p.min_observations = 5;
   p.l_min = -5; p.l_max = 5; p.periodicity.n_harmonics = 3;
-  // shipped periodic_false_alarm (0.1) must meet the 0.01 target in the pipeline
+  // the single-read-out rule at 0.1 meets the 0.01 target per read-out
+  p.periodic_alpha_spending = false; p.periodic_false_alarm = 0.1;
   const int kCells = 400;
   int periodic = 0, reads = 0;
   for (int L : {8, 13, 17, 24, 41, 64, 100}) {
@@ -190,4 +195,72 @@ TEST(LayeredMap, CalibrationCanBeDisabledForLegacyAmplitudeRule) {
   LayeredMap m(p);
   for (int t = 0; t < 8; ++t) { if ((t % 8) < 4) m.observeHit(7); else m.observeMiss(7); m.tick(); }
   EXPECT_EQ(m.classify(7), CellClass::Periodic);   // detected at n = T, no significance delay
+}
+
+// ---- Trajectory level: alpha spending in the live pipeline (seeds 850000+) ----
+TEST(LayeredMap, AlphaSpendingIsTheShippedRule) {
+  EXPECT_TRUE(LayeredMapParams{}.periodic_alpha_spending);
+}
+
+TEST(LayeredMap, GraduatedDoorIsDemotedOncePeriodicWithSpending) {
+  LayeredMapParams p = P();
+  p.graduate_prob = 0.9; p.demote_prob = 0.4; p.min_observations = 5;
+  p.l_min = -5; p.l_max = 5; p.periodicity.n_harmonics = 3;
+  p.periodic_alpha_spending = true;
+  LayeredMap m(p);
+  const CellId c = 106;
+  bool was_static = false;
+  for (int w = 0; w < 64; ++w) {
+    if ((w % 8) < 4) m.observeHit(c); else m.observeMiss(c);
+    m.tick();
+    was_static = was_static || m.isStatic(c);
+  }
+  EXPECT_TRUE(was_static);
+  EXPECT_FALSE(m.isStatic(c));
+  EXPECT_EQ(m.classify(c), CellClass::Periodic);
+}
+
+TEST(LayeredMap, NoisyWallRarelyEverDemotedByPeriodicPathWithSpending) {
+  // A graduated wall is never pruned, so its Fourier history is uninterrupted and
+  // the spent test bounds P(ever Periodic over the whole run) by alpha.
+  LayeredMapParams p;   // shipped defaults, one window per tick
+  p.layer_interval = 1;
+  const int kWalls = 300, kWin = 1000;
+  for (bool spend : {false, true}) {
+    p.periodic_alpha_spending = spend;
+    LayeredMap m(p);
+    std::mt19937 rng(850000u);
+    std::bernoulli_distribution coin(0.6);
+    std::vector<bool> ever(kWalls, false);
+    for (int w = 0; w < kWin; ++w) {
+      for (CellId c = 0; c < kWalls; ++c) { if (coin(rng)) m.observeHit(c); else m.observeMiss(c); }
+      m.tick();
+      for (CellId c = 0; c < kWalls; ++c) if (m.classify(c) == CellClass::Periodic) ever[c] = true;
+    }
+    const double r = static_cast<double>(std::count(ever.begin(), ever.end(), true)) / kWalls;
+    if (spend) { EXPECT_LE(r, p.periodic_false_alarm); EXPECT_LE(r, 0.01); }
+    else { EXPECT_GT(r, 0.01); }   // non-vacuous: the single-read-out rule accumulates
+  }
+}
+
+TEST(LayeredMap, PrunedClutterRarelyEverPeriodicWithSpending) {
+  LayeredMapParams p = P();
+  p.graduate_prob = 0.9; p.demote_prob = 0.4; p.min_observations = 5;
+  p.l_min = -5; p.l_max = 5; p.periodicity.n_harmonics = 3;
+  p.periodic_alpha_spending = true;
+  p.periodic_false_alarm = LayeredMapParams{}.periodic_false_alarm;   // shipped level
+  const int kCells = 500, kWin = 1024;
+  for (double occ : {0.3, 0.4, 0.5}) {
+    LayeredMap m(p);
+    std::mt19937 rng(851000u + unsigned(occ * 10));
+    std::bernoulli_distribution coin(occ);
+    std::vector<bool> ever(kCells, false);
+    for (int w = 0; w < kWin; ++w) {
+      for (CellId c = 0; c < kCells; ++c) { if (coin(rng)) m.observeHit(c); else m.observeMiss(c); }
+      m.tick();
+      for (CellId c = 0; c < kCells; ++c) if (m.classify(c) == CellClass::Periodic) ever[c] = true;
+    }
+    EXPECT_LE(static_cast<double>(std::count(ever.begin(), ever.end(), true)) / kCells, 0.02)
+        << "m=" << occ;
+  }
 }

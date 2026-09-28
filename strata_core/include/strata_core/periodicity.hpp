@@ -30,9 +30,17 @@ class PeriodicityModel {
   HarmonicStat harmonic(CellId id, int k) const;
   // p_k for a given explained variance dchi (the bound above, before Bonferroni).
   static double tailBound(double dchi);
+  // Level spent at touch count n when alpha is spread over every read-out of one
+  // uninterrupted history: alpha * T / (n (n + 1)) for n >= T, 0 below the gate.
+  // The levels telescope, sum_{n >= T} = alpha, so by the union bound a cell whose
+  // history is iid Bernoulli(m) over non-adaptively chosen touched windows is labelled
+  // Periodic at ANY read-out with probability <= alpha, over an unbounded horizon.
+  static double spentLevel(double alpha, double n, int period_windows);
   // Periodic iff n >= T and some harmonic k has amplitude >= a_min AND
-  // H * FAP_k <= alpha. alpha >= 1 disables the significance test (amplitude only).
-  bool isPeriodic(CellId id, double a_min, double alpha) const;
+  // H * FAP_k <= level, where level = alpha (single read-out) or
+  // spentLevel(alpha, n, T) (spend = true). alpha >= 1 disables the significance
+  // test (amplitude only).
+  bool isPeriodic(CellId id, double a_min, double alpha, bool spend = false) const;
   bool has(CellId id) const { return cells_.count(id) > 0; }
   void erase(CellId id) { cells_.erase(id); }
   std::size_t size() const { return cells_.size(); }
