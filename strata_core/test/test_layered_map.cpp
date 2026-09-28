@@ -106,6 +106,8 @@ TEST(LayeredMap, RevisitLoopWall8of48StaysStatic) {
 
 TEST(LayeredMap, GenuineDoorStillPeriodicE2Params) {
   // E2 door: 4 on / 4 off, T=8, H=3, read out at lengths that are not multiples of T.
+  // The calibrated significance test needs about two periods of evidence, so the
+  // door is required to be Periodic from window 16 on (it was window 8 before).
   LayeredMapParams p = P();
   p.graduate_prob = 0.9; p.demote_prob = 0.4; p.min_observations = 5;
   p.l_min = -5; p.l_max = 5; p.periodicity.n_harmonics = 3;
@@ -114,7 +116,7 @@ TEST(LayeredMap, GenuineDoorStillPeriodicE2Params) {
   for (int w = 0; w < 64; ++w) {
     if ((w % 8) < 4) m.observeHit(c); else m.observeMiss(c);
     m.tick();
-    if (w + 1 >= 8) { EXPECT_EQ(m.classify(c), CellClass::Periodic) << "window " << (w + 1); }
+    if (w + 1 >= 16) { EXPECT_EQ(m.classify(c), CellClass::Periodic) << "window " << (w + 1); }
   }
 }
 
@@ -154,4 +156,38 @@ TEST(LayeredMap, GraduatedDoorIsDemotedOncePeriodic) {
   EXPECT_TRUE(was_static);
   EXPECT_FALSE(m.isStatic(c));
   EXPECT_EQ(m.classify(c), CellClass::Periodic);
+}
+
+// ---- Noise-calibrated periodic predicate in the live pipeline ----
+// Bernoulli(0.5) clutter cells go through pruning and re-creation (which resets
+// their Fourier history); the calibrated test must still keep the per-read-out
+// Periodic rate at or below alpha. Seeds 830000+ are test-only.
+#include <random>
+
+TEST(LayeredMap, BernoulliClutterRarelyPeriodicWithPruning) {
+  LayeredMapParams p = P();
+  p.graduate_prob = 0.9; p.demote_prob = 0.4; p.min_observations = 5;
+  p.l_min = -5; p.l_max = 5; p.periodicity.n_harmonics = 3;
+  // shipped periodic_false_alarm (0.1) must meet the 0.01 target in the pipeline
+  const int kCells = 400;
+  int periodic = 0, reads = 0;
+  for (int L : {8, 13, 17, 24, 41, 64, 100}) {
+    LayeredMap m(p);
+    std::mt19937 rng(830000u + L);
+    std::bernoulli_distribution coin(0.5);
+    for (int w = 0; w < L; ++w) {
+      for (CellId c = 0; c < kCells; ++c) { if (coin(rng)) m.observeHit(c); else m.observeMiss(c); }
+      m.tick();
+    }
+    for (CellId c = 0; c < kCells; ++c) { ++reads; if (m.classify(c) == CellClass::Periodic) ++periodic; }
+  }
+  EXPECT_LE(static_cast<double>(periodic) / reads, 0.01);
+}
+
+TEST(LayeredMap, CalibrationCanBeDisabledForLegacyAmplitudeRule) {
+  // alpha >= 1 switches the significance test off (amplitude-only rule, v0.1.0 semantics).
+  LayeredMapParams p = P(); p.graduate_prob = 0.99; p.periodic_false_alarm = 1.0;
+  LayeredMap m(p);
+  for (int t = 0; t < 8; ++t) { if ((t % 8) < 4) m.observeHit(7); else m.observeMiss(7); m.tick(); }
+  EXPECT_EQ(m.classify(7), CellClass::Periodic);   // detected at n = T, no significance delay
 }

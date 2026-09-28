@@ -13,6 +13,12 @@ struct LayeredMapParams {
   double graduate_prob{0.8}; double demote_prob{0.45};
   int min_observations{3}; double prune_prob{0.05};
   bool enable_periodicity{true}; double periodic_amplitude_min{0.3};
+  // Nominal level alpha of the periodic significance test: a Chernoff bound
+  // (Bonferroni over n_harmonics) guarantees a false-alarm probability <= alpha
+  // per read-out for an iid-Bernoulli cell. The bound is conservative; 0.1 is the
+  // largest level whose measured false-alarm rate stayed <= 0.01 on a held-out
+  // calibration set (paper E0). >= 1 disables the test (amplitude rule only).
+  double periodic_false_alarm{0.1};
   PeriodicityParams periodicity{};
 };
 struct CellEvidence {

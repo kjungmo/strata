@@ -79,7 +79,8 @@ strata_core   (pure C++17 + Eigen, no ROS / no PCL, gtest-tested):
     Schmitt trigger graduate(graduate_prob) / demote(demote_prob)   ─► Static
         │                                                              │
         └─► PeriodicityModel (FreMEn-lite, incremental Fourier)     ─► Periodic
-                amplitude >= periodic_amplitude_min                    else Transient
+                amplitude >= periodic_amplitude_min AND                else Transient
+                Chernoff false-alarm bound <= periodic_false_alarm
 
   MapBackend  (interface: integrate(obs, sensor_origin) / tick())
     ├─ Grid2DBackend   6-DoF hits projected to a 2D plane, Bresenham ray clearing

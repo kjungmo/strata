@@ -74,3 +74,120 @@ TEST(Periodicity, SquareWaveDetectedAtNonMultiplesOfPeriod) {
     if (w >= 8) { EXPECT_GT(m.amplitude(c), 0.3) << "n=" << w; }
   }
 }
+
+// ---- Noise-calibrated periodicity test ----
+// Null: o_w ~ iid Bernoulli(m), independent of the window phase. The test
+// declares a cell Periodic only if some harmonic has amplitude >= a_min AND its
+// Chernoff false-alarm bound, times H (Bonferroni over harmonics), is <= alpha.
+// The bound guarantees a rate <= alpha; at the shipped alpha = 0.1 the measured
+// rate must also meet the 0.01 target. Seeds 800000+ are test-only; they are
+// disjoint from the paper's evaluation seeds (12345 + small offsets) and from the
+// calibration seeds (20260928 + offsets).
+#include <random>
+#include "strata_core/layered_map.hpp"
+
+namespace {
+const double kAlpha = LayeredMapParams{}.periodic_false_alarm;   // shipped level
+constexpr double kTarget = 0.01;
+
+double noiseRate(int T, int H, double m, int n, int trials, unsigned seed,
+                 double a_min, double alpha) {
+  PeriodicityModel pm({T, H});
+  std::mt19937 rng(seed);
+  std::bernoulli_distribution coin(m);
+  int hits = 0;
+  for (int r = 0; r < trials; ++r) {
+    const CellId id = static_cast<CellId>(r);
+    for (int w = 1; w <= n; ++w) pm.gather(id, coin(rng), w);
+    if (pm.isPeriodic(id, a_min, alpha)) ++hits;
+    pm.erase(id);
+  }
+  return static_cast<double>(hits) / trials;
+}
+}  // namespace
+
+TEST(PeriodicitySignificance, ChernoffBoundIsAValidTailBound) {
+  // x e^{1-x} with x = 2 dchi: 1 at x <= 1, decreasing beyond, e.g. alpha/H at
+  // dchi ~ 3.1 for alpha = 0.1, H = 3.
+  EXPECT_DOUBLE_EQ(PeriodicityModel::tailBound(0.0), 1.0);
+  EXPECT_DOUBLE_EQ(PeriodicityModel::tailBound(0.5), 1.0);
+  double prev = 1.0;
+  for (double d = 0.6; d < 20.0; d += 0.1) {
+    const double b = PeriodicityModel::tailBound(d);
+    EXPECT_LT(b, prev + 1e-15); EXPECT_GT(b, 0.0); prev = b;
+    EXPECT_NEAR(b, 2.0 * d * std::exp(1.0 - 2.0 * d), 1e-12);
+  }
+}
+
+TEST(PeriodicitySignificance, BernoulliNoiseRarelyPeriodicT8) {
+  double pooled = 0.0; int cells = 0;
+  unsigned seed = 800000u;
+  for (double m : {0.1, 0.25, 0.5, 0.75, 0.9}) {
+    for (int n : {8, 9, 12, 16, 24, 33, 64, 100}) {
+      const double r = noiseRate(8, 3, m, n, 3000, seed++, 0.3, kAlpha);
+      EXPECT_LE(r, kAlpha) << "m=" << m << " n=" << n;          // guaranteed level
+      EXPECT_LE(r, 1.5 * kTarget) << "m=" << m << " n=" << n;   // target, binomial slack
+      pooled += r; ++cells;
+    }
+  }
+  EXPECT_LE(pooled / cells, kTarget);
+}
+
+TEST(PeriodicitySignificance, BernoulliNoiseRarelyPeriodicShippedT24) {
+  double pooled = 0.0; int cells = 0;
+  unsigned seed = 810000u;
+  for (double m : {0.1, 0.3, 0.5, 0.8}) {
+    for (int n : {24, 30, 48, 100, 240}) {
+      const double r = noiseRate(24, 2, m, n, 3000, seed++, 0.3, kAlpha);
+      EXPECT_LE(r, 1.5 * kTarget) << "m=" << m << " n=" << n;
+      pooled += r; ++cells;
+    }
+  }
+  EXPECT_LE(pooled / cells, kTarget);
+}
+
+TEST(PeriodicitySignificance, UncalibratedAmplitudeAloneWouldFail) {
+  // Guards the tests above against being vacuous: with the significance test
+  // disabled (alpha >= 1) the a_min = 0.3 amplitude rule fires often on noise.
+  EXPECT_GT(noiseRate(8, 3, 0.5, 12, 3000, 820000u, 0.3, 1.0), 0.2);
+}
+
+TEST(PeriodicitySignificance, SquareWaveDoorsStillDetected) {
+  PeriodicityModel m({8, 3});
+  for (int w = 1; w <= 100; ++w) {
+    m.gather(1, ((w - 1) % 8) < 4, w);   // 4 on / 4 off, period 8
+    m.gather(2, ((w - 1) % 4) < 2, w);   // 2 on / 2 off, period 4 (harmonic 2)
+    m.gather(3, ((w - 1) % 8) < 2, w);   // 2 on / 6 off, period 8 (never pruned here)
+    if (w >= 16) {
+      EXPECT_TRUE(m.isPeriodic(1, 0.3, kAlpha)) << "n=" << w;
+      EXPECT_TRUE(m.isPeriodic(2, 0.3, kAlpha)) << "n=" << w;
+    }
+    if (w >= 32) { EXPECT_TRUE(m.isPeriodic(3, 0.3, kAlpha)) << "n=" << w; }
+  }
+  EXPECT_LT(m.falseAlarm(1), 1e-6);
+}
+
+TEST(PeriodicitySignificance, ConstantCellNeverPeriodicUnderAnySampling) {
+  PeriodicityModel m({24, 2});
+  for (int w = 1; w <= 48 * 20; ++w) {
+    m.gather(1, true, w);                       // every window
+    if ((w % 48) < 8) m.gather(2, true, w);     // revisit loop 8 of 48
+    if ((w % 7) == 0) m.gather(3, false, w);    // always free, sparse
+    for (CellId c : {1, 2, 3}) {
+      if (m.has(c)) {
+        EXPECT_FALSE(m.isPeriodic(c, 0.3, kAlpha)) << "cell " << c << " w=" << w;
+        EXPECT_FALSE(m.isPeriodic(c, 0.0, 1.0)) << "cell " << c << " w=" << w;
+        EXPECT_DOUBLE_EQ(m.falseAlarm(c), 1.0);
+      }
+    }
+  }
+}
+
+TEST(PeriodicitySignificance, BelowPeriodGateNeverPeriodic) {
+  PeriodicityModel m({8, 3});
+  for (int w = 1; w < 8; ++w) {
+    m.gather(1, ((w - 1) % 8) < 4, w);
+    EXPECT_FALSE(m.isPeriodic(1, 0.0, 1.0)) << "n=" << w;
+    EXPECT_DOUBLE_EQ(m.falseAlarm(1), 1.0);
+  }
+}

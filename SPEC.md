@@ -40,8 +40,8 @@ confirms it over time, and **graduates** only durable cells into the static map:
   cell flickering between map and not-map on borderline evidence.
 - **FreMEn periodicity** — a parallel per-cell frequency model
   (Krajník et al., T-RO 2017) detects cells whose occupancy oscillates. A cell
-  with a strong dominant harmonic is classified **Periodic** and predicted per
-  phase, rather than frozen into the static layer.
+  with a strong, statistically significant harmonic is classified **Periodic**
+  and predicted per phase, rather than frozen into the static layer.
 
 The same engine, keyed by an integer cell id, drives two geometry backends:
 
@@ -128,7 +128,9 @@ map. `periodic` (§3.5) keeps a semi-static cell out of the static layer; it has
 no band of its own, but because the amplitude is mean-centred it can only fire on
 a cell that has been observed free in a sizeable fraction of its touched windows
 (`amplitude <= 4 m (1 - m)` for touched-window occupancy mean `m`, so the default
-`periodic_amplitude_min = 0.3` needs roughly 8–92 % occupancy).
+`periodic_amplitude_min = 0.3` needs roughly 8–92 % occupancy), and since the
+predicate also requires noise-calibrated significance (§3.5) it fires on an
+iid-noisy wall only with small, bounded probability per window.
 
 ### 3.5 FreMEn periodicity
 When `enable_periodicity` is set, every touched cell feeds its per-window state
@@ -147,22 +149,74 @@ therefore has amplitude exactly 0 regardless of *when* it is observed — withou
 centring, the amplitude measures the phase coverage of the observations, and a
 wall seen on a revisit loop commensurate with the period reads as Periodic.
 
-A cell whose amplitude reaches `periodic_amplitude_min` is classified
-**Periodic**. **The amplitude is only meaningful after a full period has been
-observed** — before `period_windows` windows have elapsed the harmonic estimate
-is unreliable, so a freshly seen oscillating cell will not yet read as Periodic.
+**Noise-calibrated periodic test.** The amplitude alone is not a test: for a
+cell whose occupancy is pure noise, `o_w ~ Bernoulli(m)` independent of phase,
+each centred coefficient has standard deviation `sqrt(2 m (1 - m) / n)` (0.25 at
+`m = 0.5`, `n = 8`), so a fixed `periodic_amplitude_min` is crossed by chance at
+short observation lengths. The predicate is therefore
+
+```
+periodic(cell) := n >= period_windows  AND  exists harmonic k:
+                    amplitude_k >= periodic_amplitude_min            (effect size)
+                AND n_harmonics * B(dchi_k) <= periodic_false_alarm  (significance)
+B(d) = x e^{1 - x} with x = 2 d   (B = 1 for x <= 1)
+```
+
+`dchi_k = y_kᵀ M_k⁻¹ y_k` is the occupancy variance explained by a least-squares
+sinusoid at harmonic `k` with a floating mean (the generalised Lomb–Scargle
+periodogram): `y_k = Σ (o_w − ō)(cos θ, sin θ)` and `M_k` the centred phase-design
+matrix of the touched windows, kept incrementally by also accumulating
+`Σ cos 2θ, Σ sin 2θ`. Because the centred phases sum to zero,
+`y_k = Σ (o_w − m)(cos θ − c̄, sin θ − s̄)` for *any* `m`, so under the noise null
+`dchi_k` is a quadratic form in independent `1/4`-sub-Gaussian variables
+(Hoeffding's lemma) whose whitened design is orthonormal; Gaussian decoupling
+gives `E exp(λ dchi) ≤ (1 − λ/2)⁻¹` and Chernoff gives `P(dchi ≥ r) ≤ B(r)`, for
+every `m`, every `n` and every *non-adaptive* set of touched phases. The
+Bonferroni factor `n_harmonics` covers the candidate harmonics. The threshold
+thus scales as `n^{-1/2}` in amplitude and needs no knowledge of `m`
+(`B` uses the worst case `m = 1/2`). Equivalently, at uniform phase coverage
+`dchi ≈ n a² / 2`, so the amplitude threshold is `a*(n) ≈ sqrt(2 r* / n)` with
+`B(r*) = α / H`.
+
+The bound is conservative. `periodic_false_alarm = 0.1` (the nominal level) was
+chosen on a calibration set disjoint from all evaluation seeds
+(`paper/experiments/src/e0_calibration.cpp`, added with the paper in PR #1;
+seeds `20260928 + offsets`): it is
+the largest candidate in {0.01, 0.02, 0.05, 0.1, 0.2} whose measured
+false-alarm rate stayed `<= 0.01` over the whole null grid (both `(T, H)`
+configurations, `m ∈ [0.05, 0.95]`, `n ≥ T`) and in the live pipeline with
+pruning. Pruning makes the observed sample adaptive (a cell survives only if its
+log-odds did not fall), so there the rate is measured, not guaranteed. The price
+of calibration is detection delay: a 50 %-duty door needs about two periods of
+touches instead of one. Setting `periodic_false_alarm >= 1` disables the
+significance term and restores the amplitude-only rule.
+
+**The amplitude is only meaningful after a full period has been observed** —
+before `period_windows` touched windows the harmonic estimate is withheld, so a
+freshly seen oscillating cell will not yet read as Periodic.
 
 ### 3.6 Classification & pruning
 ```
 classify(cell):
   graduated                                     -> Static
-  enable_periodicity && amp >= amplitude_min    -> Periodic
+  enable_periodicity && periodic(cell)          -> Periodic   (§3.5)
   p >= prune_prob                               -> Transient
   else                                          -> Unknown
 prune: erase cell if  !graduated && p < prune_prob && amp < periodic_amplitude_min
 ```
 Static cells are never pruned; periodic cells survive on their amplitude even
 when momentarily free.
+
+The prune guard deliberately uses the lenient effect-size screen
+(`amp < periodic_amplitude_min`), not the significance test: a *candidate*
+periodic cell keeps its Fourier history, and so its growing `n`, until the test
+resolves it. Pruning still discards the Fourier history of every other cell.
+Keeping history after erasure was considered and rejected: the purpose of
+pruning (§1, §3.3) is that clutter does not accumulate, and a per-cell Fourier
+record for every cell ever touched would grow without bound, most of all in
+`voxel3d`, where every sampled free voxel becomes a cell. A re-created cell starts
+from `n = 0`; the significance test is calibrated at every `n`, so a short
+history raises the threshold instead of producing false detections.
 
 ### 3.7 Ray clearing (free-space / negative information)
 - **grid2d**: an integer **Bresenham** line from the sensor cell to the endpoint
@@ -238,7 +292,8 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `min_observations` | `3` | minimum touches before a cell may graduate |
 | `prune_prob` | `0.05` | erase a non-static, non-periodic cell below this P(occ) |
 | `enable_periodicity` | `true` | run the FreMEn model |
-| `periodic_amplitude_min` | `0.3` | dominant-harmonic amplitude to classify Periodic |
+| `periodic_amplitude_min` | `0.3` | minimum harmonic amplitude (effect size) to classify Periodic |
+| `periodic_false_alarm` | `0.1` | nominal level of the Chernoff significance test (§3.5); `>= 1` disables it |
 
 ### Periodicity model (`PeriodicityParams`)
 | Param | Default | Meaning |
@@ -275,19 +330,33 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 ## 6. Test strategy
 
 Every algorithmic claim has a deterministic gtest (injected window index, no
-wall-clock, no `rand()`) in `strata_core/test`, runnable with **no ROS** —
-**22 gtests across 7 suites**:
+wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
+streams) in `strata_core/test`, runnable with **no ROS** — **41 gtests across 8
+suites**:
 
 - **Smoke** (1): version macro is defined.
 - **Types** (4): world↔grid round-trip; out-of-bounds rejection; cell-id
   uniqueness; `flatten` of a 6-DoF transform recovers x, y, yaw.
-- **Periodicity** (4): constant-occupied → high mean, low amplitude;
+- **Periodicity** (8): constant-occupied → high mean, low amplitude;
   constant-free → low prediction; square wave → detected and phase-predicted;
-  unknown cell → `0.5`.
-- **LayeredMap** (5): graduates only when P(occ) ≥ threshold AND observed ≥
+  unknown cell → `0.5`; centred amplitude of an always-occupied cell is 0 at
+  every length (T=8 and T=24) and under a revisit loop; square wave detected at
+  non-multiples of T.
+- **PeriodicitySignificance** (7): the Chernoff bound is a valid, monotone tail
+  bound; Bernoulli(m) noise is Periodic at rate `<= periodic_false_alarm` and
+  `<= 0.01` over m ∈ [0.1, 0.9] and n up to 240 (T=8/H=3 and T=24/H=2); the
+  amplitude-only rule would fire on > 20 % of such cells; square-wave doors are
+  still detected (50 %-duty from n = 16, 25 %-duty from n = 32); a constant cell is
+  never Periodic under any sampling; nothing is Periodic below the n ≥ T gate.
+- **LayeredMap** (13): graduates only when P(occ) ≥ threshold AND observed ≥
   `min_observations`; a moving obstacle (each cell hit once) never graduates;
   Schmitt hysteresis demotes only after sustained free; a square-wave cell is
-  classified Periodic, not Static; `layer_interval` groups ticks into windows.
+  classified Periodic, not Static; `layer_interval` groups ticks into windows;
+  an always-hit wall is never Periodic (T=8, and shipped T=24); a revisit-loop
+  wall stays Static; the E2 door is Periodic from window 16 on; periodic
+  demotion needs contradicting free evidence; a graduated door is demoted once
+  Periodic; Bernoulli clutter through pruning is Periodic at rate `<= 0.01`;
+  `periodic_false_alarm >= 1` restores the amplitude-only rule.
 - **Grid2DBackend** (4): a hit marks the endpoint and clears the ray; repeated
   hits graduate; occupancy-grid render (100/75/50/-1); a 6-DoF (elevated)
   endpoint projects to the plane.
