@@ -352,6 +352,14 @@ def guard_arxiv():
         check(f"E0 delta={a} rates", (f"{float(by0[a]['worst_null_rate']):.4f}", f"{float(by0[a]['worst_pipeline_rate']):.3f}") == (nq, pq))
         in_paper(f"E0 delta={a} null rate quoted", nq)
         in_paper(f"E0 delta={a} pipeline rate quoted", pq)
+    pipe0 = [r for r in rows("e0_calibration_pipeline.csv") if r["alpha"] in ("0.1",)]
+    worst = max(pipe0, key=lambda r: int(r["periodic"]))
+    kw, nw = int(worst["periodic"]), int(worst["cells"])
+    zq = 1.959964
+    ph = kw / nw
+    wil = (ph + zq * zq / (2 * nw) + zq * math.sqrt(ph * (1 - ph) / nw + zq * zq / (4 * nw * nw))) / (1 + zq * zq / nw)
+    check("E0 worst pipeline 7 of 1000, Wilson upper 0.0144", (kw, nw, f"{wil:.4f}") == (7, 1000, "0.0144"), f"{kw}/{nw} {wil:.4f}")
+    in_paper("E0 Wilson quoted", "7 of 1000 cells, has a 95\\% Wilson upper limit of 0.0144")
     check("E0 door median 22 -> 15", (by0[0.01]["door_p8_median_first_n"], by0[0.1]["door_p8_median_first_n"]) == ("22", "15"))
     in_paper("E0 door 22 to 15 quoted", "from 22 to 15")
     beta = [r for r in csv.DictReader(open(RESULTS / "e0_calibration_choice.csv")) if r["alpha"].startswith("#beta")][0]

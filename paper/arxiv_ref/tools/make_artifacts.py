@@ -148,7 +148,8 @@ with open(TAB / "e2.tex", "w") as f:
             "$\\delta{=}%g$, $T{=}8$, $H{=}3$. "
             "\\emph{Ref.\\ amplitude} and \\emph{Ref.\\ $H\\,B$} (the Bonferroni-adjusted Chernoff bound of "
             "Proposition~\\ref{prop:chernoff}; Periodic needs $\\le\\delta$) come from a non-pruning reference model fed "
-            "the identical occupancy stream. Periodic TPR $=%d/%d$, FPR $=%d/%d$.}\n" % (DELTA, tp, npos, fp, nneg))
+            "the identical occupancy stream. Periodic TPR $=%d/%d$, FPR $=%d/%d$. \\emph{Outcome} scores the Periodic class; "
+            "a non-periodic cell ending Static is not a Periodic false positive but is a wrong map label (\\emph{false Static}).}\n" % (DELTA, tp, npos, fp, nneg))
     f.write("\\label{tab:e2}\n\\small\n\\begin{tabular}{lccccc}\n\\toprule\n")
     f.write("Probe cell & Ground truth & Final class & Ref.\\ amplitude & Ref.\\ $H\\,B$ & Outcome \\\\\n\\midrule\n")
     for r in cls:
@@ -159,6 +160,8 @@ with open(TAB / "e2.tex", "w") as f:
         fa = float(r["ref_false_alarm"])
         fa_s = "1" if fa >= 1.0 else (f"{fa:.3f}" if fa >= 1e-3 else "$<10^{-3}$")
         outcome = "correct" if gt == pred else ("\\textbf{miss}" if gt else "\\textbf{false pos.}")
+        if not gt and not pred and r["final_class"] == "Static" and r["cell"].startswith("aperiodic"):
+            outcome = "\\textbf{false Static}"  # correct for the Periodic class, wrong as a map label
         name = tt(r["cell"]) + (f" ({note[r['cell']]})" if r["cell"] in note else "")
         f.write(f"{name} & {'periodic' if gt else 'non-periodic'} & {r['final_class']} & {a_s} & {fa_s} & {outcome} \\\\\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
