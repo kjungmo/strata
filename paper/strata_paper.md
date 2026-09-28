@@ -31,24 +31,31 @@ interface selected by one runtime string parameter. The only per-backend code
 is point-to-id mapping and the free-space ray walk; the classifier that
 graduates, demotes, prunes, and periodicity-labels every cell is shared by
 composition, not duplicated per dimension. The engine is a plain C++17 + Eigen
-library with no ROS, DDS, or PCL dependency, exercised by 32 behavior-level
+library with no ROS, DDS, or PCL dependency, exercised by 41 behavior-level
 tests, so its scientific logic builds and runs deterministically in a
 second-scale CI loop. A seeded synthetic characterization suite reports that
 both backends graduate a static wall by the third window and hold recall 1.0
 thereafter (their only map-quality divergence, a clutter-induced
 static-precision gap of 0.9253 vs. 0.9758 under 100 movers per window, arises
 in the geometry backends' native sampling, not in the shared classifier);
-that 50%-duty periodic doors are detected at true-positive rate 2/3 at every
-read-out length, while the false-positive rate on Bernoulli clutter swings
-from 0 to 4/5 with read-out length (2/5 at 64 windows, mean 0.331); that
-enabling periodicity raises total flicker on noisy walls by about half; that removing hysteresis inflates flicker from 54 to
+that 50%-duty periodic doors are detected at true-positive rate 2/3 from 15
+windows on, with no false positive on Bernoulli clutter at any read-out length
+from 8 to 100 windows; that removing hysteresis inflates flicker from 54 to
 574 toggles on identical replayed noise (at fixed decay $\lambda=0.90$); and that the unified engine costs a
 flat ~56 B per cell (periodicity storage excluded) with no per-dimension penalty. Evaluation is synthetic and
 the tool performs no SLAM; STRATA is the persistence core meant to sit beneath
-an external localizer, released open-source as a ROS 2 package. We also report and correct a defect of the
-first release: its Fourier coefficients were not mean-removed, so a constant
-wall could be demoted from Static; with centred coefficients walls stay Static
-with periodicity on in every experiment.
+an external localizer, released open-source as a ROS 2 package. We also report and correct two defects
+in the periodicity test of the first release. Its Fourier coefficients were not
+mean-removed, so a constant wall could be demoted from Static; with centred
+coefficients walls stay Static with periodicity on in every experiment. Its
+fixed amplitude threshold was not calibrated against sampling noise, so
+Bernoulli clutter was labelled Periodic at up to 4 of 5 cells per read-out
+length (mean false-positive rate 0.331 after centring). We replace it with a
+Chernoff bound on the periodogram that holds for any clutter occupancy rate and
+sampling pattern, with its nominal level set on held-out seeds. The false-positive
+rate is then 0 at every read-out length, at the cost of detecting the doors
+from 15 windows instead of 8, and total flicker on noisy walls with periodicity
+on falls from 5472 to 3792 toggles (3672 with periodicity off).
 
 # 1 Introduction
 
@@ -131,7 +138,7 @@ and the synthetic suite:
    dimensions ([@fig:architecture]; §3–4).
 2. **A ROS-free, deterministically testable core, shown backend-equivalent
    (design goal + measured).** The engine builds and unit-tests with a plain
-   C++17 + Eigen toolchain and is exercised by 32 behavior-level tests; both
+   C++17 + Eigen toolchain and is exercised by 41 behavior-level tests; both
    backends graduate the static wall by window 3 and hold recall 1.0 through
    window 39, differing in static-layer quality only by a clutter-induced
    static-precision gap (0.9253 grid2d vs. 0.9758 voxel3d at 100 movers per
@@ -143,15 +150,16 @@ and the synthetic suite:
    Persistence-Filter survival decay [@rosen2016persistence], Removert-motivated
    Schmitt hysteresis [@kim2020removert], ReFusion-style negative-evidence ray
    clearing [@palazzolo2019refusion], and a parallel FreMEn-lite periodicity
-   classifier [@krajnik2017fremen], emitting a four-class label from one
+   classifier [@krajnik2017fremen] whose false-alarm probability is bounded
+   for any noise rate by a Chernoff argument (§4.4), emitting a four-class label from one
    dependency-light, SLAM-free module — a combination absent, in this form, from
    the surveyed prior art (§2, §4).
 4. **A mechanistic characterization of the shared classifier (measured).**
    50%-duty periodicity is detected cleanly (dominant-harmonic amplitude
-   0.653/0.707, well above the 0.3 threshold) at true-positive rate 2/3 at
-   every read-out length, with the single miss diagnosed as a prune/maturity
-   race, but the false-positive rate on random clutter ranges over 0 to 4/5
-   with read-out length (2/5 at 64 windows); and hysteresis is the dominant stabilizer — removing it yields 574
+   0.653/0.707) at true-positive rate 2/3 from 15 windows on, with the single
+   miss diagnosed as a prune/maturity race; after calibration, random clutter
+   is never labelled Periodic at any read-out length (before: 0 to 4 of 5
+   per length); and hysteresis is the dominant stabilizer — removing it yields 574
    flicker toggles at F1 0.810 versus 54 toggles at F1 1.000 on identical
    replayed noise at the same decay ($\lambda=0.90$) (§5).
 5. **A unified engine that adds no per-dimension cost, released as a
@@ -488,7 +496,9 @@ graduating to Static, and `|| periodic` force-demotes a graduated cell that
 later reveals periodicity. That second guard has no band of its own, but with
 the centred amplitude of [@sec:periodicity] it can only fire on a cell that has
 been observed free in a substantial share of its touched windows ($a\le
-4\bar v(1-\bar v)$), never on a wall that is occupied whenever seen. The two rules cannot fight in one window, because
+4\bar v(1-\bar v)$), never on a wall that is occupied whenever seen, and the
+significance test below makes it fire on a merely noisy wall only with small,
+bounded probability per window. The two rules cannot fight in one window, because
 graduation requires $\lnot\text{periodic}$ and
 $p\ge p_{\text{grad}}>p_{\text{dem}}$.
 
@@ -518,12 +528,13 @@ over the touched windows. The phase prediction at window $t$ is
 $$\hat p(t)=\operatorname{clip}_{[0,1]}\!\left(\bar v+\sum_{k=0}^{H-1}
 \big[a_k\cos\theta_k+b_k\sin\theta_k\big]\right),$$
 
-and the dominant-harmonic amplitude and the periodicity test are
+and the harmonic and dominant amplitudes are
 
-$$a=\begin{cases}0, & n < T\\[4pt]
-\displaystyle\max_{0\le k<H}\sqrt{a_k^2+b_k^2}, & n \ge T\end{cases}
-\qquad
-\text{periodic}=\texttt{enable\_periodicity}\ \land\ a \ge a_{\min}.$$
+$$a_{(k)}=\sqrt{a_k^2+b_k^2},\qquad a=\begin{cases}0, & n < T\\[4pt]
+\displaystyle\max_{0\le k<H}a_{(k)}, & n \ge T.\end{cases}$$
+
+The periodicity test, which adds a significance condition to the amplitude
+threshold, is given below.
 
 The $n\ge T$ gate means a sparsely observed cell needs $T$ touches before its
 amplitude is trusted, which can span far more than $T$ elapsed windows.
@@ -544,6 +555,69 @@ regression tests cover both failures and genuine detection; seven fail on
 v0.1.0 and all pass after the fix; @tbl:fix
 compares E1–E3 before and after.
 
+**Calibrating the periodic test against noise.** Centring removes the bias of
+the amplitude but not its variance, and $a\ge a_{\min}$ alone is not a test.
+If a cell's occupancy is pure noise, $v_t\sim\text{Bernoulli}(m)$ independent
+of the phase, each centred coefficient has variance $2m(1-m)/n$ under uniform
+phase coverage, a standard deviation of $\sqrt{0.5/8}=0.25$ at $m=\tfrac12$,
+$n=T=8$. A fixed $a_{\min}$ is then crossed by chance at short lengths, and
+pruning ([@sec:states]) keeps returning cells to short lengths. For harmonic
+$k$ let $\tilde z_t=(\cos\theta_k-\bar c,\ \sin\theta_k-\bar s)^\top$ be the
+centred phase vector over the touched windows,
+$y_k=\sum_t(v_t-\bar v)\tilde z_t=\tfrac n2(a_k,b_k)^\top$ and
+$M_k=\sum_t\tilde z_t\tilde z_t^\top$. Then
+
+$$d_k=y_k^\top M_k^{-1}y_k,\qquad B(r)=\begin{cases}2r\,e^{1-2r}, & r>\tfrac12\\ 1, & r\le\tfrac12,\end{cases}$$
+
+where $d_k$ is the drop in squared residual when a sinusoid at harmonic $k$ is
+fitted with a floating mean, the generalised Lomb–Scargle periodogram
+[@zechmeister2009gls]. $M_k$ needs two more accumulators per harmonic,
+$\sum\cos2\theta_k$ and $\sum\sin2\theta_k$. The test requires, for some
+harmonic, both an effect size and significance at a nominal level $\delta$
+(`periodic_false_alarm`):
+
+$$\text{periodic}=\texttt{enable\_periodicity}\land n\ge T\land\exists k:\
+\big[a_{(k)}\ge a_{\min}\land H\,B(d_k)\le\delta\big].$$
+
+*Proposition (calibrated false-alarm bound).* Let the $n$ touched windows be
+fixed independently of the occupancy, and let the $v_t$ be independent
+Bernoulli($m$) for one unknown $m\in[0,1]$. If $M_k$ is non-singular, then
+$\Pr(d_k\ge r)\le B(r)$ for every $r>0$, and hence, for every $a_{\min}\ge0$
+and $0<\delta<H$, the test is true with probability at most $\delta$.
+
+*Proof.* Because $\sum_t\tilde z_t=0$, the unknown mean drops out:
+$y_k=\sum_t\xi_t\tilde z_t$ with $\xi_t=v_t-m$. Put $b_t=M_k^{-1/2}\tilde z_t$
+and $u=\sum_t\xi_tb_t$, so $d_k=\|u\|^2$ and $\sum_tb_tb_t^\top=I_2$. Each
+$\xi_t$ has mean zero and lies in an interval of length 1, so Hoeffding's lemma
+[@hoeffding1963] gives $\mathbb E e^{s\xi_t}\le e^{s^2/8}$, and by independence
+$\mathbb E e^{w^\top u}\le e^{\|w\|^2/8}$ for every $w\in\mathbb R^2$. With
+$g\sim\mathcal N(0,I_2)$ independent of $u$ and $0\le\lambda<2$,
+$\mathbb E_g e^{\sqrt{2\lambda}g^\top u}=e^{\lambda\|u\|^2}$, so
+$\mathbb E e^{\lambda d_k}\le\mathbb E_g e^{\lambda\|g\|^2/4}=(1-\lambda/2)^{-1}$.
+Markov's inequality with $\lambda=2-1/r$ gives $2re^{1-2r}$ for $r>\tfrac12$.
+$B$ decreases strictly on $(\tfrac12,\infty)$, so $H\,B(d_k)\le\delta$ exactly
+when $d_k\ge r^\star$ with $B(r^\star)=\delta/H$, and the union bound over the
+$H$ harmonics gives probability at most $\delta$. $\square$
+
+The bound needs no knowledge of $m$, since the constant $\tfrac14$ is the
+Bernoulli worst case $m=\tfrac12$. When $M_k$ is singular the code projects
+onto its range, where the same argument gives a smaller bound. Under uniform
+phase coverage $M_k=\tfrac n2 I_2$ and $d_k=n\,a_{(k)}^2/2$, so the test
+becomes an amplitude threshold that shrinks with $n$:
+$a_{(k)}\ge\max(a_{\min},a^\star(n))$ with $a^\star(n)=\sqrt{2r^\star/n}$. For
+$\delta=0.1$ and $H=3$, $r^\star=3.115$, so $a^\star(8)=0.883$ and
+$a^\star(64)=0.312$. Two caveats limit the guarantee. It assumes non-adaptive
+sampling, whereas in the live pipeline a history survives only if pruning did
+not erase it, so there the rate is measured (E0, E2), not guaranteed. And it is
+conservative: in the Gaussian limit at $m=\tfrac12$, $\Pr(d_k\ge r)\to e^{-2r}$,
+a factor $2er$ below $B(r)$, or about 17 at $r^\star$. We therefore treat
+$\delta$ as a nominal level and choose it on a calibration set disjoint from
+every evaluation seed. The rule, fixed before the run, takes the largest
+$\delta\in\{0.01,0.02,0.05,0.1,0.2\}$ whose measured false-alarm rate stays at
+or below 0.01, both over a null grid and in the live pipeline. It selects
+$\delta=0.1$ ([@tbl:e0], §5.1), the shipped default. The price is detection
+delay: a 50%-duty door needs about two periods of touches instead of one.
+
 ## 4.5 Cell-class state machine and pruning {#sec:states}
 
 At the end of each window, cells below confidence are erased:
@@ -551,12 +625,18 @@ At the end of each window, cells below confidence are erased:
 $$\text{erase cell} \iff \lnot g\ \land\ p < p_{\text{prune}}\ \land\
 a < a_{\min}.$$
 
-Static cells ($g$) and periodic cells ($a\ge a_{\min}$) are never pruned;
-pruning a cell also erases its FreMEn coefficients. A snapshot classifier reads
+Static cells ($g$) and periodic cells (which have $a\ge a_{\min}$) are never
+pruned; pruning a cell also erases its FreMEn coefficients. The guard uses the
+lenient effect-size screen $a<a_{\min}$, not the full test, so a *candidate*
+periodic cell keeps its coefficients, and its growing $n$, until the test
+resolves it. We considered keeping the Fourier history of erased cells and
+rejected it: pruning exists so that clutter does not accumulate, and a record
+for every cell ever touched would grow without bound, fastest in `voxel3d`. A
+re-created cell restarts at $n=0$, where $a^\star(n)$ is simply higher. A snapshot classifier reads
 out one of four states by a priority ladder:
 
 $$\text{absent}\to\text{Unknown};\quad g\to\text{Static};\quad
-(\texttt{enable}\land a\ge a_{\min})\to\text{Periodic};\quad
+\text{periodic}\to\text{Periodic};\quad
 p\ge p_{\text{prune}}\to\text{Transient};\quad \text{else}\to\text{Unknown}.$$
 
 The full transition table is [@tbl:states]. Note that a present cell classifies
@@ -567,10 +647,10 @@ same condition under which it is generally pruned in the same window.
 |---|---|---|
 | (implicit) Unknown | Transient | first `observeHit/Miss`: cell created, $\ell{=}0\Rightarrow p{=}0.5\ge p_{\text{prune}}$ |
 | Transient | Static | $p\ge p_{\text{grad}}\land\text{obs}\ge N_{\min}\land\lnot\text{periodic}$ (graduate) |
-| Transient | Periodic | $a\ge a_{\min}$ (needs $n\ge T$ touched windows) |
+| Transient | Periodic | periodic: $n\ge T$ and, for some $k$, $a_{(k)}\ge a_{\min}$ and $H\,B(d_k)\le\delta$ |
 | Transient | Unknown (erased) | $p<p_{\text{prune}}\land a<a_{\min}\land\lnot g$ (prune) |
 | Static | Transient / Periodic / Unknown | demote ($p\le p_{\text{dem}}\lor\text{periodic}$), then re-classified by ladder |
-| Periodic | Transient / Unknown | $a$ falls below $a_{\min}$ (then subject to prune) |
+| Periodic | Transient / Unknown | periodic becomes false (pruned only once also $a<a_{\min}$) |
 | Periodic | — | never graduates (`!periodic` guard), never pruned while $a\ge a_{\min}$ |
 | Static | — | never pruned while $g$ |
 
@@ -594,7 +674,8 @@ Algorithm 1  endWindow(): one layered update per closed window, over all live ce
           if enable_periodicity:
               gather(c, occ, t)                   # n+=1; S0+=v; Ck+=v cos((k+1)w t); Sk+=v sin((k+1)w t)
       p <- sigma(l);  a <- amplitude(c)           # recomputed for ALL cells, touched or not
-      periodic <- enable_periodicity and a >= a_min
+      periodic <- enable_periodicity and n >= T and
+                  exists k: a_k >= a_min and H * B(d_k) <= delta
       if not g and not periodic and p >= p_grad and observations >= N_min:
           g <- true                               # graduate -> Static
       else if g and (p <= p_dem or periodic):
@@ -676,7 +757,8 @@ frame names, topics, `publish_period` 1.0 s) are not part of the engine math.
 | `min_observations` ($N_{\min}$) | 3 | touch count | min touched windows before a cell may graduate |
 | `prune_prob` ($p_{\text{prune}}$) | 0.05 | probability | erase non-static, non-periodic cell below this $p$ |
 | `enable_periodicity` | true | bool | run the FreMEn model |
-| `periodic_amplitude_min` ($a_{\min}$) | 0.3 | amplitude | dominant-harmonic magnitude to classify Periodic |
+| `periodic_amplitude_min` ($a_{\min}$) | 0.3 | amplitude | minimum harmonic amplitude (effect size) to classify Periodic |
+| `periodic_false_alarm` ($\delta$) | 0.1 | probability | nominal level of the significance test |
 | `period_windows` ($T$) | 24 | windows | FreMEn base period; also amplitude-validity gate ($n\ge T$) |
 | `n_harmonics` ($H$) | 2 | count | Fourier harmonics tracked per cell |
 
@@ -686,7 +768,7 @@ Table: Engine parameters and defaults (struct and `params/*.yaml` agree).
 Per-cell state is compact: `CellEvidence` is 24 bytes, plus roughly 32 bytes of
 `unordered_map` node overhead, giving the ~56 B/cell footprint reported in the
 evaluation when periodicity storage is excluded. A FreMEn-tracked cell adds a
-`Coeff` record (~96 B payload at $H=2$), allocated only for cells touched at
+`Coeff` record (two scalars and six length-$H$ arrays of doubles), allocated only for cells touched at
 least once with periodicity enabled.
 
 ## 4.8 Implementation versus specification {#sec:specdiff}
@@ -722,19 +804,21 @@ behind the low-duty periodicity miss reported in the evaluation.
 
 ## 5.1 Setup
 
-All four experiments (E1–E4) are driven by a standalone harness in
+All four experiments (E1–E4), and the calibration run E0, are driven by a standalone harness in
 `paper/experiments/` that links directly against the `strata_core` sources —
 no ROS 2, no ament, no colcon. Reproduction from the repository root is a
 single call, `bash paper/experiments/run_all.sh`, which configures and builds
-`strata_core` and the four harness executables, runs each one, and writes the
+`strata_core` and the five harness executables, runs each one, and writes the
 CSVs in `paper/experiments/results/` from which every number and figure in
 this section is taken; `strata_core`'s own `ctest` suite (1/1 target,
-aggregating the 32 gtest cases, ten of them regression tests for the
-amplitude defect of [@sec:periodicity]) is checked first, so the harness is only
+aggregating the 41 gtest cases: ten regression tests for the amplitude defect
+of [@sec:periodicity] and nine for its significance test) is checked first, so the harness is only
 trusted once the unit-level behavior it builds on is confirmed. Every stochastic experiment (E1–E3) derives its `std::mt19937` generator
 deterministically from the fixed constant `kSeed = 12345` (with
 per-backend/per-configuration offsets recorded in code), and the seed is
-logged in each CSV's `#seed` row, so the reported
+logged in each CSV's `#seed` row (E1–E4 use offsets 0–1500 from 12345; the
+calibration E0 uses seeds from 20260928 upward, so no calibration stream
+coincides with an evaluation stream), so the reported
 precision/recall/F1/flicker/TPR/FPR numbers are exactly reproducible. All
 reported magnitudes are single-seed (12345) point estimates: no cross-seed
 variance is characterized, so figures such as 0.9253 vs. 0.9758 should be
@@ -789,6 +873,7 @@ harness.
 | `prune_prob` (0.05) | — | — | 0.01 | — |
 | `period_windows` (24) | — | 8 | — | n/a |
 | `n_harmonics` (2) | — | 3 | — | n/a |
+| `periodic_false_alarm` (0.1) | — | — | — | n/a |
 
 Table: Per-experiment deviations from the [@tbl:params] production defaults.
 "—" = default unchanged; "swept" = varied across the E3 configuration grid
@@ -849,25 +934,31 @@ native quantization and sampling differences rather than the classifier. We
 do not claim it isolates a single geometric mechanism.
 
 With periodicity enabled the run is identical window for window: the wall is
-occupied whenever it is touched, so its centred amplitude is 0. The v0.1.0
+occupied whenever it is touched, so its centred amplitude is 0 and it explains
+no variance ($d_k=0$). The v0.1.0
 engine (uncentred amplitude) instead lost the whole wall from the Static layer
 in windows 29–40 ($t=28$–39) in all six runs, ending at Static recall 0
 (@tbl:fix).
 
-| measure | periodicity off | on, pre-fix | on, post-fix |
-|---|---|---|---|
-| E1: windows $t\ge3$ with Static recall $<1$ | 0 | 12 ($t=28$–39) | 0 |
-| E1: Static recall at $t=39$ | 1 | 0 | 1 |
-| E2 at $n=64$: TPR / FPR | — | 2/3 / 1/5 | 2/3 / 2/5 |
-| E2, $n=8$–100: mean FPR | — | 0.363 | 0.331 |
-| E2, $n=8$–100: FP count range (of 5) | — | 0–4 | 0–4 |
-| E2, $n=8$–100: lengths with constant wall Periodic | — | 4 of 93 | 0 of 93 |
-| E3: total flicker, 36 configurations | 3672 | 7132 | 5472 |
-| E3: flicker at 0.9 / 0.3 / $\lambda=0.90$ | 54 | 138 | 102 |
+| measure | periodicity off | on, v0.1.0 | on, centred | on, calibrated |
+|---|---|---|---|---|
+| E1: windows $t\ge3$ with Static recall $<1$ | 0 | 12 ($t=28$–39) | 0 | 0 |
+| E1: Static recall at $t=39$ | 1 | 0 | 1 | 1 |
+| E2 at $n=64$: TPR / FPR | — | 2/3 / 1/5 | 2/3 / 2/5 | 2/3 / 0/5 |
+| E2, $n=8$–100: mean FPR | — | 0.363 | 0.331 | 0.000 |
+| E2, $n=8$–100: FP count range (of 5) | — | 0–4 | 0–4 | 0–0 |
+| E2, $n=8$–100: lengths with no FP | — | 10 of 93 | 7 of 93 | 93 of 93 |
+| E2, $n=8$–100: lengths with constant wall Periodic | — | 4 of 93 | 0 of 93 | 0 of 93 |
+| E2, $n=8$–100: mean TPR | — | 0.667 | 0.667 | 0.624 |
+| E2: TPR 2/3 at every $n\ge$ | — | 8 | 8 | 15 |
+| E3: total flicker, 36 configurations | 3672 | 7132 | 5472 | 3792 |
+| E3: flicker at 0.9 / 0.3 / $\lambda=0.90$ | 54 | 138 | 102 | 58 |
 
-Table: Effect of centring the Fourier coefficients: same harness, seeds and
-parameters run against the v0.1.0 engine (`results/pre_fix_2026-09-28/`) and
-the corrected engine. {#tbl:fix}
+Table: Effect of the two corrections to the periodicity test: same harness,
+seeds and parameters run against the v0.1.0 engine
+(`results/pre_fix_2026-09-28/`), the centred engine with the amplitude-only
+rule (`results/pre_calibration_2026-09-28/`) and the current engine (centred,
+calibrated at $\delta=0.1$). {#tbl:fix}
 
 ## 5.3 E2 — Periodicity detection
 
@@ -882,59 +973,90 @@ ground truth (Periodic TPR/FPR), and FreMEn dominant-harmonic amplitude vs.
 observation length (`results/e2_classification.csv`,
 `results/e2_amplitude_vs_length.csv`, `results/e2_summary.csv`).
 
-| cell | ground truth | final class | amplitude | note |
-|---|---|---|---|---|
-| `door_p8_4on4off` (50% duty) | periodic | Periodic | 0.653 | correct |
-| `door_p4_2on2off` (50% duty) | periodic | Periodic | 0.707 | correct |
-| `door_p8_2on6off` (25% duty) | periodic | Transient | — | **miss** |
-| `wall_constant` | non-periodic | Static | 0 | correct |
-| `aperiodic_0` | non-periodic | Periodic | 0.159 (reference) | **false positive** |
-| `aperiodic_1` | non-periodic | Periodic | 0.329 | **false positive** |
-| `aperiodic_2`, `_3` | non-periodic | Transient | 0.14–0.25 | correct |
+| cell | ground truth | final class | ref. amplitude | ref. $H\,B$ | note |
+|---|---|---|---|---|---|
+| `door_p8_4on4off` (50% duty) | periodic | Periodic | 0.653 | $<10^{-3}$ | correct |
+| `door_p4_2on2off` (50% duty) | periodic | Periodic | 0.707 | $<10^{-3}$ | correct |
+| `door_p8_2on6off` (25% duty) | periodic | Transient | 0.462 | $<10^{-3}$ | **miss** |
+| `wall_constant` | non-periodic | Static | 0 | 1 | correct |
+| `aperiodic_0` | non-periodic | Static | 0.159 | 1 | correct (Periodic class) |
+| `aperiodic_1` | non-periodic | Unknown | 0.329 | 0.056 | correct |
+| `aperiodic_2`, `_3` | non-periodic | Transient | 0.14–0.25 | 1 / 0.585 | correct |
 
-Table: E2 — per-cell classification against ground truth ($a_{\min}=0.3$) at
-the 64-window read-out; Periodic TPR $=2/3$, FPR $=2/5$. {#tbl:e2}
+Table: E2 — per-cell classification against ground truth with the calibrated
+test ($a_{\min}=0.3$, $\delta=0.1$) at the 64-window read-out; reference values
+come from a non-pruning model fed the identical stream. Periodic TPR $=2/3$,
+FPR $=0/5$. {#tbl:e2}
 
 ![E2: (left) Periodic-class TPR/FPR bars; (right) FreMEn dominant-harmonic
 amplitude vs. observation length for all 8 probe cells, with the
-$a_{\min}=0.3$ threshold and the $n\ge T$ validity gate marked — the two
-50%-duty doors clear the threshold cleanly, the 25%-duty door is pruned
-before it matures, and the constant wall stays at exactly 0; the pipeline's
-two false positives are aperiodic movers.](figures/fig_e2_periodicity.pdf){#fig:e2}
+$a_{\min}=0.3$ threshold, the calibrated-test amplitude $a^\star(n)$
+($\delta=0.1$, $H=3$, uniform phase coverage) and the $n\ge T$ validity gate
+marked — a cell is Periodic only above both thresholds; the two 50%-duty doors
+clear them, the 25%-duty door is pruned before it matures, and the constant
+wall stays at exactly 0.](figures/fig_e2_periodicity.pdf){#fig:e2}
 
-Both 50%-duty doors are detected cleanly: amplitude 0.653 and 0.707 clear
-$a_{\min}=0.3$ by a wide margin. The one miss, the 25%-duty door
-(`door_p8_2on6off`), is a **prune/maturity race**, not a modeling failure:
-the notes accompanying this harness report that the real pipeline prunes
-this cell in roughly 10 of its 64 windows — each 6-window vacant stretch
-lets its log-odds fall below $p_{\text{prune}}$ while its FreMEn amplitude
-is still 0 (the $n\ge T$ gate has not yet been reached), erasing its
-accumulator state before periodicity can mature. The CSV's `ref_amplitude`
-column — a non-pruning reference `PeriodicityModel` fed the identical
-occupancy stream — reads 0.46194 for this same cell, comfortably above
-$a_{\min}$, confirming the signal itself is periodic and detectable; the
-miss is specifically an interaction between pruning and the touched-window
-amplitude gate.
+**Calibration (E0).** The nominal level $\delta$ is chosen first, on held-out
+seeds, by the rule of [@sec:periodicity] (@tbl:e0). The null grid covers iid
+Bernoulli($m$) streams at $T/H\in\{8/3,24/2\}$, $m$ from 0.05 to 0.95 and $n$
+from $T$ to 100 or 240, with 20,000 streams per point; the pipeline check runs
+3000 clutter cells through the live `LayeredMap` with the E2 parameters and
+reads them out at every $n=8$–100; the door check runs four doors at 40 phases.
+The Chernoff bound is conservative at every candidate level. At $\delta=0.1$ the
+worst null rate is 0.0050 and the worst pipeline rate 0.007, both within the
+0.01 target, whereas $\delta=0.2$ exceeds it (0.0149 and 0.014), so $\delta=0.1$
+is selected. Relaxing $\delta$ from 0.01 to 0.1 shortens the median read-out
+length at which a 4-on/4-off door becomes stably Periodic from 22 to 15
+windows. The Gaussian-residual approximation of the periodogram, the textbook
+false-alarm formula [@zechmeister2009gls], fails the same check: at a level of
+0.01 it reaches a null rate of 0.037 for $n$ near $T$.
 
-The false-positive rate is the weak point, and it depends on the read-out
-length. At $n=64$ it is 2/5; the v0.1.0 engine scored 1/5 at this length, so
-the corrected engine is *worse* at the previously reported read-out. Read out
-at every length from 8 to 100, the true-positive rate is 2/3 throughout in both
-versions, while the false-positive count ranges over 0 to 4/5 in both, with a
-mean false-positive rate of 0.363 before the fix and 0.331 after. The fix
-removes the constant wall from the count (Periodic at 4 of 93 lengths before,
-none after); the remaining false positives are Bernoulli controls, which
-genuinely vary. Two effects combine: $a_{\min}=0.3$ is not calibrated against
-sampling noise (for a Bernoulli(0.5) cell each centred coefficient has
-standard deviation $\sqrt{0.5/n}$, 0.25 at $n=T=8$), and pruning resets the
-Fourier record, so the pipeline often estimates the amplitude from only the
-touches since a cell's last re-creation — `aperiodic_0` has reference
-amplitude 0.159 over all 64 windows yet is Periodic in the pipeline, and
-`aperiodic_1` reads 0.329, 0.029 above $a_{\min}$. The amplitude-vs-length
-data also confirms the validity gate: for `door_p8_4on4off`, amplitude is
-exactly 0 at observation length 6 ($n<T{=}8$), 0.653 at every sampled
-multiple of $T$, and 0.581 at length 12, where the uncentred v0.1.0 amplitude
-had overshot to 0.871.
+| $\delta$ | null rate | pipeline rate | door, median first $n$ | selected |
+|---|---|---|---|---|
+| 0.01 | 0.0004 | 0.001 | 22 | no |
+| 0.02 | 0.0007 | 0.002 | 20 | no |
+| 0.05 | 0.0022 | 0.003 | 17 | no |
+| **0.1** | **0.0050** | **0.007** | **15** | **yes** |
+| 0.2 | 0.0149 | 0.014 | 14 | no (rate $>0.01$) |
+
+Table: E0 — calibration of $\delta$ on seeds from 20260928, disjoint from
+E1–E4 (`results/e0_calibration_choice.csv`). {#tbl:e0}
+
+**Results.** Both 50%-duty doors are detected (reference amplitudes 0.653 and
+0.707, bounds below $10^{-3}$). No aperiodic control is Periodic, so at the
+$n=64$ read-out the Periodic class reaches a true-positive rate of 2/3 and a
+false-positive rate of 0/5; the two earlier engines scored 1/5 (v0.1.0) and 2/5
+(centred only) at this length. This is not a favourable read-out: over all
+lengths $n=8$–100 the pipeline has no false positive at any length, against a
+mean false-positive rate of 0.363 (v0.1.0) and 0.331 (centred), with 0–4 of 5
+per length in both (@tbl:fix). The gain is paid for in detection delay. The
+true-positive rate is 0 for $n=8$–12 and 1/3 at $n=13$–14, and it reaches 2/3 at
+$n=15$, where the earlier engines were at 2/3 from $n=8$; the mean
+true-positive rate over the sweep falls from 0.667 to 0.624.
+
+Two observations qualify the zero. First, part of it is owed to pruning rather
+than to the test. A non-pruning reference model fed the same streams and read
+with the same predicate calls `aperiodic_1` Periodic at 25 of 93 lengths
+($n=29$–31, 45–50 and 52–67), a mean false-positive rate of 0.054. At $n=64$
+this cell's amplitude is 0.329 and its bound $H\,B=0.056<\delta$, a genuine
+tail event of this seed, roughly 3.7 null standard deviations. The live
+pipeline has pruned and re-created the cell, so it tests a shorter history,
+whose threshold $a^\star(n)$ is higher. Second, `aperiodic_0` now ends Static.
+With $\lambda=1$ its log-odds is a random walk that reached $p_{\text{grad}}$,
+and it was previously masked by a spurious Periodic label (centred engine) that
+demoted it. E2 does not score the Static class, so this false Static cell is not
+in its rates.
+
+The one miss, the 25%-duty door (`door_p8_2on6off`), is a **prune/maturity
+race**, not a failure of the test: the real pipeline erases the cell within at
+most 7 touched windows of each re-creation, before the $n\ge T$ gate is
+reached, and each erasure discards its accumulators. The reference model
+detects it from $n=26$, with amplitude 0.462 at $n=64$; the miss is
+specifically an interaction between pruning and the touched-window amplitude
+gate. The amplitude-vs-length data also confirms the gate: for
+`door_p8_4on4off`, amplitude is exactly 0 at observation length 6
+($n<T{=}8$), 0.653 at every sampled multiple of $T$, and 0.581 at length 12,
+where the uncentred v0.1.0 amplitude had overshot to 0.871.
 
 ## 5.4 E3 — Sensitivity: hysteresis band and decay
 
@@ -993,13 +1115,17 @@ static layer stable.
 
 **Periodicity on.** Rerunning the sweep with periodicity enabled at the
 shipped defaults (`results/e3_sensitivity_periodic.csv`) leaves final F1
-unchanged in all 36 configurations but raises flicker in every one: 5472
-toggles in total against 3672 with periodicity off (7132 with the v0.1.0
-engine), and 102 instead of 54 at the widest band and $\lambda=0.90$. These
-walls are free in 40% of their windows, so their centred amplitude is sampling
-noise that occasionally crosses $a_{\min}$, and the `|| periodic` demotion,
-which has no band of its own, toggles them out of the Static layer. The
-hysteresis band protects the occupancy path only.
+unchanged in all 36 configurations. Flicker is still higher than with
+periodicity off in every configuration, but only by 2 to 4 toggles: 3792 in
+total against 3672 off, 5472 with the centred amplitude-only rule and 7132 with
+v0.1.0, and 58 instead of 54 at the widest band and $\lambda=0.90$ (centred:
+102, v0.1.0: 138). These walls are free in 40% of their windows, so their
+centred amplitude is sampling noise; under the amplitude-only rule it crossed
+$a_{\min}$ often and the unbanded `|| periodic` demotion toggled the wall out of
+the Static layer. With the significance test, 1 or 2 such demotions remain per
+configuration over 50 walls and 80 windows. The test calibrates each read-out,
+not the whole run; a persistence rule on the periodic predicate would remove
+the remainder, and we have not evaluated one.
 
 ## 5.5 E4 — Throughput and memory
 
@@ -1076,8 +1202,9 @@ $z$-separation mechanism, and E4's per-call latency gap
 free-space ray-sample march spawning 4.4–10.0$\times$ more live voxels than
 `Grid2DBackend`'s exact line clear at the same nominal extent. E2 and E3,
 run once against `LayeredMap` with no backend involved at all, characterize
-the shared engine's own behavior — clean 50%-duty periodicity detection with
-a diagnosed prune/maturity-race failure mode at low duty cycle, and
+the shared engine's own behavior — 50%-duty periodicity detection from 15
+windows on with no false positive on clutter once the test is calibrated, a
+diagnosed prune/maturity-race failure mode at low duty cycle, and
 hysteresis as the dominant flicker suppressor, decay a secondary one — and
 that characterization is, by the same construction argument, valid for
 whichever backend feeds it cell ids in production.
@@ -1121,13 +1248,19 @@ E4's 5.5–15.0× per-`integrate()` cost gap are exactly those differences,
 measured rather than glossed over.
 
 Periodicity detection is the least mature part. The first release shipped an
-uncentred Fourier amplitude that could demote constant walls
-([@sec:periodicity]); that is fixed and covered by regression tests, and E1
-and E3 now show walls staying Static with periodicity on. But the fix does not
-calibrate the test: with $a_{\min}=0.3$ the Bernoulli controls of E2 are
-Periodic at up to 4 of 5 per read-out length, and the `|| periodic` demotion,
-which has no hysteresis band, raises total flicker on noisy walls by about
-half (E3).
+uncentred Fourier amplitude that could demote constant walls, and an
+uncalibrated amplitude threshold that labelled Bernoulli clutter Periodic at up
+to 4 of 5 cells per read-out length ([@sec:periodicity]). Both are fixed and
+covered by tests, but the calibrated test has three limits of its own. Its
+guarantee covers a fixed read-out under non-adaptive sampling; pruning makes
+the live sample adaptive, so the pipeline's zero false-positive rate in E2 is a
+measurement on four noise cells, partly owed to pruning (the non-pruning
+reference model errs at 25 of 93 lengths). It calibrates each read-out, not a
+whole run, so the unbanded `|| periodic` demotion still adds 2 to 4 toggles per
+E3 configuration. And it costs detection delay, about two periods of touches
+for a 50%-duty door. The null model is also idealised: real clutter is
+correlated in time, and a positively autocorrelated non-periodic cell violates
+the independence the bound assumes.
 
 ## 6.2 The out-of-FOV forgetting caveat is an operational limitation, not a footnote
 
@@ -1227,9 +1360,10 @@ occupancy-cell level, in 2D or 3D — STRATA is the intended fit.
 ## 6.5 Future work
 
 Five items follow directly from the limitations above, in the order they
-would be tackled: (0) a significance-calibrated amplitude threshold and a
-persistence rule on the periodic predicate, addressing the E2 false-positive
-rate and the E3 flicker with periodicity on; (1) real-robot and multi-session field validation, closing
+would be tackled: (0) a persistence rule on the periodic predicate and a
+noise null that allows temporal correlation, addressing the remaining E3
+flicker with periodicity on and the independence assumption of the calibrated
+test; (1) real-robot and multi-session field validation, closing
 the synthetic-only gap of §6.1, on both a 2D wheeled platform and a 3D-LiDAR
 platform to exercise both backends under real sensor noise; (2) a
 per-cell-learned decay rate along the lines of iMac/Tipaldi
@@ -1263,9 +1397,9 @@ independent of ROS 2, DDS, or PCL (§3), and its behavior is characterized —
 not merely asserted — by a seeded, reproducible synthetic harness: near-
 identical static-layer quality across backends up to a clutter-induced,
 geometrically-explained precision gap (E1), detection of 50%-duty
-periodicity at every read-out length but with a length-dependent
-false-positive rate on random clutter and a diagnosed failure mode at low duty
-cycles (E2), walls that stay Static with periodicity on once the Fourier
+periodicity from 15 windows on with no false positive on random clutter at any
+read-out length once the test is calibrated, and a diagnosed failure mode at
+low duty cycles (E0, E2), walls that stay Static with periodicity on once the Fourier
 coefficients are centred (E1, E3),
 hysteresis as the dominant stabilizer against flicker (E3), and a flat
 per-cell memory footprint with a 5.5–15.0× backend cost gap attributable entirely
@@ -1284,9 +1418,10 @@ package alone builds and unit-tests without ROS installed
 the continuous-integration workflow builds and tests this core with a C++17
 toolchain (g++, Eigen3) on `ubuntu-latest`. All figures and tables in §5
 regenerate from the CSVs the harness itself
-writes: `bash paper/experiments/run_all.sh` configures and builds the four
-E1–E4 executables against `strata_core`, runs them with the fixed harness
-seed `kSeed = 12345`, and writes `paper/experiments/results/*.csv`; a
+writes: `bash paper/experiments/run_all.sh` configures and builds the
+calibration E0 and the four E1–E4 executables against `strata_core`, runs them
+(E0 with its own seeds from 20260928, E1–E4 with the fixed harness seed
+`kSeed = 12345`), and writes `paper/experiments/results/*.csv`; a
 follow-up `paper/experiments/plot/run_all_plots.sh` regenerates every figure
 from those CSVs. To reproduce or audit the parameterization, the engine
 parameters and production defaults are in [@tbl:params] (§4.7) and the

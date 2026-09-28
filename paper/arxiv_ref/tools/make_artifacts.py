@@ -4,10 +4,12 @@ package from the committed harness CSVs in paper/experiments/results/.
 
     python3 paper/arxiv_ref/tools/make_artifacts.py
 
-Writes figures/data/*.dat (read by pgfplots) and tables/{e1,e2,e3,e3_full,e4,fix}.tex;
-the fix table also reads results/pre_fix_2026-09-28/ (the uncentred-amplitude code).
+Writes figures/data/*.dat (read by pgfplots) and tables/{e0,e1,e2,e3,e3_full,e4,fix}.tex;
+the fix table also reads results/pre_fix_2026-09-28/ (the uncentred-amplitude code) and
+results/pre_calibration_2026-09-28/ (centred, amplitude-only periodic rule).
 No number in those files is typed by hand."""
 import csv
+import math
 from pathlib import Path
 
 PKG = Path(__file__).resolve().parents[1]
@@ -77,6 +79,35 @@ with open(TAB / "e1.tex", "w") as f:
             f.write("\\midrule\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
+# ---------------------------------------------------------------- E0 (calibration) + chosen level
+e0 = rows("e0_calibration_choice.csv")
+e0sel = [r for r in e0 if r["selected"] == "1"]
+assert len(e0sel) == 1, "calibration must select exactly one level"
+DELTA = float(e0sel[0]["alpha"])
+beta_worst = [r for r in csv.DictReader(open(RES / "e0_calibration_choice.csv")) if r["alpha"].startswith("#beta")][0]
+with open(TAB / "e0.tex", "w") as f:
+    f.write(HDR % "e0_calibration_choice.csv")
+    f.write("\\begin{table}[t]\n\\centering\n")
+    f.write("\\caption{Calibration of the nominal level $\\delta$ (E0) on seeds disjoint from E1--E4. "
+            "\\emph{Null}: worst false-alarm rate over the grid of iid Bernoulli($m$) streams "
+            "($T/H\\in\\{8/3,24/2\\}$, $m\\in[0.05,0.95]$, $n\\ge T$, 20{,}000 streams per point); "
+            "\\emph{Pipeline}: worst per-read-out rate of 3000 clutter cells in the live \\code{LayeredMap} (E2 "
+            "parameters, pruning on, $n=8$--$100$); \\emph{Door}: median read-out length from which a 4-on/4-off "
+            "door stays Periodic (40 phases). Rule, fixed before the run: the largest $\\delta$ with both rates "
+            "$\\le 0.01$. For comparison, the Gaussian-residual approximation of the periodogram at level 0.01 "
+            "reaches a null rate of %.3f.}\n" % float(beta_worst["worst_null_rate"]))
+    f.write("\\label{tab:e0}\n\\small\n\\begin{tabular}{ccccc}\n\\toprule\n")
+    f.write("$\\delta$ & Null rate & Pipeline rate & Door, median first $n$ & Selected \\\\\n\\midrule\n")
+    for r in e0:
+        sel_ = r["selected"] == "1"
+        cells = [f"{float(r['alpha']):g}", f"{float(r['worst_null_rate']):.4f}",
+                 f"{float(r['worst_pipeline_rate']):.3f}", f"{int(float(r['door_p8_median_first_n']))}",
+                 "yes" if sel_ else ("no (rate $>0.01$)" if r["meets_target"] == "0" else "no")]
+        if sel_:
+            cells = [f"\\textbf{{{c}}}" for c in cells]
+        f.write(" & ".join(cells) + " \\\\\n")
+    f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
 # ---------------------------------------------------------------- E2
 amp = rows("e2_amplitude_vs_length.csv")
 cells = []
@@ -89,6 +120,21 @@ for c in cells:
         for r in amp:
             if r["cell"] == c:
                 f.write(f"{r['obs_length']} {abs(float(r['amplitude'])):.6f}\n")
+# calibrated amplitude threshold at uniform phase coverage, a*(n) = sqrt(2 r* / n) with
+# B(r*) = x e^{1-x} = DELTA / H at x = 2 r* (E2: H = 3); B is decreasing for x > 1.
+H_E2 = 3
+lo_, hi_ = 1.0, 100.0
+for _ in range(200):
+    mid_ = 0.5 * (lo_ + hi_)
+    if mid_ * math.exp(1.0 - mid_) > DELTA / H_E2:
+        lo_ = mid_
+    else:
+        hi_ = mid_
+R_STAR = 0.5 * hi_
+with open(DATA / "e2_threshold.dat", "w") as f:
+    f.write("len astar\n")
+    for n in range(8, 71):
+        f.write(f"{n} {math.sqrt(2.0 * R_STAR / n):.6f}\n")
 cls = rows("e2_classification.csv")
 summ = {r["metric"]: r for r in rows("e2_summary.csv")}
 note = {"door_p8_4on4off": "50\\% duty", "door_p8_2on6off": "25\\% duty",
@@ -98,19 +144,23 @@ with open(TAB / "e2.tex", "w") as f:
     tp, fp = int(summ["periodic_TPR"]["note"]), int(summ["periodic_FPR"]["note"])
     npos, nneg = int(summ["gt_periodic"]["value"]), int(summ["gt_nonperiodic"]["value"])
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{Periodicity detection (E2) after 64 windows, $a_{\\min}{=}0.3$, $T{=}8$, $H{=}3$. "
-            "\\emph{Ref.\\ amplitude} is a non-pruning reference model fed the identical occupancy stream. "
-            "Periodic TPR $=%d/%d$, FPR $=%d/%d$.}\n" % (tp, npos, fp, nneg))
-    f.write("\\label{tab:e2}\n\\small\n\\begin{tabular}{lcccc}\n\\toprule\n")
-    f.write("Probe cell & Ground truth & Final class & Ref.\\ amplitude & Outcome \\\\\n\\midrule\n")
+    f.write("\\caption{Periodicity detection (E2) after 64 windows with the calibrated test, $a_{\\min}{=}0.3$, "
+            "$\\delta{=}%g$, $T{=}8$, $H{=}3$. "
+            "\\emph{Ref.\\ amplitude} and \\emph{Ref.\\ $H\\,B$} (the Bonferroni-adjusted Chernoff bound of "
+            "Proposition~\\ref{prop:chernoff}; Periodic needs $\\le\\delta$) come from a non-pruning reference model fed "
+            "the identical occupancy stream. Periodic TPR $=%d/%d$, FPR $=%d/%d$.}\n" % (DELTA, tp, npos, fp, nneg))
+    f.write("\\label{tab:e2}\n\\small\n\\begin{tabular}{lccccc}\n\\toprule\n")
+    f.write("Probe cell & Ground truth & Final class & Ref.\\ amplitude & Ref.\\ $H\\,B$ & Outcome \\\\\n\\midrule\n")
     for r in cls:
         gt = r["gt_periodic"] == "1"
         pred = r["pred_periodic"] == "1"
         a = float(r["ref_amplitude"])
         a_s = f"{a:.3f}" if a > 1e-6 else "$\\approx 0$"
+        fa = float(r["ref_false_alarm"])
+        fa_s = "1" if fa >= 1.0 else (f"{fa:.3f}" if fa >= 1e-3 else "$<10^{-3}$")
         outcome = "correct" if gt == pred else ("\\textbf{miss}" if gt else "\\textbf{false pos.}")
         name = tt(r["cell"]) + (f" ({note[r['cell']]})" if r["cell"] in note else "")
-        f.write(f"{name} & {'periodic' if gt else 'non-periodic'} & {r['final_class']} & {a_s} & {outcome} \\\\\n")
+        f.write(f"{name} & {'periodic' if gt else 'non-periodic'} & {r['final_class']} & {a_s} & {fa_s} & {outcome} \\\\\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
 # ---------------------------------------------------------------- E3
@@ -169,8 +219,8 @@ with open(TAB / "e3_full.tex", "w") as f:  # [H]: placed inline in the appendix
             "10 movers/window, 80 windows, seed 12345). Deg.\\ marks the zero-band configuration "
             "$p_{\\mathrm{dem}}=p_{\\mathrm{grad}}$. F1 to Flicker: periodicity off. "
             "\\emph{Flicker, P on}: the same sweep with periodicity on at the shipped $T{=}24$, $H{=}2$, "
-            "$a_{\\min}{=}0.3$ (corrected engine; its F1 equals the periodicity-off F1 in %d of %d rows).}\n"
-            % (len(e3), f1same, len(e3)))
+            "$a_{\\min}{=}0.3$, $\\delta{=}%g$ (current engine; its F1 equals the periodicity-off F1 in %d of %d rows).}\n"
+            % (len(e3), DELTA, f1same, len(e3)))
     f.write("\\label{tab:e3full}\n\\footnotesize\n\\begin{tabular}{cccccccccc}\n\\toprule\n")
     f.write("$p_{\\mathrm{grad}}$ & $p_{\\mathrm{dem}}$ & $\\lambda$ & Band & Deg. & F1 & Precision & Recall & Flicker & Flicker, P on \\\\\n\\midrule\n")
     for i, (r, rp) in enumerate(zip(e3, e3p)):
@@ -182,8 +232,9 @@ with open(TAB / "e3_full.tex", "w") as f:  # [H]: placed inline in the appendix
             f.write("\\midrule\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
-# ---------------------------------------------------------------- centring fix: before / after
-PRE = "pre_fix_2026-09-28"
+# ---------------------------------------------------------------- fixes: before / after
+PRE = "pre_fix_2026-09-28"          # v0.1.0: uncentred amplitude, amplitude-only rule
+MID = "pre_calibration_2026-09-28"  # centred amplitude, amplitude-only rule
 
 
 def e1_leak(name):
@@ -212,11 +263,24 @@ def e2_sweep(name):
     sw = rows(name)
     fp = [int(r["fp"]) for r in sw]
     tp = [int(r["tp"]) for r in sw]
+    pos = int(sw[0]["gt_periodic"])
     wall = sum("wall_constant" in r["false_positives"].split(";") for r in sw)
-    return dict(n0=int(sw[0]["obs_length"]), n1=int(sw[-1]["obs_length"]), N=len(sw),
-                neg=int(sw[0]["gt_nonperiodic"]), pos=int(sw[0]["gt_periodic"]),
+    # first read-out length from which TP stays at its maximum through the end of the sweep
+    tmax = max(tp)
+    stable = next(int(sw[i]["obs_length"]) for i in range(len(sw)) if all(t == tmax for t in tp[i:]))
+    ref = None
+    if "ref_fp" in sw[0]:
+        rfp = [int(r["ref_fp"]) for r in sw]
+        rtp = [int(r["ref_tp"]) for r in sw]
+        ref = dict(mfpr=sum(rfp) / (len(rfp) * int(sw[0]["gt_nonperiodic"])), fpmax=max(rfp),
+                   fplens=sum(v > 0 for v in rfp), mtpr=sum(rtp) / (len(rtp) * pos),
+                   full=next(int(sw[i]["obs_length"]) for i in range(len(sw)) if all(t == pos for t in rtp[i:])),
+                   cells=sorted({c for r in sw for c in r["ref_false_positives"].split(";") if c != "-"}))
+    return dict(n0=int(sw[0]["obs_length"]), n1=int(sw[-1]["obs_length"]), N=len(sw), ref=ref,
+                neg=int(sw[0]["gt_nonperiodic"]), pos=pos,
                 mfpr=sum(fp) / (len(fp) * int(sw[0]["gt_nonperiodic"])), fpmin=min(fp), fpmax=max(fp),
-                tpset=sorted(set(tp)), wall=wall, clean=sum(v == 0 for v in fp), rows=sw)
+                mtpr=sum(tp) / (len(tp) * pos), tpmin=min(tp), tpmax=tmax, stable=stable,
+                wall=wall, clean=sum(v == 0 for v in fp), rows=sw)
 
 
 def summ64(prefix):
@@ -231,48 +295,62 @@ def e3_tot(name):
         {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rr}
 
 
-s_pre, s_post = e2_sweep(PRE + "/e2_rates_vs_length.csv"), e2_sweep("e2_rates_vs_length.csv")
-for tag, sw in (("pre", s_pre), ("post", s_post)):
+S = {"pre": e2_sweep(PRE + "/e2_rates_vs_length.csv"), "mid": e2_sweep(MID + "/e2_rates_vs_length.csv"),
+     "post": e2_sweep("e2_rates_vs_length.csv")}
+for tag, sw in S.items():
     with open(DATA / f"e2_fpr_{tag}.dat", "w") as f:
-        f.write("len fpr fp\n")
+        f.write("len fpr fp tpr tp" + (" reffpr reftpr" if sw["ref"] else "") + "\n")
         for r in sw["rows"]:
-            f.write(f"{r['obs_length']} {float(r['fpr']):.6f} {r['fp']}\n")
-e1off, _ = e1_cell("e1_static_quality.csv")
+            extra = ""
+            if sw["ref"]:
+                extra = f" {int(r['ref_fp']) / int(r['gt_nonperiodic']):.6f} {int(r['ref_tp']) / int(r['gt_periodic']):.6f}"
+            f.write(f"{r['obs_length']} {float(r['fpr']):.6f} {r['fp']} {float(r['tpr']):.6f} {r['tp']}{extra}\n")
+e1off, e1off_fin = e1_cell("e1_static_quality.csv")
 e1pre, e1pre_fin = e1_cell(PRE + "/e1_static_quality_periodic.csv")
+e1mid, e1mid_fin = e1_cell(MID + "/e1_static_quality_periodic.csv")
 e1post, e1post_fin = e1_cell("e1_static_quality_periodic.csv")
-_, e1off_fin = e1_cell("e1_static_quality.csv")
-t_pre, t_post = summ64(PRE + "/"), summ64("")
+T64 = {"pre": summ64(PRE + "/"), "mid": summ64(MID + "/"), "post": summ64("")}
 f_off, i_off = e3_tot("e3_sensitivity.csv")
-f_pre, i_pre = e3_tot(PRE + "/e3_sensitivity_periodic.csv")
-f_post, i_post = e3_tot("e3_sensitivity_periodic.csv")
+F3 = {"pre": e3_tot(PRE + "/e3_sensitivity_periodic.csv"), "mid": e3_tot(MID + "/e3_sensitivity_periodic.csv"),
+      "post": e3_tot("e3_sensitivity_periodic.csv")}
 K = ("0.9", "0.3", "0.9")
 W = ("0.9", "0.9", "0.9")
+V = ("pre", "mid", "post")
+n0, n1 = S["pre"]["n0"], S["pre"]["n1"]
 with open(TAB / "fix.tex", "w") as f:
     f.write(HDR % ("e1_static_quality{,_periodic}.csv, e2_summary.csv, e2_rates_vs_length.csv, "
-                   "e3_sensitivity{,_periodic}.csv and " + PRE + "/"))
+                   "e3_sensitivity{,_periodic}.csv, " + PRE + "/ and " + MID + "/"))
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{Effect of centring the Fourier coefficients (\\S\\ref{subsec:fremen}), same harness, seeds and "
-            "parameters. \\emph{Pre-fix}: the uncentred amplitude of the v0.1.0 code (results kept in "
-            "\\nolinkurl{results/%s/}); \\emph{post-fix}: the corrected engine. E1 and E3 with periodicity on use "
-            "the shipped $T{=}24$, $H{=}2$, $a_{\\min}{=}0.3$; E2 uses $T{=}8$, $H{=}3$. E1 counts are identical in all six backend--clutter runs.}\n" % PRE.replace("_", "\\_"))
-    f.write("\\label{tab:fix}\n\\footnotesize\n\\begin{tabular}{lccc}\n\\toprule\n")
-    f.write("Measure & Periodicity off & On, pre-fix & On, post-fix \\\\\n\\midrule\n")
-    f.write(f"E1: windows $t\\ge3$ with Static recall $<1$ & {e1off} & {e1pre} & {e1post} \\\\\n")
-    f.write(f"E1: Static recall at $t{{=}}39$ & {e1off_fin} & {e1pre_fin} & {e1post_fin} \\\\\n\\midrule\n")
-    f.write(f"E2 at $n{{=}}64$: TPR / FPR & -- & {t_pre[0]}/{t_pre[2]} / {t_pre[1]}/{t_pre[3]} & "
-            f"{t_post[0]}/{t_post[2]} / {t_post[1]}/{t_post[3]} \\\\\n")
-    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: mean FPR & -- & {s_pre['mfpr']:.3f} & {s_post['mfpr']:.3f} \\\\\n")
-    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: FP count range (of {s_pre['neg']}) & -- & "
-            f"{s_pre['fpmin']}--{s_pre['fpmax']} & {s_post['fpmin']}--{s_post['fpmax']} \\\\\n")
-    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: lengths with constant wall Periodic & -- & "
-            f"{s_pre['wall']} of {s_pre['N']} & {s_post['wall']} of {s_post['N']} \\\\\n")
-    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: lengths with no FP & -- & "
-            f"{s_pre['clean']} of {s_pre['N']} & {s_post['clean']} of {s_post['N']} \\\\\n\\midrule\n")
-    f.write(f"E3: total flicker, 36 configurations & {f_off} & {f_pre} & {f_post} \\\\\n")
-    f.write(f"E3: flicker at $\\pgrad{{=}}0.9$, $\\pdem{{=}}0.3$, $\\lambda{{=}}0.90$ & "
-            f"{i_off[K]['flicker_transitions']} & {i_pre[K]['flicker_transitions']} & {i_post[K]['flicker_transitions']} \\\\\n")
-    f.write(f"E3: flicker at $\\pgrad{{=}}\\pdem{{=}}0.9$, $\\lambda{{=}}0.90$ & "
-            f"{i_off[W]['flicker_transitions']} & {i_pre[W]['flicker_transitions']} & {i_post[W]['flicker_transitions']} \\\\\n")
+    f.write("\\caption{Effect of the two corrections to the periodicity test, same harness, seeds and parameters. "
+            "\\emph{v0.1.0}: uncentred amplitude and the amplitude-only rule $a\\ge\\amin$ (results in "
+            "\\nolinkurl{results/%s/}); \\emph{Centred}: centred amplitude, amplitude-only rule "
+            "(\\nolinkurl{results/%s/}); \\emph{Calibrated}: centred amplitude and the significance test of "
+            "Proposition~\\ref{prop:chernoff} at $\\delta{=}%g$ (current engine). E1 and E3 with periodicity on use the "
+            "shipped $T{=}24$, $H{=}2$, $\\amin{=}0.3$; E2 uses $T{=}8$, $H{=}3$. E1 counts are identical in all six "
+            "backend--clutter runs.}\n" % (PRE.replace("_", "\\_"), MID.replace("_", "\\_"), DELTA))
+    f.write("\\label{tab:fix}\n\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{lcccc}\n\\toprule\n")
+    f.write("& Periodicity & \\multicolumn{3}{c}{Periodicity on} \\\\\n\\cmidrule(lr){3-5}\n")
+    f.write("Measure & off & v0.1.0 & Centred & Calibrated \\\\\n\\midrule\n")
+    f.write(f"E1: windows $t\\ge3$ with Static recall $<1$ & {e1off} & {e1pre} & {e1mid} & {e1post} \\\\\n")
+    f.write(f"E1: Static recall at $t{{=}}39$ & {e1off_fin} & {e1pre_fin} & {e1mid_fin} & {e1post_fin} \\\\\n\\midrule\n")
+    f.write("E2 at $n{=}64$: TPR / FPR & -- & " + " & ".join(
+        f"{T64[v][0]}/{T64[v][2]} / {T64[v][1]}/{T64[v][3]}" for v in V) + " \\\\\n")
+    f.write(f"E2, $n={n0}$--${n1}$: mean FPR & -- & " + " & ".join(f"{S[v]['mfpr']:.3f}" for v in V) + " \\\\\n")
+    f.write(f"E2, $n={n0}$--${n1}$: FP count range (of {S['pre']['neg']}) & -- & " +
+            " & ".join(f"{S[v]['fpmin']}--{S[v]['fpmax']}" for v in V) + " \\\\\n")
+    f.write(f"E2, $n={n0}$--${n1}$: lengths with no FP & -- & " +
+            " & ".join(f"{S[v]['clean']} of {S[v]['N']}" for v in V) + " \\\\\n")
+    f.write(f"E2, $n={n0}$--${n1}$: lengths with constant wall Periodic & -- & " +
+            " & ".join(f"{S[v]['wall']} of {S[v]['N']}" for v in V) + " \\\\\n")
+    f.write(f"E2, $n={n0}$--${n1}$: mean TPR & -- & " + " & ".join(f"{S[v]['mtpr']:.3f}" for v in V) + " \\\\\n")
+    f.write(f"E2: TPR {S['pre']['tpmax']}/{S['pre']['pos']} at every $n\\ge$ & -- & " +
+            " & ".join(f"{S[v]['stable']}" for v in V) + " \\\\\n\\midrule\n")
+    f.write("E3: total flicker, 36 configurations & " + f"{f_off} & " +
+            " & ".join(f"{F3[v][0]}" for v in V) + " \\\\\n")
+    f.write("E3: flicker at $\\pgrad{=}0.9$, $\\pdem{=}0.3$, $\\lambda{=}0.90$ & " +
+            f"{i_off[K]['flicker_transitions']} & " + " & ".join(F3[v][1][K]["flicker_transitions"] for v in V) + " \\\\\n")
+    f.write("E3: flicker at $\\pgrad{=}\\pdem{=}0.9$, $\\lambda{=}0.90$ & " +
+            f"{i_off[W]['flicker_transitions']} & " + " & ".join(F3[v][1][W]["flicker_transitions"] for v in V) + " \\\\\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
 # ---------------------------------------------------------------- E4
@@ -324,4 +402,4 @@ with open(TAB / "e4.tex", "w") as f:
             f.write("\\midrule\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
-print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e1 e2 e3 e3_full e4 fix")
+print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e0 e1 e2 e3 e3_full e4 fix")

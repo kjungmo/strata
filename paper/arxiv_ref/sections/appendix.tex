@@ -7,7 +7,7 @@
 cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
 cmake --build build \&\& (cd build \&\& ctest)
 \end{quote}
-  \item Experiments E1--E4, writing the CSVs under \nolinkurl{paper/experiments/results/} with seed 12345 (the pre-fix comparison of Table~\ref{tab:fix} is the same harness built against the v0.1.0 \code{strata\_core}, kept in \nolinkurl{results/pre_fix_2026-09-28/}):
+  \item Unit tests, the calibration E0 (seeds from 20260928) and experiments E1--E4, writing the CSVs under \nolinkurl{paper/experiments/results/} with seed 12345. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}) and against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}):
 \begin{quote}\small\ttfamily bash paper/experiments/run\_all.sh\end{quote}
   \item Tables and plot data of this paper, and the number check that maps every quantitative claim to its CSV field (see \nolinkurl{paper/arxiv_ref/NUMBERS.md}):
 \begin{quote}\small\ttfamily python3 paper/arxiv\_ref/tools/make\_artifacts.py\\
@@ -36,7 +36,8 @@ Parameter & Symbol & Default & Meaning \\
 \code{min\_observations} & $\Nmin$ & 3 & touched windows before graduation \\
 \code{prune\_prob} & $\pprune$ & 0.05 & erase non-static, non-periodic cells below this \\
 \code{enable\_periodicity} & --- & true & run the Fourier model \\
-\code{periodic\_amplitude\_min} & $\amin$ & 0.3 & amplitude to classify Periodic \\
+\code{periodic\_amplitude\_min} & $\amin$ & 0.3 & minimum harmonic amplitude (effect size) \\
+\code{periodic\_false\_alarm} & $\delta$ & 0.1 & nominal level of the significance test \\
 \code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
 \code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
 \bottomrule
@@ -63,6 +64,7 @@ $\Nmin$ (3) & --- & 5 & --- & --- \\
 $\pprune$ (0.05) & --- & --- & 0.01 & --- \\
 $T$ (24) & --- & 8 & --- & n/a \\
 $H$ (2) & --- & 3 & --- & n/a \\
+$\delta$ (0.1) & --- & --- & --- & n/a \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -99,11 +101,11 @@ From & To & Trigger \\
 \midrule
 Unknown (absent) & Transient & first hit or miss creates the cell: $\ell{=}0$, $p{=}0.5\ge\pprune$ \\
 Transient & Static & Eq.~\eqref{eq:grad}: $p\ge\pgrad$, $N\ge\Nmin$, $\lnot\pi$ \\
-Transient & Periodic & $a\ge\amin$ (requires $n\ge T$ touched windows) \\
+Transient & Periodic & $\pi$, Eq.~\eqref{eq:periodic}: $n\ge T$ and, for some $k$, $a_k\ge\amin$ and $H\,B(d_k)\le\delta$ \\
 Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\lnot g$ \\
 Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
-Periodic & Transient / Unknown & $a$ falls below $\amin$ (then subject to pruning) \\
-Periodic & Static & $a<\amin$ and Eq.~\eqref{eq:grad} holds \\
+Periodic & Transient / Unknown & $\pi$ becomes false (pruned only once also $a<\amin$) \\
+Periodic & Static & $\lnot\pi$ and Eq.~\eqref{eq:grad} holds \\
 Periodic & --- & never graduates; never pruned while $a\ge\amin$ \\
 Static & --- & never pruned while $g$ \\
 \bottomrule
@@ -133,7 +135,9 @@ $\tau_i$, $o_i$, $f_i$ & touched, occupied and free indicators of a window \\
 $\ell_i$, $p_i$ & log-odds occupancy and $\sigma(\ell_i)$ \\
 $N_i$, $n_i$ & touched-window counts for graduation and for the Fourier model \\
 $g_i$, $\pi_i$ & graduated flag and periodic predicate \\
-$a_i$, $\alpha_k$, $\beta_k$ & dominant amplitude and harmonic coefficients \\
+$a_i$, $a_{i,k}$, $\alpha_k$, $\beta_k$ & dominant and harmonic amplitudes, harmonic coefficients \\
+$d_{i,k}$, $\mathbf{M}_{i,k}$, $B$ & explained variance, centred phase design, Chernoff tail bound (Eq.~\ref{eq:dchi}) \\
+$\delta$, $r^\star$, $a^\star(n)$ & nominal level, its critical $d$, amplitude threshold at uniform coverage (Eq.~\ref{eq:astar}) \\
 $\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments \\
 $\pgrad$, $\pdem$, $\pprune$ & graduation, demotion and prune thresholds \\
 $T$, $H$, $\omega$, $\amin$ & base period, harmonics, base frequency, amplitude threshold \\

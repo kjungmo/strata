@@ -56,7 +56,7 @@ After the log-odds step, $p_i$ and the periodicity amplitude $a_i$ (\S\ref{subse
   \text{graduate:}\quad & \lnot g_i\land\lnot\pi_i\land p_i\ge\pgrad\land N_i\ge\Nmin \;\Rightarrow\; g_i\leftarrow\text{true},\label{eq:grad}\\
   \text{demote:}\quad & g_i\land\big(p_i\le\pdem\lor\pi_i\big)\;\Rightarrow\; g_i\leftarrow\text{false},\label{eq:demote}
 \end{align}
-where $\pi_i$ is the periodic predicate of \eqref{eq:periodic}. The interval $[\pdem,\pgrad]$ is the hysteresis band: through the occupancy disjunct $p_i\le\pdem$, a Static cell demotes only after sustained contradicting evidence, not after one contradicting window---the failure that Removert's revert pass repairs after the fact \citep{kim2020removert} is prevented online. The guard $\lnot\pi_i$ keeps a periodic cell out of the static map; the term $\lor\,\pi_i$ removes a Static cell that later reveals periodicity. That term lies outside the band and has no hysteresis of its own. It cannot, however, fire without contradicting evidence: with the centred amplitude of \S\ref{subsec:fremen}, $\pi_i$ requires a cell to have been observed free in a substantial share of its touched windows (Remark~\ref{rem:leak}), so a wall that is occupied whenever it is seen is never demoted by it. It still acts in a single window once that share is reached, and E3 measures what this costs in flicker with periodicity on (\S\ref{subsec:ablation}).
+where $\pi_i$ is the periodic predicate of \eqref{eq:periodic}. The interval $[\pdem,\pgrad]$ is the hysteresis band: through the occupancy disjunct $p_i\le\pdem$, a Static cell demotes only after sustained contradicting evidence, not after one contradicting window---the failure that Removert's revert pass repairs after the fact \citep{kim2020removert} is prevented online. The guard $\lnot\pi_i$ keeps a periodic cell out of the static map; the term $\lor\,\pi_i$ removes a Static cell that later reveals periodicity. That term lies outside the band and has no hysteresis of its own. It cannot, however, fire without contradicting evidence: with the centred amplitude of \S\ref{subsec:fremen}, $\pi_i$ requires a cell to have been observed free in a substantial share of its touched windows (Remark~\ref{rem:leak}), so a wall that is occupied whenever it is seen is never demoted by it. The predicate also requires the noise-calibrated significance of Proposition~\ref{prop:chernoff}, so on a wall whose occupancy is merely noisy it fires only with small, bounded probability per window. It still acts in a single window when it does fire, and E3 measures what this costs in flicker with periodicity on (\S\ref{subsec:ablation}).
 
 \begin{proposition}[No same-window oscillation]\label{prop:nooscillation}
 If $\pdem<\pgrad$, a cell that graduates by \eqref{eq:grad} in a window is not demoted by \eqref{eq:demote} in the same window.
@@ -71,11 +71,12 @@ In parallel with occupancy, every touched cell feeds an incremental Fourier mode
 \begin{equation}\label{eq:gather}
   n_i\mathrel{+}=1,\quad S_{0,i}\mathrel{+}=o_i,\quad C_{k,i}\mathrel{+}=o_i\cos\theta_k,\quad S_{k,i}\mathrel{+}=o_i\sin\theta_k,\quad E^{c}_{k,i}\mathrel{+}=\cos\theta_k,\quad E^{s}_{k,i}\mathrel{+}=\sin\theta_k,
 \end{equation}
-for $k=0,\dots,H{-}1$. Here $n_i$ counts \emph{touched} windows, not elapsed ones, and $E^{c},E^{s}$ record the phases at which the cell was touched. With the touched-window mean $\bar{o}_i=S_{0,i}/n_i$, the \emph{centred} coefficients are $\alpha_k=2(C_{k,i}-\bar{o}_iE^{c}_{k,i})/n_i$ and $\beta_k=2(S_{k,i}-\bar{o}_iE^{s}_{k,i})/n_i$, i.e.\ $\alpha_k+\mathrm{i}\beta_k=\tfrac{2}{n_i}\sum_{w\in\mathcal{W}_i}(o_{i,w}-\bar{o}_i)\,e^{\mathrm{i}\theta_k}$ over the touched windows $\mathcal{W}_i$, the mean-removed spectrum of FreMEn. The dominant-harmonic amplitude and the periodic predicate are
-\begin{equation}\label{eq:periodic}
-  a_i=\begin{cases}0, & n_i<T,\\ \max_{0\le k<H}\sqrt{\alpha_k^2+\beta_k^2}, & n_i\ge T,\end{cases}\qquad
-  \pi_i=\texttt{enable\_periodicity}\land a_i\ge\amin .
+for $k=0,\dots,H{-}1$. Here $n_i$ counts \emph{touched} windows, not elapsed ones, and $E^{c},E^{s}$ record the phases at which the cell was touched. With the touched-window mean $\bar{o}_i=S_{0,i}/n_i$, the \emph{centred} coefficients are $\alpha_k=2(C_{k,i}-\bar{o}_iE^{c}_{k,i})/n_i$ and $\beta_k=2(S_{k,i}-\bar{o}_iE^{s}_{k,i})/n_i$, i.e.\ $\alpha_k+\mathrm{i}\beta_k=\tfrac{2}{n_i}\sum_{w\in\mathcal{W}_i}(o_{i,w}-\bar{o}_i)\,e^{\mathrm{i}\theta_k}$ over the touched windows $\mathcal{W}_i$, the mean-removed spectrum of FreMEn. The harmonic amplitudes and the dominant amplitude are
+\begin{equation}\label{eq:amp}
+  a_{i,k}=\sqrt{\alpha_k^2+\beta_k^2},\qquad
+  a_i=\begin{cases}0, & n_i<T,\\ \max_{0\le k<H}a_{i,k}, & n_i\ge T,\end{cases}
 \end{equation}
+and the periodic predicate $\pi_i$, which adds a significance test to the amplitude threshold, is given in \eqref{eq:periodic} below.
 The phase prediction $\hat{p}_i(w)=\mathrm{clip}_{[0,1]}\big(S_{0,i}/n_i+\sum_k[\alpha_k\cos((k{+}1)\omega w)+\beta_k\sin((k{+}1)\omega w)]\big)$ is exposed for downstream use. The gate $n_i\ge T$ withholds a harmonic estimate until a period's worth of touches exists; a sparsely observed cell needs $T$ \emph{touches}, which can span many more than $T$ windows.
 
 \begin{remark}[Centring, and the defect it corrects]\label{rem:leak}
@@ -87,8 +88,33 @@ under any sampling of $\mathcal{W}_i$. A cell that is occupied (or free) in ever
 \[
   a_i=\max_{0\le k<H}\frac{2\,\big|\sin\big(n(k{+}1)\pi/T\big)\big|}{n\,\big|\sin\big((k{+}1)\pi/T\big)\big|}\;\le\;\frac{2}{n\sin(\pi/T)}.
 \]
-It exceeds $\amin$ at $n=10$--$13$ for $T{=}8$ (peak 0.439 at $n{=}11$; the bound clears only from $n{=}18$), and at $n=29$--$40$ for the shipped $T{=}24$, $H{=}2$ (bound: $n\ge52$). Through the $\lor\,\pi_i$ term of \eqref{eq:demote}, a wall hit every window therefore left the Static layer for 120 integration ticks at $L{=}10$. Uneven phase coverage made this permanent: a wall seen in 8 of every 48 windows had $a_i\approx1.66$. The corrected engine adds the two phase sums, which are 16 bytes per harmonic and do not change the per-cell cost order. Ten regression tests cover both failures and genuine detection; seven of them fail on v0.1.0 and all pass after the fix (\S\ref{subsec:setup}), and Table~\ref{tab:fix} compares E1--E3 before and after.
+It exceeds $\amin$ at $n=10$--$13$ for $T{=}8$ (peak 0.439 at $n{=}11$; the bound clears only from $n{=}18$), and at $n=29$--$40$ for the shipped $T{=}24$, $H{=}2$ (bound: $n\ge52$). Through the $\lor\,\pi_i$ term of \eqref{eq:demote}, whose predicate was then $a_i\ge\amin$ alone, a wall hit every window therefore left the Static layer for 120 integration ticks at $L{=}10$. Uneven phase coverage made this permanent: a wall seen in 8 of every 48 windows had $a_i\approx1.66$. The corrected engine adds the two phase sums, 16 bytes per harmonic (the significance test below adds two more), and the per-cell cost order is unchanged. Ten regression tests cover both failures and genuine detection; seven of them fail on v0.1.0 and all pass after the fix (\S\ref{subsec:setup}), and Table~\ref{tab:fix} compares E1--E3 before and after.
 \end{remark}
+
+\noindent\textbf{Calibrating the Periodic Test Against Noise.} Centring removes the bias of the amplitude but not its variance, and $a_i\ge\amin$ alone is not a test. If a cell's occupancy is pure noise, $o_{i,w}\sim\mathrm{Bernoulli}(m)$ independently of the phase, each centred coefficient has variance $2m(1{-}m)/n_i$ under uniform phase coverage, a standard deviation of $\sqrt{0.5/8}=0.25$ at $m{=}\tfrac12$, $n_i{=}T{=}8$. A fixed $\amin$ is then crossed by chance at short lengths, and pruning (\S\ref{subsec:classify}) keeps returning cells to short lengths. We therefore test each harmonic for significance. Write $c_w=\cos\theta_k$, $s_w=\sin\theta_k$ over the touched windows, $\tilde{\mathbf{z}}_w=(c_w-\bar c,\,s_w-\bar s)^{\top}$ for the centred phase vectors, $\mathbf{y}_{i,k}=\sum_{w\in\mathcal{W}_i}(o_{i,w}-\bar o_i)\,\tilde{\mathbf{z}}_w=\tfrac{n_i}{2}(\alpha_k,\beta_k)^{\top}$ and $\mathbf{M}_{i,k}=\sum_{w}\tilde{\mathbf{z}}_w\tilde{\mathbf{z}}_w^{\top}$. Then
+\begin{equation}\label{eq:dchi}
+  d_{i,k}=\mathbf{y}_{i,k}^{\top}\mathbf{M}_{i,k}^{-1}\mathbf{y}_{i,k},\qquad B(r)=\begin{cases}2r\,e^{1-2r}, & r>\tfrac12,\\ 1, & r\le\tfrac12,\end{cases}
+\end{equation}
+where $d_{i,k}$ is the drop in squared residual when a sinusoid at harmonic $k$ is fitted with a floating mean, the generalised Lomb--Scargle periodogram \citep{zechmeister2009gls}. $\mathbf{M}_{i,k}$ needs two more accumulators per harmonic, $\sum\cos2\theta_k$ and $\sum\sin2\theta_k$, since $\sum c_w^2=\tfrac12(n_i+\sum\cos2\theta_k)$ and $\sum c_ws_w=\tfrac12\sum\sin2\theta_k$. The periodic predicate requires, for some harmonic, both an effect size and significance at a nominal level $\delta$ (\code{periodic\_false\_alarm}):
+\begin{equation}\label{eq:periodic}
+  \pi_i=\texttt{enable\_periodicity}\land n_i\ge T\land\exists k:\ \big[a_{i,k}\ge\amin\ \land\ H\,B(d_{i,k})\le\delta\big].
+\end{equation}
+
+\begin{proposition}[Calibrated false-alarm bound]\label{prop:chernoff}
+Let the touched windows $\mathcal{W}_i$ ($|\mathcal{W}_i|=n$) be fixed independently of the occupancy, and let $o_{i,w}$, $w\in\mathcal{W}_i$, be independent $\mathrm{Bernoulli}(m)$ for one unknown $m\in[0,1]$. If $\mathbf{M}_{i,k}$ is non-singular, then $\Pr(d_{i,k}\ge r)\le B(r)$ for every $r>0$. Consequently, for every $\amin\ge0$ and $0<\delta<H$, the predicate \eqref{eq:periodic} is true with probability at most $\delta$.
+\end{proposition}
+\begin{proof}
+Because $\sum_w\tilde{\mathbf{z}}_w=\mathbf{0}$, the unknown mean drops out: $\mathbf{y}_{i,k}=\sum_w\xi_w\tilde{\mathbf{z}}_w$ with $\xi_w=o_{i,w}-m$. Put $\mathbf{b}_w=\mathbf{M}_{i,k}^{-1/2}\tilde{\mathbf{z}}_w$ and $\mathbf{u}=\sum_w\xi_w\mathbf{b}_w$, so that $d_{i,k}=\|\mathbf{u}\|^2$ and $\sum_w\mathbf{b}_w\mathbf{b}_w^{\top}=\mathbf{I}_2$. Each $\xi_w$ has mean zero and lies in an interval of length 1, so Hoeffding's lemma \citep{hoeffding1963} gives $\mathbb{E}\,e^{t\xi_w}\le e^{t^2/8}$, and by independence $\mathbb{E}\,e^{\mathbf{v}^{\top}\mathbf{u}}\le\exp\big(\tfrac18\sum_w(\mathbf{v}^{\top}\mathbf{b}_w)^2\big)=e^{\|\mathbf{v}\|^2/8}$ for every $\mathbf{v}\in\mathbb{R}^2$. Let $\mathbf{g}\sim\mathcal{N}(\mathbf{0},\mathbf{I}_2)$ be independent of $\mathbf{u}$. For $0\le\lambda<2$, $\mathbb{E}_{\mathbf{g}}\,e^{\sqrt{2\lambda}\,\mathbf{g}^{\top}\mathbf{u}}=e^{\lambda\|\mathbf{u}\|^2}$, so exchanging the expectations,
+\[
+  \mathbb{E}\,e^{\lambda d_{i,k}}=\mathbb{E}_{\mathbf{g}}\,\mathbb{E}_{\mathbf{u}}\,e^{\sqrt{2\lambda}\,\mathbf{g}^{\top}\mathbf{u}}\le\mathbb{E}_{\mathbf{g}}\,e^{\lambda\|\mathbf{g}\|^2/4}=(1-\lambda/2)^{-1}.
+\]
+Markov's inequality gives $\Pr(d_{i,k}\ge r)\le(1-\lambda/2)^{-1}e^{-\lambda r}$, and $\lambda=2-1/r$ (admissible for $r>\tfrac12$) yields $2r\,e^{1-2r}$; for $r\le\tfrac12$ the bound 1 is trivial. $B$ decreases strictly from 1 to 0 on $(\tfrac12,\infty)$, so $H\,B(d_{i,k})\le\delta$ holds exactly when $d_{i,k}\ge r^\star$ with $B(r^\star)=\delta/H$. The union bound over the $H$ harmonics then gives $\Pr(\pi_i)\le H\cdot\delta/H=\delta$.
+\end{proof}
+The bound needs no knowledge of $m$: the sub-Gaussian constant $\tfrac14$ is the Bernoulli worst case $m=\tfrac12$. When $\mathbf{M}_{i,k}$ is singular (for instance at a Nyquist harmonic), the code projects onto its range; the same argument with a one-dimensional $\mathbf{g}$ gives the smaller bound $(1-\lambda/2)^{-1/2}e^{-\lambda r}$, so $B$ stays valid. Under uniform phase coverage $\mathbf{M}_{i,k}=\tfrac{n}{2}\mathbf{I}_2$ and $d_{i,k}=n\,a_{i,k}^2/2$, so \eqref{eq:periodic} becomes an amplitude threshold that shrinks with $n$,
+\begin{equation}\label{eq:astar}
+  a_{i,k}\ \ge\ \max\big(\amin,\ a^\star(n)\big),\qquad a^\star(n)=\sqrt{2r^\star/n}.
+\end{equation}
+For $\delta{=}0.1$ and $H{=}3$, $r^\star=3.115$, so $a^\star(8)=0.883$ and $a^\star(64)=0.312$. Two caveats bound what Proposition~\ref{prop:chernoff} guarantees. First, it assumes non-adaptive sampling. In the live pipeline a cell's history survives only if pruning \eqref{eq:prune} did not erase it, which conditions the sample on its own log-odds path; there the rate is measured (E0, E2), not guaranteed. Second, it is conservative: in the Gaussian limit at $m{=}\tfrac12$, $\Pr(d_{i,k}\ge r)\to e^{-2r}$, a factor $2e\,r$ below $B(r)$, or about 17 at $r^\star$. We therefore treat $\delta$ as a nominal level and choose it on a calibration set disjoint from every evaluation seed. The pre-stated rule was to take the largest $\delta\in\{0.01,0.02,0.05,0.1,0.2\}$ whose measured false-alarm rate stays at or below 0.01, both over a null grid and in the live pipeline. This selects $\delta{=}0.1$ (Table~\ref{tab:e0}, \S\ref{subsec:setup}), and it is the shipped default. The detection delay is the price: at $\delta{=}0.1$ a 50\%-duty door needs about two periods of touches instead of one.
 
 \subsection{Classifying and Pruning: Four Classes from One State}\label{subsec:classify}
 
@@ -96,7 +122,7 @@ At the end of the same per-cell pass, a cell with little evidence is erased toge
 \begin{equation}\label{eq:prune}
   \text{erase } i \iff \lnot g_i\land p_i<\pprune\land a_i<\amin .
 \end{equation}
-Static cells and periodic cells are therefore never pruned. The read-out $\Psi$ of \eqref{eq:objective} is a priority ladder,
+Static cells and periodic cells are therefore never pruned. The guard uses the lenient effect-size screen $a_i<\amin$ rather than $\lnot\pi_i$, so a \emph{candidate} periodic cell keeps its accumulators, and hence its growing $n_i$, until the test resolves it. Every other erased cell loses $\boldsymbol{\phi}_i$. We considered keeping the Fourier history of erased cells and rejected it: pruning exists so that clutter does not accumulate, and a record for every cell ever touched would grow without bound, fastest in \code{voxel3d}, where every sampled free voxel is a cell. A re-created cell restarts at $n_i=0$, where $a^\star(n_i)$ is simply higher. The read-out $\Psi$ of \eqref{eq:objective} is a priority ladder,
 \begin{equation}\label{eq:classify}
   c_i=\begin{cases}
     \mathsf{U} & i\text{ absent},\\
@@ -118,7 +144,7 @@ $w\gets w+1$\;
     $\ell_i\gets\mathrm{clamp}\big(\lambda(\ell_i+o\,\lhit+f\,\lmiss),\,l_{\min},\,l_{\max}\big)$, $N_i\gets N_i+1$\tcp*{Eq.~\eqref{eq:logodds}}
     \lIf{\code{enable\_periodicity}}{update $\boldsymbol{\phi}_i$ with $(o,w)$\tcp*[f]{Eq.~\eqref{eq:gather}}}
   }
-  $p_i\gets\sigma(\ell_i)$, $a_i\gets\mathrm{amplitude}(\boldsymbol{\phi}_i)$, $\pi_i\gets\code{enable\_periodicity}\land a_i\ge\amin$\tcp*{Eq.~\eqref{eq:periodic}}
+  $p_i\gets\sigma(\ell_i)$, $a_i\gets\mathrm{amplitude}(\boldsymbol{\phi}_i)$, $\pi_i\gets$ Eq.~\eqref{eq:periodic} on $\boldsymbol{\phi}_i$\tcp*{Eqs.~\eqref{eq:amp}--\eqref{eq:periodic}}
   \lIf{$\lnot g_i\land\lnot\pi_i\land p_i\ge\pgrad\land N_i\ge\Nmin$}{$g_i\gets\text{true}$\tcp*[f]{Eq.~\eqref{eq:grad}}}
   \lIf{$g_i\land(p_i\le\pdem\lor\pi_i)$}{$g_i\gets\text{false}$\tcp*[f]{Eq.~\eqref{eq:demote}}}
   $h_i\gets0$, $m_i\gets0$\;

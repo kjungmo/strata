@@ -191,8 +191,9 @@ suppresses the flicker.
 
 E4 additionally measures a flat **56 B/cell** footprint and a **5.5–15.0×**
 per-`integrate()` cost gap between `voxel3d` and `grid2d`, and E2 detects
-50%-duty periodic doors at true-positive rate **2/3** and false-positive rate
-**1/5**.
+50%-duty periodic doors at true-positive rate **2/3** (from 15 windows on)
+with no false positive on Bernoulli clutter at any read-out length from 8 to
+100 windows, using a noise-calibrated periodicity test.
 
 Full setup, all E1–E4 tables, and per-figure notes are in
 [`paper/strata_paper.md`](paper/strata_paper.md) §5. Reproduce end-to-end with

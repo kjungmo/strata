@@ -1,4 +1,4 @@
-\begin{thebibliography}{24}
+\begin{thebibliography}{26}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -27,6 +27,12 @@ H.~Gil, D.~Lee, G.~Kim, and A.~Kim.
 \newblock {ELite}: Ephemerality meets {LiDAR}-based lifelong mapping.
 \newblock In \emph{2025 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3312--3319, 2025.
 \newblock \doi{10.1109/ICRA55743.2025.11127618}.
+
+\bibitem[Hoeffding(1963)]{hoeffding1963}
+W.~Hoeffding.
+\newblock Probability inequalities for sums of bounded random variables.
+\newblock \emph{Journal of the American Statistical Association}, 58\penalty0 (301):\penalty0 13--30, 1963.
+\newblock \doi{10.1080/01621459.1963.10500830}.
 
 \bibitem[Hornung et~al.(2013)Hornung, Wurm, Bennewitz, Stachniss, and Burgard]{hornung2013octomap}
 A.~Hornung, K.~M. Wurm, M.~Bennewitz, C.~Stachniss, and W.~Burgard.
@@ -141,5 +147,11 @@ L.~Yang, S.~M. Prakhya, S.~Zhu, and Z.~Liu.
 \newblock Lifelong 3d mapping framework for hand-held \& robot-mounted {LiDAR} mapping systems.
 \newblock \emph{IEEE Robotics and Automation Letters}, 9\penalty0 (11):\penalty0 9446--9453, 2024.
 \newblock \doi{10.1109/LRA.2024.3417113}.
+
+\bibitem[Zechmeister and K\"{u}rster(2009)]{zechmeister2009gls}
+M.~Zechmeister and M.~K\"{u}rster.
+\newblock The generalised {Lomb-Scargle} periodogram: A new formalism for the floating-mean and {Keplerian} periodograms.
+\newblock \emph{Astronomy \& Astrophysics}, 496\penalty0 (2):\penalty0 577--584, 2009.
+\newblock \doi{10.1051/0004-6361:200811296}.
 
 \end{thebibliography}
