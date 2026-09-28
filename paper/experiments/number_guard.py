@@ -213,6 +213,37 @@ def guard_arxiv():
     in_paper("sigma(5)", f"{1/(1+math.exp(-5)):.4f}")
     in_paper("ln 4", f"{math.log(4):.3f}")
     in_paper("ln(1/19)", f"{math.log(1/19):.3f}")
+    # 4. partial-period leakage (Remark rem:leak) and Prop. race graduation guard
+    def leak(n, T, H):
+        return max(2 * abs(math.sin(n * m * math.pi / T)) / (n * abs(math.sin(m * math.pi / T)))
+                   for m in range(1, H + 1))
+    for T, H, rng, bound in ((8, 3, (10, 13), 18), (24, 2, (29, 40), 52)):
+        above = [n for n in range(T, 4000) if leak(n, T, H) >= 0.3]
+        check(f"leak T={T} above a_min exactly n={rng}", above == list(range(rng[0], rng[1] + 1)), str(above))
+        check(f"leak bound T={T} n>={bound}", math.ceil(2 / (0.3 * math.sin(math.pi / T))) == bound)
+        in_paper(f"leak range T={T} quoted", f"n={rng[0]}\u2013{rng[1]}")
+        in_paper(f"leak bound T={T} quoted", f"n={bound}", f"n\\ge{bound}", f"n\\ge {bound}")
+    in_paper("leak peak 0.439", f"{leak(11, 8, 3):.3f}")
+    ydef = (HERE.parents[1] / "strata/params/grid2d.yaml").read_text()
+    for tok in ("period_windows: 24", "n_harmonics: 2", "layer_interval: 10"):
+        check(f"yaml default {tok}", tok in ydef)
+    in_paper("leak 120 ticks", "120 integration ticks")
+    amp = {(r["cell"], r["obs_length"]): float(r["amplitude"]) for r in rows("e2_amplitude_vs_length.csv")}
+    for cell, n, v in (("wall_constant", "12", "0.436"), ("door_p8_4on4off", "12", "0.871")):
+        check(f"E2 {cell} n={n} amplitude {v}", f"{amp[(cell, n)]:.3f}" == v, str(amp[(cell, n)]))
+        in_paper(f"E2 {cell} n={n} amplitude quoted", v)
+    check("wall n=12 leak matches CSV", abs(amp[("wall_constant", "12")] - leak(12, 8, 3)) < 1e-4)
+    in_paper("sigma(2) < p_grad", f"{1/(1+math.exp(-2)):.3f}")
+    # uneven phase coverage: wall visible 8 of every 48 windows, T=24 -> 2 sin(8pi/24)/(8 sin(pi/24))
+    loop = 2 * math.sin(8 * math.pi / 24) / (8 * math.sin(math.pi / 24))
+    check("revisit-loop amplitude 1.66", f"{loop:.2f}" == "1.66", str(loop))
+    in_paper("revisit-loop amplitude quoted", "1.66")
+    # E1 with periodicity on at T=24: wall periodic in windows 29-40, i.e. t=28-39 (t = window-1)
+    e1_last = max(int(r["window"]) for r in e1)
+    check("E1 horizon ends at t=39", e1_last == 39, str(e1_last))
+    check("E1 final window 40 inside leak", leak(e1_last + 1, 24, 2) >= 0.3)
+    in_paper("E1 leak windows quoted", "windows 29\u201340")
+    in_paper("E1 leak t range quoted", "t=28\u201339")
     ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                  for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
     check("22 core gtest cases", ntests == 22, str(ntests))

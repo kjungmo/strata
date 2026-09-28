@@ -103,6 +103,7 @@ Transient & Periodic & $a\ge\amin$ (requires $n\ge T$ touched windows) \\
 Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\lnot g$ \\
 Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
 Periodic & Transient / Unknown & $a$ falls below $\amin$ (then subject to pruning) \\
+Periodic & Static & $a<\amin$ and Eq.~\eqref{eq:grad} holds (Remark~\ref{rem:leak}) \\
 Periodic & --- & never graduates; never pruned while $a\ge\amin$ \\
 Static & --- & never pruned while $g$ \\
 \bottomrule

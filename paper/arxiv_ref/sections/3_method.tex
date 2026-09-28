@@ -42,10 +42,10 @@ For \emph{touched} cells only ($\tau_i=1$), one log-odds increment is applied, m
 with occupancy probability $p_i=\sigma(\ell_i)=1/(1+e^{-\ell_i})$. The update is the inverse-sensor-model rule of \citet{thrun2005probabilistic} with a constant-rate special case of the Persistence Filter's forgetting \citep{rosen2016persistence}. The order matters: the decay multiplies the \emph{already incremented} value, so the fresh evidence is itself attenuated in the same window.
 
 \begin{proposition}[Saturation under repeated hits]\label{prop:fixedpoint}
-If a cell is hit in every window, $0<\lambda<1$ and $\lhit>0$, then $\ell_i$ converges monotonically from $0$ to $\min\!\big(l_{\max},\,\ell^\star\big)$ with $\ell^\star=\lambda\lhit/(1-\lambda)$.
+If a cell is hit in every window, $0<\lambda<1$, $\lhit>0$ and $l_{\min}\le0<l_{\max}$, then $\ell_i$ converges monotonically from $0$ to $\min\!\big(l_{\max},\,\ell^\star\big)$ with $\ell^\star=\lambda\lhit/(1-\lambda)$.
 \end{proposition}
 \begin{proof}
-Without the clamp the recursion is $\ell\mapsto\lambda(\ell+\lhit)$, an affine contraction with factor $\lambda$ and unique fixed point $\ell^\star$; from $\ell=0<\ell^\star$ the iterates increase monotonically towards it. The clamp is monotone and, since $l_{\min}<0$, only the upper bound can bind, so the clamped iterates increase to $\min(l_{\max},\ell^\star)$.
+Without the clamp the recursion is $\ell\mapsto\lambda(\ell+\lhit)$, an affine contraction with factor $\lambda$ and unique fixed point $\ell^\star$; from $\ell=0<\ell^\star$ the iterates increase monotonically towards it. The clamp is monotone and, since every iterate is non-negative and $l_{\min}\le0$, only the upper bound can bind, so the clamped iterates increase to $\min(l_{\max},\ell^\star)$.
 \end{proof}
 With the shipped defaults (Table~\ref{tab:params}; $\lambda{=}0.97$, $\lhit{=}0.85$) $\ell^\star\approx 27.5$, so the clamp binds at $l_{\max}{=}5$ and $p_{\max}=\sigma(5)\approx 0.9933$. The default thresholds $\pgrad{=}0.8$ and $\pprune{=}0.05$ correspond to $\ell\ge\ln 4\approx 1.386$ and $\ell<\ln(1/19)\approx-2.944$.
 
@@ -56,7 +56,7 @@ After the log-odds step, $p_i$ and the periodicity amplitude $a_i$ (\S\ref{subse
   \text{graduate:}\quad & \lnot g_i\land\lnot\pi_i\land p_i\ge\pgrad\land N_i\ge\Nmin \;\Rightarrow\; g_i\leftarrow\text{true},\label{eq:grad}\\
   \text{demote:}\quad & g_i\land\big(p_i\le\pdem\lor\pi_i\big)\;\Rightarrow\; g_i\leftarrow\text{false},\label{eq:demote}
 \end{align}
-where $\pi_i$ is the periodic predicate of \eqref{eq:periodic}. The interval $[\pdem,\pgrad]$ is the hysteresis band: a Static cell demotes only after sustained contradicting evidence, not after one contradicting window---the failure that Removert's revert pass repairs after the fact \citep{kim2020removert} is prevented online. The guard $\lnot\pi_i$ keeps a periodic cell out of the static map; the term $\lor\,\pi_i$ removes a Static cell that later reveals periodicity.
+where $\pi_i$ is the periodic predicate of \eqref{eq:periodic}. The interval $[\pdem,\pgrad]$ is the hysteresis band: through the occupancy disjunct $p_i\le\pdem$, a Static cell demotes only after sustained contradicting evidence, not after one contradicting window---the failure that Removert's revert pass repairs after the fact \citep{kim2020removert} is prevented online. The guard $\lnot\pi_i$ keeps a periodic cell out of the static map; the term $\lor\,\pi_i$ removes a Static cell that later reveals periodicity. That term lies outside the band and has no hysteresis of its own: it demotes on the amplitude alone, with no contradicting occupancy evidence, and Remark~\ref{rem:leak} shows it can fire on a cell that is occupied in every window.
 
 \begin{proposition}[No same-window oscillation]\label{prop:nooscillation}
 If $\pdem<\pgrad$, a cell that graduates by \eqref{eq:grad} in a window is not demoted by \eqref{eq:demote} in the same window.
@@ -76,7 +76,15 @@ Here $n_i$ counts \emph{touched} windows, not elapsed ones. With $\alpha_k=2C_{k
   a_i=\begin{cases}0, & n_i<T,\\ \max_{0\le k<H}\sqrt{\alpha_k^2+\beta_k^2}, & n_i\ge T,\end{cases}\qquad
   \pi_i=\texttt{enable\_periodicity}\land a_i\ge\amin .
 \end{equation}
-The phase prediction $\hat{p}_i(w)=\mathrm{clip}_{[0,1]}\big(S_{0,i}/n_i+\sum_k[\alpha_k\cos((k{+}1)\omega w)+\beta_k\sin((k{+}1)\omega w)]\big)$ is exposed for downstream use. The gate $n_i\ge T$ suppresses the spurious amplitude that a truncated period gives a constant signal, but a sparsely observed cell needs $T$ \emph{touches}, which can span many more than $T$ windows.
+The phase prediction $\hat{p}_i(w)=\mathrm{clip}_{[0,1]}\big(S_{0,i}/n_i+\sum_k[\alpha_k\cos((k{+}1)\omega w)+\beta_k\sin((k{+}1)\omega w)]\big)$ is exposed for downstream use. The gate $n_i\ge T$ suppresses the spurious amplitude that a truncated \emph{first} period gives a constant signal, but only that; and a sparsely observed cell needs $T$ \emph{touches}, which can span many more than $T$ windows.
+
+\begin{remark}[Uncentred amplitude demotes constant cells]\label{rem:leak}
+The accumulators of \eqref{eq:gather} are not mean-removed, so for a cell occupied in every touched window $a_i=\max_k 2\big|\tfrac{1}{n_i}\sum_{w\in\mathcal{W}_i}e^{\mathrm{i}(k+1)\omega w}\big|$, twice the mean phase vector of its touched windows $\mathcal{W}_i$: it measures \emph{when the cell is observed}, not how its occupancy varies, and vanishes only when the touches cover the phases of each harmonic evenly. The gate does not enforce this. For a cell touched and occupied in each of $n$ consecutive windows, $\sum_{w}e^{\mathrm{i}(k+1)\omega w}$ is a geometric sum, so for $H<T$
+\[
+  a_i=\max_{0\le k<H}\frac{2\,\big|\sin\big(n(k{+}1)\pi/T\big)\big|}{n\,\big|\sin\big((k{+}1)\pi/T\big)\big|}\;\le\;\frac{2}{n\sin(\pi/T)},
+\]
+which is 0 when $T$ divides $n$ but not in between. With $T{=}8$ it exceeds $\amin{=}0.3$ at $n=10$--$13$ (peak 0.439 at $n{=}11$), and the bound certifies $a_i<\amin$ only from $n{=}18$; with the shipped defaults $T{=}24$, $H{=}2$ it exceeds $\amin$ at $n=29$--$40$ (bound: $n\ge52$). In both cases no other $n$ reaches $\amin$. Because \eqref{eq:demote} acts as soon as $\pi_i$ holds, a wall hit every window is reclassified Periodic and leaves the Static layer for those windows---with the default $L{=}10$, 120 integration ticks---and re-graduates once $a_i$ falls back below $\amin$. E2's constant wall shows the effect directly (amplitude 0.436 at $n{=}12$, Figure~\ref{fig:e2}). No headline number exercises this window: E1, E3 and E4 run with periodicity off, and E2 is read out at $n{=}64$, a multiple of $T$. Uneven phase coverage is worse: a wall visible for 8 windows of every 48 (a revisit loop commensurate with $T{=}24$) sees the same 8 phases forever, has $a_i\approx1.66$, and stays Periodic permanently; the consecutive-touch case above is only its mildest form. It is a defect of the shipped code, not yet corrected. Centring the coefficients (also accumulating $\sum_{w\in\mathcal{W}_i}e^{\mathrm{i}(k+1)\omega w}$ and subtracting $S_{0,i}/n_i$ times it) makes $a_i=0$ for every constant cell under any sampling and would remove both forms; restricting to whole periods or requiring $\pi_i$ over several windows would remove only the first.
+\end{remark}
 
 \subsection{Classifying and Pruning: Four Classes from One State}\label{subsec:classify}
 

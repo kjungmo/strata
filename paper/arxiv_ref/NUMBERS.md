@@ -26,7 +26,8 @@ Tables `tables/{e1,e2,e3,e3_full,e4}.tex` and `figures/data/*.dat` are generated
 | ℓ* ≈ 27.5 | 0.97·0.85/(1−0.97) (Prop. 1) |
 | p_max = σ(5) ≈ 0.9933 | l_max = 5 |
 | ln 4 ≈ 1.386, ln(1/19) ≈ −2.944 | logit(0.8), logit(0.05) |
-| σ(−2) ≈ 0.119, σ(−3) ≈ 0.047; lifetime ≤ 7 < T = 8 | Prop. 3 proof, E2 params (`e2_periodicity.cpp`) |
+| σ(−2) ≈ 0.119, σ(−3) ≈ 0.047; lifetime ≤ 7 < T = 8; σ(2) ≈ 0.881 < p_grad = 0.9 (never graduates) | Prop. 3 proof, E2 params (`e2_periodicity.cpp`) |
+| constant-cell leakage a(n) = max_k 2|sin(n(k+1)π/T)|/(n|sin((k+1)π/T)|) ≥ 0.3 at n = 10–13 (T=8, peak 0.439 at n=11), n = 29–40 (T=24, H=2); bound 2/(n sin(π/T)) < 0.3 from n = 18 (T=8), 52 (T=24); 120 ticks = 12 windows × L=10 | Remark rem:leak; `periodicity.cpp` amplitude(); defaults `strata/params/grid2d.yaml` (T=24, H=2, L=10); recomputed in `number_guard.py` |
 
 ## E1: `e1_static_quality.csv`
 | Claim | Field |
@@ -42,7 +43,10 @@ Tables `tables/{e1,e2,e3,e3_full,e4}.tex` and `figures/data/*.dat` are generated
 |---|---|
 | TPR 2/3, FPR 1/5 | `e2_summary.csv: periodic_TPR (note=2 of gt_periodic=3), periodic_FPR (note=1 of gt_nonperiodic=5)` |
 | amplitudes 0.653, 0.707; FP 0.329 (margin 0.029); low-duty ref 0.462; controls 0.159/0.139/0.251 | `e2_classification.csv: ref_amplitude` |
-| amplitude 0 at n=6, 0.653 from n=8 | `e2_amplitude_vs_length.csv: amplitude` (door_p8_4on4off) |
+| amplitude 0 at n=6, 0.653 at n=8,16,…,64, 0.871 at n=12 | `e2_amplitude_vs_length.csv: amplitude` (door_p8_4on4off) |
+| revisit-loop wall a ≈ 1.66 (visible 8 of 48 windows, T=24) | 2·sin(8π/24)/(8·sin(π/24)), uncentred amplitude (Remark rem:leak); recomputed in `number_guard.py` |
+| E1 with periodicity on at T=24: wall Periodic in windows 29–40 (t=28–39), recall 0 at final read-out | analytic from Remark rem:leak (wall hit every window, E1 horizon t=0..39); **not a committed rerun** |
+| constant wall 0.436 at n=12 (> a_min) | `e2_amplitude_vs_length.csv: amplitude` (wall_constant, obs_length=12) |
 | final classes | `e2_classification.csv: final_class` |
 
 ## E3: `e3_sensitivity.csv`
