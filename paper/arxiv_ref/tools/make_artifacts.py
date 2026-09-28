@@ -205,7 +205,7 @@ def e1_cell(name):
     ws = sorted({tuple(v) for v in bad.values()})
     assert len(ws) == 1 and len(bad) == 6, "leak differs across runs"
     w = ws[0]
-    return f"{len(w)} ($t{{=}}{w[0]}$--${w[-1]}$), all 6 runs", (f"{lo:g}" if lo == hi else f"{lo:g}--{hi:g}")
+    return f"{len(w)} ($t{{=}}{w[0]}$--${w[-1]}$)", (f"{lo:g}" if lo == hi else f"{lo:g}--{hi:g}")
 
 
 def e2_sweep(name):
@@ -254,8 +254,8 @@ with open(TAB / "fix.tex", "w") as f:
     f.write("\\caption{Effect of centring the Fourier coefficients (\\S\\ref{subsec:fremen}), same harness, seeds and "
             "parameters. \\emph{Pre-fix}: the uncentred amplitude of the v0.1.0 code (results kept in "
             "\\nolinkurl{results/%s/}); \\emph{post-fix}: the corrected engine. E1 and E3 with periodicity on use "
-            "the shipped $T{=}24$, $H{=}2$, $a_{\\min}{=}0.3$; E2 uses $T{=}8$, $H{=}3$.}\n" % PRE.replace("_", "\\_"))
-    f.write("\\label{tab:fix}\n\\small\n\\begin{tabular}{lccc}\n\\toprule\n")
+            "the shipped $T{=}24$, $H{=}2$, $a_{\\min}{=}0.3$; E2 uses $T{=}8$, $H{=}3$. E1 counts are identical in all six backend--clutter runs.}\n" % PRE.replace("_", "\\_"))
+    f.write("\\label{tab:fix}\n\\footnotesize\n\\begin{tabular}{lccc}\n\\toprule\n")
     f.write("Measure & Periodicity off & On, pre-fix & On, post-fix \\\\\n\\midrule\n")
     f.write(f"E1: windows $t\\ge3$ with Static recall $<1$ & {e1off} & {e1pre} & {e1post} \\\\\n")
     f.write(f"E1: Static recall at $t{{=}}39$ & {e1off_fin} & {e1pre_fin} & {e1post_fin} \\\\\n\\midrule\n")

@@ -7,7 +7,7 @@
 cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
 cmake --build build \&\& (cd build \&\& ctest)
 \end{quote}
-  \item Experiments E1--E4, writing the CSVs under \nolinkurl{paper/experiments/results/} with seed 12345:
+  \item Experiments E1--E4, writing the CSVs under \nolinkurl{paper/experiments/results/} with seed 12345 (the pre-fix comparison of Table~\ref{tab:fix} is the same harness built against the v0.1.0 \code{strata\_core}, kept in \nolinkurl{results/pre_fix_2026-09-28/}):
 \begin{quote}\small\ttfamily bash paper/experiments/run\_all.sh\end{quote}
   \item Tables and plot data of this paper, and the number check that maps every quantitative claim to its CSV field (see \nolinkurl{paper/arxiv_ref/NUMBERS.md}):
 \begin{quote}\small\ttfamily python3 paper/arxiv\_ref/tools/make\_artifacts.py\\
@@ -45,7 +45,7 @@ Parameter & Symbol & Default & Meaning \\
 
 \begin{table}[H]
 \centering
-\caption{Per-experiment deviations from the defaults of Table~\ref{tab:params}, as compiled into each harness. ``---'': default; ``swept'': varied over the E3 grid; ``n/a'': inert because periodicity is off.}
+\caption{Per-experiment deviations from the defaults of Table~\ref{tab:params}, as compiled into each harness. ``---'': default; ``swept'': varied over the E3 grid; ``n/a'': inert because periodicity is off; ``false / true'': run once each way, periodicity on at the defaults.}
 \label{tab:eparams}
 \small
 \begin{tabular}{lcccc}
@@ -53,7 +53,7 @@ Parameter & Symbol & Default & Meaning \\
 Parameter (default) & E1 & E2 & E3 & E4 \\
 \midrule
 $L$ (10) & 1 & 1 & 1 & 1 \\
-\code{enable\_periodicity} (true) & false & true & false & false \\
+\code{enable\_periodicity} (true) & false / true & true & false / true & false \\
 $\lhit$ (0.85) & --- & 1.0 & --- & --- \\
 $\lmiss$ ($-0.4$) & --- & $-1.0$ & --- & --- \\
 $\lambda$ (0.97) & --- & 1.0 & swept & 1.0 \\
@@ -61,8 +61,8 @@ $\pgrad$ (0.8) & --- & 0.9 & swept & --- \\
 $\pdem$ (0.45) & --- & 0.4 & swept & --- \\
 $\Nmin$ (3) & --- & 5 & --- & --- \\
 $\pprune$ (0.05) & --- & --- & 0.01 & --- \\
-$T$ (24) & n/a & 8 & n/a & n/a \\
-$H$ (2) & n/a & 3 & n/a & n/a \\
+$T$ (24) & --- & 8 & --- & n/a \\
+$H$ (2) & --- & 3 & --- & n/a \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -103,7 +103,7 @@ Transient & Periodic & $a\ge\amin$ (requires $n\ge T$ touched windows) \\
 Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\lnot g$ \\
 Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
 Periodic & Transient / Unknown & $a$ falls below $\amin$ (then subject to pruning) \\
-Periodic & Static & $a<\amin$ and Eq.~\eqref{eq:grad} holds (Remark~\ref{rem:leak}) \\
+Periodic & Static & $a<\amin$ and Eq.~\eqref{eq:grad} holds \\
 Periodic & --- & never graduates; never pruned while $a\ge\amin$ \\
 Static & --- & never pruned while $g$ \\
 \bottomrule

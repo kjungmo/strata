@@ -56,7 +56,7 @@ After the log-odds step, $p_i$ and the periodicity amplitude $a_i$ (\S\ref{subse
   \text{graduate:}\quad & \lnot g_i\land\lnot\pi_i\land p_i\ge\pgrad\land N_i\ge\Nmin \;\Rightarrow\; g_i\leftarrow\text{true},\label{eq:grad}\\
   \text{demote:}\quad & g_i\land\big(p_i\le\pdem\lor\pi_i\big)\;\Rightarrow\; g_i\leftarrow\text{false},\label{eq:demote}
 \end{align}
-where $\pi_i$ is the periodic predicate of \eqref{eq:periodic}. The interval $[\pdem,\pgrad]$ is the hysteresis band: through the occupancy disjunct $p_i\le\pdem$, a Static cell demotes only after sustained contradicting evidence, not after one contradicting window---the failure that Removert's revert pass repairs after the fact \citep{kim2020removert} is prevented online. The guard $\lnot\pi_i$ keeps a periodic cell out of the static map; the term $\lor\,\pi_i$ removes a Static cell that later reveals periodicity. That term lies outside the band and has no hysteresis of its own: it demotes on the amplitude alone, with no contradicting occupancy evidence, and Remark~\ref{rem:leak} shows it can fire on a cell that is occupied in every window.
+where $\pi_i$ is the periodic predicate of \eqref{eq:periodic}. The interval $[\pdem,\pgrad]$ is the hysteresis band: through the occupancy disjunct $p_i\le\pdem$, a Static cell demotes only after sustained contradicting evidence, not after one contradicting window---the failure that Removert's revert pass repairs after the fact \citep{kim2020removert} is prevented online. The guard $\lnot\pi_i$ keeps a periodic cell out of the static map; the term $\lor\,\pi_i$ removes a Static cell that later reveals periodicity. That term lies outside the band and has no hysteresis of its own. It cannot, however, fire without contradicting evidence: with the centred amplitude of \S\ref{subsec:fremen}, $\pi_i$ requires a cell to have been observed free in a substantial share of its touched windows (Remark~\ref{rem:leak}), so a wall that is occupied whenever it is seen is never demoted by it. It still acts in a single window once that share is reached, and E3 measures what this costs in flicker with periodicity on (\S\ref{subsec:ablation}).
 
 \begin{proposition}[No same-window oscillation]\label{prop:nooscillation}
 If $\pdem<\pgrad$, a cell that graduates by \eqref{eq:grad} in a window is not demoted by \eqref{eq:demote} in the same window.
@@ -67,23 +67,27 @@ Graduation requires $\lnot\pi_i$ and $p_i\ge\pgrad>\pdem$, and $p_i,\pi_i$ are n
 
 \subsection{Detecting Periodicity: A FreMEn-Lite Amplitude Test}\label{subsec:fremen}
 
-In parallel with occupancy, every touched cell feeds an incremental Fourier model in the spirit of FreMEn \citep{krajnik2017fremen}. With window index $w$, base period $T$ (in windows), $H$ harmonics, $\omega=2\pi/\max(1,T)$ and occupancy sample $o_i\in\{0,1\}$, the accumulators $\boldsymbol{\phi}_i=(n_i,S_{0,i},C_{k,i},S_{k,i})$ evolve as
+In parallel with occupancy, every touched cell feeds an incremental Fourier model following FreMEn \citep{krajnik2017fremen}. With window index $w$, base period $T$ (in windows), $H$ harmonics, $\omega=2\pi/\max(1,T)$, occupancy sample $o_i\in\{0,1\}$ and $\theta_k=(k{+}1)\omega w$, the accumulators $\boldsymbol{\phi}_i=(n_i,S_{0,i},C_{k,i},S_{k,i},E^{c}_{k,i},E^{s}_{k,i})$ evolve as
 \begin{equation}\label{eq:gather}
-  n_i\mathrel{+}=1,\qquad S_{0,i}\mathrel{+}=o_i,\qquad C_{k,i}\mathrel{+}=o_i\cos\big((k{+}1)\omega w\big),\qquad S_{k,i}\mathrel{+}=o_i\sin\big((k{+}1)\omega w\big),\quad k=0,\dots,H{-}1.
+  n_i\mathrel{+}=1,\quad S_{0,i}\mathrel{+}=o_i,\quad C_{k,i}\mathrel{+}=o_i\cos\theta_k,\quad S_{k,i}\mathrel{+}=o_i\sin\theta_k,\quad E^{c}_{k,i}\mathrel{+}=\cos\theta_k,\quad E^{s}_{k,i}\mathrel{+}=\sin\theta_k,
 \end{equation}
-Here $n_i$ counts \emph{touched} windows, not elapsed ones. With $\alpha_k=2C_{k,i}/n_i$ and $\beta_k=2S_{k,i}/n_i$, the dominant-harmonic amplitude and the periodic predicate are
+for $k=0,\dots,H{-}1$. Here $n_i$ counts \emph{touched} windows, not elapsed ones, and $E^{c},E^{s}$ record the phases at which the cell was touched. With the touched-window mean $\bar{o}_i=S_{0,i}/n_i$, the \emph{centred} coefficients are $\alpha_k=2(C_{k,i}-\bar{o}_iE^{c}_{k,i})/n_i$ and $\beta_k=2(S_{k,i}-\bar{o}_iE^{s}_{k,i})/n_i$, i.e.\ $\alpha_k+\mathrm{i}\beta_k=\tfrac{2}{n_i}\sum_{w\in\mathcal{W}_i}(o_{i,w}-\bar{o}_i)\,e^{\mathrm{i}\theta_k}$ over the touched windows $\mathcal{W}_i$, the mean-removed spectrum of FreMEn. The dominant-harmonic amplitude and the periodic predicate are
 \begin{equation}\label{eq:periodic}
   a_i=\begin{cases}0, & n_i<T,\\ \max_{0\le k<H}\sqrt{\alpha_k^2+\beta_k^2}, & n_i\ge T,\end{cases}\qquad
   \pi_i=\texttt{enable\_periodicity}\land a_i\ge\amin .
 \end{equation}
-The phase prediction $\hat{p}_i(w)=\mathrm{clip}_{[0,1]}\big(S_{0,i}/n_i+\sum_k[\alpha_k\cos((k{+}1)\omega w)+\beta_k\sin((k{+}1)\omega w)]\big)$ is exposed for downstream use. The gate $n_i\ge T$ suppresses the spurious amplitude that a truncated \emph{first} period gives a constant signal, but only that; and a sparsely observed cell needs $T$ \emph{touches}, which can span many more than $T$ windows.
+The phase prediction $\hat{p}_i(w)=\mathrm{clip}_{[0,1]}\big(S_{0,i}/n_i+\sum_k[\alpha_k\cos((k{+}1)\omega w)+\beta_k\sin((k{+}1)\omega w)]\big)$ is exposed for downstream use. The gate $n_i\ge T$ withholds a harmonic estimate until a period's worth of touches exists; a sparsely observed cell needs $T$ \emph{touches}, which can span many more than $T$ windows.
 
-\begin{remark}[Uncentred amplitude demotes constant cells]\label{rem:leak}
-The accumulators of \eqref{eq:gather} are not mean-removed, so for a cell occupied in every touched window $a_i=\max_k 2\big|\tfrac{1}{n_i}\sum_{w\in\mathcal{W}_i}e^{\mathrm{i}(k+1)\omega w}\big|$, twice the mean phase vector of its touched windows $\mathcal{W}_i$: it measures \emph{when the cell is observed}, not how its occupancy varies, and vanishes only when the touches cover the phases of each harmonic evenly. The gate does not enforce this. For a cell touched and occupied in each of $n$ consecutive windows, $\sum_{w}e^{\mathrm{i}(k+1)\omega w}$ is a geometric sum, so for $H<T$
+\begin{remark}[Centring, and the defect it corrects]\label{rem:leak}
+Centring bounds the amplitude by the occupancy variation. Since $|o_{i,w}-\bar{o}_i|$ averages $2\bar{o}_i(1-\bar{o}_i)$ over $\mathcal{W}_i$, the triangle inequality gives
 \[
-  a_i=\max_{0\le k<H}\frac{2\,\big|\sin\big(n(k{+}1)\pi/T\big)\big|}{n\,\big|\sin\big((k{+}1)\pi/T\big)\big|}\;\le\;\frac{2}{n\sin(\pi/T)},
+  a_i\;\le\;4\,\bar{o}_i(1-\bar{o}_i)
 \]
-which is 0 when $T$ divides $n$ but not in between. With $T{=}8$ it exceeds $\amin{=}0.3$ at $n=10$--$13$ (peak 0.439 at $n{=}11$), and the bound certifies $a_i<\amin$ only from $n{=}18$; with the shipped defaults $T{=}24$, $H{=}2$ it exceeds $\amin$ at $n=29$--$40$ (bound: $n\ge52$). In both cases no other $n$ reaches $\amin$. Because \eqref{eq:demote} acts as soon as $\pi_i$ holds, a wall hit every window is reclassified Periodic and leaves the Static layer for those windows---with the default $L{=}10$, 120 integration ticks---and re-graduates once $a_i$ falls back below $\amin$. E2's constant wall shows the effect directly (amplitude 0.436 at $n{=}12$, Figure~\ref{fig:e2}). No headline number exercises this window: E1, E3 and E4 run with periodicity off, and E2 is read out at $n{=}64$, a multiple of $T$. Uneven phase coverage is worse: a wall visible for 8 windows of every 48 (a revisit loop commensurate with $T{=}24$) sees the same 8 phases forever, has $a_i\approx1.66$, and stays Periodic permanently; the consecutive-touch case above is only its mildest form. It is a defect of the shipped code, not yet corrected. Centring the coefficients (also accumulating $\sum_{w\in\mathcal{W}_i}e^{\mathrm{i}(k+1)\omega w}$ and subtracting $S_{0,i}/n_i$ times it) makes $a_i=0$ for every constant cell under any sampling and would remove both forms; restricting to whole periods or requiring $\pi_i$ over several windows would remove only the first.
+under any sampling of $\mathcal{W}_i$. A cell that is occupied (or free) in every touched window therefore has $a_i=0$, and $\pi_i$ with $\amin{=}0.3$ requires $0.081<\bar{o}_i<0.919$: at least about 8\% of its touched windows must be free. The code as first released (v0.1.0) omitted $E^{c},E^{s}$, so its coefficients were uncentred. For an always-occupied cell, $a_i$ was then twice the mean phase vector of $\mathcal{W}_i$: it measured \emph{when} the cell was observed, not how its occupancy varied. For $n$ consecutive touches this is
+\[
+  a_i=\max_{0\le k<H}\frac{2\,\big|\sin\big(n(k{+}1)\pi/T\big)\big|}{n\,\big|\sin\big((k{+}1)\pi/T\big)\big|}\;\le\;\frac{2}{n\sin(\pi/T)}.
+\]
+It exceeds $\amin$ at $n=10$--$13$ for $T{=}8$ (peak 0.439 at $n{=}11$; the bound clears only from $n{=}18$), and at $n=29$--$40$ for the shipped $T{=}24$, $H{=}2$ (bound: $n\ge52$). Through the $\lor\,\pi_i$ term of \eqref{eq:demote}, a wall hit every window therefore left the Static layer for 120 integration ticks at $L{=}10$. Uneven phase coverage made this permanent: a wall seen in 8 of every 48 windows had $a_i\approx1.66$. The corrected engine adds the two phase sums, which are 16 bytes per harmonic and do not change the per-cell cost order. Ten regression tests cover both failures and genuine detection; seven of them fail on v0.1.0 and all pass after the fix (\S\ref{subsec:setup}), and Table~\ref{tab:fix} compares E1--E3 before and after.
 \end{remark}
 
 \subsection{Classifying and Pruning: Four Classes from One State}\label{subsec:classify}
@@ -129,13 +133,10 @@ $w\gets w+1$\;
 
 \subsection{Reconciling Code and Specification}\label{subsec:specdiff}
 
-We document the code that ships. Three places diverge from the design document (\code{SPEC.md}), and each changes operational semantics.
+We document the code that ships. Two places diverge from the design document (\code{SPEC.md}), and each changes operational semantics.
 
 \begin{remark}[Forgetting is coupled to re-observation]\label{rem:fov}
 The design document states that every cell decays every window. In the code, \eqref{eq:logodds} runs only for touched cells, so a cell outside the sensor's field of view neither decays nor relaxes toward the prior: its $\ell_i$ freezes. Clutter fades only while it is re-observed as free, and anything that leaves the field of view persists (\S\ref{sec:disc}).
-\end{remark}
-\begin{remark}[Periodicity guards]
-The design document's formal graduation and demotion rules omit the $\lnot\pi_i$ and $\lor\,\pi_i$ terms, which appear only in its prose. Equations \eqref{eq:grad}--\eqref{eq:demote} follow the code.
 \end{remark}
 \begin{remark}[The amplitude gate counts touches]
 The design document gates the amplitude on \emph{elapsed} windows; the code gates on the touched-window count $n_i$ of \eqref{eq:periodic}. This is the mechanism behind the low-duty-cycle miss in \S\ref{subsec:main}.

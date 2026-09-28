@@ -19,9 +19,9 @@
 \draw[gray!70, dashed] (axis cs:8,-0.02) -- (axis cs:8,0.92);
 \node[font=\scriptsize, anchor=south west, text=red] at (axis cs:40,0.30) {$\amin{=}0.3$};
 \node[font=\scriptsize, anchor=north west, text=gray] at (axis cs:8,0.9) {$n{=}T$};
-\legend{door p8 4/4, door p4 2/2, door p8 2/6, wall, aperiodic 1 (FP), aperiodic 0/2/3}
+\legend{door p8 4/4, door p4 2/2, door p8 2/6, wall, aperiodic 1, aperiodic 0/2/3}
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{FreMEn-lite amplitude against observation length (E2)}, from a non-pruning reference model fed each probe cell's occupancy stream ($T{=}8$, $H{=}3$). The $n\ge T$ gate forces $a{=}0$ at $n{=}6$; both 50\%-duty doors settle well above $\amin$, and the 25\%-duty door would too, yet the live pipeline prunes it first (Proposition~\ref{prop:race}). At $n{=}12$, between multiples of $T$, every curve carries the uncentred-amplitude bias and the constant wall crosses $\amin$ (Remark~\ref{rem:leak}). Plotted from \code{e2\_amplitude\_vs\_length.csv}.}
+\caption{\textbf{FreMEn-lite amplitude against observation length (E2)}, from a non-pruning reference model of the corrected engine fed each probe cell's occupancy stream ($T{=}8$, $H{=}3$). The $n\ge T$ gate forces $a{=}0$ at $n{=}6$; both 50\%-duty doors settle well above $\amin$, and the 25\%-duty door would too, yet the live pipeline prunes it first (Proposition~\ref{prop:race}). The constant wall is exactly 0 at every length because the coefficients are centred (Remark~\ref{rem:leak}); the Bernoulli controls hover near $\amin$. Plotted from \code{e2\_amplitude\_vs\_length.csv}.}
 \label{fig:e2}
 \end{figure}

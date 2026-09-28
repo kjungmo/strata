@@ -1,0 +1,17 @@
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.82\linewidth, height=0.36\linewidth,
+  xmin=7, xmax=101, ymin=-0.03, ymax=0.85, xtick={8,16,24,32,40,48,56,64,72,80,88,96},
+  xlabel={read-out length $n$ (windows)}, ylabel={Periodic FPR (of 5)},
+  grid=major, grid style={gray!20}, tick label style={font=\scriptsize}, label style={font=\small},
+  legend style={font=\scriptsize, at={(0.5,1.03)}, anchor=south, legend columns=2}, legend cell align=left]
+\addplot[const plot, thick, gray, densely dashed] table[x=len,y=fpr] {figures/data/e2_fpr_pre.dat};
+\addplot[const plot, thick, blue!70!black] table[x=len,y=fpr] {figures/data/e2_fpr_post.dat};
+\draw[gray!70, dashed] (axis cs:64,-0.03) -- (axis cs:64,0.85);
+\legend{v0.1.0 (uncentred), corrected (centred)}
+\end{axis}
+\end{tikzpicture}
+\caption{\textbf{Periodic false-positive rate against read-out length (E2)}, from the real \code{LayeredMap}, a fresh map per length, $T{=}8$, $H{=}3$, $\amin{=}0.3$; the dashed vertical marks the $n{=}64$ read-out of Table~\ref{tab:e2}. The true-positive rate is 2/3 at every length in both versions. Plotted from \code{e2\_rates\_vs\_length.csv} and its pre-fix counterpart.}
+\label{fig:e2fpr}
+\end{figure}

@@ -77,9 +77,20 @@ def guard():
     e2 = {r["metric"]: r for r in rows("e2_summary.csv")}
     tpr, fpr = float(e2["periodic_TPR"]["value"]), float(e2["periodic_FPR"]["value"])
     check("E2 TPR is 2/3", abs(tpr - 2 / 3) < 1e-4, str(tpr))
-    check("E2 FPR is 1/5", abs(fpr - 0.2) < 1e-9, str(fpr))
+    check("E2 FPR is 2/5", abs(fpr - 0.4) < 1e-9, str(fpr))
     in_paper("E2 TPR quoted as fraction", "2/3")
-    in_paper("E2 FPR quoted as fraction", "1/5")
+    in_paper("E2 FPR quoted as fraction", "2/5")
+    # read-out length sweep (post-fix) and its pre-fix counterpart
+    for sub, mean_q in (("", "0.331"), ("pre_fix_2026-09-28/", "0.363")):
+        sw = rows(sub + "e2_rates_vs_length.csv")
+        fp = [int(r["fp"]) for r in sw]
+        m = sum(fp) / (5 * len(fp))
+        check(f"E2 sweep {sub or 'post'} lengths 8..100", [int(r["obs_length"]) for r in sw] == list(range(8, 101)))
+        check(f"E2 sweep {sub or 'post'} mean FPR {mean_q}", f"{m:.3f}" == mean_q, f"{m:.3f}")
+        check(f"E2 sweep {sub or 'post'} FP range 0-4", (min(fp), max(fp)) == (0, 4))
+        check(f"E2 sweep {sub or 'post'} TPR 2/3 at every length", {r["tp"] for r in sw} == {"2"})
+        in_paper(f"E2 sweep mean FPR {mean_q} quoted", mean_q)
+    in_paper("E2 sweep FP range quoted", "0 to 4/5", "0–4 of 5")
 
     amp_rows = rows("e2_amplitude_vs_length.csv")
     amp_cols = [c for c in amp_rows[0] if "amp" in c.lower()]
@@ -228,11 +239,42 @@ def guard_arxiv():
     for tok in ("period_windows: 24", "n_harmonics: 2", "layer_interval: 10"):
         check(f"yaml default {tok}", tok in ydef)
     in_paper("leak 120 ticks", "120 integration ticks")
+    pre = "pre_fix_2026-09-28/"
+    amp_pre = {(r["cell"], r["obs_length"]): float(r["amplitude"]) for r in rows(pre + "e2_amplitude_vs_length.csv")}
     amp = {(r["cell"], r["obs_length"]): float(r["amplitude"]) for r in rows("e2_amplitude_vs_length.csv")}
-    for cell, n, v in (("wall_constant", "12", "0.436"), ("door_p8_4on4off", "12", "0.871")):
-        check(f"E2 {cell} n={n} amplitude {v}", f"{amp[(cell, n)]:.3f}" == v, str(amp[(cell, n)]))
-        in_paper(f"E2 {cell} n={n} amplitude quoted", v)
-    check("wall n=12 leak matches CSV", abs(amp[("wall_constant", "12")] - leak(12, 8, 3)) < 1e-4)
+    check("pre-fix door n=12 amplitude 0.871", f"{amp_pre[('door_p8_4on4off', '12')]:.3f}" == "0.871")
+    in_paper("pre-fix door n=12 amplitude quoted", "0.871")
+    check("pre-fix wall n=12 leak matches CSV", abs(amp_pre[("wall_constant", "12")] - leak(12, 8, 3)) < 1e-4)
+    check("post-fix door n=12 amplitude 0.581", f"{amp[('door_p8_4on4off', '12')]:.3f}" == "0.581")
+    in_paper("post-fix door n=12 amplitude quoted", "0.581")
+    check("post-fix wall amplitude exactly 0 at every length",
+          all(v == 0.0 for (c, _), v in amp.items() if c == "wall_constant"))
+    in_paper("aperiodic_0 ref amplitude quoted", f"{float(cls['aperiodic_0']['ref_amplitude']):.3f}")
+    check("aperiodic_0 is a pipeline FP at n=64", cls["aperiodic_0"]["final_class"] == "Periodic")
+    in_paper("noise sd at n=T quoted", f"{math.sqrt(0.5 / 8):.2f}")
+    # centred bound a <= 4 m (1-m): a_min=0.3 needs 0.081 < m < 0.919 (necessary condition)
+    lo = (1 - math.sqrt(1 - 0.3)) / 2
+    check("centred bound interval", 0.081 < lo < 0.082 and 0.918 < 1 - lo < 0.919, str(lo))
+    in_paper("centred bound quoted", "0.081", "0.919")
+    wall_pre = sum("wall_constant" in r["false_positives"] for r in rows(pre + "e2_rates_vs_length.csv"))
+    wall_post = sum("wall_constant" in r["false_positives"] for r in rows("e2_rates_vs_length.csv"))
+    check("constant wall Periodic at 4 lengths pre-fix, 0 post", (wall_pre, wall_post) == (4, 0))
+    in_paper("wall FP lengths quoted", "4 of 93")
+    # E3 with periodicity on
+    tot = lambda n: sum(int(r["flicker_transitions"]) for r in rows(n))
+    for n, v in (("e3_sensitivity.csv", 3672), ("e3_sensitivity_periodic.csv", 5472),
+                 (pre + "e3_sensitivity_periodic.csv", 7132)):
+        check(f"E3 total flicker {n} == {v}", tot(n) == v, str(tot(n)))
+        in_paper(f"E3 total flicker {v} quoted", str(v))
+    e3p = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows("e3_sensitivity_periodic.csv")}
+    e3pp = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows(pre + "e3_sensitivity_periodic.csv")}
+    check("E3 P-on wide band 102 / pre 138", (e3p[("0.9", "0.3", "0.9")]["flicker_transitions"],
+          e3pp[("0.9", "0.3", "0.9")]["flicker_transitions"]) == ("102", "138"))
+    in_paper("E3 P-on 102 quoted", "102")
+    in_paper("E3 P-on pre 138 quoted", "138")
+    check("E3 P-on F1 equals P-off F1 in all rows", all(idx[k]["final_f1"] == e3p[k]["final_f1"] for k in idx))
+    check("E3 P-on flicker higher in every row",
+          all(int(e3p[k]["flicker_transitions"]) > int(idx[k]["flicker_transitions"]) for k in idx))
     in_paper("sigma(2) < p_grad", f"{1/(1+math.exp(-2)):.3f}")
     # uneven phase coverage: wall visible 8 of every 48 windows, T=24 -> 2 sin(8pi/24)/(8 sin(pi/24))
     loop = 2 * math.sin(8 * math.pi / 24) / (8 * math.sin(math.pi / 24))
@@ -244,10 +286,18 @@ def guard_arxiv():
     check("E1 final window 40 inside leak", leak(e1_last + 1, 24, 2) >= 0.3)
     in_paper("E1 leak windows quoted", "windows 29\u201340")
     in_paper("E1 leak t range quoted", "t=28\u201339")
+    e1p_pre = rows(pre + "e1_static_quality_periodic.csv")
+    bad = {int(r["window"]) for r in e1p_pre if int(r["window"]) >= 3 and float(r["recall"]) < 1}
+    check("pre-fix E1 P-on recall<1 exactly at t=28..39", bad == set(range(28, 40)), str(sorted(bad)))
+    check("pre-fix E1 P-on final recall 0 in all runs",
+          all(float(r["recall"]) == 0 for r in e1p_pre if int(r["window"]) == 39))
+    e1p = rows("e1_static_quality_periodic.csv")
+    check("post-fix E1 P-on identical to P-off", [(r["recall"], r["precision"], r["pred_static"]) for r in e1p]
+          == [(r["recall"], r["precision"], r["pred_static"]) for r in e1])
     ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                  for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
-    check("22 core gtest cases", ntests == 22, str(ntests))
-    in_paper("22 tests quoted", "22 ")
+    check("32 core gtest cases", ntests == 32, str(ntests))
+    in_paper("32 tests quoted", "32 ")
 
 
 if len(TARGETS) > 1:
