@@ -1,0 +1,24 @@
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=3 by 1, horizontal sep=4mm, yticklabels at=edge left},
+  width=0.36\linewidth, height=0.36\linewidth, enlargelimits=false,
+  colormap={flick}{rgb255=(255,255,255) rgb255=(253,208,162) rgb255=(230,85,13) rgb255=(127,39,4)},
+  point meta min={1.716}, point meta max={2.759},
+  xtick={0,1,2}, xticklabels={0.3,0.5,$=\!\pgrad$}, ytick={0,1,2,3}, yticklabels={0.6,0.7,0.8,0.9},
+  xlabel={$\pdem$}, tick label style={font=\scriptsize}, label style={font=\small}, title style={font=\small},
+  nodes near coords style={anchor=center}]
+\nextgroupplot[title={$\lambda{=}0.90$}, ylabel={$\pgrad$}]
+\addplot[matrix plot*, mesh/cols=3, point meta={log10(\thisrow{flicker})},
+  visualization depends on={\thisrow{flicker} \as \fl}, nodes near coords={\scriptsize\pgfmathprintnumber[fixed,precision=0]{\fl}}] table[x=col,y=row] {figures/data/e3_decay_0.9.dat};
+\nextgroupplot[title={$\lambda{=}0.97$}]
+\addplot[matrix plot*, mesh/cols=3, point meta={log10(\thisrow{flicker})},
+  visualization depends on={\thisrow{flicker} \as \fl}, nodes near coords={\scriptsize\pgfmathprintnumber[fixed,precision=0]{\fl}}] table[x=col,y=row] {figures/data/e3_decay_0.97.dat};
+\nextgroupplot[title={$\lambda{=}1.0$}]
+\addplot[matrix plot*, mesh/cols=3, point meta={log10(\thisrow{flicker})},
+  visualization depends on={\thisrow{flicker} \as \fl}, nodes near coords={\scriptsize\pgfmathprintnumber[fixed,precision=0]{\fl}}] table[x=col,y=row] {figures/data/e3_decay_1.dat};
+\end{groupplot}
+\end{tikzpicture}
+\caption{\textbf{Flicker transitions across the E3 sweep} (colour: $\log_{10}$ flicker; annotation: raw count). The zero-band column ($\pdem{=}\pgrad$) holds the worst cell of every panel; widening the band suppresses flicker far more than slowing decay does. Plotted from \code{e3\_sensitivity.csv}.}
+\label{fig:e3}
+\end{figure}

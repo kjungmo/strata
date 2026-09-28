@@ -1,0 +1,141 @@
+\section{Reproduction}\label{app:repro}
+
+\sname\ is released under the Apache-2.0 license at \url{https://github.com/kjungmo/strata} and targets ROS~2 Humble. From the repository root:
+\begin{itemize}
+  \item Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on \code{ubuntu-latest}):
+\begin{quote}\small\ttfamily
+cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
+cmake --build build \&\& (cd build \&\& ctest)
+\end{quote}
+  \item Experiments E1--E4, writing the CSVs under \nolinkurl{paper/experiments/results/} with seed 12345:
+\begin{quote}\small\ttfamily bash paper/experiments/run\_all.sh\end{quote}
+  \item Tables and plot data of this paper, and the number check that maps every quantitative claim to its CSV field (see \nolinkurl{paper/arxiv_ref/NUMBERS.md}):
+\begin{quote}\small\ttfamily python3 paper/arxiv\_ref/tools/make\_artifacts.py\\
+python3 paper/experiments/number\_guard.py\end{quote}
+\end{itemize}
+Alternative backends can be replayed against the reference scenario of the unit test \nolinkurl{Integration.WallStaticMoverTransientDoorPeriodic}.
+
+\section{Parameters}\label{app:params}
+
+\begin{table}[H]
+\centering
+\caption{Engine parameters and shipped defaults (the \code{LayeredMapParams} struct and both \code{params/*.yaml} files agree). Geometry and node parameters are not part of the engine: \code{grid\_width}/\code{grid\_height} 400, \code{grid\_resolution} 0.05~m and origin $(-10,-10)$~m for \code{grid2d}; \code{voxel\_size} 0.2~m for \code{voxel3d}; \code{publish\_period} 1.0~s.}
+\label{tab:params}
+\small
+\begin{tabular}{llll}
+\toprule
+Parameter & Symbol & Default & Meaning \\
+\midrule
+\code{layer\_interval} & $L$ & 10 & integration ticks per window \\
+\code{l\_hit} & $\lhit$ & 0.85 & log-odds increment on an occupied window \\
+\code{l\_miss} & $\lmiss$ & $-0.4$ & log-odds increment on a free window \\
+\code{l\_min}, \code{l\_max} & $l_{\min},l_{\max}$ & $-5.0$, $5.0$ & clamp bounds \\
+\code{survival\_decay} & $\lambda$ & 0.97 & per-window forgetting multiplier \\
+\code{graduate\_prob} & $\pgrad$ & 0.8 & probability to graduate to Static \\
+\code{demote\_prob} & $\pdem$ & 0.45 & probability at or below which Static demotes \\
+\code{min\_observations} & $\Nmin$ & 3 & touched windows before graduation \\
+\code{prune\_prob} & $\pprune$ & 0.05 & erase non-static, non-periodic cells below this \\
+\code{enable\_periodicity} & --- & true & run the Fourier model \\
+\code{periodic\_amplitude\_min} & $\amin$ & 0.3 & amplitude to classify Periodic \\
+\code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
+\code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Per-experiment deviations from the defaults of Table~\ref{tab:params}, as compiled into each harness. ``---'': default; ``swept'': varied over the E3 grid; ``n/a'': inert because periodicity is off.}
+\label{tab:eparams}
+\small
+\begin{tabular}{lcccc}
+\toprule
+Parameter (default) & E1 & E2 & E3 & E4 \\
+\midrule
+$L$ (10) & 1 & 1 & 1 & 1 \\
+\code{enable\_periodicity} (true) & false & true & false & false \\
+$\lhit$ (0.85) & --- & 1.0 & --- & --- \\
+$\lmiss$ ($-0.4$) & --- & $-1.0$ & --- & --- \\
+$\lambda$ (0.97) & --- & 1.0 & swept & 1.0 \\
+$\pgrad$ (0.8) & --- & 0.9 & swept & --- \\
+$\pdem$ (0.45) & --- & 0.4 & swept & --- \\
+$\Nmin$ (3) & --- & 5 & --- & --- \\
+$\pprune$ (0.05) & --- & --- & 0.01 & --- \\
+$T$ (24) & n/a & 8 & n/a & n/a \\
+$H$ (2) & n/a & 3 & n/a & n/a \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Interfaces and State Transitions}\label{app:io}
+
+\begin{table}[H]
+\centering
+\caption{ROS~2 input/output contract of the \code{strata} node. Every scan or cloud is transformed with a full 6-DoF lookup of \code{global\_frame} (default \code{map}) $\leftarrow$ sensor frame at the message stamp; lookup failures drop the message with a throttled warning. The node neither subscribes to \code{/initialpose} nor broadcasts \code{map}$\to$\code{odom}; one mutex serialises integration, publishing and saving.}
+\label{tab:io}
+\footnotesize
+\begin{tabular}{llll}
+\toprule
+Direction & Name (default) & Type, QoS & Condition \\
+\midrule
+Subscribe & \code{scan\_topic} (\code{/scan}) & \code{LaserScan}, sensor data & \code{grid2d} \\
+Subscribe & \code{points\_topic} (\code{/points}) & \code{PointCloud2}, sensor data & \code{voxel3d} \\
+Publish & \code{\textasciitilde/map} & \code{OccupancyGrid}, depth 1, transient local & \code{grid2d} \\
+Publish & \code{\textasciitilde/map\_points} & \code{PointCloud2}, depth 1, volatile & \code{voxel3d} \\
+Service & \code{\textasciitilde/save\_map} & \code{Trigger} & both (\code{.pgm}+\code{.yaml} / \code{.pcd}) \\
+Timer & \code{publish\_period} (1.0~s) & --- & both \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[H]
+\centering
+\caption{Cell-class transitions, all evaluated at window close.}
+\label{tab:states}
+\footnotesize
+\begin{tabular}{lll}
+\toprule
+From & To & Trigger \\
+\midrule
+Unknown (absent) & Transient & first hit or miss creates the cell: $\ell{=}0$, $p{=}0.5\ge\pprune$ \\
+Transient & Static & Eq.~\eqref{eq:grad}: $p\ge\pgrad$, $N\ge\Nmin$, $\lnot\pi$ \\
+Transient & Periodic & $a\ge\amin$ (requires $n\ge T$ touched windows) \\
+Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\lnot g$ \\
+Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
+Periodic & Transient / Unknown & $a$ falls below $\amin$ (then subject to pruning) \\
+Periodic & --- & never graduates; never pruned while $a\ge\amin$ \\
+Static & --- & never pruned while $g$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Extended Results}\label{app:results}
+
+\input{tables/e3_full}
+
+\section{Notation}\label{app:notation}
+
+\begin{table}[H]
+\centering
+\caption{Symbols used in \S\ref{sec:method}.}
+\label{tab:notation}
+\small
+\begin{tabular}{ll}
+\toprule
+Symbol & Meaning \\
+\midrule
+$\mathcal{C}$, $i$ & set of integer cell ids; a cell \\
+$\kappa_b$, $\rho_b$ & backend key map and free-space ray walk \\
+$\Gamma_b$, $\Phi$, $\Psi$ & evidence extractor, engine update, class read-out (Eq.~\ref{eq:objective}) \\
+$h_{i,w}$, $m_{i,w}$ & hit and miss counts of cell $i$ in window $w$ \\
+$\tau_i$, $o_i$, $f_i$ & touched, occupied and free indicators of a window \\
+$\ell_i$, $p_i$ & log-odds occupancy and $\sigma(\ell_i)$ \\
+$N_i$, $n_i$ & touched-window counts for graduation and for the Fourier model \\
+$g_i$, $\pi_i$ & graduated flag and periodic predicate \\
+$a_i$, $\alpha_k$, $\beta_k$ & dominant amplitude and harmonic coefficients \\
+$\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments \\
+$\pgrad$, $\pdem$, $\pprune$ & graduation, demotion and prune thresholds \\
+$T$, $H$, $\omega$, $\amin$ & base period, harmonics, base frequency, amplitude threshold \\
+\bottomrule
+\end{tabular}
+\end{table}

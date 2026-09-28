@@ -10,11 +10,30 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 PAPER = HERE.parent / "strata_paper.md"
+ARXIV = HERE.parent / "arxiv_ref"
 RESULTS = HERE / "results"
 
-text = PAPER.read_text(encoding="utf-8")
+
+def tex_text(root):
+    """Concatenate the arXiv package's tex sources, normalised to plain text so the
+    same quoted-number checks apply (thousands braces, ties, en-dashes)."""
+    parts = [(root / "main.tex").read_text(encoding="utf-8")]
+    for sub in ("sections", "tables", "figures"):
+        parts += [f.read_text(encoding="utf-8") for f in sorted((root / sub).glob("*.tex"))]
+    t = "\n".join(parts)
+    for a, b in (("{,}", ","), ("~", " "), ("--", "\u2013"), ("\\times", "\u00d7"),
+                 ("$", ""), ("{=}", "=")):
+        t = t.replace(a, b)
+    return t
+
+
+TARGETS = [("strata_paper.md", PAPER.read_text(encoding="utf-8"))]
+if (ARXIV / "main.tex").exists():
+    TARGETS.append(("arxiv_ref", tex_text(ARXIV)))
 failures = []
 passes = []
+text = ""
+target = ""
 
 
 def rows(name):
@@ -23,7 +42,7 @@ def rows(name):
 
 
 def check(label, cond, detail=""):
-    (passes if cond else failures).append(f"{label}{' — ' + detail if detail else ''}")
+    (passes if cond else failures).append(f"[{target}] {label}{' — ' + detail if detail else ''}")
 
 
 def in_paper(label, *variants):
@@ -31,97 +50,179 @@ def in_paper(label, *variants):
     check(label, ok, f"none of {variants} found in paper" if not ok else "")
 
 
-# ---- E1: static-map quality ----
-e1 = rows("e1_static_quality.csv")
-gt = {r["gt_static"] for r in e1 if int(r["window"]) > 0}
-check("E1 GT wall cells constant", gt == {"161"}, f"gt_static values: {gt}")
-in_paper("E1 '161' quoted", "161")
+def guard():
+    # ---- E1: static-map quality ----
+    e1 = rows("e1_static_quality.csv")
+    gt = {r["gt_static"] for r in e1 if int(r["window"]) > 0}
+    check("E1 GT wall cells constant", gt == {"161"}, f"gt_static values: {gt}")
+    in_paper("E1 '161' quoted", "161")
 
-late_recall = [float(r["recall"]) for r in e1 if int(r["window"]) >= 3]
-check("E1 recall==1.0 from window 3 on (all runs)", all(v == 1.0 for v in late_recall))
-in_paper("E1 'window 3' quoted", "window 3")
+    late_recall = [float(r["recall"]) for r in e1 if int(r["window"]) >= 3]
+    check("E1 recall==1.0 from window 3 on (all runs)", all(v == 1.0 for v in late_recall))
+    in_paper("E1 'window 3' quoted", "window 3")
 
-last_w = max(int(r["window"]) for r in e1)
-final = {(r["backend"], r["density"]): r for r in e1 if int(r["window"]) == last_w}
-for b in ("grid2d", "voxel3d"):
-    r = final[(b, "low")]
-    check(f"E1 {b} low-density final precision==1", float(r["precision"]) == 1.0, r["precision"])
-    check(f"E1 {b} low-density final F1==1", float(r["f1"]) == 1.0, r["f1"])
-for b, exp4 in (("grid2d", None), ("voxel3d", None)):
-    p = float(final[(b, "high")]["precision"])
-    in_paper(f"E1 {b} high-density precision {p:.4f}", f"{p:.4f}", f"{p:.3f}")
-f1g = float(final[("grid2d", "high")]["f1"])
-in_paper(f"E1 grid2d high-density F1 {f1g:.4f}", f"{f1g:.4f}", f"{f1g:.3f}")
+    last_w = max(int(r["window"]) for r in e1)
+    final = {(r["backend"], r["density"]): r for r in e1 if int(r["window"]) == last_w}
+    for b in ("grid2d", "voxel3d"):
+        r = final[(b, "low")]
+        check(f"E1 {b} low-density final precision==1", float(r["precision"]) == 1.0, r["precision"])
+        check(f"E1 {b} low-density final F1==1", float(r["f1"]) == 1.0, r["f1"])
+    for b, exp4 in (("grid2d", None), ("voxel3d", None)):
+        p = float(final[(b, "high")]["precision"])
+        in_paper(f"E1 {b} high-density precision {p:.4f}", f"{p:.4f}", f"{p:.3f}")
+    f1g = float(final[("grid2d", "high")]["f1"])
+    in_paper(f"E1 grid2d high-density F1 {f1g:.4f}", f"{f1g:.4f}", f"{f1g:.3f}")
 
-# ---- E2: periodicity ----
-e2 = {r["metric"]: r for r in rows("e2_summary.csv")}
-tpr, fpr = float(e2["periodic_TPR"]["value"]), float(e2["periodic_FPR"]["value"])
-check("E2 TPR is 2/3", abs(tpr - 2 / 3) < 1e-4, str(tpr))
-check("E2 FPR is 1/5", abs(fpr - 0.2) < 1e-9, str(fpr))
-in_paper("E2 TPR quoted as fraction", "2/3")
-in_paper("E2 FPR quoted as fraction", "1/5")
+    # ---- E2: periodicity ----
+    e2 = {r["metric"]: r for r in rows("e2_summary.csv")}
+    tpr, fpr = float(e2["periodic_TPR"]["value"]), float(e2["periodic_FPR"]["value"])
+    check("E2 TPR is 2/3", abs(tpr - 2 / 3) < 1e-4, str(tpr))
+    check("E2 FPR is 1/5", abs(fpr - 0.2) < 1e-9, str(fpr))
+    in_paper("E2 TPR quoted as fraction", "2/3")
+    in_paper("E2 FPR quoted as fraction", "1/5")
 
-amp_rows = rows("e2_amplitude_vs_length.csv")
-amp_cols = [c for c in amp_rows[0] if "amp" in c.lower()]
-all_amps = {round(float(r[c]), 3) for r in amp_rows for c in amp_cols if r[c]}
-for a in ("0.653", "0.707", "0.329"):
-    check(f"E2 amplitude {a} traceable", float(a) in all_amps)
-    in_paper(f"E2 amplitude {a} quoted", a)
+    amp_rows = rows("e2_amplitude_vs_length.csv")
+    amp_cols = [c for c in amp_rows[0] if "amp" in c.lower()]
+    all_amps = {round(float(r[c]), 3) for r in amp_rows for c in amp_cols if r[c]}
+    for a in ("0.653", "0.707", "0.329"):
+        check(f"E2 amplitude {a} traceable", float(a) in all_amps)
+        in_paper(f"E2 amplitude {a} quoted", a)
 
-# ---- E3: hysteresis sensitivity ----
-e3 = rows("e3_sensitivity.csv")
-degen = [r for r in e3 if r["degenerate"] == "1"]
-worst = max(degen, key=lambda r: int(r["flicker_transitions"]))
-check("E3 worst degenerate flicker==574", worst["flicker_transitions"] == "574",
-      worst["flicker_transitions"])
-check("E3 worst degenerate F1==0.810", f"{float(worst['final_f1']):.3f}" == "0.810",
-      worst["final_f1"])
-in_paper("E3 '574' quoted", "574")
-in_paper("E3 '0.810' quoted", "0.810")
-matched = [r for r in e3 if r["graduate_prob"] == "0.9" and r["demote_prob"] == "0.3"
-           and r["survival_decay"] == "0.9"]
-check("E3 matched wide-band row exists", len(matched) == 1)
-if matched:
-    check("E3 matched wide-band flicker==54", matched[0]["flicker_transitions"] == "54",
-          matched[0]["flicker_transitions"])
-    check("E3 matched wide-band F1==1.0", float(matched[0]["final_f1"]) == 1.0)
-    check("E3 '54' quoted (word-boundary)", re.search(r"\b54\b", text) is not None)
+    # ---- E3: hysteresis sensitivity ----
+    e3 = rows("e3_sensitivity.csv")
+    degen = [r for r in e3 if r["degenerate"] == "1"]
+    worst = max(degen, key=lambda r: int(r["flicker_transitions"]))
+    check("E3 worst degenerate flicker==574", worst["flicker_transitions"] == "574",
+          worst["flicker_transitions"])
+    check("E3 worst degenerate F1==0.810", f"{float(worst['final_f1']):.3f}" == "0.810",
+          worst["final_f1"])
+    in_paper("E3 '574' quoted", "574")
+    in_paper("E3 '0.810' quoted", "0.810")
+    matched = [r for r in e3 if r["graduate_prob"] == "0.9" and r["demote_prob"] == "0.3"
+               and r["survival_decay"] == "0.9"]
+    check("E3 matched wide-band row exists", len(matched) == 1)
+    if matched:
+        check("E3 matched wide-band flicker==54", matched[0]["flicker_transitions"] == "54",
+              matched[0]["flicker_transitions"])
+        check("E3 matched wide-band F1==1.0", float(matched[0]["final_f1"]) == 1.0)
+        check("E3 '54' quoted (word-boundary)", re.search(r"\b54\b", text) is not None)
 
-# ---- E4: throughput / memory ----
-e4 = rows("e4_throughput.csv")
-by = {(r["backend"], r["extent"]): r for r in e4}
-extents = sorted({r["extent"] for r in e4}, key=int)
-cost_ratios, cell_ratios = [], []
-for x in extents:
-    g, v = by[("grid2d", x)], by[("voxel3d", x)]
-    cost_ratios.append(float(v["us_per_integrate"]) / float(g["us_per_integrate"]))
-    cell_ratios.append(float(v["final_cells"]) / float(g["final_cells"]))
-for r in cost_ratios:
-    in_paper(f"E4 cost ratio {r:.1f}x quoted", f"{r:.1f}")
-lo, hi = min(cost_ratios), max(cost_ratios)
-in_paper(f"E4 cost-ratio range {lo:.1f}-{hi:.1f}", f"{lo:.1f}–{hi:.1f}", f"{lo:.1f}-{hi:.1f}")
-for r in cell_ratios:
-    in_paper(f"E4 live-cell ratio {r:.1f}x quoted", f"{r:.1f}")
-check("E4 bytes_per_cell all 56", {r["bytes_per_cell"] for r in e4} == {"56"})
-in_paper("E4 '56 B' quoted", "56 B")
-g100 = float(by[("grid2d", extents[0])]["us_per_integrate"])
-in_paper(f"E4 grid2d {extents[0]}^2 us {g100:.1f}", f"{g100:.1f}")
-for r in e4:
-    b = float(r["est_bytes"])
-    if b < 1e6:  # paper uses KB below 1 MB
-        in_paper(f"E4 memory {b/1e3:.0f} KB quoted ({r['backend']} {r['size_label']})",
-                 f"{b/1e3:.0f} KB")
-    else:
-        mb = b / 1e6
-        s = f"{mb:.2f}" if mb < 10 else f"{mb:.1f}"
-        in_paper(f"E4 memory {s} MB quoted ({r['backend']} {r['size_label']})", f"{s} MB")
+    # ---- E4: throughput / memory ----
+    e4 = rows("e4_throughput.csv")
+    by = {(r["backend"], r["extent"]): r for r in e4}
+    extents = sorted({r["extent"] for r in e4}, key=int)
+    cost_ratios, cell_ratios = [], []
+    for x in extents:
+        g, v = by[("grid2d", x)], by[("voxel3d", x)]
+        cost_ratios.append(float(v["us_per_integrate"]) / float(g["us_per_integrate"]))
+        cell_ratios.append(float(v["final_cells"]) / float(g["final_cells"]))
+    for r in cost_ratios:
+        in_paper(f"E4 cost ratio {r:.1f}x quoted", f"{r:.1f}")
+    lo, hi = min(cost_ratios), max(cost_ratios)
+    in_paper(f"E4 cost-ratio range {lo:.1f}-{hi:.1f}", f"{lo:.1f}–{hi:.1f}", f"{lo:.1f}-{hi:.1f}")
+    for r in cell_ratios:
+        in_paper(f"E4 live-cell ratio {r:.1f}x quoted", f"{r:.1f}")
+    check("E4 bytes_per_cell all 56", {r["bytes_per_cell"] for r in e4} == {"56"})
+    in_paper("E4 '56 B' quoted", "56 B")
+    g100 = float(by[("grid2d", extents[0])]["us_per_integrate"])
+    in_paper(f"E4 grid2d {extents[0]}^2 us {g100:.1f}", f"{g100:.1f}")
+    for r in e4:
+        b = float(r["est_bytes"])
+        if b < 1e6:  # paper uses KB below 1 MB
+            in_paper(f"E4 memory {b/1e3:.0f} KB quoted ({r['backend']} {r['size_label']})",
+                     f"{b/1e3:.0f} KB")
+        else:
+            mb = b / 1e6
+            s = f"{mb:.2f}" if mb < 10 else f"{mb:.1f}"
+            in_paper(f"E4 memory {s} MB quoted ({r['backend']} {r['size_label']})", f"{s} MB")
 
-# ---- seed provenance ----
-in_paper("harness seed 12345 quoted", "12345")
+    # ---- seed provenance ----
+    in_paper("harness seed 12345 quoted", "12345")
 
-# ---- retired figures must NOT reappear ----
-for tok in ("4–8×", "4-8×", "6–10×", "6-10×", "1303", "1,303", "1{,}303"):
-    check(f"retired token absent: {tok!r}", tok not in text, "found in paper")
+    # ---- retired figures must NOT reappear ----
+    for tok in ("4–8×", "4-8×", "6–10×", "6-10×", "1303", "1,303", "1{,}303"):
+        check(f"retired token absent: {tok!r}", tok not in text, "found in paper")
+
+
+
+for target, text in TARGETS:
+    guard()
+
+def guard_arxiv():
+    """Extra checks for the arXiv package: generated tables must be current, and
+    prose numbers not covered above must recompute from CSVs / code constants."""
+    import math
+    import subprocess
+    import tempfile
+    import filecmp
+    import shutil
+    # 1. tables/ and figures/data/ must equal a fresh regeneration from the CSVs
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td) / "pkg"
+        shutil.copytree(ARXIV / "tools", tmp / "tools")
+        (tmp / "tables").mkdir()
+        (tmp / "figures" / "data").mkdir(parents=True)
+        # make_artifacts resolves results as PKG.parent/experiments/results
+        link = Path(td) / "experiments"
+        link.symlink_to(HERE)
+        subprocess.run(["python3", str(tmp / "tools" / "make_artifacts.py")], check=True,
+                       stdout=subprocess.DEVNULL)
+        for sub in ("tables", "figures/data"):
+            for f in sorted((tmp / sub).iterdir()):
+                ok = filecmp.cmp(f, ARXIV / sub / f.name, shallow=False)
+                check(f"generated {sub}/{f.name} is current", ok, "stale; rerun make_artifacts.py")
+    # 2. prose numbers
+    e1 = rows("e1_static_quality.csv")
+    med = [r for r in e1 if r["density"] == "med" and int(r["window"]) == 39][0]
+    in_paper("E1 med precision", f"{float(med['precision']):.4f}")
+    for b, fin in (("grid2d", "174"), ("voxel3d", "165")):
+        hi = [r for r in e1 if r["backend"] == b and r["density"] == "high"]
+        first = min(int(r["window"]) for r in hi if int(r["pred_static"]) > 161)
+        last = [r for r in hi if int(r["window"]) == 39][0]["pred_static"]
+        check(f"E1 {b} final pred {fin}", last == fin, last)
+        in_paper(f"E1 {b} first false static t={first}", f"t={first}")
+        in_paper(f"E1 {b} final pred {last}", last)
+    first_full = {min(int(r["window"]) for r in e1 if r["backend"] == b and r["density"] == d
+                      and float(r["recall"]) == 1.0) for b in ("grid2d", "voxel3d")
+                  for d in ("low", "med", "high")}
+    check("E1 recall reaches 1 at t=2 everywhere", first_full == {2}, str(first_full))
+    in_paper("E1 't=2' quoted", "t=2")
+    cls = {r["cell"]: r for r in rows("e2_classification.csv")}
+    ref = float(cls["door_p8_2on6off"]["ref_amplitude"])
+    in_paper("E2 low-duty ref amplitude", f"{ref:.3f}")
+    fp = float(cls["aperiodic_1"]["ref_amplitude"])
+    in_paper("E2 FP margin over a_min", f"{fp - 0.3:.3f}")
+    e3 = rows("e3_sensitivity.csv")
+    idx = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in e3}
+    in_paper("E3 worst recall", f"{float(idx[('0.9','0.9','0.9')]['final_recall']):.2f}")
+    for k in (("0.7", "0.7", "0.9"), ("0.8", "0.8", "0.9"), ("0.9", "0.9", "0.97"), ("0.9", "0.9", "1")):
+        in_paper(f"E3 flicker {k}", idx[k]["flicker_transitions"])
+    band = [int(idx[("0.9", "0.3", l)]["flicker_transitions"]) for l in ("0.9", "0.97", "1")]
+    in_paper("E3 wide-band flicker range", f"{min(band)}\u2013{max(band)}")
+    check("E3 36 configurations", len(e3) == 36, str(len(e3)))
+    e4 = {(r["backend"], r["extent"]): r for r in rows("e4_throughput.csv")}
+    big = e4[("voxel3d", "500")]
+    in_paper("E4 largest cell count", f"{int(big['final_cells']):,}")
+    in_paper("E4 largest memory", f"{float(big['est_bytes'])/1e6:.1f} MB")
+    # 3. constants derived from code defaults (layered_map.hpp)
+    hdr = (HERE.parents[1] / "strata_core/include/strata_core/layered_map.hpp").read_text()
+    for tok in ("l_hit{0.85}", "survival_decay{0.97}", "graduate_prob{0.8}", "l_max{5.0}",
+                "prune_prob{0.05}", "demote_prob{0.45}", "min_observations{3}"):
+        check(f"code default {tok}", tok in hdr)
+    in_paper("fixed point 27.5", f"{0.97*0.85/0.03:.1f}")
+    in_paper("sigma(5)", f"{1/(1+math.exp(-5)):.4f}")
+    in_paper("ln 4", f"{math.log(4):.3f}")
+    in_paper("ln(1/19)", f"{math.log(1/19):.3f}")
+    ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
+                 for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
+    check("22 core gtest cases", ntests == 22, str(ntests))
+    in_paper("22 tests quoted", "22 ")
+
+
+if len(TARGETS) > 1:
+    target, text = TARGETS[1]
+    guard_arxiv()
+
 
 print(f"PASS {len(passes)}")
 for f in failures:
