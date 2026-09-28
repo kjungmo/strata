@@ -38,7 +38,8 @@ LayeredMapParams params(bool periodicity) {
   p.min_observations = 3;
   p.prune_prob = 0.05;
   // Main run isolates static-layer quality (periodicity off). The second run
-  // enables periodicity at the shipped defaults (T=24, H=2, a_min=0.3), whose
+  // enables periodicity at the shipped defaults (T=24, H=2, a_min=0.3,
+  // periodic_false_alarm=0.1 for the calibrated significance test), whose
   // 40-window horizon covers the constant-cell leakage range n=29..40 of the
   // uncentred amplitude.
   p.enable_periodicity = periodicity;

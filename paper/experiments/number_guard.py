@@ -77,20 +77,49 @@ def guard():
     e2 = {r["metric"]: r for r in rows("e2_summary.csv")}
     tpr, fpr = float(e2["periodic_TPR"]["value"]), float(e2["periodic_FPR"]["value"])
     check("E2 TPR is 2/3", abs(tpr - 2 / 3) < 1e-4, str(tpr))
-    check("E2 FPR is 2/5", abs(fpr - 0.4) < 1e-9, str(fpr))
+    check("E2 FPR is 0/5", abs(fpr - 0.0) < 1e-9, str(fpr))
     in_paper("E2 TPR quoted as fraction", "2/3")
-    in_paper("E2 FPR quoted as fraction", "2/5")
-    # read-out length sweep (post-fix) and its pre-fix counterpart
-    for sub, mean_q in (("", "0.331"), ("pre_fix_2026-09-28/", "0.363")):
+    in_paper("E2 FPR quoted as fraction", "0/5")
+    pre64 = {r["metric"]: r for r in rows("pre_fix_2026-09-28/e2_summary.csv")}
+    mid64 = {r["metric"]: r for r in rows("pre_calibration_2026-09-28/e2_summary.csv")}
+    check("E2 n=64 FP v0.1.0 1/5, centred 2/5",
+          (pre64["periodic_FPR"]["note"], mid64["periodic_FPR"]["note"]) == ("1", "2"))
+    in_paper("E2 earlier n=64 FPRs quoted", "1/5")
+    in_paper("E2 centred n=64 FPR quoted", "2/5")
+    # read-out length sweep: current (calibrated), centred-only, and v0.1.0
+    for sub, mean_q, fprange, tpset in (("", "0.000", (0, 0), {"0", "1", "2"}),
+                                        ("pre_calibration_2026-09-28/", "0.331", (0, 4), {"2"}),
+                                        ("pre_fix_2026-09-28/", "0.363", (0, 4), {"2"})):
         sw = rows(sub + "e2_rates_vs_length.csv")
         fp = [int(r["fp"]) for r in sw]
         m = sum(fp) / (5 * len(fp))
         check(f"E2 sweep {sub or 'post'} lengths 8..100", [int(r["obs_length"]) for r in sw] == list(range(8, 101)))
         check(f"E2 sweep {sub or 'post'} mean FPR {mean_q}", f"{m:.3f}" == mean_q, f"{m:.3f}")
-        check(f"E2 sweep {sub or 'post'} FP range 0-4", (min(fp), max(fp)) == (0, 4))
-        check(f"E2 sweep {sub or 'post'} TPR 2/3 at every length", {r["tp"] for r in sw} == {"2"})
-        in_paper(f"E2 sweep mean FPR {mean_q} quoted", mean_q)
-    in_paper("E2 sweep FP range quoted", "0 to 4/5", "0–4 of 5")
+        check(f"E2 sweep {sub or 'post'} FP range {fprange}", (min(fp), max(fp)) == fprange)
+        check(f"E2 sweep {sub or 'post'} TP set {sorted(tpset)}", {r["tp"] for r in sw} == tpset)
+        if mean_q != "0.000":
+            in_paper(f"E2 sweep mean FPR {mean_q} quoted", mean_q)
+    in_paper("E2 sweep FP range quoted", "0 to 4 of 5", "0–4 of 5")
+    in_paper("E2 calibrated: no FP at any length quoted", "no false positive at any", "0 at every read-out length")
+    sw = rows("e2_rates_vs_length.csv")
+    tp_by = {int(r["obs_length"]): int(r["tp"]) for r in sw}
+    check("E2 calibrated TPR 0 at n=8-12, 1/3 at 13-14, 2/3 from 15",
+          all(tp_by[n] == 0 for n in range(8, 13)) and all(tp_by[n] == 1 for n in (13, 14))
+          and all(tp_by[n] == 2 for n in range(15, 101)))
+    in_paper("E2 detection from 15 quoted", "15 windows", "n=15")
+    mt = lambda sub: sum(int(r["tp"]) for r in rows(sub + "e2_rates_vs_length.csv")) / (3 * 93)
+    check("E2 mean TPR 0.624 (calibrated) vs 0.667", (f"{mt(''):.3f}", f"{mt('pre_calibration_2026-09-28/'):.3f}") == ("0.624", "0.667"))
+    in_paper("E2 mean TPR 0.624 quoted", "0.624")
+    rfp = [int(r["ref_fp"]) for r in sw]
+    check("E2 reference FP lengths 25, mean 0.054", (sum(v > 0 for v in rfp), f"{sum(rfp) / (5 * len(rfp)):.3f}") == (25, "0.054"))
+    check("E2 reference FPs only aperiodic_1 at 29-31, 45-50, 52-67",
+          {int(r["obs_length"]) for r in sw if r["ref_fp"] != "0"} == set(range(29, 32)) | set(range(45, 51)) | set(range(52, 68))
+          and {r["ref_false_positives"] for r in sw if r["ref_fp"] != "0"} == {"aperiodic_1"})
+    in_paper("E2 reference FP lengths quoted", "25 of 93")
+    in_paper("E2 reference mean FPR quoted", "0.054")
+    check("E2 reference detects 25%-duty door from n=26",
+          min(n for n in range(8, 101) if all(int(r["ref_tp"]) == 3 for r in sw if int(r["obs_length"]) >= n)) == 26)
+    in_paper("E2 reference door n=26 quoted", "n=26")
 
     amp_rows = rows("e2_amplitude_vs_length.csv")
     amp_cols = [c for c in amp_rows[0] if "amp" in c.lower()]
@@ -201,8 +230,12 @@ def guard_arxiv():
     cls = {r["cell"]: r for r in rows("e2_classification.csv")}
     ref = float(cls["door_p8_2on6off"]["ref_amplitude"])
     in_paper("E2 low-duty ref amplitude", f"{ref:.3f}")
-    fp = float(cls["aperiodic_1"]["ref_amplitude"])
-    in_paper("E2 FP margin over a_min", f"{fp - 0.3:.3f}")
+    fa1 = float(cls["aperiodic_1"]["ref_false_alarm"])
+    check("aperiodic_1 reference bound 0.056 <= delta", f"{fa1:.3f}" == "0.056" and fa1 <= 0.1)
+    in_paper("aperiodic_1 reference bound quoted", "0.056")
+    z = float(cls["aperiodic_1"]["ref_amplitude"]) / math.sqrt(0.5 / 64)
+    check("aperiodic_1 ~3.7 null sd", f"{z:.1f}" == "3.7", str(z))
+    in_paper("3.7 sd quoted", "3.7")
     e3 = rows("e3_sensitivity.csv")
     idx = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in e3}
     in_paper("E3 worst recall", f"{float(idx[('0.9','0.9','0.9')]['final_recall']):.2f}")
@@ -250,7 +283,9 @@ def guard_arxiv():
     check("post-fix wall amplitude exactly 0 at every length",
           all(v == 0.0 for (c, _), v in amp.items() if c == "wall_constant"))
     in_paper("aperiodic_0 ref amplitude quoted", f"{float(cls['aperiodic_0']['ref_amplitude']):.3f}")
-    check("aperiodic_0 is a pipeline FP at n=64", cls["aperiodic_0"]["final_class"] == "Periodic")
+    check("aperiodic_0 ends Static (calibrated), was Periodic (centred)",
+          cls["aperiodic_0"]["final_class"] == "Static" and
+          {r["cell"]: r for r in rows("pre_calibration_2026-09-28/e2_classification.csv")}["aperiodic_0"]["final_class"] == "Periodic")
     in_paper("noise sd at n=T quoted", f"{math.sqrt(0.5 / 8):.2f}")
     # centred bound a <= 4 m (1-m): a_min=0.3 needs 0.081 < m < 0.919 (necessary condition)
     lo = (1 - math.sqrt(1 - 0.3)) / 2
@@ -262,15 +297,22 @@ def guard_arxiv():
     in_paper("wall FP lengths quoted", "4 of 93")
     # E3 with periodicity on
     tot = lambda n: sum(int(r["flicker_transitions"]) for r in rows(n))
-    for n, v in (("e3_sensitivity.csv", 3672), ("e3_sensitivity_periodic.csv", 5472),
-                 (pre + "e3_sensitivity_periodic.csv", 7132)):
+    mid = "pre_calibration_2026-09-28/"
+    for n, v in (("e3_sensitivity.csv", 3672), ("e3_sensitivity_periodic.csv", 3792),
+                 (mid + "e3_sensitivity_periodic.csv", 5472), (pre + "e3_sensitivity_periodic.csv", 7132)):
         check(f"E3 total flicker {n} == {v}", tot(n) == v, str(tot(n)))
         in_paper(f"E3 total flicker {v} quoted", str(v))
     e3p = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows("e3_sensitivity_periodic.csv")}
     e3pp = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows(pre + "e3_sensitivity_periodic.csv")}
-    check("E3 P-on wide band 102 / pre 138", (e3p[("0.9", "0.3", "0.9")]["flicker_transitions"],
-          e3pp[("0.9", "0.3", "0.9")]["flicker_transitions"]) == ("102", "138"))
+    e3pm = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows(mid + "e3_sensitivity_periodic.csv")}
+    check("E3 P-on wide band 58 / centred 102 / pre 138", (e3p[("0.9", "0.3", "0.9")]["flicker_transitions"],
+          e3pm[("0.9", "0.3", "0.9")]["flicker_transitions"],
+          e3pp[("0.9", "0.3", "0.9")]["flicker_transitions"]) == ("58", "102", "138"))
+    in_paper("E3 P-on 58 quoted", "58")
     in_paper("E3 P-on 102 quoted", "102")
+    dif = [int(e3p[k]["flicker_transitions"]) - int(idx[k]["flicker_transitions"]) for k in idx]
+    check("E3 P-on excess flicker 2..4 per row", (min(dif), max(dif)) == (2, 4), str((min(dif), max(dif))))
+    in_paper("E3 P-on excess quoted", "2 to 4")
     in_paper("E3 P-on pre 138 quoted", "138")
     check("E3 P-on F1 equals P-off F1 in all rows", all(idx[k]["final_f1"] == e3p[k]["final_f1"] for k in idx))
     check("E3 P-on flicker higher in every row",
@@ -296,8 +338,43 @@ def guard_arxiv():
           == [(r["recall"], r["precision"], r["pred_static"]) for r in e1])
     ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                  for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
-    check("32 core gtest cases", ntests == 32, str(ntests))
-    in_paper("32 tests quoted", "32 ")
+    check("41 core gtest cases", ntests == 41, str(ntests))
+    in_paper("41 tests quoted", "41 ")
+    # ---- E0 calibration and the calibrated test (Proposition prop:chernoff) ----
+    e0 = rows("e0_calibration_choice.csv")
+    sel = [r for r in e0 if r["selected"] == "1"]
+    check("E0 selects exactly delta=0.1", len(sel) == 1 and float(sel[0]["alpha"]) == 0.1)
+    by0 = {float(r["alpha"]): r for r in e0}
+    check("E0 rule: selected is the largest meeting 0.01",
+          all((float(r["worst_null_rate"]) <= 0.01 and float(r["worst_pipeline_rate"]) <= 0.01) == (r["meets_target"] == "1") for r in e0)
+          and max(a for a, r in by0.items() if r["meets_target"] == "1") == 0.1)
+    for a, nq, pq in ((0.1, "0.0050", "0.007"), (0.2, "0.0149", "0.014")):
+        check(f"E0 delta={a} rates", (f"{float(by0[a]['worst_null_rate']):.4f}", f"{float(by0[a]['worst_pipeline_rate']):.3f}") == (nq, pq))
+        in_paper(f"E0 delta={a} null rate quoted", nq)
+        in_paper(f"E0 delta={a} pipeline rate quoted", pq)
+    check("E0 door median 22 -> 15", (by0[0.01]["door_p8_median_first_n"], by0[0.1]["door_p8_median_first_n"]) == ("22", "15"))
+    in_paper("E0 door 22 to 15 quoted", "from 22 to 15")
+    beta = [r for r in csv.DictReader(open(RESULTS / "e0_calibration_choice.csv")) if r["alpha"].startswith("#beta")][0]
+    check("E0 Beta approximation worst 0.037", f"{float(beta['worst_null_rate']):.3f}" == "0.037")
+    in_paper("E0 Beta 0.037 quoted", "0.037")
+    src0 = (HERE / "src/e0_calibration.cpp").read_text()
+    check("E0 seed base 20260928 (disjoint from 12345+[0,1500])", "kCalSeed = 20260928u" in src0 and 20260928 > 12345 + 1500)
+    in_paper("E0 seed quoted", "20260928")
+    check("code default periodic_false_alarm{0.1}", "periodic_false_alarm{0.1}" in hdr)
+    check("yaml default periodic_false_alarm: 0.1", "periodic_false_alarm: 0.1" in ydef)
+    Bf = lambda r: 2 * r * math.exp(1 - 2 * r)
+    lo_, hi_ = 0.5, 50.0
+    for _ in range(200):
+        mid_ = 0.5 * (lo_ + hi_)
+        lo_, hi_ = (mid_, hi_) if Bf(mid_) > 0.1 / 3 else (lo_, mid_)
+    rstar = hi_
+    check("r* = 3.115", f"{rstar:.3f}" == "3.115", str(rstar))
+    in_paper("r* quoted", "3.115")
+    for n, q in ((8, "0.883"), (64, "0.312")):
+        check(f"a*({n}) = {q}", f"{math.sqrt(2 * rstar / n):.3f}" == q)
+        in_paper(f"a*({n}) quoted", q)
+    check("Chernoff/Gaussian ratio 2e r* ~ 17", round(2 * math.e * rstar) == 17)
+    in_paper("ratio 17 quoted", "about 17")
 
 
 if len(TARGETS) > 1:

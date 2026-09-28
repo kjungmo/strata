@@ -9,6 +9,8 @@
 // feeds internally (gather(occ, window_count_) every touched window), so the two
 // agree; PeriodicityModel is exercised directly because LayeredMap does not expose
 // amplitude. Deterministic: aperiodic patterns precomputed from eval::kSeed.
+// ref_false_alarm is the mirror model's Bonferroni-adjusted Chernoff bound H*B(dchi)
+// (the significance term of the calibrated test; Periodic needs it <= 0.1).
 #include <array>
 #include <iostream>
 #include <random>
@@ -43,6 +45,9 @@ LayeredMapParams params() {
   p.prune_prob = 0.05;
   p.enable_periodicity = true;
   p.periodic_amplitude_min = 0.3;
+  // Nominal level of the calibrated significance test, chosen by E0 on seeds
+  // disjoint from this experiment (e0_calibration.cpp); equal to the shipped default.
+  p.periodic_false_alarm = 0.1;
   p.periodicity.period_windows = kPeriod;
   p.periodicity.n_harmonics = kHarmonics;
   return p;
@@ -119,8 +124,8 @@ int main() {
   // prune a low-duty cell before its FreMEn evidence matures, so a cell can show
   // ref_amplitude >= a_min yet still be classified non-Periodic (see door_p8_2on6off).
   cls.header(
-      "cell,gt_periodic,final_class,pred_periodic,ref_amplitude,periodic_prob");
-  cls.row("#seed", eval::kSeed, "obs_length", kMaxLen, "", "");
+      "cell,gt_periodic,final_class,pred_periodic,ref_amplitude,periodic_prob,ref_false_alarm");
+  cls.row("#seed", eval::kSeed, "obs_length", kMaxLen, "", "", "");
 
   LayeredMap lm(params());
   PeriodicityModel mirror({kPeriod, kHarmonics});  // mirrors internal gather stream
@@ -140,7 +145,7 @@ int main() {
     const CellClass fc = lm.classify(c.id);
     const bool pred_per = (fc == CellClass::Periodic);
     cls.row(c.name, c.gt_periodic ? 1 : 0, className(fc), pred_per ? 1 : 0,
-            mirror.amplitude(c.id), lm.periodicProb(c.id));
+            mirror.amplitude(c.id), lm.periodicProb(c.id), mirror.falseAlarm(c.id));
     if (c.gt_periodic) {
       ++gt_pos;
       if (pred_per) ++tp;
@@ -162,25 +167,34 @@ int main() {
   // (c) read-out length sweep: a fresh real LayeredMap per length L, classified
   // after exactly L windows. The single 64-window read-out above is one point of it.
   eval::Csv sw("results/e2_rates_vs_length.csv");
-  sw.header("obs_length,tp,fp,gt_periodic,gt_nonperiodic,tpr,fpr,false_positives");
-  sw.row("#seed", eval::kSeed, "period_windows", kPeriod, "", "", "", "");
+  // ref_tp / ref_fp: the same predicate evaluated on the non-pruning mirror model
+  // (full history since window 1), to separate the test from the effect of pruning.
+  sw.header("obs_length,tp,fp,gt_periodic,gt_nonperiodic,tpr,fpr,false_positives,ref_tp,ref_fp,ref_false_positives");
+  sw.row("#seed", eval::kSeed, "period_windows", kPeriod, "", "", "", "", "", "", "");
   for (int L = kPeriod; L <= kSweepMax; ++L) {
     LayeredMap m(params());
+    PeriodicityModel ref({kPeriod, kHarmonics});
     for (int w = 0; w < L; ++w) {
       for (const auto& c : cells) {
         if (c.occ[w]) m.observeHit(c.id); else m.observeMiss(c.id);
+        ref.gather(c.id, c.occ[w], w + 1);
       }
       m.tick();
     }
-    int ltp = 0, lfp = 0;
-    std::string fps;
+    const LayeredMapParams pp = params();
+    int ltp = 0, lfp = 0, rtp = 0, rfp = 0;
+    std::string fps, rfps;
     for (const auto& c : cells) {
       const bool per = m.classify(c.id) == CellClass::Periodic;
       if (c.gt_periodic && per) ++ltp;
       if (!c.gt_periodic && per) { ++lfp; fps += (fps.empty() ? "" : ";") + c.name; }
+      const bool rper = ref.isPeriodic(c.id, pp.periodic_amplitude_min, pp.periodic_false_alarm);
+      if (c.gt_periodic && rper) ++rtp;
+      if (!c.gt_periodic && rper) { ++rfp; rfps += (rfps.empty() ? "" : ";") + c.name; }
     }
     sw.row(L, ltp, lfp, gt_pos, gt_neg, static_cast<double>(ltp) / gt_pos,
-           static_cast<double>(lfp) / gt_neg, fps.empty() ? "-" : fps);
+           static_cast<double>(lfp) / gt_neg, fps.empty() ? "-" : fps, rtp, rfp,
+           rfps.empty() ? "-" : rfps);
   }
 
   std::cout << "E2 done: TPR=" << tpr << " (" << tp << "/" << gt_pos
