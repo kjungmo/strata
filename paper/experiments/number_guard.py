@@ -88,6 +88,7 @@ def guard():
     in_paper("E2 centred n=64 FPR quoted", "2/5")
     # read-out length sweep: current (calibrated), centred-only, and v0.1.0
     for sub, mean_q, fprange, tpset in (("", "0.000", (0, 0), {"0", "1", "2"}),
+                                        ("pre_spending_2026-09-28/", "0.000", (0, 0), {"0", "1", "2"}),
                                         ("pre_calibration_2026-09-28/", "0.331", (0, 4), {"2"}),
                                         ("pre_fix_2026-09-28/", "0.363", (0, 4), {"2"})):
         sw = rows(sub + "e2_rates_vs_length.csv")
@@ -101,15 +102,28 @@ def guard():
             in_paper(f"E2 sweep mean FPR {mean_q} quoted", mean_q)
     in_paper("E2 sweep FP range quoted", "0 to 4 of 5", "0–4 of 5")
     in_paper("E2 calibrated: no FP at any length quoted", "no false positive at any", "0 at every read-out length")
-    sw = rows("e2_rates_vs_length.csv")
+    ONE = "pre_spending_2026-09-28/"   # calibrated test at a single read-out (delta 0.1)
+    sw = rows(ONE + "e2_rates_vs_length.csv")
     tp_by = {int(r["obs_length"]): int(r["tp"]) for r in sw}
-    check("E2 calibrated TPR 0 at n=8-12, 1/3 at 13-14, 2/3 from 15",
+    check("E2 single-read-out TPR 0 at n=8-12, 1/3 at 13-14, 2/3 from 15",
           all(tp_by[n] == 0 for n in range(8, 13)) and all(tp_by[n] == 1 for n in (13, 14))
           and all(tp_by[n] == 2 for n in range(15, 101)))
-    in_paper("E2 detection from 15 quoted", "15 windows", "n=15")
+    in_paper("E2 single-read-out detection from 15 quoted", "15 windows", "n=15", "against 15")
+    cur = rows("e2_rates_vs_length.csv")
+    tp_c = {int(r["obs_length"]): int(r["tp"]) for r in cur}
+    check("E2 spent TPR 0 at n=8-19, 1/3 at 20-24, 2/3 from 25",
+          all(tp_c[n] == 0 for n in range(8, 20)) and all(tp_c[n] == 1 for n in range(20, 25))
+          and all(tp_c[n] == 2 for n in range(25, 101)))
+    in_paper("E2 spent detection from 25 quoted", "25 windows", "n=25")
+    check("E2 spent reference model: no FP at any length", all(r["ref_fp"] == "0" for r in cur))
+    check("E2 spent reference detects the 25%-duty door at every n >= 57",
+          min(n for n in range(8, 101) if all(int(r["ref_tp"]) == 3 for r in cur if int(r["obs_length"]) >= n)) == 57)
+    in_paper("E2 spent reference door n=57 quoted", "n=57")
     mt = lambda sub: sum(int(r["tp"]) for r in rows(sub + "e2_rates_vs_length.csv")) / (3 * 93)
-    check("E2 mean TPR 0.624 (calibrated) vs 0.667", (f"{mt(''):.3f}", f"{mt('pre_calibration_2026-09-28/'):.3f}") == ("0.624", "0.667"))
+    check("E2 mean TPR 0.563 (spent), 0.624 (single), 0.667 (centred)",
+          (f"{mt(''):.3f}", f"{mt(ONE):.3f}", f"{mt('pre_calibration_2026-09-28/'):.3f}") == ("0.563", "0.624", "0.667"))
     in_paper("E2 mean TPR 0.624 quoted", "0.624")
+    in_paper("E2 mean TPR 0.563 quoted", "0.563")
     rfp = [int(r["ref_fp"]) for r in sw]
     check("E2 reference FP lengths 25, mean 0.054", (sum(v > 0 for v in rfp), f"{sum(rfp) / (5 * len(rfp)):.3f}") == (25, "0.054"))
     check("E2 reference FPs only aperiodic_1 at 29-31, 45-50, 52-67",
@@ -175,6 +189,37 @@ def guard():
             mb = b / 1e6
             s = f"{mb:.2f}" if mb < 10 else f"{mb:.1f}"
             in_paper(f"E4 memory {s} MB quoted ({r['backend']} {r['size_label']})", f"{s} MB")
+
+    # ---- E5: trajectory level ----
+    e5 = rows("e5_trajectory.csv")
+    bern = lambda rule: [r for r in e5 if r["rule"] == rule and r["kind"] == "bernoulli"]
+    w1 = max(bern("single_readout"), key=lambda r: int(r["ever_1024"]))
+    check("E5 single worst ever(1024) 953/2000 (E2, every, m=0.4)",
+          (w1["ever_1024"], w1["cells"], w1["params"], w1["touch"], w1["m"]) == ("953", "2000", "e2", "every", "0.4"))
+    in_paper("E5 953 of 2000 quoted", "953 of 2000")
+    check("E5 single worst ever(64) 84", max(int(r["ever_64"]) for r in bern("single_readout")) == 84)
+    in_paper("E5 84 of 2000 quoted", "84 of 2000")
+    w2 = max(int(r["ever_1024"]) for r in bern("spending"))
+    check("E5 spent worst ever(1024) 2 of 2000", w2 == 2 and all(r["cells"] == "2000" for r in bern("spending")))
+    in_paper("E5 2 of 2000 quoted", "2 of 2000")
+    check("E5 constant cells never Periodic",
+          all(r["ever_1024"] == "0" for r in e5 if r["kind"].startswith("constant")))
+    mk = {(r["rule"], r["params"], r["touch"]): r for r in e5 if r["kind"] == "markov"}
+    check("E5 Markov shipped/every 1998 single, 1908 spent",
+          (mk[("single_readout", "shipped", "every")]["ever_1024"], mk[("spending", "shipped", "every")]["ever_1024"]) == ("1998", "1908"))
+    in_paper("E5 Markov 1908 quoted", "1908 of 2000")
+    e5c = rows("e5_confusion.csv")
+    C = {(r["rule"], r["readout"], r["gt"]): r for r in e5c}
+    check("E5 aperiodic false Static 1221 of 2000 (spent, n=64)",
+          C[("spending", "64", "aperiodic")]["pred_S"] == "1221" and
+          sum(int(C[("spending", "64", "aperiodic")][k]) for k in ("pred_S", "pred_P", "pred_T", "pred_U")) == 2000)
+    in_paper("E5 1221 of 2000 quoted", "1221 of 2000")
+    sel5 = [r for r in rows("e5_calibration_choice.csv") if r["selected"] == "1"]
+    check("E5 selects delta=0.2, the largest meeting the target",
+          len(sel5) == 1 and float(sel5[0]["delta"]) == 0.2 and
+          all((float(r["worst_wilson_hi_1024"]) <= 0.01) == (r["meets_target"] == "1") for r in rows("e5_calibration_choice.csv")))
+    dd = {(r["rule"], r["door"]): r["median_first_n"] for r in rows("e5_doors.csv")}
+    check("E5 door p8 4/4: 15 -> 25", (dd[("single_readout", "p8_4on4off")], dd[("spending", "p8_4on4off")]) == ("15", "25"))
 
     # ---- seed provenance ----
     in_paper("harness seed 12345 quoted", "12345")
@@ -298,21 +343,26 @@ def guard_arxiv():
     # E3 with periodicity on
     tot = lambda n: sum(int(r["flicker_transitions"]) for r in rows(n))
     mid = "pre_calibration_2026-09-28/"
-    for n, v in (("e3_sensitivity.csv", 3672), ("e3_sensitivity_periodic.csv", 3792),
+    one = "pre_spending_2026-09-28/"
+    for n, v in (("e3_sensitivity.csv", 3672), ("e3_sensitivity_periodic.csv", 3672),
+                 (one + "e3_sensitivity_periodic.csv", 3792),
                  (mid + "e3_sensitivity_periodic.csv", 5472), (pre + "e3_sensitivity_periodic.csv", 7132)):
         check(f"E3 total flicker {n} == {v}", tot(n) == v, str(tot(n)))
         in_paper(f"E3 total flicker {v} quoted", str(v))
-    e3p = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows("e3_sensitivity_periodic.csv")}
+    e3p = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows(one + "e3_sensitivity_periodic.csv")}
+    e3s = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows("e3_sensitivity_periodic.csv")}
+    check("E3 spent: flicker and F1 identical to periodicity off in every row",
+          all(e3s[k]["flicker_transitions"] == idx[k]["flicker_transitions"] and e3s[k]["final_f1"] == idx[k]["final_f1"] for k in idx))
+    in_paper("E3 spent identical quoted", "identical to that with periodicity off")
     e3pp = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows(pre + "e3_sensitivity_periodic.csv")}
     e3pm = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows(mid + "e3_sensitivity_periodic.csv")}
-    check("E3 P-on wide band 58 / centred 102 / pre 138", (e3p[("0.9", "0.3", "0.9")]["flicker_transitions"],
+    check("E3 P-on wide band 58 (single read-out) / centred 102 / pre 138", (e3p[("0.9", "0.3", "0.9")]["flicker_transitions"],
           e3pm[("0.9", "0.3", "0.9")]["flicker_transitions"],
           e3pp[("0.9", "0.3", "0.9")]["flicker_transitions"]) == ("58", "102", "138"))
     in_paper("E3 P-on 58 quoted", "58")
     in_paper("E3 P-on 102 quoted", "102")
     dif = [int(e3p[k]["flicker_transitions"]) - int(idx[k]["flicker_transitions"]) for k in idx]
-    check("E3 P-on excess flicker 2..4 per row", (min(dif), max(dif)) == (2, 4), str((min(dif), max(dif))))
-    in_paper("E3 P-on excess quoted", "2 to 4")
+    check("E3 single-read-out excess flicker 2..4 per row", (min(dif), max(dif)) == (2, 4), str((min(dif), max(dif))))
     in_paper("E3 P-on pre 138 quoted", "138")
     check("E3 P-on F1 equals P-off F1 in all rows", all(idx[k]["final_f1"] == e3p[k]["final_f1"] for k in idx))
     check("E3 P-on flicker higher in every row",
@@ -338,8 +388,8 @@ def guard_arxiv():
           == [(r["recall"], r["precision"], r["pred_static"]) for r in e1])
     ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                  for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
-    check("41 core gtest cases", ntests == 41, str(ntests))
-    in_paper("41 tests quoted", "41 ")
+    check("49 core gtest cases", ntests == 49, str(ntests))
+    in_paper("49 tests quoted", "49 ")
     # ---- E0 calibration and the calibrated test (Proposition prop:chernoff) ----
     e0 = rows("e0_calibration_choice.csv")
     sel = [r for r in e0 if r["selected"] == "1"]
@@ -368,8 +418,61 @@ def guard_arxiv():
     src0 = (HERE / "src/e0_calibration.cpp").read_text()
     check("E0 seed base 20260928 (disjoint from 12345+[0,1500])", "kCalSeed = 20260928u" in src0 and 20260928 > 12345 + 1500)
     in_paper("E0 seed quoted", "20260928")
-    check("code default periodic_false_alarm{0.1}", "periodic_false_alarm{0.1}" in hdr)
-    check("yaml default periodic_false_alarm: 0.1", "periodic_false_alarm: 0.1" in ydef)
+    check("code default periodic_false_alarm{0.2}", "periodic_false_alarm{0.2}" in hdr)
+    check("code default periodic_alpha_spending{true}", "periodic_alpha_spending{true}" in hdr)
+    for yf in ("grid2d.yaml", "voxel3d.yaml"):
+        yt = (HERE.parents[1] / "strata/params" / yf).read_text()
+        check(f"{yf} periodic_false_alarm: 0.2 + spending", "periodic_false_alarm: 0.2" in yt and "periodic_alpha_spending: true" in yt)
+    node = (HERE.parents[1] / "strata/src/mapping_node.cpp").read_text()
+    check("node default 0.2 + spending", '"periodic_false_alarm", 0.2' in node and '"periodic_alpha_spending", true' in node)
+    # ---- E5 prose numbers (arXiv) ----
+    src5 = (HERE / "src/e5_trajectory.cpp").read_text()
+    check("E5 seeds 30260928 / 40260928 disjoint from E0, E1-E4, tests",
+          "kCalSeed = 30260928u" in src5 and "kEvalSeed = 40260928u" in src5 and 30260928 > 20260928 + 100000)
+    in_paper("E5 seeds quoted", "30260928")
+    in_paper("E5 eval seeds quoted", "40260928")
+    e5 = rows("e5_trajectory.csv")
+    def wil(k, n, z=1.959964):
+        p_ = k / n
+        c = (p_ + z * z / (2 * n)) / (1 + z * z / n)
+        h = z * math.sqrt(p_ * (1 - p_) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+        return max(0.0, c - h), c + h
+    lo_, hi_ = wil(953, 2000)
+    in_paper("E5 953 interval quoted", f"[{lo_:.4f}, {hi_:.4f}]")
+    in_paper("E5 spent Wilson upper 0.0036", f"{wil(2, 2000)[1]:.4f}")
+    sb = [r for r in e5 if r["rule"] == "single_readout" and r["kind"] == "bernoulli"]
+    pw1 = max(float(r["per_window_rate"]) for r in sb)
+    in_paper("E5 single per-window max", f"{pw1:.4f}")
+    pw2 = max(float(r["per_window_rate"]) for r in e5 if r["rule"] == "spending" and r["kind"] == "bernoulli")
+    check("E5 spent per-window max 3.9e-6", f"{pw2*1e6:.1f}" == "3.9")
+    sh = max((r for r in sb if r["params"] == "shipped" and r["touch"] == "every"), key=lambda r: int(r["ever_1024"]))
+    check("E5 shipped single 202 at m=0.3", (sh["ever_1024"], sh["m"]) == ("202", "0.3"))
+    in_paper("E5 202 quoted", "202 of 2000")
+    lv = [r for r in e5 if r["rule"] == "spending" and r["params"] == "e2" and r["touch"] == "every" and r["kind"] == "bernoulli" and r["m"] == "0.4"][0]
+    check("E5 about 62 histories", round(float(lv["mean_lives"])) == 62)
+    in_paper("E5 62 histories quoted", "about 62 histories")
+    C = {(r["rule"], r["readout"], r["gt"]): r for r in rows("e5_confusion.csv")}
+    check("E5 ever-P within 256: single 219, spent 1",
+          (C[("single_readout", "256", "aperiodic")]["ever_periodic"], C[("spending", "256", "aperiodic")]["ever_periodic"]) == ("219", "1"))
+    in_paper("E5 219 quoted", "219 of 2000")
+    g = lambda k, col: int(C[("spending", "64", k)][col])
+    gts = ("wall", "door", "aperiodic", "dynamic")
+    ps = g("wall", "pred_S") / sum(g(k, "pred_S") for k in gts)
+    pl, ph = wil(g("wall", "pred_S"), sum(g(k, "pred_S") for k in gts))
+    in_paper("E5 Static precision", f"{ps:.3f} [{pl:.3f}, {ph:.3f}]")
+    nP = sum(g("door", c) for c in ("pred_S", "pred_P", "pred_T", "pred_U"))
+    rl, rh = wil(g("door", "pred_P"), nP)
+    in_paper("E5 Periodic recall", f"{g('door', 'pred_P') / nP:.3f} [{rl:.3f}, {rh:.3f}]")
+    check("E5 Periodic precision 1 (no P outside doors)", sum(g(k, "pred_P") for k in gts) == g("door", "pred_P"))
+    check("E5 misses = the 400 25%-duty doors", (g("door", "pred_P"), nP) == (800, 1200))
+    dd = {(r["rule"], r["params"], r["door"]): r["median_first_n"] for r in rows("e5_doors.csv")}
+    for door, ps_, a, b in (("p8_4on4off", "e2", "15", "25"), ("p4_2on2off", "e2", "13", "20"), ("p8_3on5off", "e2", "21", "31"),
+                            ("p8_4on4off_noisy", "e2", "26", "48"), ("p24_12on12off_noisy", "shipped", "25", "40")):
+        check(f"E5 door {door} {a}->{b}", (dd[("single_readout", ps_, door)], dd[("spending", ps_, door)]) == (a, b))
+        in_paper(f"E5 door {door} quoted", f"from {a} to {b}")
+    check("E5 shipped 12/12 door stays 24", (dd[("single_readout", "shipped", "p24_12on12off")], dd[("spending", "shipped", "p24_12on12off")]) == ("24", "24"))
+    check("E5 no door run fails", all(r["never"] == "0" for r in rows("e5_doors.csv")))
+    check("delta_64 = 3.8e-4", f"{0.2 * 8 / (64 * 65) * 1e4:.1f}" == "3.8")
     Bf = lambda r: 2 * r * math.exp(1 - 2 * r)
     lo_, hi_ = 0.5, 50.0
     for _ in range(200):

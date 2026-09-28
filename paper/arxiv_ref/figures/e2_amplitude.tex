@@ -17,6 +17,7 @@
 \addplot[gray, thin, mark=none, forget plot] table[x=len,y=amp] {figures/data/e2_aperiodic_3.dat};
 \addplot[red, thick, dashed, domain=5.5:70, samples=2, forget plot] {0.3};
 \addplot[red!60!black, thick, dotted, forget plot] table[x=len,y=astar] {figures/data/e2_threshold.dat};
+\addplot[red!40, thin, dotted, forget plot] table[x=len,y=single] {figures/data/e2_threshold.dat};
 \node[font=\scriptsize, anchor=south west, text=red!60!black] at (axis cs:9,0.80) {$a^\star(n)$};
 \draw[gray!70, dashed] (axis cs:8,-0.02) -- (axis cs:8,0.92);
 \node[font=\scriptsize, anchor=south west, text=red] at (axis cs:40,0.30) {$\amin{=}0.3$};
@@ -24,6 +25,6 @@
 \legend{door p8 4/4, door p4 2/2, door p8 2/6, wall, aperiodic 1, aperiodic 0/2/3}
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{FreMEn-lite amplitude against observation length (E2)}, from a non-pruning reference model of the corrected engine fed each probe cell's occupancy stream ($T{=}8$, $H{=}3$). The $n\ge T$ gate forces $a{=}0$ at $n{=}6$; both 50\%-duty doors settle well above $\amin$, and the 25\%-duty door would too, yet the live pipeline prunes it first (Proposition~\ref{prop:race}). The constant wall is exactly 0 at every length because the coefficients are centred (Remark~\ref{rem:leak}); the Bernoulli controls hover near $\amin$. The dotted curve $a^\star(n)$ is the amplitude the calibrated test of Proposition~\ref{prop:chernoff} requires at $\delta{=}0.1$, $H{=}3$ under uniform phase coverage (Eq.~\eqref{eq:astar}); a cell is Periodic only above both curves. Plotted from \code{e2\_amplitude\_vs\_length.csv}.}
+\caption{\textbf{FreMEn-lite amplitude against observation length (E2)}, from a non-pruning reference model of the corrected engine fed each probe cell's occupancy stream ($T{=}8$, $H{=}3$). The $n\ge T$ gate forces $a{=}0$ at $n{=}6$; both 50\%-duty doors settle well above $\amin$, and the 25\%-duty door would too, yet the live pipeline prunes it first (Proposition~\ref{prop:race}). The constant wall is exactly 0 at every length because the coefficients are centred (Remark~\ref{rem:leak}); the Bernoulli controls hover near $\amin$. The thick dotted curve $a^\star(n)$ is the amplitude the shipped test requires under uniform phase coverage, with $\delta{=}0.2$ spent over the touch count and $H{=}3$ (Eq.~\eqref{eq:astar} with $\delta_n$ of Proposition~\ref{prop:spend}); the thin dotted curve is the single-read-out threshold at $\delta{=}0.1$. A cell is Periodic only above both $\amin$ and $a^\star(n)$. Plotted from \code{e2\_amplitude\_vs\_length.csv}.}
 \label{fig:e2}
 \end{figure}

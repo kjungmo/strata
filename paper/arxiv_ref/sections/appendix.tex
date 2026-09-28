@@ -7,7 +7,7 @@
 cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
 cmake --build build \&\& (cd build \&\& ctest)
 \end{quote}
-  \item Unit tests, the calibration E0 (seeds from 20260928) and experiments E1--E4, writing the CSVs under \nolinkurl{paper/experiments/results/} with seed 12345. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}) and against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}):
+  \item Unit tests, the calibration E0 (seeds from 20260928), experiments E1--E4 (seed 12345) and E5 (calibration seeds from 30260928, evaluation seeds from 40260928), writing the CSVs under \nolinkurl{paper/experiments/results/}. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}), against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}) and against the engine with the single-read-out level (\nolinkurl{results/pre_spending_2026-09-28/}):
 \begin{quote}\small\ttfamily bash paper/experiments/run\_all.sh\end{quote}
   \item Tables and plot data of this paper, and the number check that maps every quantitative claim to its CSV field (see \nolinkurl{paper/arxiv_ref/NUMBERS.md}):
 \begin{quote}\small\ttfamily python3 paper/arxiv\_ref/tools/make\_artifacts.py\\
@@ -37,7 +37,8 @@ Parameter & Symbol & Default & Meaning \\
 \code{prune\_prob} & $\pprune$ & 0.05 & erase non-static, non-periodic cells below this \\
 \code{enable\_periodicity} & --- & true & run the Fourier model \\
 \code{periodic\_amplitude\_min} & $\amin$ & 0.3 & minimum harmonic amplitude (effect size) \\
-\code{periodic\_false\_alarm} & $\delta$ & 0.1 & nominal level of the significance test \\
+\code{periodic\_false\_alarm} & $\delta$ & 0.2 & level of the significance test \\
+\code{periodic\_alpha\_spending} & $\delta_n$ & true & spend $\delta$ over the touch count, Eq.~\eqref{eq:spend} \\
 \code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
 \code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
 \bottomrule
@@ -64,7 +65,7 @@ $\Nmin$ (3) & --- & 5 & --- & --- \\
 $\pprune$ (0.05) & --- & --- & 0.01 & --- \\
 $T$ (24) & --- & 8 & --- & n/a \\
 $H$ (2) & --- & 3 & --- & n/a \\
-$\delta$ (0.1) & --- & --- & --- & n/a \\
+$\delta$ (0.2, spent) & --- & --- & --- & n/a \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -101,7 +102,7 @@ From & To & Trigger \\
 \midrule
 Unknown (absent) & Transient & first hit or miss creates the cell: $\ell{=}0$, $p{=}0.5\ge\pprune$ \\
 Transient & Static & Eq.~\eqref{eq:grad}: $p\ge\pgrad$, $N\ge\Nmin$, $\lnot\pi$ \\
-Transient & Periodic & $\pi$, Eq.~\eqref{eq:periodic}: $n\ge T$ and, for some $k$, $a_k\ge\amin$ and $H\,B(d_k)\le\delta$ \\
+Transient & Periodic & $\pi$, Eq.~\eqref{eq:periodic}: $n\ge T$ and, for some $k$, $a_k\ge\amin$ and $H\,B(d_k)\le\delta_n$ \\
 Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\lnot g$ \\
 Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
 Periodic & Transient / Unknown & $\pi$ becomes false (pruned only once also $a<\amin$) \\
@@ -138,9 +139,14 @@ $g_i$, $\pi_i$ & graduated flag and periodic predicate \\
 $a_i$, $a_{i,k}$, $\alpha_k$, $\beta_k$ & dominant and harmonic amplitudes, harmonic coefficients \\
 $d_{i,k}$, $\mathbf{M}_{i,k}$, $B$ & explained variance, centred phase design, Chernoff tail bound (Eq.~\ref{eq:dchi}) \\
 $\delta$, $r^\star$, $a^\star(n)$ & nominal level, its critical $d$, amplitude threshold at uniform coverage (Eq.~\ref{eq:astar}) \\
+$\delta_n$, $L_N$ & level spent at touch count $n$ (Eq.~\ref{eq:spend}); histories begun by window $N$ (Prop.~\ref{prop:spend}) \\
 $\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments \\
 $\pgrad$, $\pdem$, $\pprune$ & graduation, demotion and prune thresholds \\
 $T$, $H$, $\omega$, $\amin$ & base period, harmonics, base frequency, amplitude threshold \\
 \bottomrule
 \end{tabular}
 \end{table}
+
+\section{Trajectory-Level Results in Full}\label{app:e5}
+
+\input{tables/e5_full}

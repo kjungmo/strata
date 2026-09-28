@@ -83,7 +83,11 @@ with open(TAB / "e1.tex", "w") as f:
 e0 = rows("e0_calibration_choice.csv")
 e0sel = [r for r in e0 if r["selected"] == "1"]
 assert len(e0sel) == 1, "calibration must select exactly one level"
-DELTA = float(e0sel[0]["alpha"])
+DELTA0 = float(e0sel[0]["alpha"])  # single-read-out level chosen by E0
+# shipped level: spent over the touch count, chosen by E5 on its calibration seeds
+e5sel = [r for r in rows("e5_calibration_choice.csv") if r["selected"] == "1"]
+assert len(e5sel) == 1, "E5 calibration must select exactly one level"
+DELTA = float(e5sel[0]["delta"])
 beta_worst = [r for r in csv.DictReader(open(RES / "e0_calibration_choice.csv")) if r["alpha"].startswith("#beta")][0]
 with open(TAB / "e0.tex", "w") as f:
     f.write(HDR % "e0_calibration_choice.csv")
@@ -121,20 +125,27 @@ for c in cells:
             if r["cell"] == c:
                 f.write(f"{r['obs_length']} {abs(float(r['amplitude'])):.6f}\n")
 # calibrated amplitude threshold at uniform phase coverage, a*(n) = sqrt(2 r* / n) with
-# B(r*) = x e^{1-x} = DELTA / H at x = 2 r* (E2: H = 3); B is decreasing for x > 1.
-H_E2 = 3
-lo_, hi_ = 1.0, 100.0
-for _ in range(200):
-    mid_ = 0.5 * (lo_ + hi_)
-    if mid_ * math.exp(1.0 - mid_) > DELTA / H_E2:
-        lo_ = mid_
-    else:
-        hi_ = mid_
-R_STAR = 0.5 * hi_
+# B(r*) = x e^{1-x} = level / H at x = 2 r* (E2: H = 3, T = 8); B is decreasing for x > 1.
+# astar: shipped rule, level = DELTA * T / (n (n + 1)); single: level = DELTA0 at every n.
+H_E2, T_E2 = 3, 8
+
+
+def rstar(level):
+    lo_, hi_ = 1.0, 200.0
+    for _ in range(200):
+        mid_ = 0.5 * (lo_ + hi_)
+        if mid_ * math.exp(1.0 - mid_) > level / H_E2:
+            lo_ = mid_
+        else:
+            hi_ = mid_
+    return 0.5 * hi_
+
+
 with open(DATA / "e2_threshold.dat", "w") as f:
-    f.write("len astar\n")
+    f.write("len astar single\n")
     for n in range(8, 71):
-        f.write(f"{n} {math.sqrt(2.0 * R_STAR / n):.6f}\n")
+        f.write(f"{n} {math.sqrt(2.0 * rstar(DELTA * T_E2 / (n * (n + 1))) / n):.6f} "
+                f"{math.sqrt(2.0 * rstar(DELTA0) / n):.6f}\n")
 cls = rows("e2_classification.csv")
 summ = {r["metric"]: r for r in rows("e2_summary.csv")}
 note = {"door_p8_4on4off": "50\\% duty", "door_p8_2on6off": "25\\% duty",
@@ -144,10 +155,10 @@ with open(TAB / "e2.tex", "w") as f:
     tp, fp = int(summ["periodic_TPR"]["note"]), int(summ["periodic_FPR"]["note"])
     npos, nneg = int(summ["gt_periodic"]["value"]), int(summ["gt_nonperiodic"]["value"])
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{Periodicity detection (E2) after 64 windows with the calibrated test, $a_{\\min}{=}0.3$, "
-            "$\\delta{=}%g$, $T{=}8$, $H{=}3$. "
+    f.write("\\caption{Periodicity detection (E2) after 64 windows with the shipped test, $a_{\\min}{=}0.3$, "
+            "$\\delta{=}%g$ spent over the touch count, $T{=}8$, $H{=}3$. "
             "\\emph{Ref.\\ amplitude} and \\emph{Ref.\\ $H\\,B$} (the Bonferroni-adjusted Chernoff bound of "
-            "Proposition~\\ref{prop:chernoff}; Periodic needs $\\le\\delta$) come from a non-pruning reference model fed "
+            "Proposition~\\ref{prop:chernoff}; Periodic needs $\\le\\delta_n$) come from a non-pruning reference model fed "
             "the identical occupancy stream. Periodic TPR $=%d/%d$, FPR $=%d/%d$. \\emph{Outcome} scores the Periodic class; "
             "a non-periodic cell ending Static is not a Periodic false positive but is a wrong map label (\\emph{false Static}).}\n" % (DELTA, tp, npos, fp, nneg))
     f.write("\\label{tab:e2}\n\\small\n\\begin{tabular}{lccccc}\n\\toprule\n")
@@ -222,7 +233,7 @@ with open(TAB / "e3_full.tex", "w") as f:  # [H]: placed inline in the appendix
             "10 movers/window, 80 windows, seed 12345). Deg.\\ marks the zero-band configuration "
             "$p_{\\mathrm{dem}}=p_{\\mathrm{grad}}$. F1 to Flicker: periodicity off. "
             "\\emph{Flicker, P on}: the same sweep with periodicity on at the shipped $T{=}24$, $H{=}2$, "
-            "$a_{\\min}{=}0.3$, $\\delta{=}%g$ (current engine; its F1 equals the periodicity-off F1 in %d of %d rows).}\n"
+            "$a_{\\min}{=}0.3$, $\\delta{=}%g$ spent over the touch count (current engine; its F1 equals the periodicity-off F1 in %d of %d rows).}\n"
             % (len(e3), DELTA, f1same, len(e3)))
     f.write("\\label{tab:e3full}\n\\footnotesize\n\\begin{tabular}{cccccccccc}\n\\toprule\n")
     f.write("$p_{\\mathrm{grad}}$ & $p_{\\mathrm{dem}}$ & $\\lambda$ & Band & Deg. & F1 & Precision & Recall & Flicker & Flicker, P on \\\\\n\\midrule\n")
@@ -238,6 +249,7 @@ with open(TAB / "e3_full.tex", "w") as f:  # [H]: placed inline in the appendix
 # ---------------------------------------------------------------- fixes: before / after
 PRE = "pre_fix_2026-09-28"          # v0.1.0: uncentred amplitude, amplitude-only rule
 MID = "pre_calibration_2026-09-28"  # centred amplitude, amplitude-only rule
+ONE = "pre_spending_2026-09-28"     # calibrated test at a single read-out (delta = DELTA0)
 
 
 def e1_leak(name):
@@ -299,7 +311,7 @@ def e3_tot(name):
 
 
 S = {"pre": e2_sweep(PRE + "/e2_rates_vs_length.csv"), "mid": e2_sweep(MID + "/e2_rates_vs_length.csv"),
-     "post": e2_sweep("e2_rates_vs_length.csv")}
+     "one": e2_sweep(ONE + "/e2_rates_vs_length.csv"), "post": e2_sweep("e2_rates_vs_length.csv")}
 for tag, sw in S.items():
     with open(DATA / f"e2_fpr_{tag}.dat", "w") as f:
         f.write("len fpr fp tpr tp" + (" reffpr reftpr" if sw["ref"] else "") + "\n")
@@ -311,31 +323,34 @@ for tag, sw in S.items():
 e1off, e1off_fin = e1_cell("e1_static_quality.csv")
 e1pre, e1pre_fin = e1_cell(PRE + "/e1_static_quality_periodic.csv")
 e1mid, e1mid_fin = e1_cell(MID + "/e1_static_quality_periodic.csv")
+e1one, e1one_fin = e1_cell(ONE + "/e1_static_quality_periodic.csv")
 e1post, e1post_fin = e1_cell("e1_static_quality_periodic.csv")
-T64 = {"pre": summ64(PRE + "/"), "mid": summ64(MID + "/"), "post": summ64("")}
+T64 = {"pre": summ64(PRE + "/"), "mid": summ64(MID + "/"), "one": summ64(ONE + "/"), "post": summ64("")}
 f_off, i_off = e3_tot("e3_sensitivity.csv")
 F3 = {"pre": e3_tot(PRE + "/e3_sensitivity_periodic.csv"), "mid": e3_tot(MID + "/e3_sensitivity_periodic.csv"),
-      "post": e3_tot("e3_sensitivity_periodic.csv")}
+      "one": e3_tot(ONE + "/e3_sensitivity_periodic.csv"), "post": e3_tot("e3_sensitivity_periodic.csv")}
 K = ("0.9", "0.3", "0.9")
 W = ("0.9", "0.9", "0.9")
-V = ("pre", "mid", "post")
+V = ("pre", "mid", "one", "post")
 n0, n1 = S["pre"]["n0"], S["pre"]["n1"]
 with open(TAB / "fix.tex", "w") as f:
     f.write(HDR % ("e1_static_quality{,_periodic}.csv, e2_summary.csv, e2_rates_vs_length.csv, "
-                   "e3_sensitivity{,_periodic}.csv, " + PRE + "/ and " + MID + "/"))
+                   "e3_sensitivity{,_periodic}.csv, " + PRE + "/, " + MID + "/ and " + ONE + "/"))
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{Effect of the two corrections to the periodicity test, same harness, seeds and parameters. "
+    f.write("\\caption{Effect of the three corrections to the periodicity test, same harness, seeds and parameters. "
             "\\emph{v0.1.0}: uncentred amplitude and the amplitude-only rule $a\\ge\\amin$ (results in "
             "\\nolinkurl{results/%s/}); \\emph{Centred}: centred amplitude, amplitude-only rule "
-            "(\\nolinkurl{results/%s/}); \\emph{Calibrated}: centred amplitude and the significance test of "
-            "Proposition~\\ref{prop:chernoff} at $\\delta{=}%g$ (current engine). E1 and E3 with periodicity on use the "
-            "shipped $T{=}24$, $H{=}2$, $\\amin{=}0.3$; E2 uses $T{=}8$, $H{=}3$. E1 counts are identical in all six "
-            "backend--clutter runs.}\n" % (PRE.replace("_", "\\_"), MID.replace("_", "\\_"), DELTA))
-    f.write("\\label{tab:fix}\n\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{lcccc}\n\\toprule\n")
-    f.write("& Periodicity & \\multicolumn{3}{c}{Periodicity on} \\\\\n\\cmidrule(lr){3-5}\n")
-    f.write("Measure & off & v0.1.0 & Centred & Calibrated \\\\\n\\midrule\n")
-    f.write(f"E1: windows $t\\ge3$ with Static recall $<1$ & {e1off} & {e1pre} & {e1mid} & {e1post} \\\\\n")
-    f.write(f"E1: Static recall at $t{{=}}39$ & {e1off_fin} & {e1pre_fin} & {e1mid_fin} & {e1post_fin} \\\\\n\\midrule\n")
+            "(\\nolinkurl{results/%s/}); \\emph{Single}: the significance test of Proposition~\\ref{prop:chernoff} "
+            "at $\\delta{=}%g$ at every read-out (\\nolinkurl{results/%s/}); \\emph{Spent}: the level $\\delta{=}%g$ "
+            "spent over the touch count (Proposition~\\ref{prop:spend}, current engine). E1 and E3 with periodicity on "
+            "use the shipped $T{=}24$, $H{=}2$, $\\amin{=}0.3$; E2 uses $T{=}8$, $H{=}3$. E1 counts are identical in "
+            "all six backend--clutter runs.}\n" % (PRE.replace("_", "\\_"), MID.replace("_", "\\_"), DELTA0,
+                                                     ONE.replace("_", "\\_"), DELTA))
+    f.write("\\label{tab:fix}\n\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{lccccc}\n\\toprule\n")
+    f.write("& Periodicity & \\multicolumn{4}{c}{Periodicity on} \\\\\n\\cmidrule(lr){3-6}\n")
+    f.write("Measure & off & v0.1.0 & Centred & Single & Spent \\\\\n\\midrule\n")
+    f.write(f"E1: windows $t\\ge3$ with Static recall $<1$ & {e1off} & {e1pre} & {e1mid} & {e1one} & {e1post} \\\\\n")
+    f.write(f"E1: Static recall at $t{{=}}39$ & {e1off_fin} & {e1pre_fin} & {e1mid_fin} & {e1one_fin} & {e1post_fin} \\\\\n\\midrule\n")
     f.write("E2 at $n{=}64$: TPR / FPR & -- & " + " & ".join(
         f"{T64[v][0]}/{T64[v][2]} / {T64[v][1]}/{T64[v][3]}" for v in V) + " \\\\\n")
     f.write(f"E2, $n={n0}$--${n1}$: mean FPR & -- & " + " & ".join(f"{S[v]['mfpr']:.3f}" for v in V) + " \\\\\n")
@@ -347,7 +362,9 @@ with open(TAB / "fix.tex", "w") as f:
             " & ".join(f"{S[v]['wall']} of {S[v]['N']}" for v in V) + " \\\\\n")
     f.write(f"E2, $n={n0}$--${n1}$: mean TPR & -- & " + " & ".join(f"{S[v]['mtpr']:.3f}" for v in V) + " \\\\\n")
     f.write(f"E2: TPR {S['pre']['tpmax']}/{S['pre']['pos']} at every $n\\ge$ & -- & " +
-            " & ".join(f"{S[v]['stable']}" for v in V) + " \\\\\n\\midrule\n")
+            " & ".join(f"{S[v]['stable']}" for v in V) + " \\\\\n")
+    f.write(f"E2, $n={n0}$--${n1}$: lengths with FP, no pruning & -- & " +
+            " & ".join((f"{S[v]['ref']['fplens']} of {S[v]['N']}" if S[v]["ref"] else "--") for v in V) + " \\\\\n\\midrule\n")
     f.write("E3: total flicker, 36 configurations & " + f"{f_off} & " +
             " & ".join(f"{F3[v][0]}" for v in V) + " \\\\\n")
     f.write("E3: flicker at $\\pgrad{=}0.9$, $\\pdem{=}0.3$, $\\lambda{=}0.90$ & " +
@@ -405,4 +422,150 @@ with open(TAB / "e4.tex", "w") as f:
             f.write("\\midrule\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
-print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e0 e1 e2 e3 e3_full e4 fix")
+
+# ---------------------------------------------------------------- E5: trajectory level
+def wilson(k, n, z=1.959964):
+    p = k / n
+    c = (p + z * z / (2 * n)) / (1 + z * z / n)
+    h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / (1 + z * z / n)
+    return max(0.0, c - h), min(1.0, c + h)
+
+
+def ci(k, n, d=3):
+    lo, hi = wilson(k, n)
+    return f"[{lo:.{d}f}, {hi:.{d}f}]"
+
+
+e5c = rows("e5_calibration_choice.csv")
+with open(TAB / "e5_choice.tex", "w") as f:
+    f.write(HDR % "e5_calibration_choice.csv")
+    f.write("\\begin{table}[t]\n\\centering\n")
+    f.write("\\caption{Choice of the spent level $\\delta$ (E5) on calibration seeds disjoint from every evaluation seed. "
+            "\\emph{Worst ever-Periodic}: over 36 configurations (E2 and shipped parameters, touched every window or "
+            "with probability 0.5, Bernoulli($m$) clutter, $m=0.1,\\dots,0.9$, 2000 cells, 1024 windows), the largest "
+            "count of cells labelled Periodic at some window, with the Wilson 95\\% upper limit of that rate. "
+            "\\emph{Door}: median first window from which a 4-on/4-off door (E2 parameters, $T{=}8$) or a "
+            "12-on/12-off door (shipped, $T{=}24$) stays Periodic. Rule, fixed before the run: the largest $\\delta$ "
+            "whose upper limit is $\\le 0.01$ in every configuration.}\n")
+    f.write("\\label{tab:e5choice}\n\\small\n\\begin{tabular}{ccccc}\n\\toprule\n")
+    f.write("$\\delta$ & Worst ever-Periodic (of 2000) & Wilson upper & Door, $T{=}8$ / $T{=}24$ & Selected \\\\\n\\midrule\n")
+    for r in e5c:
+        sel_ = r["selected"] == "1"
+        cells = [f"{float(r['delta']):g}", r["worst_ever_count"], f"{float(r['worst_wilson_hi_1024']):.4f}",
+                 f"{int(float(r['door_e2_p8_median']))} / {int(float(r['door_shipped_p24_median']))}",
+                 "yes" if sel_ else "no"]
+        if sel_:
+            cells = [f"\\textbf{{{c}}}" for c in cells]
+        f.write(" & ".join(cells) + " \\\\\n")
+    f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+e5t = rows("e5_trajectory.csv")
+RULES = (("single_readout", "Single"), ("spending", "Spent"))
+PSETS = (("e2", "every", "E2, every window"), ("e2", "half", "E2, $q{=}0.5$"),
+         ("shipped", "every", "Shipped, every window"), ("shipped", "half", "Shipped, $q{=}0.5$"))
+
+
+def worst(rule, ps, touch, col):
+    rr = [r for r in e5t if r["rule"] == rule and r["params"] == ps and r["touch"] == touch
+          and r["kind"] == "bernoulli"]
+    return max(rr, key=lambda r: (int(r[col]), -float(r["m"])))
+
+
+with open(TAB / "e5.tex", "w") as f:
+    f.write(HDR % "e5_trajectory.csv")
+    f.write("\\begin{table}[t]\n\\centering\n")
+    f.write("\\caption{Trajectory-level false alarms of the live detector on held-out seeds (E5). Each entry is the "
+            "worst Bernoulli($m$) clutter configuration over $m=0.1,\\dots,0.9$: the number of 2000 cells (10 seeds of 200) "
+            "labelled Periodic at some window up to $N$, with its Wilson 95\\%% interval for $N{=}1024$, and the "
+            "worst per-window labelling rate. $q$: probability that a cell is touched in a window, independent of "
+            "its occupancy. \\emph{Single}: $\\delta{=}%g$ at every read-out; \\emph{Spent}: $\\delta{=}%g$ spent over the "
+            "touch count. \\emph{Markov}: temporally correlated clutter (two-state chain, mean 0.5, mean dwell 10 windows), "
+            "outside the null of Proposition~\\ref{prop:chernoff}. Constant cells were never labelled Periodic.}\n" % (DELTA0, DELTA))
+    f.write("\\label{tab:e5}\n\\footnotesize\n\\setlength{\\tabcolsep}{3.5pt}\n\\begin{tabular}{llcccccc}\n\\toprule\n")
+    f.write("Parameters, touches & Rule & $N{=}64$ & $N{=}256$ & $N{=}1024$ & 95\\% interval, $N{=}1024$ & Per window & Markov, $N{=}1024$ \\\\\n\\midrule\n")
+    for i, (ps, touch, lab) in enumerate(PSETS):
+        for rule, rl in RULES:
+            w = worst(rule, ps, touch, "ever_1024")
+            w64 = worst(rule, ps, touch, "ever_64")
+            w256 = worst(rule, ps, touch, "ever_256")
+            pw = max((r for r in e5t if r["rule"] == rule and r["params"] == ps and r["touch"] == touch
+                      and r["kind"] == "bernoulli"), key=lambda r: float(r["per_window_rate"]))
+            mk = [r for r in e5t if r["rule"] == rule and r["params"] == ps and r["touch"] == touch
+                  and r["kind"] == "markov"][0]
+            n = int(w["cells"])
+            rate = float(pw["per_window_rate"])
+            rate_s = "0" if rate == 0 else (f"{rate:.4f}" if rate >= 1e-4 else f"${rate*1e6:.1f}{{\\times}}10^{{-6}}$")
+            f.write(f"{lab if rule == 'single_readout' else ''} & {rl} & {w64['ever_64']} & {w256['ever_256']} & "
+                    f"{w['ever_1024']} ($m{{=}}{float(w['m']):g}$) & {ci(int(w['ever_1024']), n, 4)} & {rate_s} & "
+                    f"{mk['ever_1024']} \\\\\n")
+        if i != len(PSETS) - 1:
+            f.write("\\midrule\n")
+    f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+# full per-configuration counts (appendix)
+with open(TAB / "e5_full.tex", "w") as f:
+    f.write(HDR % "e5_trajectory.csv")
+    f.write("\\begin{table}[H]\n\\centering\n")
+    f.write("\\caption{All E5 held-out configurations: cells (of 2000) labelled Periodic at some window up to $N{=}1024$, "
+            "and in parentheses the mean number of histories a cell began (pruning and re-creation). Columns: parameter set, "
+            "touch probability $q$, rule (S: single read-out, $\\delta{=}%g$; P: spent, $\\delta{=}%g$).}\n" % (DELTA0, DELTA))
+    f.write("\\label{tab:e5full}\n\\scriptsize\n\\setlength{\\tabcolsep}{2.5pt}\n\\begin{tabular}{lcccccccc}\n\\toprule\n")
+    f.write("& \\multicolumn{4}{c}{E2 parameters ($T{=}8$, $H{=}3$)} & \\multicolumn{4}{c}{Shipped ($T{=}24$, $H{=}2$)} \\\\\n"
+            "\\cmidrule(lr){2-5}\\cmidrule(lr){6-9}\n")
+    f.write("Cell & $q{=}1$, S & $q{=}1$, P & $q{=}0.5$, S & $q{=}0.5$, P & $q{=}1$, S & $q{=}1$, P & $q{=}0.5$, S & $q{=}0.5$, P \\\\\n\\midrule\n")
+    kinds = []
+    for r in e5t:
+        k = (r["kind"], r["m"])
+        if k not in kinds:
+            kinds.append(k)
+    idx5 = {(r["rule"], r["params"], r["touch"], r["kind"], r["m"]): r for r in e5t}
+    names = {"bernoulli": "Bernoulli", "constant_occupied": "always occupied", "constant_free": "always free",
+             "markov": "Markov (correlated)"}
+    for kind, m in kinds:
+        lab = names[kind] + (f" $m{{=}}{float(m):g}$" if kind == "bernoulli" else "")
+        cells = []
+        for ps in ("e2", "shipped"):
+            for touch in ("every", "half"):
+                for rule in ("single_readout", "spending"):
+                    r = idx5[(rule, ps, touch, kind, m)]
+                    cells.append(f"{r['ever_1024']} ({float(r['mean_lives']):.0f})")
+        f.write(lab + " & " + " & ".join(cells) + " \\\\\n")
+    f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+e5d = rows("e5_doors.csv")
+e5f = rows("e5_confusion.csv")
+with open(TAB / "e5_confusion.tex", "w") as f:
+    f.write(HDR % "e5_confusion.csv")
+    f.write("\\begin{table}[t]\n\\centering\n")
+    f.write("\\caption{Four-class confusion on 20 held-out E2-style scenes (E2 parameters, touched every window), read "
+            "out after 64 windows with the shipped test. Per scene: 50 walls, 20 doors of each E2 type at random phase, "
+            "100 aperiodic Bernoulli(0.5) cells, and 50 dynamic cells crossed by a mover with probability 0.1 per window. "
+            "\\emph{Single P}: Periodic count under the single-read-out rule. Precision and recall use the decision classes "
+            "Static (walls), Periodic (doors) and not persistent (Transient or Unknown; aperiodic and dynamic cells), with "
+            "Wilson 95\\% intervals.}\n")
+    f.write("\\label{tab:e5conf}\n\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{lcccccc}\n\\toprule\n")
+    f.write("Ground truth (cells) & Static & Periodic & Transient & Unknown & Single P & Ever P, $N{=}256$ (Single / Spent) \\\\\n\\midrule\n")
+    C = {(r["rule"], r["readout"], r["gt"]): r for r in e5f}
+    for g in ("wall", "door", "aperiodic", "dynamic"):
+        r = C[("spending", "64", g)]
+        r1 = C[("single_readout", "64", g)]
+        tot = sum(int(r[k]) for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
+        f.write(f"{g} ({tot}) & {r['pred_S']} & {r['pred_P']} & {r['pred_T']} & {r['pred_U']} & {r1['pred_P']} & "
+                f"{C[('single_readout', '256', g)]['ever_periodic']} / {C[('spending', '256', g)]['ever_periodic']} \\\\\n")
+    f.write("\\midrule\n")
+    get = lambda g, k: int(C[("spending", "64", g)][k])
+    gts = ("wall", "door", "aperiodic", "dynamic")
+    predS = sum(get(g, "pred_S") for g in gts)
+    predP = sum(get(g, "pred_P") for g in gts)
+    predN = sum(get(g, "pred_T") + get(g, "pred_U") for g in gts)
+    tpS, tpP = get("wall", "pred_S"), get("door", "pred_P")
+    tpN = sum(get(g, "pred_T") + get(g, "pred_U") for g in ("aperiodic", "dynamic"))
+    nS = sum(get("wall", k) for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
+    nP = sum(get("door", k) for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
+    nN = sum(get(g, k) for g in ("aperiodic", "dynamic") for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
+    f.write("\\multicolumn{7}{l}{Precision / recall (95\\% intervals)} \\\\\n")
+    for lab, tp, pr, gt in (("Static", tpS, predS, nS), ("Periodic", tpP, predP, nP), ("Not persistent", tpN, predN, nN)):
+        f.write(f"\\multicolumn{{7}}{{l}}{{\\quad {lab}: {tp/pr:.3f} {ci(tp, pr)} / {tp/gt:.3f} {ci(tp, gt)}}} \\\\\n")
+    f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e0 e1 e2 e3 e3_full e4 e5 e5_choice e5_confusion e5_full fix")

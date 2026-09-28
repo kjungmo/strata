@@ -5,13 +5,15 @@
   xmin=7, xmax=101, ymin=-0.03, ymax=0.85, xtick={8,16,24,32,40,48,56,64,72,80,88,96},
   xticklabels={}, ylabel={Periodic FPR (of 5)},
   grid=major, grid style={gray!20}, tick label style={font=\scriptsize}, label style={font=\small},
-  legend style={font=\scriptsize, at={(0.5,1.03)}, anchor=south, legend columns=4}, legend cell align=left]
+  legend style={font=\scriptsize, at={(0.5,1.03)}, anchor=south, legend columns=3}, legend cell align=left]
 \addplot[const plot, thick, gray, densely dashed] table[x=len,y=fpr] {figures/data/e2_fpr_pre.dat};
 \addplot[const plot, thick, orange!80!black] table[x=len,y=fpr] {figures/data/e2_fpr_mid.dat};
+\addplot[const plot, thick, violet!70!black] table[x=len,y=fpr] {figures/data/e2_fpr_one.dat};
 \addplot[const plot, very thick, blue!70!black] table[x=len,y=fpr] {figures/data/e2_fpr_post.dat};
+\addplot[const plot, thin, violet!70!black, densely dotted] table[x=len,y=reffpr] {figures/data/e2_fpr_one.dat};
 \addplot[const plot, thin, blue!70!black, densely dotted] table[x=len,y=reffpr] {figures/data/e2_fpr_post.dat};
 \draw[gray!70, dashed] (axis cs:64,-0.03) -- (axis cs:64,0.85);
-\legend{v0.1.0, centred, calibrated, calibrated (no pruning)}
+\legend{v0.1.0, centred, single read-out, spent, single (no pruning), spent (no pruning)}
 \end{axis}
 \begin{axis}[at={(fpr.south west)}, anchor=north west, yshift=-4pt,
   width=0.82\linewidth, height=0.24\linewidth,
@@ -21,11 +23,12 @@
   grid=major, grid style={gray!20}, tick label style={font=\scriptsize}, label style={font=\small}]
 \addplot[const plot, thick, gray, densely dashed] table[x=len,y=tpr] {figures/data/e2_fpr_pre.dat};
 \addplot[const plot, thick, orange!80!black] table[x=len,y=tpr] {figures/data/e2_fpr_mid.dat};
+\addplot[const plot, thick, violet!70!black] table[x=len,y=tpr] {figures/data/e2_fpr_one.dat};
 \addplot[const plot, very thick, blue!70!black] table[x=len,y=tpr] {figures/data/e2_fpr_post.dat};
 \addplot[const plot, thin, blue!70!black, densely dotted] table[x=len,y=reftpr] {figures/data/e2_fpr_post.dat};
 \draw[gray!70, dashed] (axis cs:64,-0.05) -- (axis cs:64,1.05);
 \end{axis}
 \end{tikzpicture}
-\caption{\textbf{Periodic false- and true-positive rates against read-out length (E2)}, from the real \code{LayeredMap}, a fresh map per length, $T{=}8$, $H{=}3$, $\amin{=}0.3$, for the three engine versions of Table~\ref{tab:fix}. The dotted line applies the calibrated predicate to a non-pruning reference model fed the same streams. The dashed vertical marks the $n{=}64$ read-out of Table~\ref{tab:e2}. The v0.1.0 and centred TPR curves coincide at 2/3. Plotted from \code{e2\_rates\_vs\_length.csv} and its two archived counterparts.}
+\caption{\textbf{Periodic false- and true-positive rates against read-out length (E2)}, from the real \code{LayeredMap}, a fresh map per length, $T{=}8$, $H{=}3$, $\amin{=}0.3$, for the four engine versions of Table~\ref{tab:fix}. The dotted lines apply the single-read-out and the spent predicate to a non-pruning reference model fed the same streams (lower panel: spent only). The dashed vertical marks the $n{=}64$ read-out of Table~\ref{tab:e2}. The v0.1.0 and centred TPR curves coincide at 2/3. Plotted from \code{e2\_rates\_vs\_length.csv} and its three archived counterparts.}
 \label{fig:e2fpr}
 \end{figure}
