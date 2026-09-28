@@ -119,12 +119,16 @@ Persistence Filter, and it is what makes transient clutter fade.
 
 ### 3.4 Schmitt-trigger graduate / demote
 ```
-graduate: !graduated && p >= graduate_prob && observations >= min_observations  -> graduated = true
-demote  :  graduated && p <= demote_prob                                        -> graduated = false
+graduate: !graduated && !periodic && p >= graduate_prob && observations >= min_observations  -> graduated = true
+demote  :  graduated && (p <= demote_prob || periodic)                                     -> graduated = false
 ```
 The two thresholds (with `demote_prob < graduate_prob`) form the hysteresis band
 that prevents flicker. A graduated cell is **Static** — it belongs to the durable
-map.
+map. `periodic` (§3.5) keeps a semi-static cell out of the static layer; it has
+no band of its own, but because the amplitude is mean-centred it can only fire on
+a cell that has been observed free in a sizeable fraction of its touched windows
+(`amplitude <= 4 m (1 - m)` for touched-window occupancy mean `m`, so the default
+`periodic_amplitude_min = 0.3` needs roughly 8–92 % occupancy).
 
 ### 3.5 FreMEn periodicity
 When `enable_periodicity` is set, every touched cell feeds its per-window state
@@ -134,6 +138,14 @@ into `PeriodicityModel`, which keeps incremental Fourier coefficients over a
 - `predict(phase) → P[0,1]` — predicted occupancy at a given window phase
   (`0.5` when the cell is unknown);
 - `amplitude` — the dominant-harmonic magnitude (periodicity strength).
+
+The coefficients are **mean-centred** as in FreMEn:
+`γ_k = (1/n) Σ_w (o_w − ō) e^{i(k+1)ωw}` over the `n` touched windows, computed
+incrementally by also accumulating `Σ_w e^{i(k+1)ωw}`; the amplitude is
+`max_k 2|γ_k|`. A cell that is occupied (or free) in every touched window
+therefore has amplitude exactly 0 regardless of *when* it is observed — without
+centring, the amplitude measures the phase coverage of the observations, and a
+wall seen on a revisit loop commensurate with the period reads as Periodic.
 
 A cell whose amplitude reaches `periodic_amplitude_min` is classified
 **Periodic**. **The amplitude is only meaningful after a full period has been
