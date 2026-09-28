@@ -5,10 +5,11 @@
   \providecommand{\doi}[1]{doi: #1}\else
   \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
 
-\bibitem[Berrio et~al.(2021)Berrio, Worrall, Shan, and Nebot]{berrio2021longterm}
+\bibitem[Berrio et~al.(2022)Berrio, Worrall, Shan, and Nebot]{berrio2021longterm}
 J.~S. Berrio, S.~Worrall, M.~Shan, and E.~Nebot.
 \newblock Long-term map maintenance pipeline for autonomous vehicles.
-\newblock \emph{IEEE Transactions on Intelligent Transportation Systems}, 23\penalty0 (8):\penalty0 10427--10440, 2021.
+\newblock \emph{IEEE Transactions on Intelligent Transportation Systems}, 23\penalty0 (8):\penalty0 10427--10440, 2022.
+\newblock \doi{10.1109/TITS.2021.3094485}.
 
 \bibitem[Biber and Duckett(2005)]{biber2005dynamicmaps}
 P.~Biber and T.~Duckett.
@@ -24,7 +25,8 @@ D.~Duberg and P.~Jensfelt.
 \bibitem[Gil et~al.(2025)Gil, Lee, Kim, and Kim]{gil2025elite}
 H.~Gil, D.~Lee, G.~Kim, and A.~Kim.
 \newblock {ELite}: Ephemerality meets {LiDAR}-based lifelong mapping.
-\newblock In \emph{2025 IEEE International Conference on Robotics and Automation (ICRA)}, 2025.
+\newblock In \emph{2025 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3312--3319, 2025.
+\newblock \doi{10.1109/ICRA55743.2025.11127618}.
 
 \bibitem[Hornung et~al.(2013)Hornung, Wurm, Bennewitz, Stachniss, and Burgard]{hornung2013octomap}
 A.~Hornung, K.~M. Wurm, M.~Bennewitz, C.~Stachniss, and W.~Burgard.
@@ -41,13 +43,14 @@ G.~Kim and A.~Kim.
 \bibitem[Kim and Kim(2022)]{kim2022ltmapper}
 G.~Kim and A.~Kim.
 \newblock {LT}-mapper: A modular framework for {LiDAR}-based lifelong mapping.
-\newblock In \emph{2022 IEEE International Conference on Robotics and Automation (ICRA)}, 2022.
+\newblock In \emph{2022 International Conference on Robotics and Automation (ICRA)}, pages 7995--8002, 2022.
+\newblock \doi{10.1109/ICRA46639.2022.9811916}.
 
 \bibitem[Krajn\'{i}k et~al.(2014)Krajn\'{i}k, Fentanes, Cielniak, Dondrup, and Duckett]{krajnik2014spectral}
 T.~Krajn\'{i}k, J.~P. Fentanes, G.~Cielniak, C.~Dondrup, and T.~Duckett.
 \newblock Spectral analysis for long-term robotic mapping.
 \newblock In \emph{2014 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3706--3711, Hong Kong, China, 2014.
-\newblock \doi{10.1109/ICRA.2014.6907393}.
+\newblock \doi{10.1109/ICRA.2014.6907396}.
 
 \bibitem[Krajn\'{i}k et~al.(2017)Krajn\'{i}k, Fentanes, Santos, and Duckett]{krajnik2017fremen}
 T.~Krajn\'{i}k, J.~P. Fentanes, J.~M. Santos, and T.~Duckett.
@@ -137,5 +140,6 @@ G.~D. Tipaldi, D.~Meyer-Delius, and W.~Burgard.
 L.~Yang, S.~M. Prakhya, S.~Zhu, and Z.~Liu.
 \newblock Lifelong 3d mapping framework for hand-held \& robot-mounted {LiDAR} mapping systems.
 \newblock \emph{IEEE Robotics and Automation Letters}, 9\penalty0 (11):\penalty0 9446--9453, 2024.
+\newblock \doi{10.1109/LRA.2024.3417113}.
 
 \end{thebibliography}
