@@ -10,7 +10,8 @@
 // agree; PeriodicityModel is exercised directly because LayeredMap does not expose
 // amplitude. Deterministic: aperiodic patterns precomputed from eval::kSeed.
 // ref_false_alarm is the mirror model's Bonferroni-adjusted Chernoff bound H*B(dchi)
-// (the significance term of the calibrated test; Periodic needs it <= 0.1).
+// (the significance term of the calibrated test; with the shipped spending rule
+// Periodic needs it <= 0.2 T / (n (n + 1)) at touch count n).
 #include <array>
 #include <iostream>
 #include <random>
@@ -45,9 +46,10 @@ LayeredMapParams params() {
   p.prune_prob = 0.05;
   p.enable_periodicity = true;
   p.periodic_amplitude_min = 0.3;
-  // Nominal level of the calibrated significance test, chosen by E0 on seeds
-  // disjoint from this experiment (e0_calibration.cpp); equal to the shipped default.
-  p.periodic_false_alarm = 0.1;
+  // Shipped rule: level 0.2 spent over the touch count, chosen by E5 on seeds
+  // disjoint from this experiment (e5_trajectory.cpp); equal to the shipped default.
+  p.periodic_false_alarm = 0.2;
+  p.periodic_alpha_spending = true;
   p.periodicity.period_windows = kPeriod;
   p.periodicity.n_harmonics = kHarmonics;
   return p;
@@ -188,7 +190,8 @@ int main() {
       const bool per = m.classify(c.id) == CellClass::Periodic;
       if (c.gt_periodic && per) ++ltp;
       if (!c.gt_periodic && per) { ++lfp; fps += (fps.empty() ? "" : ";") + c.name; }
-      const bool rper = ref.isPeriodic(c.id, pp.periodic_amplitude_min, pp.periodic_false_alarm);
+      const bool rper = ref.isPeriodic(c.id, pp.periodic_amplitude_min, pp.periodic_false_alarm,
+                                       pp.periodic_alpha_spending);
       if (c.gt_periodic && rper) ++rtp;
       if (!c.gt_periodic && rper) { ++rfp; rfps += (rfps.empty() ? "" : ";") + c.name; }
     }

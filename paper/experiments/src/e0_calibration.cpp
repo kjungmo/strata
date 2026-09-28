@@ -1,5 +1,7 @@
-// E0 — Calibration of the periodic significance test (run BEFORE E2; disjoint seeds).
-// Chooses the nominal false-alarm level alpha of LayeredMapParams::periodic_false_alarm.
+// E0 — Calibration of the periodic significance test at ONE read-out (run BEFORE E2;
+// disjoint seeds). Chooses the level alpha of the single-read-out rule
+// (periodic_alpha_spending = false). The shipped rule spends its level over the touch
+// count and is calibrated at trajectory level by E5 (e5_trajectory.cpp).
 // Seeds: kCalSeed = 20260928 + offsets, disjoint from every evaluation seed
 // (eval::kSeed = 12345 plus offsets in [0, 1500] used by E1-E4).
 //
@@ -49,6 +51,7 @@ LayeredMapParams e2Params(double alpha) {  // identical to e2_periodicity.cpp pa
   p.min_observations = 5; p.prune_prob = 0.05; p.enable_periodicity = true;
   p.periodic_amplitude_min = kAmin; p.periodicity.period_windows = 8;
   p.periodicity.n_harmonics = 3; p.periodic_false_alarm = alpha;
+  p.periodic_alpha_spending = false;   // E0 calibrates the single-read-out rule
   return p;
 }
 }  // namespace

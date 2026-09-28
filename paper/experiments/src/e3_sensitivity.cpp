@@ -48,7 +48,7 @@ struct Result {
 
 Result run(double graduate_prob, double demote_prob, double decay, bool periodicity) {
   LayeredMapParams p = base();
-  p.enable_periodicity = periodicity;  // defaults T=24, H=2, a_min=0.3, alpha=0.1 when on
+  p.enable_periodicity = periodicity;  // defaults T=24, H=2, a_min=0.3, delta=0.2 spent (E5) when on
   p.graduate_prob = graduate_prob;
   p.demote_prob = demote_prob;
   p.survival_decay = decay;

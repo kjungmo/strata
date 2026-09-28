@@ -1,0 +1,6 @@
+delta,worst_wilson_hi_1024,worst_ever_count,door_e2_p8_median,door_shipped_p24_median,meets_target,selected
+0.01,0.00191705,0,34,33,1,0
+0.02,0.00191705,0,32,30,1,0
+0.05,0.00191705,0,30,26,1,0
+0.1,0.00282686,1,27,24,1,0
+0.2,0.00363893,2,25,24,1,1

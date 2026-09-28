@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build and run the full strata_core evaluation harness (E0 calibration, E1-E4).
+# Build and run the full strata_core evaluation harness (E0/E5 calibration, E1-E5).
 # Reproduction: bash paper/experiments/run_all.sh  (from the worktree root)
 set -euo pipefail
 
@@ -12,7 +12,8 @@ cmake --build "${BUILD}" -j
 
 mkdir -p "${HERE}/results"
 cd "${HERE}"   # executables write CSVs to ./results
-"${BUILD}/e0_calibration"      # picks periodic_false_alarm on held-out seeds
+"${BUILD}/e0_calibration"      # single-read-out level on held-out seeds
+"${BUILD}/e5_trajectory"       # trajectory level: picks the shipped spent level, evaluates it
 "${BUILD}/e1_static_quality"
 "${BUILD}/e2_periodicity"
 "${BUILD}/e3_sensitivity"
