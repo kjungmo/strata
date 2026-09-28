@@ -25,7 +25,7 @@ constexpr double kRes = 1.0;
 constexpr int kWindows = 40;
 constexpr double kVoxel = 1.0;
 
-LayeredMapParams params() {
+LayeredMapParams params(bool periodicity) {
   LayeredMapParams p;
   p.layer_interval = 1;
   p.l_hit = 0.85;
@@ -37,7 +37,11 @@ LayeredMapParams params() {
   p.demote_prob = 0.45;
   p.min_observations = 3;
   p.prune_prob = 0.05;
-  p.enable_periodicity = false;  // isolate static-layer quality
+  // Main run isolates static-layer quality (periodicity off). The second run
+  // enables periodicity at the shipped defaults (T=24, H=2, a_min=0.3), whose
+  // 40-window horizon covers the constant-cell leakage range n=29..40 of the
+  // uncentred amplitude.
+  p.enable_periodicity = periodicity;
   return p;
 }
 
@@ -58,8 +62,8 @@ int densMovers(int d) { return d == 0 ? 5 : (d == 1 ? 25 : 100); }
 
 }  // namespace
 
-int main() {
-  eval::Csv csv("results/e1_static_quality.csv");
+int runE1(bool periodicity, const char* path) {
+  eval::Csv csv(path);
   csv.header(
       "backend,density,n_movers,window,gt_static,pred_static,tp,precision,recall,"
       "f1");
@@ -81,7 +85,7 @@ int main() {
 
     // ---- grid2d ----
     {
-      Grid2DBackend b(meta, params());
+      Grid2DBackend b(meta, params(periodicity));
       std::set<CellId> gt;
       for (const auto& w : walls) gt.insert(gridCellId(meta, w.gx, w.gy));
       std::mt19937 rng(eval::kSeed + d);
@@ -104,7 +108,7 @@ int main() {
 
     // ---- voxel3d ----
     {
-      Voxel3DBackend b(kVoxel, params());
+      Voxel3DBackend b(kVoxel, params(periodicity));
       std::set<CellId> gt;
       for (const auto& w : walls)
         gt.insert(b.voxelId(Eigen::Vector3d(w.gx + 0.5, w.gy + 0.5, 0.5)));
@@ -127,6 +131,12 @@ int main() {
     }
   }
 
-  std::cout << "E1 done -> results/e1_static_quality.csv\n";
+  std::cout << "E1 done -> " << path << "\n";
   return csv.ok() ? 0 : 1;
+}
+
+int main() {
+  int rc = runE1(false, "results/e1_static_quality.csv");
+  rc |= runE1(true, "results/e1_static_quality_periodic.csv");
+  return rc;
 }

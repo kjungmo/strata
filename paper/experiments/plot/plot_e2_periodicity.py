@@ -31,9 +31,9 @@ CELL_STYLE = {
     "door_p4_2on2off": (GREEN, "-", "o", "periodic door (T=4, 50% duty)"),
     "door_p8_2on6off": (SKY_BLUE, "-", "o", "periodic door (T=8, 25% duty) — missed"),
     "wall_constant":   (BLACK, ":", "s", "constant wall (non-periodic GT)"),
-    "aperiodic_0":     (ORANGE, "--", "x", "aperiodic Bernoulli(0.5) mover"),
-    "aperiodic_1":     (VERMILLION, "--", "x", "aperiodic mover — false positive"),
-    "aperiodic_2":     (PURPLE, "--", "x", None),
+    "aperiodic_0":     (ORANGE, "--", "x", "aperiodic Bernoulli(0.5) mover — FP at n=64"),
+    "aperiodic_1":     (VERMILLION, "--", "x", "aperiodic mover — FP at n=64"),
+    "aperiodic_2":     (PURPLE, "--", "x", "aperiodic mover (Transient at n=64)"),
     "aperiodic_3":     (YELLOW, "--", "x", None),
 }
 CELL_ORDER = ["door_p8_4on4off", "door_p4_2on2off", "door_p8_2on6off",

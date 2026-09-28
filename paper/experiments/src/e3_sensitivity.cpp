@@ -46,8 +46,9 @@ struct Result {
   long flicker;
 };
 
-Result run(double graduate_prob, double demote_prob, double decay) {
+Result run(double graduate_prob, double demote_prob, double decay, bool periodicity) {
   LayeredMapParams p = base();
+  p.enable_periodicity = periodicity;  // defaults T=24, H=2, a_min=0.3 when on
   p.graduate_prob = graduate_prob;
   p.demote_prob = demote_prob;
   p.survival_decay = decay;
@@ -86,10 +87,9 @@ Result run(double graduate_prob, double demote_prob, double decay) {
   return {m.f1, m.precision, m.recall, m.pred, flicker};
 }
 
-}  // namespace
 
-int main() {
-  eval::Csv csv("results/e3_sensitivity.csv");
+int sweep(bool periodicity, const char* path) {
+  eval::Csv csv(path);
   csv.header(
       "graduate_prob,demote_prob,survival_decay,hysteresis_band,degenerate,"
       "final_f1,final_precision,final_recall,pred_static,flicker_transitions");
@@ -107,13 +107,24 @@ int main() {
       for (double dem : demotes) {
         if (dem > g + 1e-9) continue;
         const bool degenerate = (std::abs(dem - g) < 1e-9);
-        auto r = run(g, dem, d);
+        auto r = run(g, dem, d, periodicity);
         csv.row(g, dem, d, g - dem, degenerate ? 1 : 0, r.f1, r.precision,
                 r.recall, r.pred, r.flicker);
       }
     }
   }
 
-  std::cout << "E3 done -> results/e3_sensitivity.csv\n";
+  std::cout << "E3 done -> " << path << "\n";
   return csv.ok() ? 0 : 1;
+}
+
+}  // namespace
+
+int main() {
+  // Main sweep isolates the hysteresis band (periodicity off); the second sweep
+  // repeats it with periodicity on at the shipped defaults, where the periodic
+  // predicate can also move a wall cell in and out of the static layer.
+  int rc = sweep(false, "results/e3_sensitivity.csv");
+  rc |= sweep(true, "results/e3_sensitivity_periodic.csv");
+  return rc;
 }

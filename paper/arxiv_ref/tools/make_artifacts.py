@@ -4,7 +4,8 @@ package from the committed harness CSVs in paper/experiments/results/.
 
     python3 paper/arxiv_ref/tools/make_artifacts.py
 
-Writes figures/data/*.dat (read by pgfplots) and tables/{e1,e2,e3,e3_full,e4}.tex.
+Writes figures/data/*.dat (read by pgfplots) and tables/{e1,e2,e3,e3_full,e4,fix}.tex;
+the fix table also reads results/pre_fix_2026-09-28/ (the uncentred-amplitude code).
 No number in those files is typed by hand."""
 import csv
 from pathlib import Path
@@ -157,21 +158,121 @@ with open(TAB / "e3.tex", "w") as f:
             f.write("\\midrule\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
+e3p = rows("e3_sensitivity_periodic.csv")
+assert [(r["graduate_prob"], r["demote_prob"], r["survival_decay"]) for r in e3] == \
+       [(r["graduate_prob"], r["demote_prob"], r["survival_decay"]) for r in e3p]
+f1same = sum(r["final_f1"] == rp["final_f1"] for r, rp in zip(e3, e3p))
 with open(TAB / "e3_full.tex", "w") as f:  # [H]: placed inline in the appendix
-    f.write(HDR % "e3_sensitivity.csv")
+    f.write(HDR % "e3_sensitivity.csv, e3_sensitivity_periodic.csv")
     f.write("\\begin{table}[H]\n\\centering\n")
     f.write("\\caption{Full E3 sweep (%d configurations, 50 noisy wall cells, occupancy probability 0.6, "
             "10 movers/window, 80 windows, seed 12345). Deg.\\ marks the zero-band configuration "
-            "$p_{\\mathrm{dem}}=p_{\\mathrm{grad}}$.}\n" % len(e3))
-    f.write("\\label{tab:e3full}\n\\footnotesize\n\\begin{tabular}{ccccccccc}\n\\toprule\n")
-    f.write("$p_{\\mathrm{grad}}$ & $p_{\\mathrm{dem}}$ & $\\lambda$ & Band & Deg. & F1 & Precision & Recall & Flicker \\\\\n\\midrule\n")
-    for i, r in enumerate(e3):
+            "$p_{\\mathrm{dem}}=p_{\\mathrm{grad}}$. F1 to Flicker: periodicity off. "
+            "\\emph{Flicker, P on}: the same sweep with periodicity on at the shipped $T{=}24$, $H{=}2$, "
+            "$a_{\\min}{=}0.3$ (corrected engine; its F1 equals the periodicity-off F1 in %d of %d rows).}\n"
+            % (len(e3), f1same, len(e3)))
+    f.write("\\label{tab:e3full}\n\\footnotesize\n\\begin{tabular}{cccccccccc}\n\\toprule\n")
+    f.write("$p_{\\mathrm{grad}}$ & $p_{\\mathrm{dem}}$ & $\\lambda$ & Band & Deg. & F1 & Precision & Recall & Flicker & Flicker, P on \\\\\n\\midrule\n")
+    for i, (r, rp) in enumerate(zip(e3, e3p)):
         f.write(f"{r['graduate_prob']} & {r['demote_prob']} & {float(r['survival_decay']):.2f} & "
                 f"{float(r['hysteresis_band']):.1f} & {'yes' if r['degenerate']=='1' else 'no'} & "
                 f"{float(r['final_f1']):.3f} & {float(r['final_precision']):.3f} & {float(r['final_recall']):.3f} & "
-                f"{r['flicker_transitions']} \\\\\n")
+                f"{r['flicker_transitions']} & {rp['flicker_transitions']} \\\\\n")
         if i % 9 == 8 and i != len(e3) - 1:
             f.write("\\midrule\n")
+    f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+# ---------------------------------------------------------------- centring fix: before / after
+PRE = "pre_fix_2026-09-28"
+
+
+def e1_leak(name):
+    """Windows t>=3 at which Static recall < 1, over the six backend/clutter runs."""
+    rr = rows(name)
+    bad = {}
+    for r in rr:
+        if int(r["window"]) >= 3 and float(r["recall"]) < 1.0:
+            bad.setdefault((r["backend"], r["density"]), []).append(int(r["window"]))
+    last = max(int(r["window"]) for r in rr)
+    fin = [float(r["recall"]) for r in rr if int(r["window"]) == last]
+    return bad, min(fin), max(fin)
+
+
+def e1_cell(name):
+    bad, lo, hi = e1_leak(name)
+    if not bad:
+        return "0 windows", (f"{lo:g}" if lo == hi else f"{lo:g}--{hi:g}")
+    ws = sorted({tuple(v) for v in bad.values()})
+    assert len(ws) == 1 and len(bad) == 6, "leak differs across runs"
+    w = ws[0]
+    return f"{len(w)} ($t{{=}}{w[0]}$--${w[-1]}$), all 6 runs", (f"{lo:g}" if lo == hi else f"{lo:g}--{hi:g}")
+
+
+def e2_sweep(name):
+    sw = rows(name)
+    fp = [int(r["fp"]) for r in sw]
+    tp = [int(r["tp"]) for r in sw]
+    wall = sum("wall_constant" in r["false_positives"].split(";") for r in sw)
+    return dict(n0=int(sw[0]["obs_length"]), n1=int(sw[-1]["obs_length"]), N=len(sw),
+                neg=int(sw[0]["gt_nonperiodic"]), pos=int(sw[0]["gt_periodic"]),
+                mfpr=sum(fp) / (len(fp) * int(sw[0]["gt_nonperiodic"])), fpmin=min(fp), fpmax=max(fp),
+                tpset=sorted(set(tp)), wall=wall, clean=sum(v == 0 for v in fp), rows=sw)
+
+
+def summ64(prefix):
+    d = {r["metric"]: r for r in rows(prefix + "e2_summary.csv")}
+    return int(d["periodic_TPR"]["note"]), int(d["periodic_FPR"]["note"]), \
+        int(d["gt_periodic"]["value"]), int(d["gt_nonperiodic"]["value"])
+
+
+def e3_tot(name):
+    rr = rows(name)
+    return sum(int(r["flicker_transitions"]) for r in rr), \
+        {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rr}
+
+
+s_pre, s_post = e2_sweep(PRE + "/e2_rates_vs_length.csv"), e2_sweep("e2_rates_vs_length.csv")
+for tag, sw in (("pre", s_pre), ("post", s_post)):
+    with open(DATA / f"e2_fpr_{tag}.dat", "w") as f:
+        f.write("len fpr fp\n")
+        for r in sw["rows"]:
+            f.write(f"{r['obs_length']} {float(r['fpr']):.6f} {r['fp']}\n")
+e1off, _ = e1_cell("e1_static_quality.csv")
+e1pre, e1pre_fin = e1_cell(PRE + "/e1_static_quality_periodic.csv")
+e1post, e1post_fin = e1_cell("e1_static_quality_periodic.csv")
+_, e1off_fin = e1_cell("e1_static_quality.csv")
+t_pre, t_post = summ64(PRE + "/"), summ64("")
+f_off, i_off = e3_tot("e3_sensitivity.csv")
+f_pre, i_pre = e3_tot(PRE + "/e3_sensitivity_periodic.csv")
+f_post, i_post = e3_tot("e3_sensitivity_periodic.csv")
+K = ("0.9", "0.3", "0.9")
+W = ("0.9", "0.9", "0.9")
+with open(TAB / "fix.tex", "w") as f:
+    f.write(HDR % ("e1_static_quality{,_periodic}.csv, e2_summary.csv, e2_rates_vs_length.csv, "
+                   "e3_sensitivity{,_periodic}.csv and " + PRE + "/"))
+    f.write("\\begin{table}[t]\n\\centering\n")
+    f.write("\\caption{Effect of centring the Fourier coefficients (\\S\\ref{subsec:fremen}), same harness, seeds and "
+            "parameters. \\emph{Pre-fix}: the uncentred amplitude of the v0.1.0 code (results kept in "
+            "\\nolinkurl{results/%s/}); \\emph{post-fix}: the corrected engine. E1 and E3 with periodicity on use "
+            "the shipped $T{=}24$, $H{=}2$, $a_{\\min}{=}0.3$; E2 uses $T{=}8$, $H{=}3$.}\n" % PRE.replace("_", "\\_"))
+    f.write("\\label{tab:fix}\n\\small\n\\begin{tabular}{lccc}\n\\toprule\n")
+    f.write("Measure & Periodicity off & On, pre-fix & On, post-fix \\\\\n\\midrule\n")
+    f.write(f"E1: windows $t\\ge3$ with Static recall $<1$ & {e1off} & {e1pre} & {e1post} \\\\\n")
+    f.write(f"E1: Static recall at $t{{=}}39$ & {e1off_fin} & {e1pre_fin} & {e1post_fin} \\\\\n\\midrule\n")
+    f.write(f"E2 at $n{{=}}64$: TPR / FPR & -- & {t_pre[0]}/{t_pre[2]} / {t_pre[1]}/{t_pre[3]} & "
+            f"{t_post[0]}/{t_post[2]} / {t_post[1]}/{t_post[3]} \\\\\n")
+    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: mean FPR & -- & {s_pre['mfpr']:.3f} & {s_post['mfpr']:.3f} \\\\\n")
+    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: FP count range (of {s_pre['neg']}) & -- & "
+            f"{s_pre['fpmin']}--{s_pre['fpmax']} & {s_post['fpmin']}--{s_post['fpmax']} \\\\\n")
+    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: lengths with constant wall Periodic & -- & "
+            f"{s_pre['wall']} of {s_pre['N']} & {s_post['wall']} of {s_post['N']} \\\\\n")
+    f.write(f"E2, $n={s_pre['n0']}$--${s_pre['n1']}$: lengths with no FP & -- & "
+            f"{s_pre['clean']} of {s_pre['N']} & {s_post['clean']} of {s_post['N']} \\\\\n\\midrule\n")
+    f.write(f"E3: total flicker, 36 configurations & {f_off} & {f_pre} & {f_post} \\\\\n")
+    f.write(f"E3: flicker at $\\pgrad{{=}}0.9$, $\\pdem{{=}}0.3$, $\\lambda{{=}}0.90$ & "
+            f"{i_off[K]['flicker_transitions']} & {i_pre[K]['flicker_transitions']} & {i_post[K]['flicker_transitions']} \\\\\n")
+    f.write(f"E3: flicker at $\\pgrad{{=}}\\pdem{{=}}0.9$, $\\lambda{{=}}0.90$ & "
+            f"{i_off[W]['flicker_transitions']} & {i_pre[W]['flicker_transitions']} & {i_post[W]['flicker_transitions']} \\\\\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
 # ---------------------------------------------------------------- E4
@@ -223,4 +324,4 @@ with open(TAB / "e4.tex", "w") as f:
             f.write("\\midrule\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
-print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e1 e2 e3 e3_full e4")
+print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e1 e2 e3 e3_full e4 fix")

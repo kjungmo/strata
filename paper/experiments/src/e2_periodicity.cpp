@@ -23,7 +23,9 @@ using namespace strata_core;
 
 namespace {
 
-constexpr int kMaxLen = 64;
+constexpr int kMaxLen = 64;     // headline read-out length
+constexpr int kSweepMax = 100;  // read-out sweep 8..100 (patterns generated to here;
+                                // the first 64 windows are identical to the 64-long run)
 constexpr int kPeriod = 8;
 constexpr int kHarmonics = 3;
 
@@ -50,7 +52,7 @@ struct Cell {
   CellId id;
   std::string name;
   bool gt_periodic;
-  std::array<bool, kMaxLen> occ;  // occupancy pattern per window
+  std::array<bool, kSweepMax> occ;  // occupancy pattern per window
 };
 
 const char* className(CellClass c) {
@@ -70,7 +72,7 @@ std::vector<Cell> makeCells() {
     c.id = id;
     c.name = n;
     c.gt_periodic = gt;
-    for (int w = 0; w < kMaxLen; ++w) c.occ[w] = fn(w);
+    for (int w = 0; w < kSweepMax; ++w) c.occ[w] = fn(w);
     cs.push_back(c);
   };
   // Periodic doors (GT positive).
@@ -83,8 +85,8 @@ std::vector<Cell> makeCells() {
   for (int a = 0; a < 4; ++a) {
     std::mt19937 rng(eval::kSeed + 500 + a);
     std::bernoulli_distribution coin(0.5);
-    std::array<bool, kMaxLen> pat;
-    for (int w = 0; w < kMaxLen; ++w) pat[w] = coin(rng);
+    std::array<bool, kSweepMax> pat;
+    for (int w = 0; w < kSweepMax; ++w) pat[w] = coin(rng);
     add(20 + a, "aperiodic_" + std::to_string(a), false,
         [pat](int w) { return pat[w]; });
   }
@@ -157,7 +159,31 @@ int main() {
   sum.row("gt_periodic", gt_pos, "");
   sum.row("gt_nonperiodic", gt_neg, "");
 
+  // (c) read-out length sweep: a fresh real LayeredMap per length L, classified
+  // after exactly L windows. The single 64-window read-out above is one point of it.
+  eval::Csv sw("results/e2_rates_vs_length.csv");
+  sw.header("obs_length,tp,fp,gt_periodic,gt_nonperiodic,tpr,fpr,false_positives");
+  sw.row("#seed", eval::kSeed, "period_windows", kPeriod, "", "", "", "");
+  for (int L = kPeriod; L <= kSweepMax; ++L) {
+    LayeredMap m(params());
+    for (int w = 0; w < L; ++w) {
+      for (const auto& c : cells) {
+        if (c.occ[w]) m.observeHit(c.id); else m.observeMiss(c.id);
+      }
+      m.tick();
+    }
+    int ltp = 0, lfp = 0;
+    std::string fps;
+    for (const auto& c : cells) {
+      const bool per = m.classify(c.id) == CellClass::Periodic;
+      if (c.gt_periodic && per) ++ltp;
+      if (!c.gt_periodic && per) { ++lfp; fps += (fps.empty() ? "" : ";") + c.name; }
+    }
+    sw.row(L, ltp, lfp, gt_pos, gt_neg, static_cast<double>(ltp) / gt_pos,
+           static_cast<double>(lfp) / gt_neg, fps.empty() ? "-" : fps);
+  }
+
   std::cout << "E2 done: TPR=" << tpr << " (" << tp << "/" << gt_pos
             << ") FPR=" << fpr << " (" << fp << "/" << gt_neg << ")\n";
-  return (amp.ok() && cls.ok() && sum.ok()) ? 0 : 1;
+  return (amp.ok() && cls.ok() && sum.ok() && sw.ok()) ? 0 : 1;
 }
