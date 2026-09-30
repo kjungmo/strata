@@ -17,57 +17,32 @@ keywords:
 
 # Abstract {-}
 
-A robot that maps the same building for weeks cannot bake every LiDAR hit
-permanently into one grid: parked carts, passing people, and doors that open on
-a schedule all burn in, and the map slowly ossifies into a record of everything
-that was ever seen rather than of what is actually there now. Lifelong mapping
-must instead hold three properties in tension at once — durability (keep the
-walls), plasticity (forget the movers), and periodicity (treat a cyclic door as
-signal, not noise). We present STRATA, a small, geometry-free
-persistence-and-periodicity engine that resolves this tension in one shared
-per-cell state machine and drives two pluggable geometry backends — a
-fixed-array 2D occupancy grid and an unbounded 3D voxel-hash — behind a single
-interface selected by one runtime string parameter. The only per-backend code
-is point-to-id mapping and the free-space ray walk; the classifier that
-graduates, demotes, prunes, and periodicity-labels every cell is shared by
-composition, not duplicated per dimension. The engine is a plain C++17 + Eigen
-library with no ROS, DDS, or PCL dependency, exercised by 49 behavior-level
-tests, so its scientific logic builds and runs deterministically in a
-second-scale CI loop. A seeded synthetic characterization suite reports that
-both backends graduate a static wall by the third window and hold recall 1.0
-thereafter (their only map-quality divergence, a clutter-induced
-static-precision gap of 0.9253 vs. 0.9758 under 100 movers per window, arises
-in the geometry backends' native sampling, not in the shared classifier);
-that 50%-duty periodic doors are detected at true-positive rate 2/3 from 25
-windows on, with no false positive on Bernoulli clutter at any read-out length
-from 8 to 100 windows (one seed, 5 aperiodic cells per length); that removing hysteresis inflates flicker from 54 to
-574 toggles on identical replayed noise (at fixed decay $\lambda=0.90$); and that the unified engine costs a
-fixed ~56 B per cell in the memory estimate (periodicity storage excluded) with no per-dimension penalty. Evaluation is synthetic and
-the tool performs no SLAM; STRATA is the persistence core meant to sit beneath
-an external localizer, released open-source as a ROS 2 package. We also report and correct two defects
-in the periodicity test of the first release. Its Fourier coefficients were not
-mean-removed, so a constant wall could be demoted from Static; with centred
-coefficients walls stay Static with periodicity on in every experiment. Its
-fixed amplitude threshold was not calibrated against sampling noise, so
-Bernoulli clutter was labelled Periodic at up to 4 of 5 cells per read-out
-length (mean false-positive rate 0.331 after centring). We replace it with a
-significance test whose false-alarm probability at one read-out is bounded by a
-Chernoff argument for iid clutter at any occupancy rate and any sampling pattern
-fixed independently of the occupancy. The live map re-tests every window, and
-at a constant level up to 953 of 2000 clutter cells are labelled Periodic at
-some window of a 1024-window run. We therefore spend the level over the touch
-count, which provably bounds by that level the probability that a clutter cell
-is ever labelled Periodic during one unpruned history, at any horizon; pruning
-restarts the history, so for pruned clutter we measure rather than prove. With
-the level set on held-out calibration seeds, at most 2 of 2000 Bernoulli
-clutter cells are ever labelled Periodic within 1024 windows in every held-out
-configuration (Wilson 95% upper limit 0.0036), while slowly varying,
-temporally correlated clutter is still flagged. Over 20 held-out scenes the
-Periodic label has precision 1.000 and recall 0.667, and the dominant remaining
-error is not periodic: 1221 of 2000 aperiodic cells end falsely Static under
-parameters without decay. The doors are detected from 25 windows instead of 8,
-and with periodicity on, flicker on noisy walls now equals that with
-periodicity off (3672 toggles), against 5472 before calibration.
+A robot that maps one building for weeks must keep walls (durability), forget
+movers (plasticity) and treat a scheduled door as signal, not noise
+(periodicity). Per-cell persistence and periodicity models already exist; the
+closest precedent is Frequency Map Enhancement (FreMEn), in the 2D grid of
+Krajník et al. (2016) and in FROctomap, while several recent LiDAR
+lifelong-mapping systems (e.g. ELite, LT-mapper) embed persistence logic inside
+full lifelong-SLAM pipelines. We present STRATA, a small, SLAM-free engine that
+combines known ingredients in one per-cell state machine — windowed log-odds
+with survival decay, a Schmitt-trigger graduation band, pruning, and a
+FreMEn-style Fourier test at one configured base period and its harmonics,
+without period selection — shared unchanged by a fixed-array 2D grid and a
+sparse 3D voxel hash that differ only in the point-to-key map and the ray walk.
+Standard inequalities give the periodic label a false-alarm bound for iid
+clutter, with the level spent over the touch count; it holds per cell history,
+so only for unpruned cells, and pruned clutter is measured. All experiments use
+hand-authored synthetic hit and miss patterns (fed directly to the engine, or as
+synthetic hit points to the two ray-casting backends); no real or simulated
+LiDAR scans are processed, and no external baseline, FreMEn included, is run.
+Both backends graduate a static wall by the third window and keep recall 1.0;
+removing hysteresis raises flicker from 54 to 574 toggles. With the level fixed
+on calibration seeds, at most 2 of 2000 Bernoulli clutter cells are ever
+labelled Periodic within 1024 windows in every held-out configuration (Wilson
+95% upper limit 0.0036), and 50%-duty doors are detected from 25 windows (8
+without the test). With periodicity off, the estimated memory is 56 B per live
+cell (evidence record and hash node only). Code:
+<https://github.com/kjungmo/strata>.
 
 # 1 Introduction
 
@@ -97,22 +72,34 @@ lifelong map therefore needs three coexisting timescales, not two: a fast-fading
 occupancy signal, a slowly-graduated durable class, and a separately-timed
 periodic class that a decay term alone would flatten into noise.
 
-The systems that come closest to solving this are heavier than the problem needs
-to be. ELite [@gil2025elite] and LT-mapper [@kim2022ltmapper] — the closest
-published twins in intent — resolve durability versus plasticity, but as parts
-of full lifelong-**SLAM** pipelines, coupled to multi-session point-cloud
-registration, place recognition, and alignment. RTAB-Map [@labbe2019rtabmap] is
-the closest engineering precedent for offering selectable 2D and 3D geometry
-under one framework, but it too is a complete SLAM system with loop closure and
-memory tiering. Each carries the persistence-and-classification logic a robot
-needs, but welded inside a much larger apparatus and to a specific map
-geometry. What is missing from the surveyed prior art is the small piece by
-itself: a standalone, SLAM-free, dependency-light engine that does only the
-graduation, forgetting, and periodicity classification, that runs under either
-2D or 3D geometry, and that a practitioner can drop beneath an external
-localizer or an existing SLAM front end.
+Per-cell models of these requirements are not new. Temporal occupancy grids
+[@arbuckle2002temporal] classify cells by their occupancy over several
+timescales and use the result to locate doors, and Mitsou and Tzafestas
+[@mitsou2007temporal] keep each cell's occupancy history to separate static,
+low-dynamic and high-dynamic cells. The closest prior work is the FreMEn line.
+Krajník et al. [@krajnik2016persistent] maintain a 2D spatio-temporal occupancy
+grid that represents the persistence and periodicity of individual cells; it
+integrates maps that gmapping builds with AMCL pose estimates as odometry,
+replaces the map server of the ROS navigation stack, and was evaluated on data
+from several days of routine autonomous patrols of an open-plan office.
+FROctomap [@krajnik2014froctomap] attaches the same spectral model to the voxels
+of a 3D octree. Several recent LiDAR lifelong-mapping systems instead place
+persistence logic inside larger pipelines. ELite [@gil2025elite] and LT-mapper
+[@kim2022ltmapper] resolve durability versus plasticity as parts of full
+lifelong-**SLAM** pipelines, coupled to multi-session point-cloud registration,
+place recognition, and alignment. RTAB-Map [@labbe2019rtabmap] offers
+selectable 2D and 3D geometry under one framework, as a complete SLAM system
+with loop closure and memory tiering. Khronos [@schmid2024khronos] generalizes
+the two-timescale idea to a metric-semantic scene graph, and MTD-Map
+[@kim2026mtdmap], concurrent with this work, maintains static, dynamic and
+transition maps from per-voxel statistics of occupancy transitions. Every
+ingredient STRATA uses therefore has precedent. What we did not find in this
+literature is their particular combination: one small, SLAM-free
+implementation that assigns each cell a discrete label through hysteresis
+graduation and pruning, is shared unchanged by a 2D grid and a 3D voxel hash,
+and bounds the false-alarm probability of its periodic label in finite samples.
 
-STRATA is that piece. The name is literal: a cell in the map carries temporal
+We present STRATA. The name is literal: a cell in the map carries temporal
 strata — Static, Periodic, and Transient layers over an Unknown baseline —
 coexisting inside one per-cell state machine, read and written by log-odds
 occupancy, survival decay, Schmitt-trigger hysteresis, and an incremental
@@ -133,21 +120,29 @@ We are explicit about scope up front (§6 consolidates the non-claims). STRATA i
 consuming instead an external `map → sensor` transform. Its evaluation is
 **synthetic only** — every number below comes from deterministic seeded
 harnesses and unit tests, not a field deployment, in contrast to the multi-day
-validations of ELite, LT-mapper, and Berrio et al. [@berrio2021longterm]. And it
-models **single-session** temporal persistence, not multi-session remapping: a
-graduated cell simply *is* the current static map, with no session versioning.
-These are the boundaries of the tool, stated as scope rather than buried as
+validations of ELite, LT-mapper, and Berrio et al. [@berrio2021longterm] — and
+it runs **no external baseline**. It models **single-session** temporal
+persistence, not multi-session remapping: a graduated cell simply *is* the
+current static map, with no session versioning. And its periodicity test checks
+**one configured base period** and its harmonics rather than selecting periods
+from a spectrum as FreMEn does. These are the boundaries of the tool, stated as scope rather than buried as
 gaps.
 
-**Contributions.** This paper makes five, each backed only by the shipped code
+**Contributions.** This paper makes six, each backed only by the shipped code
 and the synthetic suite:
 
 1. **One geometry-free engine, two geometries, one switch (by construction).**
    A single `int64`-keyed persistence-and-periodicity engine (`LayeredMap` +
-   `PeriodicityModel`) drives both a fixed-array 2D occupancy grid and an
-   unbounded 3D voxel-hash behind one `MapBackend` interface, chosen by a single
+   `PeriodicityModel`) drives both a fixed-array 2D occupancy grid and a
+   sparse 3D voxel hash behind one `MapBackend` interface, chosen by a single
    runtime string parameter, with no state-machine logic duplicated across
-   dimensions ([@fig:architecture]; §3–4).
+   dimensions ([@fig:architecture]; §3–4). Per-cell periodic grids already
+   exist in 2D and in 3D [@krajnik2016persistent; @krajnik2014froctomap], as
+   separate implementations [@fremenrepo]; what is added here is one
+   implementation that serves both, and the geometry-free part is the whole
+   persistence, graduation, pruning and classification state machine together
+   with the periodicity test, not per-identifier periodicity modelling alone,
+   which the FreMEn server already provides.
 2. **A ROS-free, deterministically testable core, shown backend-equivalent
    (design goal + measured).** The engine builds and unit-tests with a plain
    C++17 + Eigen toolchain and is exercised by 49 behavior-level tests; both
@@ -157,18 +152,28 @@ and the synthetic suite:
    window) that traces to the backends' native-geometry sampling, not to the
    classifier; a
    separate per-`integrate()` cost gap between the backends is characterized in
-   contribution 5 (§3, §5).
-3. **A specific minimal combination not previously packaged standalone.**
+   contribution 6 (§3, §5).
+3. **A minimal lifelong classifier assembled from known parts.**
    Persistence-Filter survival decay [@rosen2016persistence], Removert-motivated
    Schmitt hysteresis [@kim2020removert], ReFusion-style negative-evidence ray
    clearing [@palazzolo2019refusion], and a parallel FreMEn-lite periodicity
-   classifier [@krajnik2017fremen] whose false-alarm probability under iid
-   clutter and occupancy-independent sampling is bounded for any noise rate by
-   a Chernoff argument, at one read-out and, with its level spent over the touch
-   count, over every read-out of an unpruned history (§4.4), emitting a four-class label from one
-   dependency-light, SLAM-free module — a combination absent, in this form, from
-   the surveyed prior art (§2, §4).
-4. **A mechanistic characterization of the shared classifier (measured).**
+   test at a fixed period [@krajnik2017fremen], emitting a four-class label from
+   one dependency-light, SLAM-free module, with every equation transcribed from
+   the shipped code and the implementation-versus-specification differences
+   stated explicitly (§4.8).
+4. **A calibrated periodic label.** A known moment-generating-function bound
+   for quadratic forms of sub-Gaussian vectors [@hsu2012tail, Remark 2],
+   applied to the floating-mean periodogram [@zechmeister2009gls], bounds the
+   probability that the periodic label fires on iid clutter under
+   occupancy-independent sampling, for any noise rate, at one read-out (§4.4);
+   spending the level over the touch count, a Bonferroni-type allocation in the
+   spirit of alpha spending [@lan1983discrete], extends the bound to every
+   read-out of an unpruned history ([@sec:spend]). The inequalities are
+   standard; the contribution is their use for per-cell occupancy periodicity
+   and the measurement that repeated read-outs inflate false Periodic labels
+   without such a correction.
+5. **A mechanistic characterization of the shared classifier (measured,
+   synthetic).**
    50%-duty periodicity is detected cleanly (dominant-harmonic amplitude
    0.653/0.707) at true-positive rate 2/3 from 25 windows on, with the single
    miss diagnosed as a prune/maturity race; after calibration, random clutter
@@ -178,13 +183,20 @@ and the synthetic suite:
    953 of 2000 at a constant level (E5); and hysteresis is the dominant stabilizer — removing it yields 574
    flicker toggles at F1 0.810 versus 54 toggles at F1 1.000 on identical
    replayed noise at the same decay ($\lambda=0.90$) (§5).
-5. **A unified engine that adds no per-dimension cost, released as a
-   reproducible tool (measured).** Estimated memory is a fixed ~56 B per live cell and
-   per-window cost tracks live-cell count linearly; the 5.5–15.0× per-`integrate()`
-   gap between backends is entirely 3D free-space voxel proliferation (4.4–10.0×
-   more live cells), geometry rather than the engine. The whole system ships as
+6. **A unified engine that adds no per-dimension cost, released as a
+   reproducible tool (measured).** Estimated memory is a fixed ~56 B per live
+   cell with periodicity off, and per-window cost tracks live-cell count
+   linearly; the 5.5–15.0× per-`integrate()` gap between backends is explained
+   by 3D free-space voxel proliferation (4.4–10.0× more live cells), geometry
+   rather than the engine. The whole system ships as
    an open-source ROS 2 package with a documented I/O contract and a seeded
    harness whose figures regenerate from measured CSVs (§3, §5).
+
+On this synthetic suite, the results are consistent with a lifelong-mapping
+core that is written once and shared across dimensions, with the per-dimension
+cost arising in each backend's geometry rather than in the shared engine.
+Whether the calibrated test improves on FreMEn's own component selection, and
+how the classifier behaves on real LiDAR data, remain to be evaluated (§6).
 
 STRATA is available at `github.com/kjungmo/strata` as a ROS 2 Humble package
 under an open-source license, with a thin ROS adapter node and a reusable
@@ -197,11 +209,12 @@ states the limitations, boundaries, and reproducibility of the tool (§6–7).
 
 # 2 Related Work
 
-We organize prior work into six themes and, for each entry, state STRATA's
+We organize prior work into seven themes and, for each entry, state STRATA's
 exact relation rather than a generic contrast.
 
 **Lifelong and persistent mapping.** ELite [@gil2025elite] and LT-mapper
-[@kim2022ltmapper] are STRATA's closest published twins. ELite computes a
+[@kim2022ltmapper] are recent LiDAR lifelong-mapping systems with the same aim
+as STRATA. ELite computes a
 two-timescale ephemerality score per point (within-session dynamic vs.
 across-session transient) and drives a Lifelong/Static/Delta map triad;
 LT-mapper composes a live map, a meta map, and a delta map through explicit
@@ -209,32 +222,51 @@ LT-SLAM alignment, LT-removert removal, and LT-map graduation stages. Both
 are full lifelong-SLAM pipelines with multi-session point-cloud registration
 and place recognition. STRATA implements only the graduation half of that
 pattern — one per-cell state machine (Static/Periodic/Transient/Unknown,
-§4.5) inside a ROS-free engine, with no scan matching, no loop closure, and
-no cross-session alignment. STRATA is not a competing full system; it is the
-persistence-and-classification core that ELite's triad and LT-mapper's
-live-to-static pipeline wrap around, and its measured evaluation (§5) is
-correspondingly narrower — a synthetic, single-session characterization, not
-the field-scale validation ELite and LT-mapper report. Khronos
+§4.5) inside a ROS-free engine, with no scan matching, no loop closure, no
+cross-session alignment, and no semantics. STRATA is not a competing full
+system; it is the persistence-and-classification core that ELite's triad and
+LT-mapper's live-to-static pipeline wrap around, and its measured evaluation
+(§5) is correspondingly narrower — a synthetic, single-session
+characterization, not the real-data and field-scale validation ELite and
+LT-mapper report. Khronos
 [@schmid2024khronos] generalizes the same two-timescale idea to an
 active-window/long-term-reconstruction split with semantics and a scene
 graph; STRATA stays at the raw per-cell level with no object or scene-graph
-layer, a narrower and cheaper instance of the same principle. Biber and
-Duckett [@biber2005dynamicmaps] and Meyer-Delius et al.
-[@meyerdelius2010temporary] are the foundational multi-timescale and
-static/temporary-split ideas STRATA's window/decay/hysteresis/periodicity
-combination descends from. RTAB-Map [@labbe2019rtabmap] is the closest
-engineering precedent for selectable 2D/3D geometry inside one shipped
+layer, a narrower and cheaper instance of the same principle. Classifying
+cells by their temporal behaviour predates these systems. Temporal occupancy
+grids [@arbuckle2002temporal] classify cells by occupancy over several
+timescales with planar laser range-finders and locate doors in a real-world
+setting; Mitsou and Tzafestas [@mitsou2007temporal] index every cell's
+occupancy history over time and separate static, low-dynamic and high-dynamic
+cells, in simulation with known poses. Biber and Duckett
+[@biber2005dynamicmaps] and Meyer-Delius et al. [@meyerdelius2010temporary]
+contribute the multi-timescale and static/temporary-split ideas STRATA's
+window/decay/hysteresis/periodicity combination descends from. RTAB-Map
+[@labbe2019rtabmap] offers selectable 2D/3D geometry inside one shipped
 framework, coupled to full SLAM and STM/WM/LTM memory management; STRATA
 narrows this to the mapping/persistence layer alone, behind a `MapBackend`
 interface selected by a single string parameter, consuming an externally
 supplied pose rather than estimating one. Berrio et al. [@berrio2021longterm]
 report an 18-month field deployment of the same purge/promote pattern STRATA
 implements as a Schmitt trigger (§4.3) — field-scale evidence for the pattern
-that STRATA currently lacks for itself. Yang et al. [@yang2025lifelong3d]
+that STRATA currently lacks for itself, and Pomerleau et al.
+[@pomerleau2014longterm] infer online whether each 3D point is static or
+dynamic from repeated observations, over seven months of data. Yang et al.
+[@yang2025lifelong3d]
 keep positive/negative version deltas over a base map so any past session can
 be reconstructed; STRATA does no session versioning at all — a graduated cell
 is simply part of the current static map, its history implicit in log-odds
-and observation counts, not explicitly replayable.
+and observation counts, not explicitly replayable. For 2D occupancy grids,
+Stefanini et al. [@stefanini2022efficient; @stefanini2023safe] update a LiDAR
+occupancy map for long-term operation while accounting for localisation error,
+with the aim of keeping the map current rather than modelling periodic change.
+Two 2026 works, concurrent with this one, produce layered outputs: MTD-Map
+[@kim2026mtdmap] encodes the direction and duration of occupancy transitions
+per voxel in one stage and outputs static, dynamic and transition maps,
+evaluated on real datasets against established baselines, and Chen and Sun
+[@chen2026layer] assign map content to long-term static, potentially dynamic
+and removed observed-dynamic layers from geometric and semantic evidence.
+Neither describes an explicit periodic class.
 
 **Persistence and forgetting.** The Persistence Filter [@rosen2016persistence]
 recursively estimates each feature's survival probability from a Bayesian
@@ -247,13 +279,35 @@ occupancy accumulation, with decay and hysteresis layered on top. Tipaldi et
 al. [@tipaldi2013lifelong] and Saarinen et al. (iMac) [@saarinen2012imac]
 model each cell as a two-state Markov process with a recency-weighted or
 online-learned transition rate — the principled, per-cell-learned form of
-"how fast a cell should forget." `survival_decay` is a single global
+"how fast a cell should forget." Perpetua [@saavedraruiz2025perpetua] combines
+persistence and emergence filters under multiple hypotheses for features that
+disappear and reappear. `survival_decay` is a single global
 constant, a constant-rate special case of that formalism; STRATA states this
 as a documented simplification (§6), not an unacknowledged gap.
 
 **Periodicity.** FreMEn [@krajnik2017fremen] is the direct counter-argument
 STRATA's Periodic class answers: a cell's occupancy can be a periodic
-temporal signal, and a flat decay erases exactly that structure. STRATA's
+temporal signal, and a flat decay erases exactly that structure. FreMEn models
+cyclic occupancy with a few Fourier components selected by amplitude from a
+set of candidate periods, and it is the closest prior work to STRATA. Krajník
+et al. [@krajnik2016persistent] use it in a 2D spatio-temporal occupancy grid
+in which each cell represents both persistence (through the mean time between
+state changes) and periodicity; the grid integrates one map per patrol,
+replaces the ROS map server, and predicts time-specific maps for localisation
+and planning. FROctomap [@krajnik2014froctomap] applies the same model to 3D
+octree voxels, the exploration work of Krajník et al.
+[@krajnik2015exploration] displays the static and daily-periodic cells of such
+a grid, and the open-source FreMEn repository [@fremenrepo] provides separate
+2D-grid and octree packages, and also a generic server that maintains FreMEn
+models of arbitrary binary states keyed by an identifier. Warped hypertime
+[@krajnik2019warped] extends the idea to pseudo-periodic variation. STRATA is
+narrower than this family in period modelling: it tests one configured base
+period and its harmonics and does not select periods. It differs from the
+family in two respects: its primary output is a discrete class, reached
+through a hysteresis band and pruning, rather than a predicted occupancy
+probability; and it attaches a finite-sample false-alarm bound to the periodic
+label. It also updates once per window, whereas the grid of Krajník et al.
+[@krajnik2016persistent] integrates one map per patrol. STRATA's
 `PeriodicityModel` (§4.4) runs FreMEn's incremental-Fourier accumulation in
 parallel with decay and graduation, so an oscillating cell is classified
 Periodic rather than mis-graduated to Static or mis-pruned as Transient — the
@@ -317,17 +371,39 @@ runtime string parameter (§3); no plugin XML, no dynamic loading, no
 `ament_index` registry. This is the right choice at two backends; pluginlib
 becomes the right choice only once backend count grows past what a single
 `if`/`else` factory reads clearly. RTAB-Map [@labbe2019rtabmap] is re-cited
-here as the closest existing shipped system offering selectable 2D/3D
-geometry under one framework, narrowed by STRATA to a persistence-only
+here as a shipped system offering selectable 2D/3D geometry under one
+framework, narrowed by STRATA to a persistence-only
 module with the classifier shared by composition rather than duplicated per
 geometry — the only per-backend code is point-to-`CellId` mapping and the
 free-space ray walk.
 
-None of the surveyed prior art offers, as a standalone, SLAM-free,
-dependency-light module, the specific combination STRATA ships: survival
-decay, Schmitt-trigger hysteresis, negative-evidence ray clearing, and
-parallel FreMEn-lite periodicity classification, unified behind one
-geometry-free engine and selectable between two map geometries at runtime.
+Relative to the works above, the structural difference is narrow.
+Periodicity modelling that does not depend on geometry already exists, since
+the FreMEn server models any binary state that has an identifier
+[@fremenrepo]. What STRATA shares, unchanged, between its 2D and 3D
+ray-casting backends is the full cell-level state machine: windowed log-odds
+with survival decay, graduation and demotion hysteresis, pruning, layer
+classification and the periodicity test.
+
+**Periodicity tests and error control.** The periodic test uses the
+generalised Lomb–Scargle periodogram [@zechmeister2009gls]. Analytic
+false-alarm probabilities for periodogram peaks, including the search over
+frequencies, are derived under white Gaussian noise [@baluev2008]. For binary
+series, Schmidtke and Vetter [@schmidtke2026binary] test a constant success
+probability against a periodic one of unspecified period, with a level that
+holds asymptotically. STRATA addresses a narrower question: a finite-sample,
+distribution-free bound for independent Bernoulli occupancy at one configured
+period and its harmonics, under any sampling pattern fixed independently of
+the occupancy. The calibrated false-alarm bound of §4.4 obtains it from the
+moment-generating-function bound for quadratic forms of sub-Gaussian vectors of
+Hsu et al. [@hsu2012tail, Remark 2], followed by Markov's inequality and a
+union bound, with the variance proxy of Hoeffding's lemma [@hoeffding1963]; the
+result is an application of that bound, not a new inequality. Spending the
+level over the touch count ([@sec:spend]) is a Bonferroni-type allocation over
+repeated looks, related to the alpha-spending functions of group-sequential
+trials [@lan1983discrete]; time-uniform bounds from nonnegative
+supermartingales [@howard2020timeuniform] are the modern alternative for
+repeated testing, which we do not use.
 
 # 3 System Overview and Architecture {#sec:system}
 
@@ -523,7 +599,11 @@ $p\ge p_{\text{grad}}>p_{\text{dem}}$.
 ## 4.4 FreMEn-lite periodicity {#sec:periodicity}
 
 In parallel with occupancy, each touched cell (when `enable_periodicity`) feeds
-an incremental Fourier model in the spirit of FreMEn [@krajnik2017fremen]. With
+an incremental Fourier model in the spirit of FreMEn [@krajnik2017fremen]. The
+model is restricted to one configured base period and its first harmonics;
+unlike FreMEn, it does not select periods from a candidate set, so a cycle
+whose frequency is not a harmonic of the base frequency is outside its scope.
+With
 the per-window occupancy sample $v=[\text{occ}]\in\{0,1\}$ and phase index $t$,
 `gather` accumulates:
 
@@ -597,6 +677,14 @@ harmonic, both an effect size and significance at a nominal level $\delta$
 $$\text{periodic}=\texttt{enable\_periodicity}\land n\ge T\land\exists k:\
 \big[a_{(k)}\ge a_{\min}\land H\,B(d_k)\le\delta\big].$$
 
+The proposition below bounds the false-alarm probability of this test. It is
+an application of known results, not a new inequality: the
+moment-generating-function step is the bound of Hsu et al.
+[@hsu2012tail, Remark 2] for a quadratic form of a sub-Gaussian vector, here
+with the identity matrix and Hoeffding's variance proxy $\tfrac14$, and the
+rest is Markov's inequality and a union bound over the harmonics. We state it
+with the explicit constants that the shipped test uses.
+
 *Proposition (calibrated false-alarm bound).* Let the $n$ touched windows be
 fixed independently of the occupancy, and let the $v_t$ be independent
 Bernoulli($m$) for one unknown $m\in[0,1]$. If $M_k$ is non-singular, then
@@ -608,11 +696,12 @@ $y_k=\sum_t\xi_t\tilde z_t$ with $\xi_t=v_t-m$. Put $b_t=M_k^{-1/2}\tilde z_t$
 and $u=\sum_t\xi_tb_t$, so $d_k=\|u\|^2$ and $\sum_tb_tb_t^\top=I_2$. Each
 $\xi_t$ has mean zero and lies in an interval of length 1, so Hoeffding's lemma
 [@hoeffding1963] gives $\mathbb E e^{s\xi_t}\le e^{s^2/8}$, and by independence
-$\mathbb E e^{w^\top u}\le e^{\|w\|^2/8}$ for every $w\in\mathbb R^2$. With
-$g\sim\mathcal N(0,I_2)$ independent of $u$ and $0\le\lambda<2$,
-$\mathbb E_g e^{\sqrt{2\lambda}g^\top u}=e^{\lambda\|u\|^2}$, so
-$\mathbb E e^{\lambda d_k}\le\mathbb E_g e^{\lambda\|g\|^2/4}=(1-\lambda/2)^{-1}$.
-Markov's inequality with $\lambda=2-1/r$ gives $2re^{1-2r}$ for $r>\tfrac12$.
+$\mathbb E e^{w^\top u}\le e^{\|w\|^2/8}$ for every $w\in\mathbb R^2$. Following
+Hsu et al. [@hsu2012tail], let $g\sim\mathcal N(0,I_2)$ be independent of $u$;
+for $0\le\eta<2$,
+$\mathbb E_g e^{\sqrt{2\eta}g^\top u}=e^{\eta\|u\|^2}$, so
+$\mathbb E e^{\eta d_k}\le\mathbb E_g e^{\eta\|g\|^2/4}=(1-\eta/2)^{-1}$.
+Markov's inequality with $\eta=2-1/r$ gives $2re^{1-2r}$ for $r>\tfrac12$.
 $B$ decreases strictly on $(\tfrac12,\infty)$, so $H\,B(d_k)\le\delta$ exactly
 when $d_k\ge r^\star$ with $B(r^\star)=\delta/H$, and the union bound over the
 $H$ harmonics gives probability at most $\delta$. $\square$
@@ -634,7 +723,7 @@ $\delta\in\{0.01,0.02,0.05,0.1,0.2\}$ whose measured per-read-out false-alarm
 rate stays at or below 0.01, both over a null grid and in the live pipeline,
 and it selected $\delta=0.1$ ([@tbl:e0], §5.1). That rule compares point
 estimates: the worst pipeline rate at $\delta=0.1$, 7 of 1000 cells, has a 95%
-Wilson upper limit of 0.0144, so the calibration does not establish the 0.01
+Wilson upper limit of 0.0144 [@wilson1927], so the calibration does not establish the 0.01
 target with confidence. Only $\delta$ is held out; the test itself was
 introduced after the amplitude-only rule produced false positives on the E2
 seed, so E2 is not a blind evaluation of its design. More importantly, one
@@ -652,7 +741,11 @@ the touch count,
 
 $$\delta_n=\delta\,\frac{T}{n(n+1)}\quad(n\ge T),\qquad \sum_{n\ge T}\delta_n=\delta,$$
 
-where the sum telescopes because $T/(n(n+1))=T/n-T/(n+1)$.
+where the sum telescopes because $T/(n(n+1))=T/n-T/(n+1)$. This is a
+Bonferroni-type allocation of the level over the sequence of read-outs, in the
+spirit of the alpha-spending functions used for repeated significance tests in
+group-sequential trials [@lan1983discrete]; the trajectory-level proposition
+below is the union bound over it.
 
 *Proposition (trajectory-level false-alarm bound).* Call a *history* of a cell
 its touched windows from its creation until it is pruned or the run ends.
@@ -688,11 +781,11 @@ E2 parameters begins about 62 histories in 1024 windows, and
 $\delta\,\mathbb E[L_N]$ is then vacuous. That regime is measured (E5), not
 guaranteed. The null is still that of the calibrated bound: temporally
 correlated clutter violates it, and E5 shows that the test flags such clutter.
-The shipped level is chosen on held-out calibration seeds, now at trajectory
+The shipped level is chosen on separate calibration seeds, now at trajectory
 level. The pre-stated rule takes the largest
 $\delta\in\{0.01,0.02,0.05,0.1,0.2\}$ for which the rate of ever labelling a
 Bernoulli clutter cell Periodic within 1024 windows has a Wilson 95% upper
-limit of at most 0.01 in every calibration configuration. It selects
+limit [@wilson1927] of at most 0.01 in every calibration configuration. It selects
 $\delta=0.2$, the largest candidate ([@tbl:e5choice]), and this is the shipped
 default. For the shipped rule, then, what is proved is the per-history bound
 0.2; the 0.01 target is a measurement. Under uniform coverage the threshold
@@ -788,34 +881,39 @@ free-space ray is walked; both delegate all evidence updates to the shared
 each hit's $(x,y)$ (dropping $z$) into a row-major id
 $\texttt{gridCellId}(m,g_x,g_y)=g_y\cdot\texttt{width}+g_x$; points outside the
 array are dropped. Free space is cleared with integer Bresenham's line algorithm
-from the sensor cell up to but excluding the hit cell, calling `observeMiss`
+[@bresenham1965] from the sensor cell up to but excluding the hit cell, calling `observeMiss`
 on every cell in that half-open span — including the sensor-origin cell — so
 the hit cell receives only `observeHit`. Rendering to `nav_msgs/OccupancyGrid` initializes every cell to
 `-1`, then overwrites in ascending confidence order transient&rarr;`50`,
 periodic&rarr;`75`, static&rarr;`100`, so static wins any tie.
 
-`Voxel3DBackend` has no fixed extent; the map grows through the hash map. Each
+`Voxel3DBackend` is a sparse hash: the map grows through the hash map and needs
+no preallocated extent. Each
 axis is floor-divided by `voxel_size` and offset by $\texttt{kOff}=1\ll 20$ to
 keep the per-axis index non-negative, and the three 21-bit
 ($\texttt{kBits}=21$) fields are packed into one 64-bit key,
 $\text{id}=(v_x\ll 42)\,|\,(v_y\ll 21)\,|\,v_z$; `voxelCenter` is the exact
 inverse, returning $(v+0.5)\cdot\texttt{voxel\_size}$ per axis. This gives O(1)
-hashing and a per-axis range far larger than any practical map. Free space is
+hashing. The key space is nevertheless finite: each 21-bit field represents the
+indices $-2^{20}$ to $2^{20}-1$ around the origin, far beyond the extent of a
+building at the default voxel size, and the code does not check this range, so
+a point outside it would receive a wrong key rather than being dropped. Free space is
 cleared by ray-sample marching, not geometric voxel traversal: the ray is
 subdivided into $\lfloor\text{len}/(0.5\cdot\texttt{voxel\_size})\rfloor$
 half-voxel steps, and each interior sample is hashed to its containing voxel and
 marked `observeMiss`. This is simpler than exact traversal but can over-sample a
 long ray and can skip a thin voxel when the step count rounds down. The hit is
-always `observeHit`, with no bounds check because the hash grows to fit.
+always `observeHit`, with no bounds check: the hash grows to fit, and the key
+range is not checked (above).
 `staticPoints()` maps the static-cell set through `voxelCenter` to a point
 cloud. [@tbl:backends] contrasts the two.
 
 | | `Grid2DBackend` | `Voxel3DBackend` |
 |---|---|---|
-| Cell addressing | 2D array index via `GridMeta` (fixed $W\times H$, fixed origin) | 3D spatial hash, unbounded, `int64` packed key |
+| Cell addressing | 2D array index via `GridMeta` (fixed $W\times H$, fixed origin) | 3D spatial hash, sparse, `int64` packed key (21 bits per axis) |
 | Hit dimensionality | $x,y$ (z dropped by projection) | $x,y,z$ (full volumetric) |
 | Free-space ray | Bresenham line (exact, on-grid) | ray-sample march at 0.5-voxel step (approximate, off-grid) |
-| Growth | none — pre-sized at construction | unbounded — hash grows with exploration |
+| Growth | none — pre-sized at construction | sparse — hash grows with exploration; per-axis index range fixed by the 21-bit key |
 | Output | `nav_msgs/OccupancyGrid` (dense `-1/50/75/100`) | static voxel centers &rarr; `PointCloud2` |
 
 Table: The two geometry backends. All persistence and periodicity logic is
@@ -853,9 +951,11 @@ Table: Engine parameters and defaults (struct and `params/*.yaml` agree).
 
 Per-cell state is compact: `CellEvidence` is 24 bytes, plus roughly 32 bytes of
 `unordered_map` node overhead, giving the ~56 B/cell footprint reported in the
-evaluation when periodicity storage is excluded. A FreMEn-tracked cell adds a
-`Coeff` record (two scalars and six length-$H$ arrays of doubles), allocated only for cells touched at
-least once with periodicity enabled.
+evaluation. That figure is an estimate for the periodicity-off path, not a
+measurement. A FreMEn-tracked cell adds a `Coeff` record, with two scalar
+accumulators and six heap-allocated vectors of $H$ values in a second hash map,
+allocated only for cells touched at least once with periodicity enabled; it is
+not included in the estimate, nor are the hash tables' bucket arrays.
 
 ## 4.8 Implementation versus specification {#sec:specdiff}
 
@@ -929,6 +1029,15 @@ time `integrate()`/`endWindow()` calls; its absolute microsecond figures are
 therefore machine-dependent, while the live-cell counts it also reports are
 deterministic (they follow only from ray geometry, not timing).
 
+**What is compared.** There is no external baseline. The lifelong-SLAM systems
+of §2 do not expose a persistence core that this harness could drive. The
+FreMEn per-cell model [@krajnik2017fremen; @krajnik2016persistent;
+@fremenrepo], with its amplitude-ranked component selection, could be driven by
+the same streams, but we have not run it, so every comparison below is
+internal. The centred amplitude-only rule kept in @tbl:fix thresholds
+FreMEn-style coefficients at one fixed period; it is STRATA's own earlier rule,
+not an implementation of FreMEn.
+
 The four experiments map onto the two thesis claims of §3–4 (C2, C5)
 differently. E1 and E4 probe *backend-behavior equivalence*: each backend is
 driven, in its native geometry, by its own deterministically seeded hit
@@ -990,7 +1099,8 @@ transient movers at three densities — low/med/high = 5/25/100 fresh random
 cells per window — over 40 windows, run against both a $120\times120$
 (resolution 1.0) `Grid2DBackend` and a $1.0$-voxel `Voxel3DBackend`, once with
 periodicity disabled to isolate the persistence layer and once with it enabled
-at the shipped $T=24$, $H=2$ (`results/e1_static_quality_periodic.csv`). Static-set
+at the shipped defaults ($T=24$, $H=2$, $\delta=0.2$ spent over the touch
+count; `results/e1_static_quality_periodic.csv`). Static-set
 precision/recall/F1 against the 161-cell wall set is logged per window
 (`results/e1_static_quality.csv`).
 
@@ -1446,13 +1556,21 @@ deterministic, seeded synthetic harness compiled directly against
 `strata_core`, driving hand-authored hit/miss patterns through the real
 `LayeredMap`/`PeriodicityModel` code. No real sensor, no real robot motion,
 and no field deployment enters any of these results. This is a statement of
-present scope, not a hidden gap: the closest published systems in intent
-(ELite [@gil2025elite], LT-mapper [@kim2022ltmapper]) and the closest
-production baseline (Berrio et al. [@berrio2021longterm]) all report
-multi-day or multi-session field evidence that STRATA does not yet have.
-STRATA is, so far, validated the way a library is validated — by unit and
-characterization tests against known ground truth — not the way a robot
-behavior is validated, by miles driven.
+present scope, not a hidden gap: ELite [@gil2025elite], LT-mapper
+[@kim2022ltmapper], the long field deployment of Berrio et al.
+[@berrio2021longterm] and the FreMEn grid of Krajník et al.
+[@krajnik2016persistent] all report long-term real-world evidence that STRATA
+does not yet have. No external baseline is run, not even a FreMEn model driven
+by the same streams, so this paper does not show that the calibrated test
+labels periodic cells better than FreMEn's amplitude-ranked component
+selection, or that the classifier is useful on real sensor data. The evidence
+establishes a transparent state machine on synthetic streams, not a reliable
+four-class scene classifier: many aperiodic cells end Static under the E2
+parameters, low-duty doors are lost to pruning, and at the shipped period
+correlated clutter is labelled Periodic (below). STRATA is, so far, validated
+the way a library is validated — by unit and characterization tests against
+known ground truth — not the way a robot behavior is validated, by miles
+driven.
 
 A second, narrower scope limit sits inside the "lifelong" framing itself.
 STRATA implements single-session temporal persistence: a cell's class is a
@@ -1543,7 +1661,8 @@ tree structure for asymptotically better memory scaling on sparse or
 large-extent maps. E4 measures the cost of this choice directly: voxel3d
 holds 4.4–10.0× the live-cell count of grid2d at matched scene extent because
 every sampled free-space point along a ray becomes its own hash entry, and
-per-cell footprint is a flat 56 B regardless of spatial redundancy. The trade
+the estimated per-cell footprint is a flat 56 B with periodicity off,
+regardless of spatial redundancy. The trade
 is deliberate — O(1) insert/lookup with no tree-rebalancing logic keeps the
 backend simple enough to unit-test the way §3 describes — but it means
 STRATA's voxel3d backend will not scale as gracefully as an octree-backed
@@ -1565,9 +1684,10 @@ structure is not premature generalization at the current backend count.
 framing over an accuracy-SOTA framing means every claim in §5 is scoped to
 "what the shipped code measurably does," not "how well STRATA localizes or
 maps relative to a competing system." No baseline comparison against
-OctoMap, ELite, or LT-mapper is run in this paper — none is designed as an
-apples-to-apples ROS-free unit-testable core, so no fair single-number
-comparison exists yet. The E1–E4 harness is offered instead as a replayable
+OctoMap, ELite, LT-mapper, or FreMEn is run in this paper. The lifelong-SLAM
+systems do not expose a persistence core that this harness could drive; the
+FreMEn per-cell model could be driven by the same streams, but we have not run
+it (§5.1). The E1–E4 harness is offered instead as a replayable
 protocol (§7) a future study could run against an alternative
 implementation, rather than a leaderboard result against one run today.
 
@@ -1584,7 +1704,11 @@ versioning [@kim2022ltmapper; @yang2025lifelong3d] that STRATA does not
 provide. And it is not a substitute for semantic or object-level reasoning —
 the cell-class state machine of §4.5 has no notion of "this cluster of cells
 is one dynamic agent," unlike Khronos's scene graph [@schmid2024khronos] or
-ERASOR's per-object removal [@lim2021erasor]. Within those boundaries — a
+ERASOR's per-object removal [@lim2021erasor]. And it does not discover
+periods: where the relevant cycles are unknown or are not harmonics of one base
+period, FreMEn's selection among candidate periods [@krajnik2017fremen] or
+warped hypertime [@krajnik2019warped] is the better tool. Within those
+boundaries — a
 single continuous mapping session behind an external localizer, at the raw
 occupancy-cell level, in 2D or 3D — STRATA is the intended fit.
 
@@ -1593,11 +1717,15 @@ occupancy-cell level, in 2D or 3D — STRATA is the intended fit.
 Five items follow directly from the limitations above, in the order they
 would be tackled: (0) a noise null that allows temporal correlation, for example by testing
 the harmonic against a local noise floor rather than against white noise, and
-an anytime-valid test that also covers re-created histories, addressing the
-independence assumption of the calibrated test and the pruned-clutter regime
-that E5 measures but the trajectory bound does not cover; (1) real-robot and multi-session field validation, closing
-the synthetic-only gap of §6.1, on both a 2D wheeled platform and a 3D-LiDAR
-platform to exercise both backends under real sensor noise; (2) a
+an anytime-valid test that also covers re-created histories, for which
+time-uniform supermartingale bounds [@howard2020timeuniform] are the natural
+tool, addressing the independence assumption of the calibrated test and the
+pruned-clutter regime that E5 measures but the trajectory bound does not cover;
+(1) a FreMEn baseline on the same synthetic streams and a four-class confusion
+under the shipped defaults, then validation on at least one real 2D and one
+real 3D LiDAR sequence, and real-robot and multi-session field validation,
+closing the synthetic-only gap of §6.1, on both a 2D wheeled platform and a
+3D-LiDAR platform to exercise both backends under real sensor noise; (2) a
 per-cell-learned decay rate along the lines of iMac/Tipaldi
 [@saarinen2012imac; @tipaldi2013lifelong], replacing the global
 `survival_decay` scalar characterized in §6.3 with region- or cell-adaptive
@@ -1614,11 +1742,12 @@ already characterize.
 
 # 7 Conclusion
 
-STRATA packages lifelong occupancy mapping's persistence-and-periodicity
-logic — log-odds accumulation, Persistence-Filter-style survival decay,
-Removert-motivated Schmitt-trigger hysteresis, ReFusion-style negative
-evidence from free-space ray clearing, and FreMEn-lite periodicity
-detection — into one geometry-free `LayeredMap`/`PeriodicityModel` engine
+STRATA packages known ingredients of lifelong occupancy mapping — log-odds
+accumulation, Persistence-Filter-style survival decay, Removert-motivated
+Schmitt-trigger hysteresis, ReFusion-style negative evidence from free-space
+ray clearing, and a FreMEn-lite periodicity test at one configured period,
+with a significance bound obtained from standard concentration inequalities —
+into one geometry-free `LayeredMap`/`PeriodicityModel` engine
 that drives two pluggable geometries, a 2D occupancy grid and a 3D voxel
 hash, behind a single `MapBackend` interface and a one-parameter runtime
 switch. The only code that differs per backend is point-to-cell-id mapping
@@ -1635,11 +1764,16 @@ measured at no more than 2 of 2000 cells over 1024 windows on held-out seeds,
 and a diagnosed failure mode at low duty cycles (E0, E2, E5), walls that stay Static with periodicity on once the Fourier
 coefficients are centred (E1, E3),
 hysteresis as the dominant stabilizer against flicker (E3), and a flat
-per-cell memory footprint with a 5.5–15.0× backend cost gap attributable entirely
-to 3D free-space voxel proliferation, not to the shared engine (E4). None of
-this replaces field validation, multi-session mapping, or semantic
-reasoning — §6 states those boundaries explicitly — but within them, STRATA
-is offered as a small, dependency-light module other systems can sit on top
+estimated per-cell memory footprint with periodicity off, with a 5.5–15.0×
+backend cost gap attributable to 3D free-space voxel proliferation, not to the
+shared engine (E4). Its closest prior work, the FreMEn spatio-temporal grid of
+Krajník et al. [@krajnik2016persistent], has long-term real-world evidence that
+STRATA lacks; a FreMEn baseline on the same streams and real LiDAR sequences
+are the next evaluation steps. None of this replaces field validation, a
+comparison with an external baseline, multi-session mapping, period discovery,
+or semantic reasoning — §6 states those boundaries explicitly — but within them (synthetic
+evidence, no external baseline, a single session, a fixed base period, an
+external localizer), STRATA is offered as a small, dependency-light module other systems can sit on top
 of rather than a competing full lifelong-SLAM pipeline.
 
 ## 7.1 Reproducibility
