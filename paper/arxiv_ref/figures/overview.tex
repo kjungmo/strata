@@ -1,0 +1,41 @@
+\begin{figure}[t]
+\centering
+\resizebox{\linewidth}{!}{%
+\begin{tikzpicture}[
+  font=\footnotesize,
+  box/.style={draw, rounded corners=2pt, align=center, minimum height=9mm, inner sep=3pt, fill=white},
+  eng/.style={box, fill=blue!7, draw=blue!60!black, thick},
+  geo/.style={box, fill=orange!10, draw=orange!70!black},
+  ros/.style={box, fill=gray!8, draw=gray!70!black},
+  arr/.style={-{Latex[length=2mm]}, thick},
+  lab/.style={font=\scriptsize\itshape, text=black!70}]
+% ---- engine (geometry-free) ----
+\node[eng, minimum width=10.4cm, minimum height=15mm] (lm) at (0,0)
+  {\textbf{\code{LayeredMap} + \code{PeriodicityModel}} \quad (shared, keyed only by \code{int64} \code{CellId})\\[2pt]
+   window counters $\to$ log-odds $+$ survival decay $\lambda$ $\to$ Schmitt trigger $[\pdem,\pgrad]$ $\to$ FreMEn-lite amplitude $a$ $\to$ prune\\[1pt]
+   \emph{Static} \;/\; \emph{Periodic} \;/\; \emph{Transient} \;/\; \emph{Unknown}};
+% ---- backends ----
+\node[geo, below left=11mm and -48mm of lm, minimum width=4.9cm] (g2)
+  {\textbf{\code{Grid2DBackend}}\\ $\kappa_{2\mathrm{D}}$: row-major array index\\ ray walk: integer Bresenham};
+\node[geo, below right=11mm and -48mm of lm, minimum width=4.9cm] (v3)
+  {\textbf{\code{Voxel3DBackend}}\\ $\kappa_{3\mathrm{D}}$: 3$\times$21-bit packed hash key\\ ray walk: half-voxel sample march};
+\draw[arr] (g2.north) -- node[lab, left] {\code{observeHit/Miss}(id)} (g2.north |- lm.south);
+\draw[arr] (v3.north) -- node[lab, right] {\code{observeHit/Miss}(id)} (v3.north |- lm.south);
+% band labels
+\begin{scope}[on background layer]
+\node[fit=(lm)(g2)(v3), draw=blue!40, dashed, rounded corners=4pt, inner sep=6pt,
+  label={[lab, anchor=north east]north east:\code{strata\_core}: C++17 + Eigen, no ROS/PCL, 49 gtest cases}] (core) {};
+\end{scope}
+% ---- ROS node ----
+\node[ros, below=12mm of core.south, minimum width=10.4cm] (node)
+  {\textbf{\code{strata::MappingNode}} (ROS~2 Humble)\quad \code{backend:=grid2d|voxel3d} selects one \code{unique\_ptr} at construction\\
+   \code{LaserScan} / \code{PointCloud2} $\to$ \code{Observation} (map frame) \qquad
+   publishes \code{\textasciitilde/map} or \code{\textasciitilde/map\_points}, serves \code{\textasciitilde/save\_map}};
+\draw[arr] (node.north -| g2.south) -- node[lab, left] {\code{integrate}, \code{tick}} (g2.south);
+\draw[arr] (node.north -| v3.south) -- node[lab, right] {\code{integrate}, \code{tick}} (v3.south);
+\node[ros, below=6mm of node, minimum width=4.2cm, fill=white, dashed] (tf) {external localizer (TF: \code{map} $\to$ sensor)};
+\draw[arr, dashed] (tf) -- (node);
+\end{tikzpicture}}
+\caption{\textbf{Overview of \sname.} One geometry-free engine (top) owns every persistence and periodicity decision and sees only integer cell keys. The two backends (middle) contribute exactly two things: the point-to-key map $\kappa_b$ and the free-space ray walk. A thin ROS~2 node (bottom) selects one backend from a single string parameter and consumes, but never produces, the sensor pose.}
+\label{fig:overview}
+\end{figure}

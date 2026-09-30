@@ -1,0 +1,38 @@
+\documentclass{kjpaper}
+\usepackage[authoryear,sort&compress,round]{natbib}
+\bibliographystyle{abbrvnat}
+\usepackage{float}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
+\usepgfplotslibrary{groupplots,colormaps}
+\pgfplotsset{discard if not/.style 2 args={y filter/.append code={%
+  \edef\kjtempa{\thisrow{#1}}\edef\kjtempb{#2}\ifx\kjtempa\kjtempb\else\def\pgfmathresult{nan}\fi}},
+  unbounded coords=discard}
+% ---- project macros ----
+\newcommand{\sname}{STRATA}
+\newcommand{\code}[1]{\texttt{#1}}
+\newcommand{\pgrad}{p_{\mathrm{grad}}}
+\newcommand{\pdem}{p_{\mathrm{dem}}}
+\newcommand{\pprune}{p_{\mathrm{prune}}}
+\newcommand{\lhit}{l_{\mathrm{hit}}}
+\newcommand{\lmiss}{l_{\mathrm{miss}}}
+\newcommand{\amin}{a_{\min}}
+\newcommand{\Nmin}{N_{\min}}
+\title{\sname: One Geometry-Free Persistence-and-Periodicity Engine for Selectable 2D/3D Lifelong LiDAR Mapping}
+\correspondingauthor{kangjmo91@gmail.com}
+\paperurl{https://github.com/kjungmo/strata}
+\author[1]{Jungmo Kang}
+\affil[1]{Independent Researcher, Seoul, Republic of Korea}
+\keywords{lifelong mapping, occupancy grids, voxel hashing, persistence filtering, FreMEn periodicity, ROS~2}
+\begin{document}
+\input{sections/0_abstract}
+\maketitle
+\input{sections/1_introduction}
+\input{sections/2_related_works}
+\input{sections/3_method}
+\input{sections/4_experiments}
+\input{sections/5_discussion}
+\input{sections/6_conclusion}
+\bibliography{main}
+\appendix
+\input{sections/appendix}
+\end{document}

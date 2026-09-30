@@ -10,7 +10,9 @@ Sources:
 Left panel: TPR/FPR bars (with the underlying k/n fractions annotated).
 Right panel: FreMEn dominant-harmonic amplitude vs. observation length (in
 windows) for every probe cell, with the periodic_amplitude_min = 0.3
-classification threshold and the period_windows = 8 amplitude-validity gate
+classification threshold, the calibrated-test amplitude a*(n) = sqrt(2 r*/n)
+(delta = 0.1, H = 3, uniform phase coverage; see the paper, Proposition
+"calibrated false-alarm bound") and the period_windows = 8 amplitude-validity gate
 (both from notes/experiments_summary.md / core_math.md) drawn as reference
 lines.
 """
@@ -31,9 +33,9 @@ CELL_STYLE = {
     "door_p4_2on2off": (GREEN, "-", "o", "periodic door (T=4, 50% duty)"),
     "door_p8_2on6off": (SKY_BLUE, "-", "o", "periodic door (T=8, 25% duty) — missed"),
     "wall_constant":   (BLACK, ":", "s", "constant wall (non-periodic GT)"),
-    "aperiodic_0":     (ORANGE, "--", "x", "aperiodic Bernoulli(0.5) mover"),
-    "aperiodic_1":     (VERMILLION, "--", "x", "aperiodic mover — false positive"),
-    "aperiodic_2":     (PURPLE, "--", "x", None),
+    "aperiodic_0":     (ORANGE, "--", "x", "aperiodic Bernoulli(0.5) mover (Static at n=64)"),
+    "aperiodic_1":     (VERMILLION, "--", "x", "aperiodic mover (Unknown at n=64)"),
+    "aperiodic_2":     (PURPLE, "--", "x", "aperiodic mover (Transient at n=64)"),
     "aperiodic_3":     (YELLOW, "--", "x", None),
 }
 CELL_ORDER = ["door_p8_4on4off", "door_p4_2on2off", "door_p8_2on6off",
@@ -89,6 +91,16 @@ def main():
                       linewidth=1.4, label=label)
 
     ax_line.axhline(A_MIN, color=BLACK, linestyle="-.", linewidth=1.0)
+    import math
+    B = lambda r: 2 * r * math.exp(1 - 2 * r)
+    lo, hi = 0.5, 50.0
+    for _ in range(200):
+        mid = 0.5 * (lo + hi)
+        lo, hi = (mid, hi) if B(mid) > 0.1 / 3 else (lo, mid)
+    ns = list(range(T_GATE, 65))
+    ax_line.plot(ns, [math.sqrt(2 * hi / n) for n in ns], color=BLACK, linestyle=":", linewidth=1.0)
+    ax_line.annotate("a*(n), calibrated test", xy=(ns[3], math.sqrt(2 * hi / ns[3])),
+                     xytext=(4, 2), textcoords="offset points", fontsize=8)
     ax_line.annotate("a_min = 0.3 (Periodic threshold)", xy=(50, A_MIN),
                        xytext=(0, 4), textcoords="offset points", fontsize=8, ha="right")
     ax_line.axvline(T_GATE, color=BLACK, linestyle=(0, (1, 2)), linewidth=1.0)

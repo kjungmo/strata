@@ -1,0 +1,183 @@
+\section{\sname: A Geometry-Free Engine Beneath Two Map Geometries}\label{sec:method}
+
+\sname\ is delivered as two ROS~2 packages with a hard dependency boundary. \code{strata\_core} holds the entire occupancy, persistence and periodicity logic together with both geometry backends, in C++17 with Eigen as its only third-party dependency. \code{strata} is a thin node that owns message conversion, TF lookups, publishers, a save service and file I/O (Appendix~\ref{app:io}). This section specifies the engine exactly as implemented: every equation is transcribed from \code{strata\_core}, and \S\ref{subsec:specdiff} lists where the code departs from the design document.
+
+\noindent\textbf{Problem Setup: One Classifier, Any Geometry.} A sensor sweep at integration tick $k$ delivers an origin $\mathbf{o}_k\in\mathbb{R}^3$ and a set of hit endpoints $\mathcal{P}_k\subset\mathbb{R}^3$, both already in the map frame (the pose comes from an external localizer). A backend $b\in\{\mathrm{2D},\mathrm{3D}\}$ supplies two operators only: a key map $\kappa_b:\mathbb{R}^3\to\mathcal{C}\cup\{\bot\}$ onto integer cell ids $\mathcal{C}\subset\mathbb{Z}$, and a ray walk $\rho_b(\mathbf{o},\mathbf{p})\subset\mathcal{C}$ listing the free cells between origin and endpoint. Ticks are grouped into windows $w=1,2,\dots$. Each live cell $i$ carries a state $\mathbf{x}_i=(\ell_i,N_i,g_i,\boldsymbol{\phi}_i)$---log-odds occupancy, touched-window count, graduated flag and Fourier accumulators---and the map reads out a class $c_i\in\{\mathsf{U},\mathsf{T},\mathsf{P},\mathsf{S}\}$ (Unknown, Transient, Periodic, Static). The design objective is that the per-window map update factor as
+\begin{equation}\label{eq:objective}
+  \mathcal{X}_w=\Phi\big(\mathcal{X}_{w-1},\,\Gamma_b(\{(\mathbf{o}_k,\mathcal{P}_k)\}_{k\in w})\big),\qquad c_i=\Psi(\mathbf{x}_i),
+\end{equation}
+where only the evidence extractor $\Gamma_b$ depends on the backend, while the engine $\Phi$ and the read-out $\Psi$ are written once and see nothing but integer ids. The classes should make walls \emph{durable} ($\mathsf{S}$ persists under clutter), movers \emph{plastic} ($\mathsf{T}$ cells are forgotten), and cyclic structure \emph{periodic} ($\mathsf{P}$ is neither baked into $\mathsf{S}$ nor pruned). The stages below instantiate $\Gamma_b$, $\Phi$ and $\Psi$; Algorithm~\ref{alg:endwindow} gives the complete window update.
+
+\subsection{Keying Observations: Reducing Geometry to Integer Cell Ids}\label{subsec:keying}
+
+For every endpoint $\mathbf{p}\in\mathcal{P}_k$ the backend registers one miss on each cell of $\rho_b(\mathbf{o}_k,\mathbf{p})$ and then one hit on $\kappa_b(\mathbf{p})$. The engine keeps only per-window counters,
+\begin{equation}\label{eq:gamma}
+  h_{i,w}=\sum_{k\in w}\sum_{\mathbf{p}\in\mathcal{P}_k}\big[\kappa_b(\mathbf{p})=i\big],\qquad
+  m_{i,w}=\sum_{k\in w}\sum_{\mathbf{p}\in\mathcal{P}_k}\big|\{j\in\rho_b(\mathbf{o}_k,\mathbf{p}) : j=i\}\big|,
+\end{equation}
+creating a cell lazily on first touch with $\ell_i=0$, $N_i=0$, $g_i=\text{false}$. This is $\Gamma_b$; it is the only backend-specific code.
+
+\noindent\textbf{Fixed 2D grid.} \code{Grid2DBackend} addresses a $W\times H$ array with resolution $r$ and origin $(x_0,y_0)$, drops $z$, and maps a point to a row-major index,
+\begin{equation}\label{eq:key2d}
+  \kappa_{\mathrm{2D}}(\mathbf{p})=\Big\lfloor\tfrac{p_y-y_0}{r}\Big\rfloor W+\Big\lfloor\tfrac{p_x-x_0}{r}\Big\rfloor,
+\end{equation}
+returning $\bot$ (the hit is dropped) outside the array. $\rho_{\mathrm{2D}}$ is integer Bresenham from the sensor cell up to but excluding the hit cell, so the sensor cell is included and the hit cell receives only its hit.
+
+\noindent\textbf{Unbounded 3D hash.} \code{Voxel3DBackend} floor-divides each axis by the voxel size $v$, offsets it by $2^{20}$ to keep it non-negative, and packs the three 21-bit fields into one 64-bit key,
+\begin{equation}\label{eq:key3d}
+  \kappa_{\mathrm{3D}}(\mathbf{p})=\big(u_x\ll 42\big)\,\big|\,\big(u_y\ll 21\big)\,\big|\,u_z,\qquad u_a=\lfloor p_a/v\rfloor+2^{20}.
+\end{equation}
+The map grows through the hash, so no hit is ever out of bounds. $\rho_{\mathrm{3D}}$ is a sample march rather than an exact voxel traversal: with $\mathbf{d}=\mathbf{p}-\mathbf{o}$ and $S=\lfloor\|\mathbf{d}\|/(v/2)\rfloor$ half-voxel steps, the interior samples $\mathbf{o}+s\,\mathbf{d}/\max(S,1)$, $s=1,\dots,S{-}1$, are hashed with \eqref{eq:key3d}. This is simpler than exact traversal but can visit a voxel more than once along a long ray and can skip a thin one when $S$ rounds down.
+
+\subsection{Accumulating Evidence: Windowed Log-Odds with Survival Decay}\label{subsec:logodds}
+
+A window closes on integration tick $k$ when $L\le 1$ or $k \bmod L=0$, with $L$ the \code{layer\_interval}. The update then scores every live cell once, so a single hit outweighs any number of misses in the same window:
+\begin{equation}\label{eq:score}
+  \tau_{i}=[h_{i,w}>0\lor m_{i,w}>0],\qquad o_{i}=[h_{i,w}>0],\qquad f_{i}=[h_{i,w}=0\land m_{i,w}>0].
+\end{equation}
+For \emph{touched} cells only ($\tau_i=1$), one log-odds increment is applied, multiplied by the survival decay $\lambda$, and clamped:
+\begin{equation}\label{eq:logodds}
+  \ell_i\leftarrow\min\!\Big(l_{\max},\max\!\big(l_{\min},\;\lambda\,(\ell_i+o_i\,\lhit+f_i\,\lmiss)\big)\Big),\qquad N_i\leftarrow N_i+1,
+\end{equation}
+with occupancy probability $p_i=\sigma(\ell_i)=1/(1+e^{-\ell_i})$. The update is the inverse-sensor-model rule of \citet{thrun2005probabilistic} with a constant-rate special case of the Persistence Filter's forgetting \citep{rosen2016persistence}. The order matters: the decay multiplies the \emph{already incremented} value, so the fresh evidence is itself attenuated in the same window.
+
+\begin{proposition}[Saturation under repeated hits]\label{prop:fixedpoint}
+If a cell is hit in every window, $0<\lambda<1$, $\lhit>0$ and $l_{\min}\le0<l_{\max}$, then $\ell_i$ converges monotonically from $0$ to $\min\!\big(l_{\max},\,\ell^\star\big)$ with $\ell^\star=\lambda\lhit/(1-\lambda)$.
+\end{proposition}
+\begin{proof}
+Without the clamp the recursion is $\ell\mapsto\lambda(\ell+\lhit)$, an affine contraction with factor $\lambda$ and unique fixed point $\ell^\star$; from $\ell=0<\ell^\star$ the iterates increase monotonically towards it. The clamp is monotone and, since every iterate is non-negative and $l_{\min}\le0$, only the upper bound can bind, so the clamped iterates increase to $\min(l_{\max},\ell^\star)$.
+\end{proof}
+With the shipped defaults (Table~\ref{tab:params}; $\lambda{=}0.97$, $\lhit{=}0.85$) $\ell^\star\approx 27.5$, so the clamp binds at $l_{\max}{=}5$ and $p_{\max}=\sigma(5)\approx 0.9933$. The default thresholds $\pgrad{=}0.8$ and $\pprune{=}0.05$ correspond to $\ell\ge\ln 4\approx 1.386$ and $\ell<\ln(1/19)\approx-2.944$.
+
+\subsection{Gating Graduation: A Schmitt Trigger Against Flicker}\label{subsec:schmitt}
+
+After the log-odds step, $p_i$ and the periodicity amplitude $a_i$ (\S\ref{subsec:fremen}) are recomputed for \emph{every} cell, touched or not, and the graduated flag follows a two-sided Schmitt trigger with two periodicity guards, evaluated in this order:
+\begin{align}
+  \text{graduate:}\quad & \lnot g_i\land\lnot\pi_i\land p_i\ge\pgrad\land N_i\ge\Nmin \;\Rightarrow\; g_i\leftarrow\text{true},\label{eq:grad}\\
+  \text{demote:}\quad & g_i\land\big(p_i\le\pdem\lor\pi_i\big)\;\Rightarrow\; g_i\leftarrow\text{false},\label{eq:demote}
+\end{align}
+where $\pi_i$ is the periodic predicate of \eqref{eq:periodic}. The interval $[\pdem,\pgrad]$ is the hysteresis band: through the occupancy disjunct $p_i\le\pdem$, a Static cell demotes only after sustained contradicting evidence, not after one contradicting window---the failure that Removert's revert pass repairs after the fact \citep{kim2020removert} is prevented online. The guard $\lnot\pi_i$ keeps a periodic cell out of the static map; the term $\lor\,\pi_i$ removes a Static cell that later reveals periodicity. That term lies outside the band and has no hysteresis of its own. It cannot, however, fire without contradicting evidence: with the centred amplitude of \S\ref{subsec:fremen}, $\pi_i$ requires a cell to have been observed free in a substantial share of its touched windows (Remark~\ref{rem:leak}), so a wall that is occupied whenever it is seen is never demoted by it. The predicate also requires the noise-calibrated significance of Proposition~\ref{prop:chernoff}, with its level spent over the touch count. A graduated cell is never pruned, so by Proposition~\ref{prop:spend} a wall whose occupancy is merely iid noise is demoted by this term at some point of the run with probability at most $\delta$. The term still acts in a single window when it does fire; E3 measures its cost in flicker with periodicity on (\S\ref{subsec:ablation}).
+
+\begin{proposition}[No same-window oscillation]\label{prop:nooscillation}
+If $\pdem<\pgrad$, a cell that graduates by \eqref{eq:grad} in a window is not demoted by \eqref{eq:demote} in the same window.
+\end{proposition}
+\begin{proof}
+Graduation requires $\lnot\pi_i$ and $p_i\ge\pgrad>\pdem$, and $p_i,\pi_i$ are not recomputed between \eqref{eq:grad} and \eqref{eq:demote}, so both disjuncts of the demotion condition are false.
+\end{proof}
+
+\subsection{Detecting Periodicity: A FreMEn-Lite Amplitude Test}\label{subsec:fremen}
+
+In parallel with occupancy, every touched cell feeds an incremental Fourier model following FreMEn \citep{krajnik2017fremen}. With window index $w$, base period $T$ (in windows), $H$ harmonics, $\omega=2\pi/\max(1,T)$, occupancy sample $o_i\in\{0,1\}$ and $\theta_k=(k{+}1)\omega w$, the accumulators $\boldsymbol{\phi}_i=(n_i,S_{0,i},C_{k,i},S_{k,i},E^{c}_{k,i},E^{s}_{k,i})$ evolve as
+\begin{equation}\label{eq:gather}
+  n_i\mathrel{+}=1,\quad S_{0,i}\mathrel{+}=o_i,\quad C_{k,i}\mathrel{+}=o_i\cos\theta_k,\quad S_{k,i}\mathrel{+}=o_i\sin\theta_k,\quad E^{c}_{k,i}\mathrel{+}=\cos\theta_k,\quad E^{s}_{k,i}\mathrel{+}=\sin\theta_k,
+\end{equation}
+for $k=0,\dots,H{-}1$. Here $n_i$ counts \emph{touched} windows, not elapsed ones, and $E^{c},E^{s}$ record the phases at which the cell was touched. With the touched-window mean $\bar{o}_i=S_{0,i}/n_i$, the \emph{centred} coefficients are $\alpha_k=2(C_{k,i}-\bar{o}_iE^{c}_{k,i})/n_i$ and $\beta_k=2(S_{k,i}-\bar{o}_iE^{s}_{k,i})/n_i$, i.e.\ $\alpha_k+\mathrm{i}\beta_k=\tfrac{2}{n_i}\sum_{w\in\mathcal{W}_i}(o_{i,w}-\bar{o}_i)\,e^{\mathrm{i}\theta_k}$ over the touched windows $\mathcal{W}_i$, the mean-removed spectrum of FreMEn. The harmonic amplitudes and the dominant amplitude are
+\begin{equation}\label{eq:amp}
+  a_{i,k}=\sqrt{\alpha_k^2+\beta_k^2},\qquad
+  a_i=\begin{cases}0, & n_i<T,\\ \max_{0\le k<H}a_{i,k}, & n_i\ge T,\end{cases}
+\end{equation}
+and the periodic predicate $\pi_i$, which adds a significance test to the amplitude threshold, is given in \eqref{eq:periodic} below.
+The phase prediction $\hat{p}_i(w)=\mathrm{clip}_{[0,1]}\big(S_{0,i}/n_i+\sum_k[\alpha_k\cos((k{+}1)\omega w)+\beta_k\sin((k{+}1)\omega w)]\big)$ is exposed for downstream use. The gate $n_i\ge T$ withholds a harmonic estimate until a period's worth of touches exists; a sparsely observed cell needs $T$ \emph{touches}, which can span many more than $T$ windows.
+
+\begin{remark}[Centring, and the defect it corrects]\label{rem:leak}
+Centring bounds the amplitude by the occupancy variation. Since $|o_{i,w}-\bar{o}_i|$ averages $2\bar{o}_i(1-\bar{o}_i)$ over $\mathcal{W}_i$, the triangle inequality gives
+\[
+  a_i\;\le\;4\,\bar{o}_i(1-\bar{o}_i)
+\]
+under any sampling of $\mathcal{W}_i$. A cell that is occupied (or free) in every touched window therefore has $a_i=0$, and $\pi_i$ with $\amin{=}0.3$ requires $0.081<\bar{o}_i<0.919$: at least about 8\% of its touched windows must be free. The code as first released (v0.1.0) omitted $E^{c},E^{s}$, so its coefficients were uncentred. For an always-occupied cell, $a_i$ was then twice the mean phase vector of $\mathcal{W}_i$: it measured \emph{when} the cell was observed, not how its occupancy varied. For $n$ consecutive touches this is
+\[
+  a_i=\max_{0\le k<H}\frac{2\,\big|\sin\big(n(k{+}1)\pi/T\big)\big|}{n\,\big|\sin\big((k{+}1)\pi/T\big)\big|}\;\le\;\frac{2}{n\sin(\pi/T)}.
+\]
+It exceeds $\amin$ at $n=10$--$13$ for $T{=}8$ (peak 0.439 at $n{=}11$; the bound clears only from $n{=}18$), and at $n=29$--$40$ for the shipped $T{=}24$, $H{=}2$ (bound: $n\ge52$). Through the $\lor\,\pi_i$ term of \eqref{eq:demote}, whose predicate was then $a_i\ge\amin$ alone, a wall hit every window therefore left the Static layer for 120 integration ticks at $L{=}10$. Uneven phase coverage made this permanent: a wall seen in 8 of every 48 windows had $a_i\approx1.66$. The corrected engine adds the two phase sums, 16 bytes per harmonic (the significance test below adds two more), and the per-cell cost order is unchanged. Ten regression tests cover both failures and genuine detection; seven of them fail on v0.1.0 and all pass after the fix (\S\ref{subsec:setup}), and Table~\ref{tab:fix} compares E1--E3 before and after.
+\end{remark}
+
+\noindent\textbf{Calibrating the Periodic Test Against Noise.} Centring removes the bias of the amplitude but not its variance, and $a_i\ge\amin$ alone is not a test. If a cell's occupancy is pure noise, $o_{i,w}\sim\mathrm{Bernoulli}(m)$ independently of the phase, each centred coefficient has variance $2m(1{-}m)/n_i$ under uniform phase coverage, a standard deviation of $\sqrt{0.5/8}=0.25$ at $m{=}\tfrac12$, $n_i{=}T{=}8$. A fixed $\amin$ is then crossed by chance at short lengths, and pruning (\S\ref{subsec:classify}) keeps returning cells to short lengths. We therefore test each harmonic for significance. Write $c_w=\cos\theta_k$, $s_w=\sin\theta_k$ over the touched windows, $\tilde{\mathbf{z}}_w=(c_w-\bar c,\,s_w-\bar s)^{\top}$ for the centred phase vectors, $\mathbf{y}_{i,k}=\sum_{w\in\mathcal{W}_i}(o_{i,w}-\bar o_i)\,\tilde{\mathbf{z}}_w=\tfrac{n_i}{2}(\alpha_k,\beta_k)^{\top}$ and $\mathbf{M}_{i,k}=\sum_{w}\tilde{\mathbf{z}}_w\tilde{\mathbf{z}}_w^{\top}$. Then
+\begin{equation}\label{eq:dchi}
+  d_{i,k}=\mathbf{y}_{i,k}^{\top}\mathbf{M}_{i,k}^{-1}\mathbf{y}_{i,k},\qquad B(r)=\begin{cases}2r\,e^{1-2r}, & r>\tfrac12,\\ 1, & r\le\tfrac12,\end{cases}
+\end{equation}
+where $d_{i,k}$ is the drop in squared residual when a sinusoid at harmonic $k$ is fitted with a floating mean, the generalised Lomb--Scargle periodogram \citep{zechmeister2009gls}. $\mathbf{M}_{i,k}$ needs two more accumulators per harmonic, $\sum\cos2\theta_k$ and $\sum\sin2\theta_k$, since $\sum c_w^2=\tfrac12(n_i+\sum\cos2\theta_k)$ and $\sum c_ws_w=\tfrac12\sum\sin2\theta_k$. The periodic predicate requires, for some harmonic, both an effect size and significance at a nominal level $\delta$ (\code{periodic\_false\_alarm}):
+\begin{equation}\label{eq:periodic}
+  \pi_i=\texttt{enable\_periodicity}\land n_i\ge T\land\exists k:\ \big[a_{i,k}\ge\amin\ \land\ H\,B(d_{i,k})\le\delta\big].
+\end{equation}
+
+\begin{proposition}[Calibrated false-alarm bound]\label{prop:chernoff}
+Let the touched windows $\mathcal{W}_i$ ($|\mathcal{W}_i|=n$) be fixed independently of the occupancy, and let $o_{i,w}$, $w\in\mathcal{W}_i$, be independent $\mathrm{Bernoulli}(m)$ for one unknown $m\in[0,1]$. If $\mathbf{M}_{i,k}$ is non-singular, then $\Pr(d_{i,k}\ge r)\le B(r)$ for every $r>0$. Consequently, for every $\amin\ge0$ and $0<\delta<H$, the predicate \eqref{eq:periodic} is true with probability at most $\delta$.
+\end{proposition}
+\begin{proof}
+Because $\sum_w\tilde{\mathbf{z}}_w=\mathbf{0}$, the unknown mean drops out: $\mathbf{y}_{i,k}=\sum_w\xi_w\tilde{\mathbf{z}}_w$ with $\xi_w=o_{i,w}-m$. Put $\mathbf{b}_w=\mathbf{M}_{i,k}^{-1/2}\tilde{\mathbf{z}}_w$ and $\mathbf{u}=\sum_w\xi_w\mathbf{b}_w$, so that $d_{i,k}=\|\mathbf{u}\|^2$ and $\sum_w\mathbf{b}_w\mathbf{b}_w^{\top}=\mathbf{I}_2$. Each $\xi_w$ has mean zero and lies in an interval of length 1, so Hoeffding's lemma \citep{hoeffding1963} gives $\mathbb{E}\,e^{t\xi_w}\le e^{t^2/8}$, and by independence $\mathbb{E}\,e^{\mathbf{v}^{\top}\mathbf{u}}\le\exp\big(\tfrac18\sum_w(\mathbf{v}^{\top}\mathbf{b}_w)^2\big)=e^{\|\mathbf{v}\|^2/8}$ for every $\mathbf{v}\in\mathbb{R}^2$. Let $\mathbf{g}\sim\mathcal{N}(\mathbf{0},\mathbf{I}_2)$ be independent of $\mathbf{u}$. For $0\le\lambda<2$, $\mathbb{E}_{\mathbf{g}}\,e^{\sqrt{2\lambda}\,\mathbf{g}^{\top}\mathbf{u}}=e^{\lambda\|\mathbf{u}\|^2}$, so exchanging the expectations,
+\[
+  \mathbb{E}\,e^{\lambda d_{i,k}}=\mathbb{E}_{\mathbf{g}}\,\mathbb{E}_{\mathbf{u}}\,e^{\sqrt{2\lambda}\,\mathbf{g}^{\top}\mathbf{u}}\le\mathbb{E}_{\mathbf{g}}\,e^{\lambda\|\mathbf{g}\|^2/4}=(1-\lambda/2)^{-1}.
+\]
+Markov's inequality gives $\Pr(d_{i,k}\ge r)\le(1-\lambda/2)^{-1}e^{-\lambda r}$, and $\lambda=2-1/r$ (admissible for $r>\tfrac12$) yields $2r\,e^{1-2r}$; for $r\le\tfrac12$ the bound 1 is trivial. $B$ decreases strictly from 1 to 0 on $(\tfrac12,\infty)$, so $H\,B(d_{i,k})\le\delta$ holds exactly when $d_{i,k}\ge r^\star$ with $B(r^\star)=\delta/H$. The union bound over the $H$ harmonics then gives $\Pr(\pi_i)\le H\cdot\delta/H=\delta$.
+\end{proof}
+The bound needs no knowledge of $m$: the sub-Gaussian constant $\tfrac14$ is the Bernoulli worst case $m=\tfrac12$. When $\mathbf{M}_{i,k}$ is singular (for instance at a Nyquist harmonic), the code projects onto its range; the same argument with a one-dimensional $\mathbf{g}$ gives the smaller bound $(1-\lambda/2)^{-1/2}e^{-\lambda r}$, so $B$ stays valid. Under uniform phase coverage at a harmonic with $2(k{+}1)\not\equiv0\pmod T$ (so that the sine column does not vanish; the defaults $T/H\in\{8/3,24/2\}$ satisfy it) $\mathbf{M}_{i,k}=\tfrac{n}{2}\mathbf{I}_2$ and $d_{i,k}=n\,a_{i,k}^2/2$, so \eqref{eq:periodic} becomes an amplitude threshold that shrinks with $n$,
+\begin{equation}\label{eq:astar}
+  a_{i,k}\ \ge\ \max\big(\amin,\ a^\star(n)\big),\qquad a^\star(n)=\sqrt{2r^\star/n}.
+\end{equation}
+For $\delta{=}0.1$ and $H{=}3$, $r^\star=3.115$, so $a^\star(8)=0.883$ and $a^\star(64)=0.312$. The bound is conservative: in the Gaussian limit at $m{=}\tfrac12$, $\Pr(d_{i,k}\ge r)\to e^{-2r}$, a factor $2e\,r$ below $B(r)$, or about 17 at $r^\star$. We therefore first treated $\delta$ as a nominal level for one read-out and chose it on a calibration set disjoint from every evaluation seed (E0, \S\ref{subsec:setup}). The pre-stated rule took the largest $\delta\in\{0.01,0.02,0.05,0.1,0.2\}$ whose measured per-read-out false-alarm rate stays at or below 0.01, both over a null grid and in the live pipeline, and it selected $\delta{=}0.1$ (Table~\ref{tab:e0}). That rule compares point estimates: the worst pipeline rate at $\delta{=}0.1$, 7 of 1000 cells, has a 95\% Wilson upper limit of 0.0144, so the calibration does not establish the 0.01 target with confidence. Only $\delta$ is held out; the test itself was introduced after the amplitude-only rule produced false positives on the E2 seed, so E2 is not a blind evaluation of its design. More importantly, one read-out is not what the map does.
+
+\noindent\textbf{Spending the Level Over Repeated Read-Outs.} The map evaluates \eqref{eq:periodic} after every window, so a clutter cell gets one chance per read-out, and pruning \eqref{eq:prune} erases its history and starts another. E5 measures the consequence: at a single-read-out level of 0.1, up to 953 of 2000 Bernoulli clutter cells are labelled Periodic at some window within 1024 windows (\S\ref{subsec:traj}). The shipped rule therefore replaces the constant level $\delta$ in \eqref{eq:periodic} by a level that decreases with the touch count,
+\begin{equation}\label{eq:spend}
+  \delta_n=\delta\,\frac{T}{n(n+1)}\quad(n\ge T),\qquad \sum_{n\ge T}\delta_n=\delta ,
+\end{equation}
+where the sum telescopes because $T/(n(n{+}1))=T/n-T/(n{+}1)$.
+
+\begin{proposition}[Trajectory-level false-alarm bound]\label{prop:spend}
+Call a \emph{history} of cell $i$ its touched windows from its creation until it is pruned or the run ends. Suppose that, given everything observed before the history begins, its touched windows are fixed independently of its occupancy and its occupancy samples are independent $\mathrm{Bernoulli}(m)$. With the level $\delta_n$ of \eqref{eq:spend} in \eqref{eq:periodic}, the probability that $\pi_i$ holds at some read-out of the history is at most $\delta$, whatever the length of the run. If $L_N$ histories of the cell begin in windows $1,\dots,N$, the probability that the cell is labelled Periodic at some window up to $N$ is at most $\delta\,\mathbb{E}[L_N]$.
+\end{proposition}
+\begin{proof}
+Condition on everything observed before the history begins; under the hypothesis the history is then a fixed-design sample. For $n\ge T$ let $D_n$ be the event that the statistic of its first $n$ samples, computed as if the cell were never pruned, satisfies \eqref{eq:periodic} at level $\delta_n$. Proposition~\ref{prop:chernoff} with $\delta_n$ in place of $\delta$ gives $\Pr(D_n)\le\delta_n$. A read-out at touch count $n$ evaluates $\pi_i$ on exactly these $n$ samples (read-outs between two touches repeat the last value), and it happens only if the history survived to $n$, so the event that $\pi_i$ ever holds is contained in $\bigcup_{n\ge T}D_n$. The union bound gives at most $\sum_{n\ge T}\delta_n=\delta$; pruning only removes read-outs. For the second claim, the $\ell$-th history begins at a window determined by the past, so the probability that it begins by $N$ and fires is at most $\delta$ times the probability that it begins by $N$; summing over $\ell$ gives $\delta\,\mathbb{E}[L_N]$.
+\end{proof}
+The proposition is strongest where pruning does not act. A graduated cell is exempt from \eqref{eq:prune}, so a Static wall has one history and the probability that the $\lor\,\pi_i$ term of \eqref{eq:demote} ever demotes it on iid noise is at most $\delta$ for the whole run. For clutter that is pruned and re-created, the bound grows with the number of histories, which depends on the data: a Bernoulli(0.4) cell under the E2 parameters begins about 62 histories in 1024 windows, and $\delta\,\mathbb{E}[L_N]$ is then vacuous. That regime is measured (E5), not guaranteed. The null is still that of Proposition~\ref{prop:chernoff}: temporally correlated clutter violates it, and E5 shows that the test flags such clutter. The shipped level is chosen on held-out calibration seeds, now at trajectory level. The pre-stated rule takes the largest $\delta\in\{0.01,0.02,0.05,0.1,0.2\}$ for which the rate of ever labelling a Bernoulli clutter cell Periodic within 1024 windows has a Wilson 95\% upper limit of at most 0.01 in every calibration configuration. It selects $\delta{=}0.2$, the largest candidate (Table~\ref{tab:e5choice}), and this is the shipped default. For the shipped rule, then, what is proved is the per-history bound 0.2; the 0.01 target is a measurement. Under uniform coverage the threshold of \eqref{eq:astar} becomes $a^\star(n)=\sqrt{2r^\star_n/n}$ with $B(r^\star_n)=\delta_n/H$, which falls roughly like $\sqrt{\log n/n}$ rather than $1/\sqrt n$. The detection delay is the price: in E2 a 50\%-duty door with $T{=}8$ is detected from 25 windows, against 15 with a single-read-out level of 0.1 and 8 without the test.
+
+\subsection{Classifying and Pruning: Four Classes from One State}\label{subsec:classify}
+
+At the end of the same per-cell pass, a cell with little evidence is erased together with its Fourier accumulators:
+\begin{equation}\label{eq:prune}
+  \text{erase } i \iff \lnot g_i\land p_i<\pprune\land a_i<\amin .
+\end{equation}
+Static cells and periodic cells are therefore never pruned. The guard uses the lenient effect-size screen $a_i<\amin$ rather than $\lnot\pi_i$, so a \emph{candidate} periodic cell keeps its accumulators, and hence its growing $n_i$, until the test resolves it. Every other erased cell loses $\boldsymbol{\phi}_i$. We considered keeping the Fourier history of erased cells and rejected it: pruning exists so that clutter does not accumulate, and a record for every cell ever touched would grow without bound, fastest in \code{voxel3d}, where every sampled free voxel is a cell. A re-created cell restarts at $n_i=0$ with a new history and, under \eqref{eq:spend}, a new level budget; this is why the trajectory bound of Proposition~\ref{prop:spend} scales with the number of histories. The read-out $\Psi$ of \eqref{eq:objective} is a priority ladder,
+\begin{equation}\label{eq:classify}
+  c_i=\begin{cases}
+    \mathsf{U} & i\text{ absent},\\
+    \mathsf{S} & g_i,\\
+    \mathsf{P} & \pi_i,\\
+    \mathsf{T} & p_i\ge\pprune,\\
+    \mathsf{U} & \text{otherwise},
+  \end{cases}
+\end{equation}
+evaluated top to bottom. The node renders it with the convention Unknown $-1$, Transient 50, Periodic 75, Static 100, writing classes in ascending priority so Static wins any tie; \code{voxel3d} publishes only Static voxel centres. The full transition table is in Appendix~\ref{app:io}. The update touches all $N$ live cells, including untouched ones, because \eqref{eq:grad}--\eqref{eq:prune} read the recomputed $p_i$ and $a_i$; its cost is $O(NH)$ per window, and between window closes a sweep costs $O(1)$ per endpoint plus the ray walk. Per-cell state is a 24-byte record plus roughly 32 bytes of hash-node overhead, the ${\sim}56$~B/cell used in \S\ref{sec:exp}; a Fourier record is allocated only for cells touched with periodicity enabled.
+
+\begin{algorithm}[t]
+\caption{\code{endWindow}: one layered update per closed window, as in \code{layered\_map.cpp}}\label{alg:endwindow}
+\KwIn{live cells $\mathcal{X}$ with window counters $h_i,m_i$; window index $w$}
+$w\gets w+1$\;
+\ForEach{live cell $i$}{
+  $\tau\gets[h_i{>}0\lor m_i{>}0]$, $o\gets[h_i{>}0]$, $f\gets[h_i{=}0\land m_i{>}0]$\tcp*{Eq.~\eqref{eq:score}}
+  \If{$\tau$}{
+    $\ell_i\gets\mathrm{clamp}\big(\lambda(\ell_i+o\,\lhit+f\,\lmiss),\,l_{\min},\,l_{\max}\big)$, $N_i\gets N_i+1$\tcp*{Eq.~\eqref{eq:logodds}}
+    \lIf{\code{enable\_periodicity}}{update $\boldsymbol{\phi}_i$ with $(o,w)$\tcp*[f]{Eq.~\eqref{eq:gather}}}
+  }
+  $p_i\gets\sigma(\ell_i)$, $a_i\gets\mathrm{amplitude}(\boldsymbol{\phi}_i)$, $\pi_i\gets$ Eq.~\eqref{eq:periodic} on $\boldsymbol{\phi}_i$\tcp*{Eqs.~\eqref{eq:amp}--\eqref{eq:periodic}}
+  \lIf{$\lnot g_i\land\lnot\pi_i\land p_i\ge\pgrad\land N_i\ge\Nmin$}{$g_i\gets\text{true}$\tcp*[f]{Eq.~\eqref{eq:grad}}}
+  \lIf{$g_i\land(p_i\le\pdem\lor\pi_i)$}{$g_i\gets\text{false}$\tcp*[f]{Eq.~\eqref{eq:demote}}}
+  $h_i\gets0$, $m_i\gets0$\;
+  \lIf{$\lnot g_i\land p_i<\pprune\land a_i<\amin$}{erase $i$ and $\boldsymbol{\phi}_i$\tcp*[f]{Eq.~\eqref{eq:prune}}}
+}
+\KwOut{updated $\mathcal{X}$; classes by Eq.~\eqref{eq:classify} on demand}
+\end{algorithm}
+
+\subsection{Selecting a Backend: One Interface, One String}\label{subsec:select}
+
+\code{MapBackend} exposes four methods: \code{integrate(obs, origin)} runs $\Gamma_b$ for one sweep, \code{tick()} advances the integration counter and may close a window, and two read-only counters report Static and Transient cells. The node reads one string parameter, \code{backend} $\in\{$\code{grid2d}, \code{voxel3d}$\}$, holds one \code{unique\_ptr} per concrete backend and instantiates exactly one at construction; all engine parameters are read through one shared helper, so the tuning surface is backend-independent by construction. At two backends a runtime \code{dlopen} registry such as \code{pluginlib} \citep{ros2pluginlib} would add discovery machinery whose cost is not yet repaid. Because $\Phi$ and $\Psi$ in \eqref{eq:objective} never see coordinates, any behavioural or cost difference between the backends must originate in $\kappa_b$, $\rho_b$ or their input sampling---the property the experiments test.
+
+\subsection{Reconciling Code and Specification}\label{subsec:specdiff}
+
+We document the code that ships. Two places diverge from the design document (\code{SPEC.md}), and each changes operational semantics.
+
+\begin{remark}[Forgetting is coupled to re-observation]\label{rem:fov}
+The design document states that every cell decays every window. In the code, \eqref{eq:logodds} runs only for touched cells, so a cell outside the sensor's field of view neither decays nor relaxes toward the prior: its $\ell_i$ freezes. Clutter fades only while it is re-observed as free, and anything that leaves the field of view persists (\S\ref{sec:disc}).
+\end{remark}
+\begin{remark}[The amplitude gate counts touches]
+The design document gates the amplitude on \emph{elapsed} windows; the code gates on the touched-window count $n_i$ of \eqref{eq:periodic}. This is the mechanism behind the low-duty-cycle miss in \S\ref{subsec:main}.
+\end{remark}

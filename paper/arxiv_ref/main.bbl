@@ -1,0 +1,157 @@
+\begin{thebibliography}{26}
+\providecommand{\natexlab}[1]{#1}
+\providecommand{\url}[1]{\texttt{#1}}
+\expandafter\ifx\csname urlstyle\endcsname\relax
+  \providecommand{\doi}[1]{doi: #1}\else
+  \providecommand{\doi}{doi: \begingroup \urlstyle{rm}\Url}\fi
+
+\bibitem[Berrio et~al.(2022)Berrio, Worrall, Shan, and Nebot]{berrio2021longterm}
+J.~S. Berrio, S.~Worrall, M.~Shan, and E.~Nebot.
+\newblock Long-term map maintenance pipeline for autonomous vehicles.
+\newblock \emph{IEEE Transactions on Intelligent Transportation Systems}, 23\penalty0 (8):\penalty0 10427--10440, 2022.
+\newblock \doi{10.1109/TITS.2021.3094485}.
+
+\bibitem[Biber and Duckett(2005)]{biber2005dynamicmaps}
+P.~Biber and T.~Duckett.
+\newblock Dynamic maps for long-term operation of mobile service robots.
+\newblock In \emph{Robotics: Science and Systems I (RSS)}, Cambridge, MA, USA, 2005.
+
+\bibitem[Duberg and Jensfelt(2020)]{duberg2020ufomap}
+D.~Duberg and P.~Jensfelt.
+\newblock {UFOMap}: An efficient probabilistic 3d mapping framework that embraces the unknown.
+\newblock \emph{IEEE Robotics and Automation Letters}, 5\penalty0 (4):\penalty0 6411--6418, 2020.
+\newblock \doi{10.1109/LRA.2020.3013861}.
+
+\bibitem[Gil et~al.(2025)Gil, Lee, Kim, and Kim]{gil2025elite}
+H.~Gil, D.~Lee, G.~Kim, and A.~Kim.
+\newblock {ELite}: Ephemerality meets {LiDAR}-based lifelong mapping.
+\newblock In \emph{2025 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3312--3319, 2025.
+\newblock \doi{10.1109/ICRA55743.2025.11127618}.
+
+\bibitem[Hoeffding(1963)]{hoeffding1963}
+W.~Hoeffding.
+\newblock Probability inequalities for sums of bounded random variables.
+\newblock \emph{Journal of the American Statistical Association}, 58\penalty0 (301):\penalty0 13--30, 1963.
+\newblock \doi{10.1080/01621459.1963.10500830}.
+
+\bibitem[Hornung et~al.(2013)Hornung, Wurm, Bennewitz, Stachniss, and Burgard]{hornung2013octomap}
+A.~Hornung, K.~M. Wurm, M.~Bennewitz, C.~Stachniss, and W.~Burgard.
+\newblock {OctoMap}: An efficient probabilistic 3d mapping framework based on octrees.
+\newblock \emph{Autonomous Robots}, 34\penalty0 (3):\penalty0 189--206, 2013.
+\newblock \doi{10.1007/s10514-012-9321-0}.
+
+\bibitem[Kim and Kim(2020)]{kim2020removert}
+G.~Kim and A.~Kim.
+\newblock Remove, then revert: Static point cloud map construction using multiresolution range images.
+\newblock In \emph{2020 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 10758--10765, 2020.
+\newblock \doi{10.1109/IROS45743.2020.9340856}.
+
+\bibitem[Kim and Kim(2022)]{kim2022ltmapper}
+G.~Kim and A.~Kim.
+\newblock {LT}-mapper: A modular framework for {LiDAR}-based lifelong mapping.
+\newblock In \emph{2022 International Conference on Robotics and Automation (ICRA)}, pages 7995--8002, 2022.
+\newblock \doi{10.1109/ICRA46639.2022.9811916}.
+
+\bibitem[Krajn\'{i}k et~al.(2014)Krajn\'{i}k, Fentanes, Cielniak, Dondrup, and Duckett]{krajnik2014spectral}
+T.~Krajn\'{i}k, J.~P. Fentanes, G.~Cielniak, C.~Dondrup, and T.~Duckett.
+\newblock Spectral analysis for long-term robotic mapping.
+\newblock In \emph{2014 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3706--3711, Hong Kong, China, 2014.
+\newblock \doi{10.1109/ICRA.2014.6907396}.
+
+\bibitem[Krajn\'{i}k et~al.(2017)Krajn\'{i}k, Fentanes, Santos, and Duckett]{krajnik2017fremen}
+T.~Krajn\'{i}k, J.~P. Fentanes, J.~M. Santos, and T.~Duckett.
+\newblock {FreMEn}: Frequency map enhancement for long-term mobile robot autonomy in changing environments.
+\newblock \emph{IEEE Transactions on Robotics}, 33\penalty0 (4):\penalty0 964--977, 2017.
+\newblock \doi{10.1109/TRO.2017.2665664}.
+
+\bibitem[Labb\'{e} and Michaud(2019)]{labbe2019rtabmap}
+M.~Labb\'{e} and F.~Michaud.
+\newblock {RTAB}-map as an open-source lidar and visual {SLAM} library for large-scale and long-term online operation.
+\newblock \emph{Journal of Field Robotics}, 36\penalty0 (2):\penalty0 416--446, 2019.
+
+\bibitem[Lim et~al.(2021)Lim, Hwang, and Myung]{lim2021erasor}
+H.~Lim, S.~Hwang, and H.~Myung.
+\newblock {ERASOR}: Egocentric ratio of pseudo occupancy-based dynamic object removal for static 3d point cloud map building.
+\newblock \emph{IEEE Robotics and Automation Letters}, 6\penalty0 (2):\penalty0 2272--2279, 2021.
+\newblock \doi{10.1109/LRA.2021.3061363}.
+
+\bibitem[Lu et~al.(2014)Lu, Hershberger, and Smart]{lu2014layered}
+D.~V. Lu, D.~Hershberger, and W.~D. Smart.
+\newblock Layered costmaps for context-sensitive navigation.
+\newblock In \emph{2014 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 709--715, Chicago, IL, USA, 2014.
+\newblock \doi{10.1109/IROS.2014.6942636}.
+
+\bibitem[Macenski and Jambrecic(2021)]{macenski2021slamtoolbox}
+S.~Macenski and I.~Jambrecic.
+\newblock {SLAM} toolbox: {SLAM} for the dynamic world.
+\newblock \emph{Journal of Open Source Software}, 6\penalty0 (61):\penalty0 2783, 2021.
+\newblock \doi{10.21105/joss.02783}.
+
+\bibitem[Macenski et~al.(2020)Macenski, Tsai, and Feinberg]{macenski2020stvl}
+S.~Macenski, D.~Tsai, and M.~Feinberg.
+\newblock Spatio-temporal voxel layer: A view on robot perception for the dynamic world.
+\newblock \emph{International Journal of Advanced Robotic Systems}, 17\penalty0 (2), 2020.
+\newblock \doi{10.1177/1729881420910530}.
+
+\bibitem[Meyer-Delius et~al.(2010)Meyer-Delius, Hess, Grisetti, and Burgard]{meyerdelius2010temporary}
+D.~Meyer-Delius, J.~Hess, G.~Grisetti, and W.~Burgard.
+\newblock Temporary maps for robust localization in semi-static environments.
+\newblock In \emph{2010 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 5750--5755, Taipei, Taiwan, 2010.
+
+\bibitem[Nie{\ss}ner et~al.(2013)Nie{\ss}ner, Zollh\"ofer, Izadi, and Stamminger]{niessner2013hashing}
+M.~Nie{\ss}ner, M.~Zollh\"ofer, S.~Izadi, and M.~Stamminger.
+\newblock Real-time 3d reconstruction at scale using voxel hashing.
+\newblock \emph{ACM Transactions on Graphics}, 32\penalty0 (6):\penalty0 169:1--169:11, 2013.
+\newblock \doi{10.1145/2508363.2508374}.
+
+\bibitem[{Open Robotics}(2024)]{ros2pluginlib}
+{Open Robotics}.
+\newblock Creating and using plugins (c++)~--- {ROS} 2 documentation.
+\newblock \url{https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Pluginlib.html}, 2024.
+\newblock Accessed 2026-07-02.
+
+\bibitem[Palazzolo et~al.(2019)Palazzolo, Behley, Lottes, Gigu\`{e}re, and Stachniss]{palazzolo2019refusion}
+E.~Palazzolo, J.~Behley, P.~Lottes, P.~Gigu\`{e}re, and C.~Stachniss.
+\newblock {ReFusion}: 3d reconstruction in dynamic environments for {RGB-D} cameras exploiting residuals.
+\newblock In \emph{2019 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 7855--7862, 2019.
+\newblock \doi{10.1109/IROS40897.2019.8967590}.
+
+\bibitem[Rosen et~al.(2016)Rosen, Mason, and Leonard]{rosen2016persistence}
+D.~M. Rosen, J.~Mason, and J.~J. Leonard.
+\newblock Towards lifelong feature-based mapping in semi-static environments.
+\newblock In \emph{2016 IEEE International Conference on Robotics and Automation (ICRA)}, pages 1063--1070. IEEE, 2016.
+
+\bibitem[Saarinen et~al.(2012)Saarinen, Andreasson, and Lilienthal]{saarinen2012imac}
+J.~Saarinen, H.~Andreasson, and A.~J. Lilienthal.
+\newblock Independent {M}arkov {C}hain occupancy grid maps for representation of dynamic environments.
+\newblock In \emph{2012 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 3489--3495. IEEE, 2012.
+
+\bibitem[Schmid et~al.(2024)Schmid, Abate, Chang, and Carlone]{schmid2024khronos}
+L.~Schmid, M.~Abate, Y.~Chang, and L.~Carlone.
+\newblock Khronos: A unified approach for spatio-temporal metric-semantic {SLAM} in dynamic environments.
+\newblock In \emph{Robotics: Science and Systems (RSS)}, 2024.
+
+\bibitem[Thrun et~al.(2005)Thrun, Burgard, and Fox]{thrun2005probabilistic}
+S.~Thrun, W.~Burgard, and D.~Fox.
+\newblock \emph{Probabilistic Robotics}.
+\newblock MIT Press, Cambridge, MA, 2005.
+
+\bibitem[Tipaldi et~al.(2013)Tipaldi, Meyer-Delius, and Burgard]{tipaldi2013lifelong}
+G.~D. Tipaldi, D.~Meyer-Delius, and W.~Burgard.
+\newblock Lifelong localization in changing environments.
+\newblock \emph{The International Journal of Robotics Research}, 32\penalty0 (14):\penalty0 1662--1678, 2013.
+\newblock \doi{10.1177/0278364913502830}.
+
+\bibitem[Yang et~al.(2024)Yang, Prakhya, Zhu, and Liu]{yang2025lifelong3d}
+L.~Yang, S.~M. Prakhya, S.~Zhu, and Z.~Liu.
+\newblock Lifelong 3d mapping framework for hand-held \& robot-mounted {LiDAR} mapping systems.
+\newblock \emph{IEEE Robotics and Automation Letters}, 9\penalty0 (11):\penalty0 9446--9453, 2024.
+\newblock \doi{10.1109/LRA.2024.3417113}.
+
+\bibitem[Zechmeister and K\"{u}rster(2009)]{zechmeister2009gls}
+M.~Zechmeister and M.~K\"{u}rster.
+\newblock The generalised {Lomb-Scargle} periodogram: A new formalism for the floating-mean and {Keplerian} periodograms.
+\newblock \emph{Astronomy \& Astrophysics}, 496\penalty0 (2):\penalty0 577--584, 2009.
+\newblock \doi{10.1051/0004-6361:200811296}.
+
+\end{thebibliography}

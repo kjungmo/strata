@@ -1,0 +1,30 @@
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{axis}[width=0.82\linewidth, height=0.40\linewidth, xmode=log, log basis x=2,
+  xtick={6,8,12,16,24,32,48,64}, xticklabels={6,8,12,16,24,32,48,64},
+  xmin=5.5, xmax=70, ymin=-0.02, ymax=0.92,
+  xlabel={observation length $n$ (touched windows)}, ylabel={dominant amplitude $a$},
+  grid=major, grid style={gray!20}, tick label style={font=\scriptsize}, label style={font=\small},
+  legend style={font=\scriptsize, at={(1.02,0.5)}, anchor=west}, legend cell align=left]
+\addplot[thick, blue!70!black, mark=*, mark size=1.2pt] table[x=len,y=amp] {figures/data/e2_door_p8_4on4off.dat};
+\addplot[thick, blue!40, mark=square*, mark size=1.2pt] table[x=len,y=amp] {figures/data/e2_door_p4_2on2off.dat};
+\addplot[thick, teal!70!black, dashed, mark=triangle*, mark size=1.4pt] table[x=len,y=amp] {figures/data/e2_door_p8_2on6off.dat};
+\addplot[thick, black, mark=x] table[x=len,y=amp] {figures/data/e2_wall_constant.dat};
+\addplot[red!70!black, thick, densely dotted, mark=o, mark size=1.2pt] table[x=len,y=amp] {figures/data/e2_aperiodic_1.dat};
+\addplot[gray, thin, mark=none] table[x=len,y=amp] {figures/data/e2_aperiodic_0.dat};
+\addplot[gray, thin, mark=none, forget plot] table[x=len,y=amp] {figures/data/e2_aperiodic_2.dat};
+\addplot[gray, thin, mark=none, forget plot] table[x=len,y=amp] {figures/data/e2_aperiodic_3.dat};
+\addplot[red, thick, dashed, domain=5.5:70, samples=2, forget plot] {0.3};
+\addplot[red!60!black, thick, dotted, forget plot] table[x=len,y=astar] {figures/data/e2_threshold.dat};
+\addplot[red!40, thin, dotted, forget plot] table[x=len,y=single] {figures/data/e2_threshold.dat};
+\node[font=\scriptsize, anchor=south west, text=red!60!black] at (axis cs:9,0.80) {$a^\star(n)$};
+\draw[gray!70, dashed] (axis cs:8,-0.02) -- (axis cs:8,0.92);
+\node[font=\scriptsize, anchor=south west, text=red] at (axis cs:40,0.30) {$\amin{=}0.3$};
+\node[font=\scriptsize, anchor=north west, text=gray] at (axis cs:8,0.9) {$n{=}T$};
+\legend{door p8 4/4, door p4 2/2, door p8 2/6, wall, aperiodic 1, aperiodic 0/2/3}
+\end{axis}
+\end{tikzpicture}
+\caption{\textbf{FreMEn-lite amplitude against observation length (E2)}, from a non-pruning reference model of the corrected engine fed each probe cell's occupancy stream ($T{=}8$, $H{=}3$). The $n\ge T$ gate forces $a{=}0$ at $n{=}6$; both 50\%-duty doors settle well above $\amin$, and the 25\%-duty door would too, yet the live pipeline prunes it first (Proposition~\ref{prop:race}). The constant wall is exactly 0 at every length because the coefficients are centred (Remark~\ref{rem:leak}); the Bernoulli controls hover near $\amin$. The thick dotted curve $a^\star(n)$ is the amplitude the shipped test requires under uniform phase coverage, with $\delta{=}0.2$ spent over the touch count and $H{=}3$ (Eq.~\eqref{eq:astar} with $\delta_n$ of Proposition~\ref{prop:spend}); the thin dotted curve is the single-read-out threshold at $\delta{=}0.1$. A cell is Periodic only above both $\amin$ and $a^\star(n)$. Plotted from \code{e2\_amplitude\_vs\_length.csv}.}
+\label{fig:e2}
+\end{figure}

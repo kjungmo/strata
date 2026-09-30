@@ -1,0 +1,23 @@
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1, horizontal sep=14mm},
+  width=0.47\linewidth, height=0.32\linewidth, xmin=0, xmax=39, ymin=0.93, ymax=1.005,
+  xlabel={window $t$}, grid=major, grid style={gray!20}, tick label style={font=\scriptsize},
+  label style={font=\small}, title style={font=\small},
+  legend style={font=\scriptsize, at={(0.97,0.03)}, anchor=south east}, legend cell align=left,
+  restrict y to domain=0.9:1.1, unbounded coords=discard]
+\nextgroupplot[title={\code{grid2d}}, ylabel={static-set F1}]
+\addplot[thick, blue!70!black] table[x=window,y=f1] {figures/data/e1_grid2d_low.dat};
+\addplot[thick, orange!80!black, dashed] table[x=window,y=f1] {figures/data/e1_grid2d_med.dat};
+\addplot[thick, red!70!black, densely dotted] table[x=window,y=f1] {figures/data/e1_grid2d_high.dat};
+\legend{low (5/w), med (25/w), high (100/w)}
+\nextgroupplot[title={\code{voxel3d}}]
+\addplot[thick, blue!70!black] table[x=window,y=f1] {figures/data/e1_voxel3d_low.dat};
+\addplot[thick, orange!80!black, dashed] table[x=window,y=f1] {figures/data/e1_voxel3d_med.dat};
+\addplot[thick, red!70!black, densely dotted] table[x=window,y=f1] {figures/data/e1_voxel3d_high.dat};
+\end{groupplot}
+\end{tikzpicture}
+\caption{\textbf{Static-layer F1 over time (E1).} F1 is 0 for $t<2$ (no cell has met $\Nmin{=}3$; not shown) and reaches 1.0 at $t{=}2$ for every backend and clutter level. Only the 100-movers-per-window regime accumulates false statics, more so on \code{grid2d}. Plotted directly from \code{e1\_static\_quality.csv}.}
+\label{fig:e1}
+\end{figure}

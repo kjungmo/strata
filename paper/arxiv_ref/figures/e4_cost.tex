@@ -1,0 +1,21 @@
+\begin{figure}[t]
+\centering
+\begin{tikzpicture}
+\begin{groupplot}[group style={group size=2 by 1, horizontal sep=18mm},
+  width=0.46\linewidth, height=0.34\linewidth, ybar=1pt, /pgf/bar width=7pt, ymode=log,
+  symbolic x coords={100,250,500}, xtick=data, xticklabels={$100^2$,$250^2$,$500^2$},
+  xlabel={nominal extent}, enlarge x limits=0.25, grid=major, grid style={gray!20},
+  tick label style={font=\scriptsize}, label style={font=\small},
+  legend style={font=\scriptsize, at={(0.03,0.97)}, anchor=north west}, legend cell align=left]
+\nextgroupplot[ylabel={$\mu$s per \code{integrate()}}]
+\addplot[fill=blue!55, draw=blue!70!black] table[x=extent, y=us, discard if not={backend}{grid2d}] {figures/data/e4.dat};
+\addplot[fill=orange!60, draw=orange!80!black] table[x=extent, y=us, discard if not={backend}{voxel3d}] {figures/data/e4.dat};
+\legend{\code{grid2d}, \code{voxel3d}}
+\nextgroupplot[ylabel={live cells at end of run}]
+\addplot[fill=blue!55, draw=blue!70!black] table[x=extent, y=cells, discard if not={backend}{grid2d}] {figures/data/e4.dat};
+\addplot[fill=orange!60, draw=orange!80!black] table[x=extent, y=cells, discard if not={backend}{voxel3d}] {figures/data/e4.dat};
+\end{groupplot}
+\end{tikzpicture}
+\caption{\textbf{Per-call cost and live-cell count (E4)}, log scale. The latency gap between backends narrows with extent in step with the live-cell gap, which is set by the 3D free-space ray march rather than by the shared engine. Plotted from \code{e4\_throughput.csv}.}
+\label{fig:e4}
+\end{figure}

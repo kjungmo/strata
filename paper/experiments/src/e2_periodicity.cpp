@@ -9,6 +9,9 @@
 // feeds internally (gather(occ, window_count_) every touched window), so the two
 // agree; PeriodicityModel is exercised directly because LayeredMap does not expose
 // amplitude. Deterministic: aperiodic patterns precomputed from eval::kSeed.
+// ref_false_alarm is the mirror model's Bonferroni-adjusted Chernoff bound H*B(dchi)
+// (the significance term of the calibrated test; with the shipped spending rule
+// Periodic needs it <= 0.2 T / (n (n + 1)) at touch count n).
 #include <array>
 #include <iostream>
 #include <random>
@@ -23,7 +26,9 @@ using namespace strata_core;
 
 namespace {
 
-constexpr int kMaxLen = 64;
+constexpr int kMaxLen = 64;     // headline read-out length
+constexpr int kSweepMax = 100;  // read-out sweep 8..100 (patterns generated to here;
+                                // the first 64 windows are identical to the 64-long run)
 constexpr int kPeriod = 8;
 constexpr int kHarmonics = 3;
 
@@ -41,6 +46,10 @@ LayeredMapParams params() {
   p.prune_prob = 0.05;
   p.enable_periodicity = true;
   p.periodic_amplitude_min = 0.3;
+  // Shipped rule: level 0.2 spent over the touch count, chosen by E5 on seeds
+  // disjoint from this experiment (e5_trajectory.cpp); equal to the shipped default.
+  p.periodic_false_alarm = 0.2;
+  p.periodic_alpha_spending = true;
   p.periodicity.period_windows = kPeriod;
   p.periodicity.n_harmonics = kHarmonics;
   return p;
@@ -50,7 +59,7 @@ struct Cell {
   CellId id;
   std::string name;
   bool gt_periodic;
-  std::array<bool, kMaxLen> occ;  // occupancy pattern per window
+  std::array<bool, kSweepMax> occ;  // occupancy pattern per window
 };
 
 const char* className(CellClass c) {
@@ -70,7 +79,7 @@ std::vector<Cell> makeCells() {
     c.id = id;
     c.name = n;
     c.gt_periodic = gt;
-    for (int w = 0; w < kMaxLen; ++w) c.occ[w] = fn(w);
+    for (int w = 0; w < kSweepMax; ++w) c.occ[w] = fn(w);
     cs.push_back(c);
   };
   // Periodic doors (GT positive).
@@ -83,8 +92,8 @@ std::vector<Cell> makeCells() {
   for (int a = 0; a < 4; ++a) {
     std::mt19937 rng(eval::kSeed + 500 + a);
     std::bernoulli_distribution coin(0.5);
-    std::array<bool, kMaxLen> pat;
-    for (int w = 0; w < kMaxLen; ++w) pat[w] = coin(rng);
+    std::array<bool, kSweepMax> pat;
+    for (int w = 0; w < kSweepMax; ++w) pat[w] = coin(rng);
     add(20 + a, "aperiodic_" + std::to_string(a), false,
         [pat](int w) { return pat[w]; });
   }
@@ -117,8 +126,8 @@ int main() {
   // prune a low-duty cell before its FreMEn evidence matures, so a cell can show
   // ref_amplitude >= a_min yet still be classified non-Periodic (see door_p8_2on6off).
   cls.header(
-      "cell,gt_periodic,final_class,pred_periodic,ref_amplitude,periodic_prob");
-  cls.row("#seed", eval::kSeed, "obs_length", kMaxLen, "", "");
+      "cell,gt_periodic,final_class,pred_periodic,ref_amplitude,periodic_prob,ref_false_alarm");
+  cls.row("#seed", eval::kSeed, "obs_length", kMaxLen, "", "", "");
 
   LayeredMap lm(params());
   PeriodicityModel mirror({kPeriod, kHarmonics});  // mirrors internal gather stream
@@ -138,7 +147,7 @@ int main() {
     const CellClass fc = lm.classify(c.id);
     const bool pred_per = (fc == CellClass::Periodic);
     cls.row(c.name, c.gt_periodic ? 1 : 0, className(fc), pred_per ? 1 : 0,
-            mirror.amplitude(c.id), lm.periodicProb(c.id));
+            mirror.amplitude(c.id), lm.periodicProb(c.id), mirror.falseAlarm(c.id));
     if (c.gt_periodic) {
       ++gt_pos;
       if (pred_per) ++tp;
@@ -157,7 +166,41 @@ int main() {
   sum.row("gt_periodic", gt_pos, "");
   sum.row("gt_nonperiodic", gt_neg, "");
 
+  // (c) read-out length sweep: a fresh real LayeredMap per length L, classified
+  // after exactly L windows. The single 64-window read-out above is one point of it.
+  eval::Csv sw("results/e2_rates_vs_length.csv");
+  // ref_tp / ref_fp: the same predicate evaluated on the non-pruning mirror model
+  // (full history since window 1), to separate the test from the effect of pruning.
+  sw.header("obs_length,tp,fp,gt_periodic,gt_nonperiodic,tpr,fpr,false_positives,ref_tp,ref_fp,ref_false_positives");
+  sw.row("#seed", eval::kSeed, "period_windows", kPeriod, "", "", "", "", "", "", "");
+  for (int L = kPeriod; L <= kSweepMax; ++L) {
+    LayeredMap m(params());
+    PeriodicityModel ref({kPeriod, kHarmonics});
+    for (int w = 0; w < L; ++w) {
+      for (const auto& c : cells) {
+        if (c.occ[w]) m.observeHit(c.id); else m.observeMiss(c.id);
+        ref.gather(c.id, c.occ[w], w + 1);
+      }
+      m.tick();
+    }
+    const LayeredMapParams pp = params();
+    int ltp = 0, lfp = 0, rtp = 0, rfp = 0;
+    std::string fps, rfps;
+    for (const auto& c : cells) {
+      const bool per = m.classify(c.id) == CellClass::Periodic;
+      if (c.gt_periodic && per) ++ltp;
+      if (!c.gt_periodic && per) { ++lfp; fps += (fps.empty() ? "" : ";") + c.name; }
+      const bool rper = ref.isPeriodic(c.id, pp.periodic_amplitude_min, pp.periodic_false_alarm,
+                                       pp.periodic_alpha_spending);
+      if (c.gt_periodic && rper) ++rtp;
+      if (!c.gt_periodic && rper) { ++rfp; rfps += (rfps.empty() ? "" : ";") + c.name; }
+    }
+    sw.row(L, ltp, lfp, gt_pos, gt_neg, static_cast<double>(ltp) / gt_pos,
+           static_cast<double>(lfp) / gt_neg, fps.empty() ? "-" : fps, rtp, rfp,
+           rfps.empty() ? "-" : rfps);
+  }
+
   std::cout << "E2 done: TPR=" << tpr << " (" << tp << "/" << gt_pos
             << ") FPR=" << fpr << " (" << fp << "/" << gt_neg << ")\n";
-  return (amp.ok() && cls.ok() && sum.ok()) ? 0 : 1;
+  return (amp.ok() && cls.ok() && sum.ok() && sw.ok()) ? 0 : 1;
 }
