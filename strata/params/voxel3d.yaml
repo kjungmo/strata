@@ -18,5 +18,7 @@
     prune_prob: 0.05
     enable_periodicity: true
     periodic_amplitude_min: 0.3
+    periodic_false_alarm: 0.2
+    periodic_alpha_spending: true
     period_windows: 24
     n_harmonics: 2

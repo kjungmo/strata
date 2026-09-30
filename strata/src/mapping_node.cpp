@@ -71,6 +71,8 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   p.prune_prob         = declare_parameter<double>("prune_prob", 0.05);
   p.enable_periodicity = declare_parameter<bool>("enable_periodicity", true);
   p.periodic_amplitude_min = declare_parameter<double>("periodic_amplitude_min", 0.3);
+  p.periodic_false_alarm   = declare_parameter<double>("periodic_false_alarm", 0.2);
+  p.periodic_alpha_spending = declare_parameter<bool>("periodic_alpha_spending", true);
   p.periodicity.period_windows = declare_parameter<int>("period_windows", 24);
   p.periodicity.n_harmonics    = declare_parameter<int>("n_harmonics", 2);
   return p;
