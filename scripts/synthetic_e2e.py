@@ -14,13 +14,15 @@ The scene, seen from a sensor at a fixed pose:
   * mover  -- an object at MOVER_R that steps more than one voxel to a new bearing
               every window for MOVER_WINDOWS windows, then leaves
                                                         -> never Static; grid2d shows
-                                                           it Transient (50), then pruned
+                                                           it Transient (50), then free (0)
+  * free   -- cells the wall rays clear                -> grid2d: free (0), kept free after
+                                                           the classifier prunes them
 
 One window is `layer_interval` scans (read from the params YAML), so the door state
 is switched on window boundaries. Door cells are tested only where an open-door ray
 actually walks through them (the backend's own Bresenham line or half-voxel march):
-a door cell the ray skips is never observed free, so it rightly graduates to Static. This is a ROS-path test (topics -> node -> map),
-not a field result: it shows the shipped parameters classify a clean scene as the
+a door cell the ray skips is never observed free, so it rightly graduates to Static.
+This is a ROS-path test (topics -> node -> map), not a field result: it shows the shipped parameters classify a clean scene as the
 paper's E1-E3 harness does, on Humble, through the real node.
 
 Usage: synthetic_e2e.py grid2d|voxel3d PARAMS_YAML [--windows N]
@@ -241,10 +243,10 @@ def check_grid(maps, final):
     w = final.info.width
     def val(m):
         return lambda c: m.data[c[1] * w + c[0]]
-    s = grid_xy(final, *SENSOR[:2])
+    s_cell = grid_xy(final, *SENSOR[:2])
     open_rays = set()
     for d in door_bearings():
-        open_rays |= bresenham(*s, *grid_xy(final, *point(WALL_R, d)[:2]))
+        open_rays |= bresenham(*s_cell, *grid_xy(final, *point(WALL_R, d)[:2]))
     door, skipped = split_by_ray({grid_xy(final, *point(DOOR_R, d)[:2]) for d in door_bearings()}, open_rays)
     wall = sorted({grid_xy(final, *point(WALL_R, d)[:2]) for d in wall_bearings()})
     mover = sorted({grid_xy(final, *point(MOVER_R, d)[:2])
@@ -262,23 +264,20 @@ def check_grid(maps, final):
     results.append((ever == 0, f'mover cells Static in any of {len(maps)} maps: {ever}/{len(mover)} (need 0)'))
     seen = sum(1 for c in mover if any(val(m)(c) == 50 for m in maps))
     results.append((seen > 0, f'mover cells seen Transient (50) in some map: {seen}/{len(mover)} (need > 0)'))
-    f, n = frac(mover, v, lambda x: x in (-1, 50))
-    results.append((f == 1.0, f'mover cells Transient or pruned at the end: {n}/{len(mover)} (need all)'))
-    # Not a gate: the documented encoding has no free value, so observed free space
-    # reads Transient (50) until pruned and unknown (-1) after; report the split.
+    f, n = frac(mover, v, lambda x: x == 0)
+    results.append((f >= 0.90, f'mover cells read free (0) at the end: {n}/{len(mover)} = {f:.3f} (need >= 0.90)'))
+    f, n = frac(mover, v, lambda x: x in (75, 100))
+    results.append((n == 0, f'mover cells Periodic or Static at the end: {n}/{len(mover)} (need 0)'))
+    # Free space: cells on wall rays (not wall or mover cells) must read free (0) in
+    # the final map and never read as an obstacle in any map.
     free = set()
     for d in wall_bearings():
-        free |= bresenham(*s, *grid_xy(final, *point(WALL_R, d)[:2]))
-    free -= set(wall) | set(mover) | {s}
-    counts = {}
-    for m in maps:
-        for c in free:
-            x = val(m)(c)
-            counts[x] = counts.get(x, 0) + 1
-    total = sum(counts.values())
-    share = ', '.join(f'{k}: {n / total:.2f}' for k, n in sorted(counts.items()))
-    print(f'info  free-space cells on wall rays, share of (cell, map) pairs by value over '
-          f'{len(maps)} maps: {share} (the encoding has no free value)')
+        free |= bresenham(*s_cell, *grid_xy(final, *point(WALL_R, d)[:2]))
+    free = sorted(free - set(wall) - set(mover) - {s_cell})
+    f, n = frac(free, v, lambda x: x == 0)
+    results.append((f >= 0.99, f'free cells on wall rays read free (0) at the end: {n}/{len(free)} = {f:.3f} (need >= 0.99)'))
+    blocked = sum(1 for c in free if any(val(m)(c) in (50, 75, 100) for m in maps))
+    results.append((blocked == 0, f'free cells drawn as an obstacle in any of {len(maps)} maps: {blocked}/{len(free)} (need 0)'))
     return results
 
 
@@ -379,6 +378,14 @@ def main():
     res = save_map(node, args.timeout)
     saved = res.message.replace('saved ', '').split(' + ')[0]
     results.append((res.success and os.path.getsize(saved) > 0, f'save_map: {res.message}'))
+    if args.backend == 'grid2d' and res.success:
+        with open(saved, 'rb') as fh:
+            raw = fh.read()
+        parts = raw.split(b'\n', 3)                          # P5, "W H", 255, pixels
+        pixels = parts[3]
+        free_px, occ_px = pixels.count(bytes([254])), pixels.count(bytes([0]))
+        results.append((free_px > 0 and occ_px > 0,
+                        f'saved PGM has free (254) and occupied (0) pixels: {free_px} free, {occ_px} occupied'))
 
     for ok, line in results:
         print(('ok    ' if ok else 'FAIL  ') + line)

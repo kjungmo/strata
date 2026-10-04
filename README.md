@@ -62,8 +62,8 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 **transient** layers erode away.
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
-cell id, and is unit-tested with gtest **without ROS or PCL** (22 gtests across 7
-suites, plus 2 node tests). rclcpp, tf2, and PCL live only in the ROS node
+cell id, and is unit-tested with gtest **without ROS or PCL** (54 gtests across 9
+suites, plus 4 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -203,14 +203,15 @@ Full setup, all E1–E4 tables, and per-figure notes are in
 [`paper/experiments/run_all.sh`](paper/experiments/run_all.sh); every headline
 number is CI-guarded by
 [`paper/experiments/number_guard.py`](paper/experiments/number_guard.py)
-(53 checks against the committed CSVs in `paper/experiments/results/`).
+(checks against the committed CSVs in `paper/experiments/results/`).
 
 The ROS path is checked separately on Humble in CI:
 [`scripts/synthetic_e2e.py`](scripts/synthetic_e2e.py) feeds each launched node a
 synthetic wall, periodic door and moving object over its real topics and TF, and
 checks that the published map keeps the wall static, labels the door periodic
 (grid2d) or keeps it out of the static map (voxel3d), never makes the moving
-object static, and that `~/save_map` writes a file.
+object static, renders cleared space free (grid2d), and that `~/save_map` writes
+a file.
 
 ## 🔌 Interface
 
@@ -223,10 +224,19 @@ object static, and that `~/save_map` writes a file.
 
 There is **no** `/initialpose` input and **no** `map→odom` output — `strata`
 maps, it does not localize. The robot's pose comes in via TF from an external
-source. Occupancy values render as static→100, periodic→75, transient→50,
-unknown→-1. There is no free value: a cell observed free reads transient (50)
-until it is pruned and unknown (-1) after, so a saved PGM marks free space as
-unknown, not free.
+source. Occupancy values render as static→100, periodic→75, transient→50
+(last observed as a hit, or live evidence leaning occupied), free→0,
+unknown→-1. Free means last observed free, not currently free: a cell a ray has
+cleared reads 0, even after the classifier prunes it, while its last
+observation was free. It is not re-verified out of view, so an obstacle placed
+where the sensor no longer looks reads free until it is observed; do not treat
+0 as clearance outside the current sensor footprint. A saved PGM writes free
+as 254, transient and periodic as 100 and static as 0, so with the thresholds
+written beside it (`occupied_thresh 0.65`, `free_thresh 0.196`)
+`nav2_map_server` reads free cells as free, static cells as occupied, and
+transient and periodic cells as unknown. CI checks that the synthetic scene's
+PGM has free and occupied pixels; the map_server load was checked once by hand
+on Humble, not in CI.
 
 Windows count integrated scans (`layer_interval` per window), not seconds, so
 `period_windows` holds only at the scan rate it was set for. The sensor

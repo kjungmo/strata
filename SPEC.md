@@ -75,7 +75,7 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 ### Outputs
 | Name | Type | Backend | Notes |
 |---|---|---|---|
-| `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50, unknown→-1 |
+| `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
 | `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML; voxel3d → PCD |
 
@@ -331,7 +331,7 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
-streams) in `strata_core/test`, runnable with **no ROS** — **41 gtests across 8
+streams) in `strata_core/test`, runnable with **no ROS** — **54 gtests across 9
 suites**:
 
 - **Smoke** (1): version macro is defined.
@@ -348,7 +348,7 @@ suites**:
   amplitude-only rule would fire on > 20 % of such cells; square-wave doors are
   still detected (50 %-duty from n = 16, 25 %-duty from n = 32); a constant cell is
   never Periodic under any sampling; nothing is Periodic below the n ≥ T gate.
-- **LayeredMap** (13): graduates only when P(occ) ≥ threshold AND observed ≥
+- **LayeredMap** (17): graduates only when P(occ) ≥ threshold AND observed ≥
   `min_observations`; a moving obstacle (each cell hit once) never graduates;
   Schmitt hysteresis demotes only after sustained free; a square-wave cell is
   classified Periodic, not Static; `layer_interval` groups ticks into windows;
@@ -356,10 +356,19 @@ suites**:
   wall stays Static; the E2 door is Periodic from window 16 on; periodic
   demotion needs contradicting free evidence; a graduated door is demoted once
   Periodic; Bernoulli clutter through pruning is Periodic at rate `<= 0.01`;
-  `periodic_false_alarm >= 1` restores the amplitude-only rule.
-- **Grid2DBackend** (4): a hit marks the endpoint and clears the ray; repeated
-  hits graduate; occupancy-grid render (100/75/50/-1); a 6-DoF (elevated)
-  endpoint projects to the plane.
+  `periodic_false_alarm >= 1` restores the amplitude-only rule; alpha spending
+  is the shipped rule; with spending, a graduated door is still demoted once
+  Periodic, a noisy wall is rarely ever demoted by the periodic path, and pruned
+  clutter is rarely ever Periodic.
+- **PeriodicitySpending** (4): the spent levels are zero below the n ≥ T gate
+  and sum to alpha; the per-read-out rule is not trajectory-valid but spending
+  is; doors are still detected, later; the amplitude-only rule is unaffected.
+- **Grid2DBackend** (9): a hit marks the endpoint and clears the ray; repeated
+  hits graduate; occupancy-grid render (100 static, 50 transient, 0 free, -1
+  unknown); a cleared cell stays free after pruning; a freed transient reads
+  free once a window observes it free; a new obstacle on cleared ground reads
+  50 from its first hit; an obstacle last seen hit stays 50 out of view until
+  observed free; a 6-DoF (elevated) endpoint projects to the plane.
 - **Voxel3DBackend** (3): same world point → same voxel id; repeated hits
   graduate a voxel with z preserved; a moving point never graduates.
 - **Integration** (1): a deterministic room — a fixed **wall** cell, a **mover**
@@ -367,8 +376,8 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **2 node gtests** in `strata/test`: `test_grid_math` (world↔grid
-round-trip, no rclcpp) and `test_scan_adapter` (a single beam under a 6-DoF
+Plus **4 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+round-trip, no rclcpp) and `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved).
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system

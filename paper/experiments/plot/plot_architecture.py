@@ -88,7 +88,7 @@ def main():
         "GridMeta: W,H,res,origin_x,origin_y (fixed-size array)",
         "hit → worldToGrid(x,y)  [z dropped implicitly]",
         "clear → Bresenham line (exact, on-grid ints)",
-        "toOccupancyGrid(): -1/50/75/100",
+        "toOccupancyGrid(): -1/0/50/75/100",
     ]
     voxel_lines = [
         "int64 spatial hash id=(vx<<42)|(vy<<21)|vz, unbounded",
