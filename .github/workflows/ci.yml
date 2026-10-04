@@ -73,3 +73,24 @@ jobs:
             stop "$pid"
             if [ "$status" -ne 0 ]; then cat "launch_${backend}.log"; exit 1; fi
           done
+
+      - name: Feed each backend a synthetic scene and check the map it publishes
+        shell: bash
+        timeout-minutes: 8
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          test -f install/strata/share/strata/rviz/strata.rviz  # the config both launch files load
+          stop() {  # bash ignores SIGINT in background jobs, so stop the launch group with SIGTERM
+            kill -TERM -- "-$1" 2>/dev/null || true
+            for _ in $(seq 15); do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+            kill -KILL -- "-$1" 2>/dev/null || true
+          }
+          for backend in grid2d voxel3d; do
+            setsid ros2 launch strata "${backend}.launch.py" rviz:=false > "e2e_${backend}.log" 2>&1 &
+            pid=$!
+            status=0
+            timeout 180 python3 scripts/synthetic_e2e.py "$backend" "install/strata/share/strata/params/${backend}.yaml" || status=$?
+            stop "$pid"
+            if [ "$status" -ne 0 ]; then cat "e2e_${backend}.log"; exit 1; fi
+          done

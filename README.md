@@ -205,6 +205,13 @@ number is CI-guarded by
 [`paper/experiments/number_guard.py`](paper/experiments/number_guard.py)
 (53 checks against the committed CSVs in `paper/experiments/results/`).
 
+The ROS path is checked separately on Humble in CI:
+[`scripts/synthetic_e2e.py`](scripts/synthetic_e2e.py) feeds each launched node a
+synthetic wall, periodic door and moving object over its real topics and TF, and
+checks that the published map keeps the wall static, labels the door periodic
+(grid2d) or keeps it out of the static map (voxel3d), never makes the moving
+object static, and that `~/save_map` writes a file.
+
 ## 🔌 Interface
 
 | | **grid2d** | **voxel3d** |
@@ -217,7 +224,15 @@ number is CI-guarded by
 There is **no** `/initialpose` input and **no** `map→odom` output — `strata`
 maps, it does not localize. The robot's pose comes in via TF from an external
 source. Occupancy values render as static→100, periodic→75, transient→50,
-unknown→-1.
+unknown→-1. There is no free value: a cell observed free reads transient (50)
+until it is pruned and unknown (-1) after, so a saved PGM marks free space as
+unknown, not free.
+
+Windows count integrated scans (`layer_interval` per window), not seconds, so
+`period_windows` holds only at the scan rate it was set for. The sensor
+subscription is best effort: if the node cannot keep up, dropped scans stretch
+every window and detune the periodicity test. In the synthetic check, dropping
+40 % of scans turns every door cell from periodic to static.
 
 See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame conventions.
 
