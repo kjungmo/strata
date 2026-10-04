@@ -145,7 +145,7 @@ and the synthetic suite:
    which the FreMEn server already provides.
 2. **A ROS-free, deterministically testable core, shown backend-equivalent
    (design goal + measured).** The engine builds and unit-tests with a plain
-   C++17 + Eigen toolchain and is exercised by 49 behavior-level tests; both
+   C++17 + Eigen toolchain and is exercised by 54 behavior-level tests; both
    backends graduate the static wall by window 3 and hold recall 1.0 through
    window 39, differing in static-layer quality only by a clutter-induced
    static-precision gap (0.9253 grid2d vs. 0.9758 voxel3d at 100 movers per
@@ -353,9 +353,10 @@ planning using the same decay-rate mechanism family STRATA's
 `survival_decay` uses to decay mapping evidence toward unknown — same knob,
 different consumer. Layered Costmaps [@lu2014layered] composite independently
 maintained plugin layers per cell; STRATA's output value convention
-(`static→100, periodic→75, transient→50, unknown→-1`) reproduces the same
-layered mental model as the output of one cell-level state machine rather
-than as multiple composited layers. SLAM Toolbox [@macenski2021slamtoolbox]
+(`static→100, periodic→75, transient→50, free→0, unknown→-1`) reproduces the same
+layered mental model from one cell-level state machine, plus a per-cell byte
+for the free and last-observation values, rather than from multiple composited
+layers. SLAM Toolbox [@macenski2021slamtoolbox]
 bounds compute by adding and removing pose-graph nodes while performing its
 own 2D SLAM; STRATA has no pose graph and no SLAM, consuming an externally
 supplied transform and pruning at the per-cell evidence level (§4.5) instead
@@ -507,7 +508,12 @@ localizer. A single mutex serializes integration against publish and save.
 Table: ROS 2 input/output contract of the `strata` node. {#tbl:io}
 
 The occupancy-value convention on `~/map` and saved files is: unknown `-1`,
-transient `50`, periodic `75`, static `100`. For voxel3d, only the static-cell
+free `0` (a ray has cleared the cell and no higher value claims it),
+transient `50`, periodic `75`, static `100` (rendering rule in §4.6). A saved
+PGM writes `0`&rarr;254, `50` and `75`&rarr;100, `100`&rarr;0 and
+`-1`&rarr;205, so with the thresholds written beside it `nav2_map_server`
+loads free cells as free, static cells as occupied, and transient and periodic
+cells as unknown. For voxel3d, only the static-cell
 set is emitted as points on `~/map_points`.
 
 ---
@@ -883,9 +889,20 @@ $\texttt{gridCellId}(m,g_x,g_y)=g_y\cdot\texttt{width}+g_x$; points outside the
 array are dropped. Free space is cleared with integer Bresenham's line algorithm
 [@bresenham1965] from the sensor cell up to but excluding the hit cell, calling `observeMiss`
 on every cell in that half-open span — including the sensor-origin cell — so
-the hit cell receives only `observeHit`. Rendering to `nav_msgs/OccupancyGrid` initializes every cell to
-`-1`, then overwrites in ascending confidence order transient&rarr;`50`,
-periodic&rarr;`75`, static&rarr;`100`, so static wins any tie.
+the hit cell receives only `observeHit`. Outside the classifier, the backend
+keeps one byte per grid cell: an "observed free" bit set by the ray clear and
+never cleared, a bit marking a hit in the open window, and a bit recording
+whether the last closed window that observed the cell saw a hit (a window that
+both hits and clears a cell counts as a hit, as in the classifier). Rendering to `nav_msgs/OccupancyGrid` initializes every cell to
+`-1`, sets every observed-free cell to `0`, then overwrites in ascending
+priority transient obstacles&rarr;`50` (a cell hit in the open window or last
+observed as a hit, or a Transient cell whose evidence leans occupied, $p>0.5$),
+periodic&rarr;`75`, static&rarr;`100`, so static wins any tie. A new object on
+long-cleared ground therefore reads `50` from its first hit even while its
+log-odds are still negative, and keeps reading `50` while it is out of view
+until a ray observes it free again; a cell last observed free that does not
+lean occupied reads `0`, including after the classifier prunes it. Free thus means "last observed
+free", not "currently free" (§6.2).
 
 `Voxel3DBackend` is a sparse hash: the map grows through the hash map and needs
 no preallocated extent. Each
@@ -914,7 +931,7 @@ cloud. [@tbl:backends] contrasts the two.
 | Hit dimensionality | $x,y$ (z dropped by projection) | $x,y,z$ (full volumetric) |
 | Free-space ray | Bresenham line (exact, on-grid) | ray-sample march at 0.5-voxel step (approximate, off-grid) |
 | Growth | none — pre-sized at construction | sparse — hash grows with exploration; per-axis index range fixed by the 21-bit key |
-| Output | `nav_msgs/OccupancyGrid` (dense `-1/50/75/100`) | static voxel centers &rarr; `PointCloud2` |
+| Output | `nav_msgs/OccupancyGrid` (dense `-1/0/50/75/100`) | static voxel centers &rarr; `PointCloud2` |
 
 Table: The two geometry backends. All persistence and periodicity logic is
 shared; only these two rows of behavior differ. {#tbl:backends}
@@ -955,7 +972,10 @@ evaluation. That figure is an estimate for the periodicity-off path, not a
 measurement. A FreMEn-tracked cell adds a `Coeff` record, with two scalar
 accumulators and six heap-allocated vectors of $H$ values in a second hash map,
 allocated only for cells touched at least once with periodicity enabled; it is
-not included in the estimate, nor are the hash tables' bucket arrays.
+not included in the estimate, nor are the hash tables' bucket arrays. `grid2d`
+also keeps the flag byte per grid cell (observed-free and last-observation bits;
+`width`$\times$`height` bytes, the size of the published `OccupancyGrid`) and
+the ids touched in the open window, outside the per-cell estimate.
 
 ## 4.8 Implementation versus specification {#sec:specdiff}
 
@@ -997,7 +1017,7 @@ single call, `bash paper/experiments/run_all.sh`, which configures and builds
 `strata_core` and the six harness executables, runs each one, and writes the
 CSVs in `paper/experiments/results/` from which every number and figure in
 this section is taken; `strata_core`'s own `ctest` suite (1/1 target,
-aggregating the 49 gtest cases: ten regression tests for the amplitude defect
+aggregating the 54 gtest cases: ten regression tests for the amplitude defect
 of [@sec:periodicity], nine for its significance test and eight for the spent
 level of [@sec:spend]) is checked first, so the harness is only
 trusted once the unit-level behavior it builds on is confirmed. Every stochastic experiment (E1–E3) derives its `std::mt19937` generator
@@ -1469,7 +1489,9 @@ latency, mean per-`endWindow()` cell-update rate, final live-cell count, and
 estimated memory at the fixed 56 B/cell footprint documented in §4
 (`CellEvidence` 24 B + $\approx$32 B `unordered_map` node overhead, with
 FreMEn storage excluded since periodicity is off in this run)
-(`results/e4_throughput.csv`).
+(`results/e4_throughput.csv`). The committed E4 timings predate grid2d's per-cell flag
+byte (§4.6), which adds a one-byte write per cleared ray cell and per hit to
+`integrate()`; the cost ratio has not been re-measured since.
 
 | backend | extent | µs/`integrate()` | endWindow updates/s | live cells | est. memory |
 |---|---|---|---|---|---|
@@ -1630,6 +1652,16 @@ keeps driving past. In a sparsely-revisited environment it is a real failure
 mode the current implementation does not address, and it is one of the
 concrete items in the future-work list below rather than an incidental
 detail.
+
+**Free space is remembered, not forgotten.** The same coupling shows in
+grid2d's free value. A cell that a ray has cleared reads free (`0`) while its last
+observation was free and no Periodic, Static or occupied-leaning Transient
+class claims it, so free means "last observed free, with no current occupied
+evidence", not "currently free". An obstacle that appears where the sensor no
+longer looks reads free until it is observed; once observed it reads `50` from
+its first hit and keeps reading `50` out of view until a ray observes the cell
+free again. The bit costs one byte per grid
+cell, bounded by the grid size. voxel3d publishes no free space.
 
 ## 6.3 Design trade-offs owned honestly
 

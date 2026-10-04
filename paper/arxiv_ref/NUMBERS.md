@@ -34,7 +34,7 @@ byte-identical; the E2 sweep and E3 periodic were rerun; E4 was not rerun.
 ## Code facts
 | Claim | Where | Source |
 |---|---|---|
-| 49 unit tests (gtest cases): 10 regression tests for the amplitude defect, 9 for the significance test, 8 for the spent level | intro, overview fig, §4.1 | count of `TEST(` in `strata_core/test/*.cpp` (guard-checked); 7 of the 10 centring cases fail on v0.1.0; 3 of the 9 significance cases fail under the amplitude-only rule; the 8 spending cases did not compile before `spentLevel`/`periodic_alpha_spending` existed |
+| 54 unit tests (gtest cases): 10 regression tests for the amplitude defect, 9 for the significance test, 8 for the spent level | intro, overview fig, §4.1 | count of `TEST(` in `strata_core/test/*.cpp` (guard-checked); 7 of the 10 centring cases fail on v0.1.0; 3 of the 9 significance cases fail under the amplitude-only rule; the 8 spending cases did not compile before `spentLevel`/`periodic_alpha_spending` existed |
 | Engine defaults 10 / 0.85 / -0.4 / ±5 / 0.97 / 0.8 / 0.45 / 3 / 0.05 / true / 0.3 / 0.2 (spent, `periodic_alpha_spending` true) / 24 / 2 | Table 5 | `strata_core/include/strata_core/layered_map.hpp` (`LayeredMapParams`), `periodicity.hpp` (`PeriodicityParams`), `strata/params/{grid2d,voxel3d}.yaml` |
 | Grid 400×400, 0.05 m, origin (-10,-10); voxel 0.2 m; publish 1.0 s | Table 5 caption | `strata/params/*.yaml` |
 | 21-bit fields, offset 2^20, shifts 42/21; representable index range −2^20 to 2^20−1 per axis, not range-checked (hence "sparse, no preallocated extent", not "unbounded") | Eq. (4), §3.1 | `strata_core/src/voxel3d_backend.cpp` (`kOff`, `kBits`; `voxelId` has no range check) |
