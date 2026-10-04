@@ -22,6 +22,9 @@ target_include_directories(strata_core PUBLIC
   $<INSTALL_INTERFACE:include>)
 target_link_libraries(strata_core PUBLIC Eigen3::Eigen)
 target_compile_features(strata_core PUBLIC cxx_std_17)
+# The static library is linked into the shared strata_node library, so it must be
+# position-independent; Ubuntu's system GCC does not default to -fPIC.
+set_target_properties(strata_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 
 option(STRATA_CORE_BUILD_TESTS "Build strata_core tests" OFF)
 
