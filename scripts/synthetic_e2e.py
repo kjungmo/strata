@@ -51,7 +51,6 @@ DOOR_DEG = (-15, 15)               # door sector (inclusive), degrees
 MOVER_START_DEG, MOVER_STEP_DEG, MOVER_WIDTH_DEG = 100, 9, 2
 MOVER_WINDOWS = 20
 ELEV_DEG = (2.0, 6.0, 10.0)        # voxel3d: beam elevations; door and wall share each beam
-SCAN_RATE_HZ = 50.0
 
 
 def door_closed(window, period):
@@ -104,8 +103,8 @@ def point(r, deg, elev_deg=0.0):
 
 
 class Driver:
-    def __init__(self, node, backend, params):
-        self.node, self.backend, self.p = node, backend, params
+    def __init__(self, node, backend, params, rate):
+        self.node, self.backend, self.p, self.rate = node, backend, params, rate
         self.maps = []
         self.clock_pub = node.create_publisher(Clock, '/clock', 10)
         self.tf = StaticTransformBroadcaster(node)
@@ -129,7 +128,7 @@ class Driver:
         self.tf.sendTransform(t)
 
     def stamp(self):
-        self.t += 1.0 / SCAN_RATE_HZ
+        self.t += 1.0 / self.rate
         clock = Clock()
         clock.clock.sec = int(self.t)
         clock.clock.nanosec = int((self.t - int(self.t)) * 1e9)
@@ -182,7 +181,7 @@ class Driver:
             else:
                 self.cloud_pub.publish(self.cloud_msg(window, period))
             rclpy.spin_once(self.node, timeout_sec=0.0)
-            time.sleep(1.0 / SCAN_RATE_HZ)
+            time.sleep(1.0 / self.rate)
         return period
 
     def latest_map(self, after_count, timeout):
@@ -352,6 +351,10 @@ def main():
     ap.add_argument('params', help='the params YAML the node was launched with')
     ap.add_argument('--windows', type=int, default=72)
     ap.add_argument('--timeout', type=float, default=30.0)
+    ap.add_argument('--rate', type=float, default=None,
+                    help='scans per second (default 50 for grid2d, 10 for voxel3d). The sensor '
+                         'subscription is best effort, so a rate the node cannot keep up with drops '
+                         'scans, stretches every window and detunes the door from period_windows')
     args = ap.parse_args()
 
     params = {}
@@ -360,11 +363,12 @@ def main():
 
     rclpy.init()
     node = rclpy.create_node('strata_synthetic_e2e', parameter_overrides=[])
-    drv = Driver(node, args.backend, params)
+    rate = args.rate or (50.0 if args.backend == 'grid2d' else 10.0)
+    drv = Driver(node, args.backend, params, rate)
     drv.wait_for_subscriber(args.timeout)
     period = drv.run(args.windows)
-    print(f'{args.backend}: sent {args.windows} windows x {params.get("layer_interval", 10)} scans, '
-          f'door period {period} windows')
+    print(f'{args.backend}: sent {args.windows} windows x {params.get("layer_interval", 10)} scans '
+          f'at {rate:g} Hz, door period {period} windows')
     final = drv.latest_map(len(drv.maps), args.timeout)
 
     if args.backend == 'grid2d':

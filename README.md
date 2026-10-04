@@ -228,6 +228,12 @@ unknown→-1. There is no free value: a cell observed free reads transient (50)
 until it is pruned and unknown (-1) after, so a saved PGM marks free space as
 unknown, not free.
 
+Windows count integrated scans (`layer_interval` per window), not seconds, so
+`period_windows` holds only at the scan rate it was set for. The sensor
+subscription is best effort: if the node cannot keep up, dropped scans stretch
+every window and detune the periodicity test. In the synthetic check, dropping
+40 % of scans turns every door cell from periodic to static.
+
 See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame conventions.
 
 ## 📚 Documentation
