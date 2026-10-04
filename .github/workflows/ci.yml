@@ -26,6 +26,7 @@ jobs:
   ros-humble:
     name: ROS 2 Humble build, test and parameter binding
     runs-on: ubuntu-22.04
+    timeout-minutes: 30
     container: ros:humble-ros-base
     steps:
       - uses: actions/checkout@v4
@@ -54,15 +55,21 @@ jobs:
 
       - name: Launch each backend and check that every YAML parameter is applied
         shell: bash
+        timeout-minutes: 5
         run: |
           source /opt/ros/humble/setup.bash
           source install/setup.bash
+          stop() {  # bash ignores SIGINT in background jobs, so stop the launch group with SIGTERM
+            kill -TERM -- "-$1" 2>/dev/null || true
+            for _ in $(seq 15); do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+            kill -KILL -- "-$1" 2>/dev/null || true
+          }
           for backend in grid2d voxel3d; do
-            ros2 launch strata "${backend}.launch.py" rviz:=false > "launch_${backend}.log" 2>&1 &
+            setsid ros2 launch strata "${backend}.launch.py" rviz:=false > "launch_${backend}.log" 2>&1 &
             pid=$!
             status=0
-            python3 scripts/check_param_binding.py "install/strata/share/strata/params/${backend}.yaml" --node strata || status=$?
+            timeout 90 python3 scripts/check_param_binding.py "install/strata/share/strata/params/${backend}.yaml" --node strata || status=$?
             grep -a "strata up: backend=${backend}" "launch_${backend}.log" || { echo "node did not report backend=${backend}"; status=1; }
-            kill -INT "$pid"; wait "$pid" || true
+            stop "$pid"
             if [ "$status" -ne 0 ]; then cat "launch_${backend}.log"; exit 1; fi
           done
