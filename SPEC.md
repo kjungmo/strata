@@ -77,13 +77,16 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 |---|---|---|---|
 | `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
-| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML; voxel3d → PCD |
-| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total. From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was); ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
+| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` relative to the YAML, resolution and origin written to read back exactly); voxel3d → PCD. `success: false` with the path and reason when a file cannot be written (e.g. a missing directory) or voxel3d has no static voxel |
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total. From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was); ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
 
 ### Frames (REP-105)
 The node looks up `T_global_sensor` (`global_frame → sensor frame_id`) at each
 message stamp and transforms every endpoint into `global_frame` before
-integrating. The sensor origin (ray start, for clearing) is the translation of
+integrating. It waits up to 0.1 s for a transform that is not there yet,
+counted on the steady clock and polling the buffer, so a frozen sim clock (no
+`/clock`) cannot block the callback; a lookup still missing after 0.1 s counts
+as a TF failure and the message is dropped. The sensor origin (ray start, for clearing) is the translation of
 that transform. The full 6-DoF transform is used: `voxel3d` keeps z and attitude
 volumetrically; `grid2d` projects transformed endpoints onto its 2D plane.
 
@@ -384,27 +387,36 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **14 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **19 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
 nanosecond stamps close exactly every period, reorder kept and a bag loop
 re-anchors, a short bag loop re-anchors, a huge forward jump re-anchors) and
 `test_rate_monitor` (4; a steady stream has no loss, 40 % loss is estimated, the
-sensor rate overrides the estimate, a back jump restarts the intervals).
+sensor rate overrides the estimate, a back jump restarts the intervals) and
+`test_map_writer` (5; PGM rows top down with the expected shades and a YAML
+naming the image relatively, resolution and origin read back within 1e-12, a
+moved pair still resolves its image, a missing directory is reported as a
+failure naming the path, a grid whose data does not match its size is refused).
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the
 `ros2_humble` env. On Humble, CI also launches each backend with its shipped
 YAML and checks every parameter is applied (`scripts/check_param_binding.py`),
 and feeds five synthetic scenarios through the real topics and TF
-(`scripts/synthetic_e2e.py`). One grid2d scenario adds `--check-map-server`:
-after `~/save_map` it loads the saved YAML in `nav2_map_server` (own namespace,
+(`scripts/synthetic_e2e.py`). One grid2d scenario adds `--check-map-server` on a
+grid origin of (-10.000001234567891, -9.999998765432109): after `~/save_map` it
+moves the saved pair to a fresh directory and loads the YAML there in
+`nav2_map_server` (own namespace,
 lifecycle configure + activate) and requires the map it serves to equal the last
 published `/strata/map` in width, height, resolution and origin (within 1e-9)
 and cell by cell under 0→0, 100→100, 50/75/-1→-1 (zero mismatches; served
 values only -1, 0, 100), after asserting the published map did not change
-across the save.
+across the save. A last step launches grid2d with `use_sim_time:=true`, feeds
+it scans with no `/clock` and no TF (`scripts/check_sim_clock_stall.py`) and
+requires `ros2 param get` to answer within 8 s, at least 9 `/diagnostics`
+statuses over 11 s of scans, and a WARN that the ROS clock is not advancing.
 
 ---
 

@@ -4,7 +4,8 @@
 #include <cstdint>
 #include <cstdio>
 #include <stdexcept>
-#include <fstream>
+#include <thread>
+#include "strata/map_writer.hpp"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
@@ -112,11 +113,9 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
 
 void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
   geometry_msgs::msg::TransformStamped tf;
-  try {
-    tf = tf_buffer_->lookupTransform(global_frame_, msg->header.frame_id,
-                                     msg->header.stamp, tf2::durationFromSec(0.1));
-  } catch (const tf2::TransformException& e) {
-    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "scan TF: %s", e.what());
+  std::string err;
+  if (!lookupSensorTf(msg->header, tf, err)) {
+    RCLCPP_WARN_THROTTLE(get_logger(), steady_clock_, 2000, "scan TF: %s", err.c_str());
     noteTfFailure();
     return;
   }
@@ -132,11 +131,9 @@ void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
 
 void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
   geometry_msgs::msg::TransformStamped tf;
-  try {
-    tf = tf_buffer_->lookupTransform(global_frame_, msg->header.frame_id,
-                                     msg->header.stamp, tf2::durationFromSec(0.1));
-  } catch (const tf2::TransformException& e) {
-    RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), 2000, "points TF: %s", e.what());
+  std::string err;
+  if (!lookupSensorTf(msg->header, tf, err)) {
+    RCLCPP_WARN_THROTTLE(get_logger(), steady_clock_, 2000, "points TF: %s", err.c_str());
     noteTfFailure();
     return;
   }
@@ -147,6 +144,27 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
   if (!beforeIntegrate(t)) return;
   voxel_->integrate(obs, iso.translation());
   afterIntegrate(msg->header.frame_id, t);
+}
+
+bool MappingNode::lookupSensorTf(const std_msgs::msg::Header& h,
+                                 geometry_msgs::msg::TransformStamped& out, std::string& err) {
+  // Wait up to kTfWaitS for the transform at the message stamp, so a message slightly
+  // ahead of its TF still resolves. tf2_ros::Buffer's own timeout counts on the node
+  // clock, which under use_sim_time without /clock never advances: the callback would
+  // block forever and starve every timer and service. Poll the buffer (the listener
+  // fills it from its own thread) without blocking, bounded on the steady clock.
+  const tf2::TimePoint at{std::chrono::nanoseconds(rclcpp::Time(h.stamp).nanoseconds())};
+  const auto deadline = Steady::now() + std::chrono::duration_cast<Steady::duration>(
+                                            std::chrono::duration<double>(kTfWaitS));
+  for (;;) {
+    try {
+      out = tf_buffer_->tf2::BufferCore::lookupTransform(global_frame_, h.frame_id, at);
+      return true;
+    } catch (const tf2::TransformException& e) {
+      if (Steady::now() >= deadline) { err = e.what(); return false; }
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(2));
+  }
 }
 
 void MappingNode::noteTfFailure() {
@@ -353,6 +371,20 @@ void MappingNode::onDiagnostics() {
                   global_frame_.c_str(), tf_failures_since_integrate_, since_integrate);
     lvl = any_integrated_ ? DS::ERROR : DS::WARN; msg = buf;
   }
+  // use_sim_time with a ROS clock that stands still while messages keep arriving: /clock
+  // is missing or stopped. TF at the message stamps, map stamps and the stall check
+  // above all run on that clock. (A paused bag stops both, which does not trip this.)
+  if (use_sim_time_) {
+    const std::int64_t ros_ns = now().nanoseconds();
+    if (ros_ns != last_ros_ns_) { last_ros_ns_ = ros_ns; ros_moved_wall_ = now_w; }
+    const double frozen = secs(ros_moved_wall_);
+    if (any_input_ && frozen > kClockStallS && since_input + 2.0 < frozen) {
+      std::snprintf(buf, sizeof(buf), "use_sim_time is true but the ROS clock has not advanced for "
+                    "%.1f s while messages arrive on %s: is /clock published?", frozen, input_topic_.c_str());
+      msg = lvl == DS::OK ? std::string(buf) : std::string(buf) + "; " + msg;
+      if (lvl == DS::OK) lvl = DS::WARN;
+    }
+  }
   diagnostic_msgs::msg::DiagnosticArray arr;
   arr.header.stamp = now();
   DS st;
@@ -418,32 +450,10 @@ void MappingNode::onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> 
   std::lock_guard<std::mutex> lk(mtx_);
   try {
     if (backend_ == "grid2d") {
-      const strata_core::GridMap g = grid_->toOccupancyGrid();
-      const std::string pgm = save_path_ + ".pgm";
-      const std::string yaml = save_path_ + ".yaml";
-      std::ofstream f(pgm, std::ios::binary);
-      f << "P5\n" << g.meta.width << " " << g.meta.height << "\n255\n";
-      // Map server convention: row 0 at the bottom -> write rows top-to-bottom.
-      for (int row = g.meta.height - 1; row >= 0; --row) {
-        for (int col = 0; col < g.meta.width; ++col) {
-          const std::int8_t v = g.data[static_cast<std::size_t>(row) * g.meta.width + col];
-          unsigned char px;
-          if (v < 0) px = 205;            // unknown
-          else if (v >= 100) px = 0;      // occupied (static)
-          else if (v >= 50) px = 100;     // periodic/transient (grey)
-          else px = 254;                  // free
-          f.put(static_cast<char>(px));
-        }
-      }
-      f.close();
-      std::ofstream y(yaml);
-      y << "image: " << pgm << "\n"
-        << "resolution: " << g.meta.resolution << "\n"
-        << "origin: [" << g.meta.origin_x << ", " << g.meta.origin_y << ", 0.0]\n"
-        << "negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n";
-      y.close();
-      res->success = true;
-      res->message = "saved " + pgm + " + " + yaml;
+      // PGM + map_server YAML; a missing directory or failed write is reported.
+      const MapWriteResult w = writeMapPair(grid_->toOccupancyGrid(), save_path_);
+      res->success = w.ok;
+      res->message = w.message;
     } else {
       pcl::PointCloud<pcl::PointXYZ> cloud;
       for (const auto& pt : voxel_->staticPoints())
@@ -458,16 +468,18 @@ void MappingNode::onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> 
         cloud.width = cloud.size();
         cloud.height = 1;
         cloud.is_dense = false;
-        pcl::io::savePCDFileBinary(pcd, cloud);
-        res->success = true;
-        res->message = "saved " + pcd;
+        const int rc = pcl::io::savePCDFileBinary(pcd, cloud);
+        res->success = rc == 0;
+        res->message = rc == 0 ? "saved " + pcd
+                               : "cannot write " + pcd + ": PCL returned " + std::to_string(rc);
       }
     }
   } catch (const std::exception& e) {
     res->success = false;
     res->message = std::string("save failed: ") + e.what();
   }
-  RCLCPP_INFO(get_logger(), "save_map: %s", res->message.c_str());
+  if (res->success) RCLCPP_INFO(get_logger(), "save_map: %s", res->message.c_str());
+  else RCLCPP_ERROR(get_logger(), "save_map: %s", res->message.c_str());
 }
 
 }  // namespace strata

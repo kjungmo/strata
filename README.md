@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 14 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 19 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -236,12 +236,19 @@ where the sensor no longer looks reads free until it is observed; do not treat
 as 254, transient and periodic as 100 and static as 0, so with the thresholds
 written beside it (`occupied_thresh 0.65`, `free_thresh 0.196`)
 `nav2_map_server` reads free cells as free, static cells as occupied, and
-transient and periodic cells as unknown. CI checks this round trip on Humble on
-the synthetic scene (`synthetic_e2e.py --check-map-server`): it loads the saved
-YAML in `nav2_map_server`, brings it active, and requires the served map to have
-the published width and height, resolution and origin within 1e-9, and every one
-of the 160 000 cells to map 0→0, 100→100, 50/75/-1→-1, with only -1, 0 and 100
-served. The synthetic scene's final map holds free, static, periodic and unknown
+transient and periodic cells as unknown. The YAML names the image by file
+name, which map_server resolves next to the YAML (as Nav2's map_saver writes
+it), so the pair can be copied to a robot as is, and it writes resolution and
+origin with as many digits as a double needs to read back exactly. `save_map`
+answers `success: false` with the path and the reason (for example a missing
+directory) when a file cannot be written. CI checks this round trip on Humble
+on the synthetic scene (`synthetic_e2e.py --check-map-server`): it moves the
+saved pair to a fresh directory, loads the YAML there in `nav2_map_server`,
+brings it active, and requires the served map to have the published width and
+height, resolution and origin within 1e-9 (on a grid origin of
+-10.000001234567891, -9.999998765432109 that six significant digits cannot
+hold), and every one of the 160 000 cells to map 0→0, 100→100, 50/75/-1→-1,
+with only -1, 0 and 100 served. The synthetic scene's final map holds free, static, periodic and unknown
 cells but no transient (50) cell, which shares the periodic shade in the PGM.
 
 **Input rate.** A window is either `layer_interval` integrated scans
@@ -262,14 +269,20 @@ evidence gathered across the loop is not independent; restart the node instead.
 
 Launch with `use_sim_time:=false` (the default) on a live robot and
 `use_sim_time:=true` when replaying a bag with `--clock` (a paused bag reads as
-"no input" after `input_timeout_s`).
+"no input" after `input_timeout_s`). The TF lookup at each message stamp waits
+at most 0.1 s, counted on the steady clock, for a transform that is slightly
+late, so `use_sim_time:=true` without `/clock` cannot block the node: it keeps
+answering services and publishing diagnostics, and warns that the ROS clock is
+not advancing while messages arrive. CI launches it that way, with scans but no
+`/clock` and no TF, and checks both.
 
 Once a second the node publishes a `<node>: input rate` status on
 `/diagnostics`: input rate, estimated lost share, TF failures, window duration
 and the periodic period in seconds. It warns when scan windows lose more than
 `rate_warn_drop_fraction` or jitter, when time windows go empty or thin, when
-stamps are zero or stop advancing, or when messages arrive but the TF lookup
-fails (no localizer yet), and turns ERROR after `input_timeout_s` without input
+stamps are zero or stop advancing, when `use_sim_time` is true and the ROS
+clock has stood still for 3 s while messages arrive (no `/clock`), or when
+messages arrive but the TF lookup fails (no localizer yet), and turns ERROR after `input_timeout_s` without input
 (`startup_timeout_s` before the first message). The loss is estimated per
 sensor frame from gaps between stamps and is unreliable above about 80 % loss,
 so set `expected_scan_rate_hz` (per sensor) from the datasheet or

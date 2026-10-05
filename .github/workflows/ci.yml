@@ -92,8 +92,10 @@ jobs:
           # 10 scans at the script's default rate (grid2d 50 Hz, voxel3d 10 Hz). Under
           # 40 % loss time windows keep the door periodic; scan windows detune it (the
           # negative control), and /diagnostics must report the loss in every case.
-          # --check-map-server reloads the saved map in nav2_map_server (after the
-          # timeout wait, while the node is still up) and compares it cell by cell.
+          # --check-map-server moves the saved pair to a fresh directory, reloads it in
+          # nav2_map_server (after the timeout wait, while the node is still up) and
+          # compares it cell by cell. That scenario runs on a grid origin that six
+          # significant digits cannot hold, so a YAML written short fails the 1e-9 check.
           scenarios=(
             "grid2d scans 1.0 --check-timeout --check-map-server"
             "voxel3d scans 1.0"
@@ -109,6 +111,12 @@ jobs:
                 -e "s/window_period_s: 1.0 /window_period_s: ${period} /" \
                 "install/strata/share/strata/params/${backend}.yaml" > "$yaml"
             grep -q "window_mode: \"${mode}\"" "$yaml"
+            if [[ "$extra" == *--check-map-server* ]]; then
+              sed -i -e "s/grid_origin_x: -10.0$/grid_origin_x: -10.000001234567891/" \
+                     -e "s/grid_origin_y: -10.0$/grid_origin_y: -9.999998765432109/" "$yaml"
+              grep -q "grid_origin_x: -10.000001234567891" "$yaml"
+              grep -q "grid_origin_y: -9.999998765432109" "$yaml"
+            fi
             setsid ros2 launch strata "${backend}.launch.py" rviz:=false use_sim_time:=true \
               params_file:="$PWD/$yaml" > e2e.log 2>&1 &
             pid=$!
@@ -119,3 +127,21 @@ jobs:
             echo "::endgroup::"
             if [ "$status" -ne 0 ]; then cat e2e.log; exit 1; fi
           done
+
+      - name: Launch with use_sim_time but no /clock and no TF; the node must stay responsive
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          stop() {
+            kill -TERM -- "-$1" 2>/dev/null || true
+            for _ in $(seq 15); do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+            kill -KILL -- "-$1" 2>/dev/null || true
+          }
+          setsid ros2 launch strata grid2d.launch.py rviz:=false use_sim_time:=true > stall.log 2>&1 &
+          pid=$!
+          status=0
+          timeout 90 python3 scripts/check_sim_clock_stall.py || status=$?
+          stop "$pid"
+          if [ "$status" -ne 0 ]; then cat stall.log; exit 1; fi
