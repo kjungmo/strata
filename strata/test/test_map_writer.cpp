@@ -178,6 +178,19 @@ TEST(MapWriter, FailedYamlWriteLeavesThePreviousPairUntouched) {
   EXPECT_EQ(tmpFiles(dir.path), 0);
 }
 
+TEST(MapWriter, FailedSecondRenameSaysThePgmWasAlreadyReplaced) {
+  TempDir dir;
+  const std::string base = dir.path + "/m";
+  // A non-empty directory where the YAML goes: the PGM rename succeeds, the YAML's fails.
+  ASSERT_EQ(mkdir((base + ".yaml").c_str(), 0755), 0);
+  ASSERT_EQ(mkdir((base + ".yaml/keep").c_str(), 0755), 0);
+  const auto r = writeMapPair(grid(2, 2, 0.05, 0.0, 0.0), base);
+  EXPECT_FALSE(r.ok);
+  EXPECT_NE(r.message.find("the PGM was already replaced"), std::string::npos) << r.message;
+  EXPECT_TRUE(fs::exists(base + ".pgm"));
+  EXPECT_EQ(tmpFiles(dir.path), 0);
+}
+
 TEST(MapWriter, GridWhoseDataDoesNotMatchItsSizeIsRefused) {
   auto g = grid(3, 3, 0.05, 0.0, 0.0);
   g.data.pop_back();

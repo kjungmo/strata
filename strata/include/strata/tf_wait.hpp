@@ -2,8 +2,8 @@
 namespace strata {
 
 // When to stop waiting for a TF lookup at a message stamp. The budget is ROS time, so
-// a scan slightly ahead of its transform resolves the same at any playback rate:
-// stop once the ROS clock has advanced budget_s since the wait began. Two bounds keep
+// a scan slightly ahead of its transform resolves the same at playback rates down to
+// 0.1x; below that the 1 s steady cap shortens it. Stop once the ROS clock has advanced budget_s since the wait began. Two bounds keep
 // a bad clock from holding the callback: a ROS clock that has not moved at all after
 // frozen_after_s of steady time (use_sim_time without /clock) gives up, and nothing
 // waits longer than hard_cap_s of steady time (a clock that started, then froze).

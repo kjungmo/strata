@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 27 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 28 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -248,9 +248,13 @@ transient and periodic cells as unknown. The YAML names the image by file
 name (single-quoted), which map_server resolves next to the YAML (as Nav2's
 map_saver writes it), so the pair can be copied to a robot as is, and it writes
 resolution and origin with as many digits as a double needs to read back
-exactly, in the "C" locale whatever the process locale. The save is atomic:
-both files are written to `.tmp` names, flushed to disk and then renamed, so a
-failed save leaves the previous pair untouched (voxel3d's PCD likewise).
+exactly, in the "C" locale whatever the process locale. Both files are written
+to `.tmp` names and flushed to disk before they are renamed, so a save that
+fails before the renames leaves the previous pair untouched (voxel3d's PCD
+likewise). The PGM is renamed first and the YAML second, so a crash or failure
+between the two renames can pair the new PGM with the previous YAML
+(map_server takes the image name from the YAML, so no rename order avoids this
+with fixed names); the directory is fsynced after the renames.
 `save_map` answers `success: false` with the path and the reason when a file
 cannot be written (for example a missing directory) or when `save_path` has no
 file name (empty or ending in `/`). CI checks this round trip on Humble
@@ -284,7 +288,8 @@ Launch with `use_sim_time:=false` (the default) on a live robot and
 `use_sim_time:=true` when replaying a bag with `--clock` (a paused bag reads as
 "no input" after `input_timeout_s`). The TF lookup at each message stamp waits
 for a transform that is slightly late until 0.1 s of ROS time has passed, so a
-slowed bag or simulator gets the same tolerance as a live robot. The wait is
+slowed bag or simulator gets the same tolerance as a live robot at playback
+rates down to 0.1x; below that the 1 s steady cap shortens it. The wait is
 bounded so a bad clock cannot hang the node: it gives up after 0.1 s of steady
 time if the ROS clock has not moved at all (`use_sim_time:=true` without
 `/clock`) and never waits longer than 1 s of steady time. A failed lookup holds

@@ -150,7 +150,8 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
 bool MappingNode::lookupSensorTf(const std_msgs::msg::Header& h,
                                  geometry_msgs::msg::TransformStamped& out, std::string& err) {
   // Wait up to kTfWaitS of ROS time for the transform at the message stamp, so a
-  // message slightly ahead of its TF still resolves at any playback rate.
+  // message slightly ahead of its TF still resolves at playback rates down to 0.1x;
+  // below that the 1 s steady cap shortens it.
   // tf2_ros::Buffer's own timeout blocks on the node clock, which under use_sim_time
   // without /clock never advances: the callback would hang and starve every timer and
   // service. So poll the buffer (the listener fills it from its own thread) without
@@ -488,6 +489,7 @@ void MappingNode::onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> 
           if (why.empty()) why = syncPath(tmp);
           if (why.empty() && ::rename(tmp.c_str(), pcd.c_str()) != 0) why = std::strerror(errno);
           if (!why.empty()) ::unlink(tmp.c_str());
+          else why = syncDir(dirName(pcd));
         }
         res->success = why.empty();
         res->message = why.empty() ? "saved " + pcd : "cannot write " + pcd + ": " + why;

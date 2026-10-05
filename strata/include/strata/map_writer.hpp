@@ -22,9 +22,12 @@ namespace strata {
 //  * resolution and origin are written with the fewest digits (15..17) that parse back
 //    to the same double, so a configured origin survives exactly. Every number is
 //    formatted in the classic "C" locale, whatever the process's global locale.
-//  * Atomic: both files go to <name>.tmp first, are flushed to disk (fsync), then
-//    renamed PGM first, YAML second. On any failure the temp files are removed and an
-//    existing pair at the same path is left as it was.
+//  * Both files go to <name>.tmp first and are flushed to disk (fsync); then the PGM is
+//    renamed first and the YAML second, and the directory is fsynced so the renames
+//    are durable. A save that fails before the renames leaves the previous pair
+//    untouched (its temp files are removed). A crash or failure between the two
+//    renames can pair the new PGM with the previous YAML: map_server takes the image
+//    name from the YAML, so no rename order avoids this with fixed names.
 struct MapWriteResult {
   bool ok{false};
   std::string message;   // "saved <pgm> + <yaml>", or the failing path and the reason
@@ -90,6 +93,23 @@ inline std::string syncPath(const std::string& path) {
   return why;
 }
 
+// fsync a directory, so renames inside it are durable. Empty string on success.
+inline std::string syncDir(const std::string& dir) {
+  const int fd = ::open(dir.c_str(), O_RDONLY | O_DIRECTORY | O_CLOEXEC);
+  if (fd < 0) return std::strerror(errno);
+  const bool ok = ::fsync(fd) == 0;
+  const std::string why = ok ? "" : std::strerror(errno);
+  ::close(fd);
+  return why;
+}
+
+// The directory part of a path ("." when there is none, "/" for a file at the root).
+inline std::string dirName(const std::string& path) {
+  const std::size_t slash = path.find_last_of('/');
+  if (slash == std::string::npos) return ".";
+  return slash == 0 ? "/" : path.substr(0, slash);
+}
+
 // The file-name part after the last '/', empty for "" or a path ending in '/'.
 inline std::string fileName(const std::string& path) {
   const std::size_t slash = path.find_last_of('/');
@@ -134,7 +154,12 @@ inline MapWriteResult writeMapPair(const strata_core::GridMap& g, const std::str
   why = writeDurable(yaml_tmp, y.str());
   if (!why.empty()) return fail(yaml_tmp, why);
   if (::rename(pgm_tmp.c_str(), pgm.c_str()) != 0) return fail(pgm, std::strerror(errno));
-  if (::rename(yaml_tmp.c_str(), yaml.c_str()) != 0) return fail(yaml, std::strerror(errno));
+  if (::rename(yaml_tmp.c_str(), yaml.c_str()) != 0)
+    return fail(yaml, std::string(std::strerror(errno)) + " (the PGM was already replaced: " + pgm +
+                          " is the new image, " + yaml + " is the previous YAML)");
+  why = syncDir(dirName(pgm));
+  if (!why.empty()) return MapWriteResult{false, "cannot sync directory " + dirName(pgm) + ": " + why +
+                                                     " (both files were renamed into place)"};
   return MapWriteResult{true, "saved " + pgm + " + " + yaml};
 }
 
