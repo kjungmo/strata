@@ -559,10 +559,17 @@ observes nothing changes no cell, so closing $k$ windows is exactly equivalent t
 $k$ calls of `endWindow()` (a unit test checks it) yet costs one pass: the first
 close settles every cell and the rest only advance the window index. The clock
 re-anchors when a stamp falls more than half a window behind the newest one (a
-bag loop) or lands more than $10^6$ windows ahead (an unset stamp). Silent
-windows advance the phase without a touch, and the touched windows stay
-independent of occupancy as long as message loss is, so the false-alarm bound of
-§4.4 holds in either mode; what the window rule changes is the period, in
+bag loop) or lands more than $10^6$ windows ahead (an unset stamp), after closing
+the open window so evidence from both sides of the jump is not mixed; a message
+with a zero stamp is dropped. A re-anchor resets only the clock: every cell's
+history carries on under a window index whose phase relative to the scene is now
+arbitrary, and replayed data are not independent of what was already gathered,
+so across a bag loop or a clock reset neither the false-alarm bound of §4.4 nor
+the persistence evidence holds; restart the node rather than loop a bag. Within
+one uninterrupted stream of message time, silent windows advance the phase
+without a touch and the touched windows stay independent of occupancy as long as
+message loss and TF drops are, so the false-alarm bound of §4.4 holds in either
+mode; what the window rule changes is the period, in
 seconds, that `period_windows` stands for, and with it the test's power. With
 scan-counted windows a window lasts `layer_interval` divided by the rate of
 messages actually integrated, so lost messages stretch it (§6.2).
@@ -962,7 +969,7 @@ are identical between the struct definition and both shipped YAML files. Geometr
 and node parameters (`grid_width` 400, `grid_height` 400, `grid_resolution`
 0.05 m, `grid_origin_{x,y}` $-10.0$ m for grid2d; `voxel_size` 0.2 m for voxel3d;
 frame names, topics, `publish_period` 1.0 s; the window clock `window_mode` (`scans` in code, `time` in the shipped files) and `window_period_s` 1.0 s; the rate check `expected_scan_rate_hz` 0, meaning estimated, and
-`rate_warn_drop_fraction` 0.05 and `input_timeout_s` 5 s) are not part of the engine math.
+`rate_warn_drop_fraction` 0.05, `input_timeout_s` 5 s and `startup_timeout_s` 30 s) are not part of the engine math.
 
 | Name | Default | Units | Meaning |
 |---|---|---|---|
@@ -1688,8 +1695,7 @@ window is `layer_interval` integrated messages, so its length in seconds, and
 with it the period that `period_windows` stands for, follows the rate of
 messages the node actually integrates. Messages lost on a best-effort link,
 dropped for missing TF or skipped by an overloaded node stretch every window. In
-the synthetic ROS check, withholding 40 % of the scans turns every tested door
-cell static with scan windows (grid2d), while time windows keep the door
+the synthetic ROS check, withholding 40 % of the scans turns the tested door cells static (at least 95 %, none periodic) with scan windows (grid2d), while time windows keep the door
 periodic in grid2d and out of the static map in voxel3d; CI asserts all three.
 Time windows trade this for evidence that depends on the rate: a window with few
 messages is less likely to see a hit, so a sensor rate that varies with the
@@ -1699,12 +1705,16 @@ rate, the share of messages lost, the TF failures, the window duration and the
 periodic period in seconds. The loss is estimated per sensor frame from gaps
 between stamps against the 20th-percentile interval, which holds while at least
 about a fifth of consecutive messages arrive back to back; above about 80 % loss,
-or whenever the sensor rate is known, set `expected_scan_rate_hz`. The node warns
-when scan windows lose more than `rate_warn_drop_fraction` or jitter, when time
-windows go empty or get under half the expected messages, or when stamps stop
-advancing, and turns ERROR after `input_timeout_s` without input. A deployment
-should measure these on the robot (`scripts/rate_report.py`) and set
-`window_period_s` to `layer_interval` over the sensor rate. The experiments of
+or whenever the sensor rate is known, set `expected_scan_rate_hz` (per sensor).
+The node warns when scan windows lose more than `rate_warn_drop_fraction` or
+jitter, when time windows go empty or get under half the expected messages, when
+stamps are zero or stop advancing, or when messages arrive but the TF lookup
+fails, and turns ERROR without input for `input_timeout_s` (or
+`startup_timeout_s` before the first message). With time windows the periodic
+period is `period_windows` $\times$ `window_period_s` seconds whatever the load;
+a deployment should measure the rates on the robot (`scripts/rate_report.py`),
+keep a window long enough to hold several messages, and choose `period_windows`
+from the period it wants to detect. The experiments of
 §5 integrate every message and are unaffected.
 
 ## 6.3 Design trade-offs owned honestly

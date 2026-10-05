@@ -36,9 +36,13 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
   if (window_mode_ == "time" && !(window_period_s_ > 0.0))
     throw std::invalid_argument("window_period_s must be > 0 with window_mode \"time\"");
   input_timeout_s_ = declare_parameter<double>("input_timeout_s", 5.0);
+  startup_timeout_s_ = declare_parameter<double>("startup_timeout_s", 30.0);
+  use_sim_time_ = get_parameter("use_sim_time").as_bool();
   clock_ = std::make_unique<WindowClock>(window_period_s_);
   diag_pub_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
-  start_wall_ = last_close_wall_ = last_log_wall_ = Steady::now();
+  start_wall_ = last_close_wall_ = last_log_wall_ = last_integrate_wall_ = last_reset_log_wall_ =
+      Steady::now();
+  last_close_ros_ = now();
 
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
   tf_listener_ = std::make_shared<tf2_ros::TransformListener>(*tf_buffer_);
@@ -121,7 +125,7 @@ void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
   auto obs = scanToObservation(*msg, iso, origin);
   const std::int64_t t = rclcpp::Time(msg->header.stamp).nanoseconds();
   std::lock_guard<std::mutex> lk(mtx_);
-  beforeIntegrate(t);
+  if (!beforeIntegrate(t)) return;
   grid_->integrate(obs, origin);
   afterIntegrate(msg->header.frame_id, t);
 }
@@ -140,7 +144,7 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
   auto obs = cloudToObservation(*msg, iso);
   const std::int64_t t = rclcpp::Time(msg->header.stamp).nanoseconds();
   std::lock_guard<std::mutex> lk(mtx_);
-  beforeIntegrate(t);
+  if (!beforeIntegrate(t)) return;
   voxel_->integrate(obs, iso.translation());
   afterIntegrate(msg->header.frame_id, t);
 }
@@ -148,24 +152,41 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
 void MappingNode::noteTfFailure() {
   std::lock_guard<std::mutex> lk(mtx_);
   ++tf_failures_window_;
+  ++tf_failures_since_integrate_;
   any_input_ = true;            // the sensor is alive even if its pose is not
   last_input_wall_ = Steady::now();
 }
 
-void MappingNode::beforeIntegrate(std::int64_t t_ns) {
+bool MappingNode::beforeIntegrate(std::int64_t t_ns) {
   any_input_ = true;
   last_input_wall_ = Steady::now();
+  if (t_ns == 0) {
+    ++zero_stamps_;
+    // A zero stamp cannot be placed in message time: integrating it would yank the
+    // window clock back to 0 and forward again. Time windows drop it (and report it).
+    if (window_mode_ == "time") return false;
+  }
   ++msgs_since_close_;
-  if (t_ns == 0) ++zero_stamps_;
+  any_integrated_ = true;
+  last_integrate_wall_ = last_input_wall_;
+  tf_failures_since_integrate_ = 0;
   if (!origin_set_) { origin_ns_ = t_ns; origin_set_ = true; }
-  if (window_mode_ != "time") return;
+  if (window_mode_ != "time") return true;
   // A message past the open window's end closes it (and any silent windows since)
   // before it is integrated into the window it belongs to.
   const int k = clock_->advance(t_ns);
   if (k == WindowClock::kReset) {
-    RCLCPP_WARN(get_logger(), "message time jumped back more than half a window, or ahead by "
-                "more than %ld windows (bag loop, clock reset or an unset stamp): time "
-                "windows re-anchored", static_cast<long>(WindowClock::kMaxGapWindows));
+    // Close the open window first so evidence from both sides of the jump is not mixed.
+    map_->closeWindows(1);
+    windowsClosed(1);
+    const auto now_w = Steady::now();
+    if (std::chrono::duration<double>(now_w - last_reset_log_wall_).count() >= 10.0) {
+      last_reset_log_wall_ = now_w;
+      RCLCPP_WARN(get_logger(), "message time jumped back more than half a window, or ahead by "
+                  "more than %ld windows (bag loop, clock reset or an unset stamp): time windows "
+                  "re-anchored; cell histories carry on, so periodicity evidence across the jump "
+                  "is not independent", static_cast<long>(WindowClock::kMaxGapWindows));
+    }
     origin_ns_ = t_ns;
     for (auto& kv : rates_) kv.second.reset();
     last_close_wall_ = Steady::now();
@@ -174,17 +195,22 @@ void MappingNode::beforeIntegrate(std::int64_t t_ns) {
     map_->closeWindows(k);
     windowsClosed(k);
   }
+  return true;
 }
 
 void MappingNode::afterIntegrate(const std::string& frame, std::int64_t t_ns) {
-  auto it = rates_.try_emplace(frame, expected_rate_hz_).first;
-  it->second.record(static_cast<double>(t_ns - origin_ns_) * 1e-9);
+  auto it = rates_.find(frame);
+  if (it == rates_.end() && rates_.size() < kMaxSensors)
+    it = rates_.emplace(frame, RateMonitor(expected_rate_hz_)).first;
+  if (it != rates_.end()) it->second.record(static_cast<double>(t_ns - origin_ns_) * 1e-9);
+  else ++frames_over_cap_;   // rate statistics skip it; the map still integrates it
   if (window_mode_ == "scans" && map_->tick()) windowsClosed(1);
 }
 
 void MappingNode::windowsClosed(int k) {
   windows_closed_ += k;
   last_close_wall_ = Steady::now();
+  last_close_ros_ = now();
   msgs_since_close_ = 0;
   // Statistics per sensor frame (two sensors on one topic would otherwise look like
   // heavy loss); durations come from the sensor with the most messages.
@@ -201,6 +227,10 @@ void MappingNode::windowsClosed(int k) {
       cv = kv.second.windowDurationCv(); seen = kv.second.windowsSeen();
     }
   }
+  // Forget frames that went silent (a stopped sensor, a restarted driver's old frame),
+  // so their nominal rate no longer counts toward the expected messages per window.
+  for (auto it = rates_.begin(); it != rates_.end();)
+    it = it->second.idleWindows() >= kIdleWindowsToForget ? rates_.erase(it) : std::next(it);
   const double drop = (recent_d + recent_n) > 0 ? double(recent_d) / double(recent_d + recent_n) : 0.0;
   const bool time_mode = window_mode_ == "time";
   const double effective_period = period_windows_ * (time_mode ? window_period_s_ : mean);
@@ -232,13 +262,20 @@ void MappingNode::windowsClosed(int k) {
         why += buf;
       }
       if (expected_rate_hz_ > 0.0 && mean > 0.0) {
-        const double expected = layer_interval_ / expected_rate_hz_;
+        // expected_scan_rate_hz is per sensor; a scan window counts every sensor's messages.
+        const double expected =
+            layer_interval_ / (expected_rate_hz_ * static_cast<double>(std::max<std::size_t>(1, rates_.size())));
         if (std::fabs(mean - expected) > 0.1 * expected) {
           std::snprintf(buf, sizeof(buf), "mean window %.3f s differs from layer_interval / "
                         "expected_scan_rate_hz = %.3f s; ", mean, expected);
           why += buf;
         }
       }
+    }
+    if (frames_over_cap_ > 0) {
+      std::snprintf(buf, sizeof(buf), "more than %zu sensor frames on %s: rate statistics skip "
+                    "the extra frames; ", kMaxSensors, input_topic_.c_str());
+      why += buf;
     }
     if (tf_failures_window_ > scans) {
       std::snprintf(buf, sizeof(buf), "%d messages failed the TF lookup, more than were "
@@ -275,29 +312,48 @@ void MappingNode::onDiagnostics() {
   unsigned char lvl = last_why_.empty() ? DS::OK : DS::WARN;
   std::string msg = last_why_.empty() ? "ok" : last_why_;
   char buf[240];
-  if (window_mode_ == "time" && any_input_ && msgs_since_close_ > 1 &&
-      secs(last_close_wall_) > 10.0 * window_period_s_ && secs(last_close_wall_) > 2.0) {
+  // Stall: messages keep arriving but no time window closes. Measured on the ROS clock
+  // under use_sim_time, so slow bag playback does not trip it.
+  const double since_close = use_sim_time_ ? (now() - last_close_ros_).seconds() : secs(last_close_wall_);
+  if (window_mode_ == "time" && any_integrated_ && msgs_since_close_ > 1 &&
+      since_close > 10.0 * window_period_s_ && since_close > 2.0) {
     std::snprintf(buf, sizeof(buf), "no time window has closed for %.1f s although %ld messages "
-                  "arrived: are header stamps advancing?", secs(last_close_wall_), msgs_since_close_);
+                  "arrived: are header stamps advancing?", since_close, msgs_since_close_);
     lvl = DS::WARN; msg = buf;
   }
-  if (zero_stamps_ > 0) {
-    std::snprintf(buf, sizeof(buf), "%ld message(s) had a zero header stamp; ", zero_stamps_);
-    lvl = DS::WARN; msg = std::string(buf) + msg;
+  if (zero_stamps_ > 0) {   // counted since the last status, so the warning clears
+    std::snprintf(buf, sizeof(buf), "%ld message(s) in the last second had a zero header stamp%s; ",
+                  zero_stamps_, window_mode_ == "time" ? " and were dropped" : "");
+    lvl = DS::WARN; msg = std::string(buf) + (msg == "ok" ? "" : msg);
+    if (msg.size() >= 2 && msg.compare(msg.size() - 2, 2, "; ") == 0) msg.resize(msg.size() - 2);
   }
-  if (since_input > input_timeout_s_) {
-    std::snprintf(buf, sizeof(buf), any_input_ ? "no input on %s for %.1f s (sensor, driver or link down?)"
-                                               : "no input on %s yet after %.1f s",
+  const double since_integrate = secs(last_integrate_wall_);
+  if (!any_input_) {
+    // Drivers can take tens of seconds to start: wait startup_timeout_s before ERROR.
+    if (since_input > startup_timeout_s_) {
+      std::snprintf(buf, sizeof(buf), "no input on %s yet after %.0f s", input_topic_.c_str(), since_input);
+      lvl = DS::ERROR; msg = buf;
+    } else {
+      lvl = DS::OK; msg = "waiting for input on " + input_topic_;
+    }
+  } else if (since_input > input_timeout_s_) {
+    std::snprintf(buf, sizeof(buf), "no input on %s for %.1f s (sensor, driver or link down?)",
                   input_topic_.c_str(), since_input);
     lvl = DS::ERROR; msg = buf;
-  } else if (!any_input_) {
-    msg = "waiting for input on " + input_topic_;
+  } else if (tf_failures_since_integrate_ > 0 &&
+             since_integrate > (any_integrated_ ? input_timeout_s_ : startup_timeout_s_)) {
+    // Messages arrive but none can be placed: the pose source (localizer, TF tree) is missing.
+    std::snprintf(buf, sizeof(buf), "messages arrive on %s but the TF lookup %s -> sensor has "
+                  "failed %ld times; nothing integrated for %.1f s", input_topic_.c_str(),
+                  global_frame_.c_str(), tf_failures_since_integrate_, since_integrate);
+    lvl = any_integrated_ ? DS::ERROR : DS::WARN; msg = buf;
   }
   diagnostic_msgs::msg::DiagnosticArray arr;
   arr.header.stamp = now();
   DS st;
-  st.name = std::string(get_fully_qualified_name()) + ": input rate";
-  st.hardware_id = input_topic_;
+  st.name = std::string(get_name()) + ": input rate";
+  st.hardware_id = std::string(get_namespace()) + " " +
+                   (scan_sub_ ? scan_sub_->get_topic_name() : points_sub_->get_topic_name());
   st.level = lvl;
   st.message = msg;
   auto kv = [&st](const std::string& k, const std::string& v) {
@@ -310,6 +366,7 @@ void MappingNode::onDiagnostics() {
   kv("windows_closed_total", std::to_string(windows_closed_));
   arr.status.push_back(st);
   diag_pub_->publish(arr);
+  zero_stamps_ = 0;
   // Throttled on the wall clock: a live robot without /clock still gets the warning.
   const double since_log = secs(last_log_wall_);
   if ((lvl != DS::OK && since_log >= 10.0) || since_log >= 30.0) {

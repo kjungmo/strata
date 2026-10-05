@@ -246,21 +246,28 @@ select). Scan windows stretch when scans are lost on the best-effort link,
 dropped for missing TF or skipped by an overloaded node, which detunes the
 periodicity test: in the synthetic check, losing 40 % of the scans turns the
 door static. Time windows keep the door periodic under the same loss; CI checks
-both. Time windows need sane stamps: header stamps on the same clock as TF,
-increasing, not zero. Set `window_period_s` to `layer_interval` over the sensor
-rate (1.0 s for 10 at 10 Hz) and recompute it when either changes.
+both. Time windows need sane stamps: header stamps on the same clock as TF and
+increasing; zero stamps are dropped. With time windows the periodic test's
+period is `period_windows` × `window_period_s` seconds (24 × 1.0 s shipped)
+whatever the sensor rate or load: keep a window long enough to hold several
+messages per sensor and set `period_windows` from the period you want to detect.
+Do not loop a bag into a running node: a re-anchor resets only the clock, so the
+evidence gathered across the loop is not independent; restart the node instead.
 
 Launch with `use_sim_time:=false` (the default) on a live robot and
-`use_sim_time:=true` when replaying a bag with `--clock`.
+`use_sim_time:=true` when replaying a bag with `--clock` (a paused bag reads as
+"no input" after `input_timeout_s`).
 
-Once a second the node publishes a `/<node>: input rate` status on
+Once a second the node publishes a `<node>: input rate` status on
 `/diagnostics`: input rate, estimated lost share, TF failures, window duration
 and the periodic period in seconds. It warns when scan windows lose more than
-`rate_warn_drop_fraction` or jitter, when time windows go empty or thin, or when
-stamps stop advancing, and turns ERROR after `input_timeout_s` without input.
-The loss is estimated per sensor frame from gaps between stamps and is
-unreliable above about 80 % loss, so set `expected_scan_rate_hz` from the
-datasheet or `ros2 topic hz`.
+`rate_warn_drop_fraction` or jitter, when time windows go empty or thin, when
+stamps are zero or stop advancing, or when messages arrive but the TF lookup
+fails (no localizer yet), and turns ERROR after `input_timeout_s` without input
+(`startup_timeout_s` before the first message). The loss is estimated per
+sensor frame from gaps between stamps and is unreliable above about 80 % loss,
+so set `expected_scan_rate_hz` (per sensor) from the datasheet or
+`ros2 topic hz`.
 
 On a robot, run the node on real input and summarise its diagnostics:
 
@@ -268,8 +275,8 @@ On a robot, run the node on real input and summarise its diagnostics:
 python3 scripts/rate_report.py --seconds 600 --params <your params.yaml>
 ```
 
-It prints the measured rates and loss and suggests `expected_scan_rate_hz` and
-`window_period_s`.
+It prints the measured rates and loss and suggests `expected_scan_rate_hz`,
+`window_period_s` and, with `--target-period-s`, `period_windows`.
 
 See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame conventions.
 

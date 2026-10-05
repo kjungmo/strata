@@ -47,7 +47,7 @@ class MappingNode : public rclcpp::Node {
   void onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
   void onPublish();
   // Window bookkeeping around one integrated message; call with mtx_ held.
-  void beforeIntegrate(std::int64_t t_ns);
+  bool beforeIntegrate(std::int64_t t_ns);   // false: drop the message (zero stamp, time windows)
   void afterIntegrate(const std::string& frame, std::int64_t t_ns);
   void windowsClosed(int k);
   void noteTfFailure();
@@ -68,9 +68,16 @@ class MappingNode : public rclcpp::Node {
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_pub_;
   rclcpp::TimerBase::SharedPtr diag_timer_;
   std::string input_topic_;
-  double input_timeout_s_{5.0};
+  double input_timeout_s_{5.0}, startup_timeout_s_{30.0};
+  bool use_sim_time_{false};
+  static constexpr std::size_t kMaxSensors = 16;   // per-frame rate monitors kept at most
+  static constexpr int kIdleWindowsToForget = 10;  // a frame silent this long is dropped
   using Steady = std::chrono::steady_clock;
-  Steady::time_point start_wall_, last_input_wall_, last_close_wall_, last_log_wall_;
+  Steady::time_point start_wall_, last_input_wall_, last_close_wall_, last_log_wall_,
+      last_integrate_wall_, last_reset_log_wall_;
+  rclcpp::Time last_close_ros_;
+  bool any_integrated_{false};
+  long tf_failures_since_integrate_{0}, frames_over_cap_{0};
   bool any_input_{false}, origin_set_{false};
   std::int64_t origin_ns_{0};
   long windows_closed_{0}, msgs_since_close_{0}, zero_stamps_{0};

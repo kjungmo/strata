@@ -62,6 +62,7 @@ class RateMonitor {
       windows_.push_back(s);
       if (windows_.size() > window_history_) windows_.pop_front();
     }
+    idle_windows_ = s.scans > 0 ? 0 : idle_windows_ + 1;
     scans_ = 0;
     partial_ = false;
     window_intervals_.clear();
@@ -101,6 +102,7 @@ class RateMonitor {
     return v[k];
   }
   std::size_t windowsSeen() const { return windows_.size(); }
+  int idleWindows() const { return idle_windows_; }   // consecutive closes with no message
 
  private:
   static constexpr double kBackJumpS = 1.0;
@@ -110,6 +112,7 @@ class RateMonitor {
   double last_{0.0};
   int scans_{0};
   bool partial_{false};
+  int idle_windows_{0};
   std::deque<double> intervals_;
   std::vector<double> window_intervals_;
   std::deque<WindowStats> windows_;

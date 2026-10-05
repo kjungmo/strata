@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Summarise a running STRATA node's input-rate diagnostics, for calibrating a robot.
 
-Listens to /diagnostics for --seconds, keeps the "strata: input rate" statuses the node
-publishes at every window close, and prints min / median / max of each value, how
-often the node warned, and a suggested window setting:
+Listens to /diagnostics for --seconds, keeps the "<node>: input rate" statuses the node
+publishes once a second (one per window close is kept: the values repeat between
+closes), and prints min / median / max of each value, how often the node warned, and a
+suggested setting:
 
-  * window_mode "time" with window_period_s = layer_interval / nominal sensor rate
-    (nominal_rate_hz) keeps the window the shipped period_windows was meant for,
-    whatever the load does;
+  * window_mode "time": the periodic period is period_windows x window_period_s
+    seconds whatever the load does; keep window_period_s long enough that a window
+    holds several messages, and set period_windows from the period you want to detect;
   * window_mode "scans" is only safe when the loss is near zero and the window
     duration is steady (low window_duration_cv).
 
@@ -33,13 +34,16 @@ def level(status):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('--seconds', type=float, default=300.0)
-    ap.add_argument('--params', help='the params YAML the node runs with (for layer_interval)')
+    ap.add_argument('--params', help='the params YAML the node runs with')
+    ap.add_argument('--target-period-s', type=float, default=None,
+                    help='period of the cycles to detect (e.g. a door that opens every 60 s)')
     args = ap.parse_args()
-    layer_interval, configured_rate = 10, 0.0
+    configured_rate, window_period, period_windows = 0.0, 1.0, 24
     if args.params:
         for section in (yaml.safe_load(open(args.params)) or {}).values():
             p = (section or {}).get('ros__parameters', {})
-            layer_interval = int(p.get('layer_interval', layer_interval))
+            window_period = float(p.get('window_period_s', window_period))
+            period_windows = int(p.get('period_windows', period_windows))
             configured_rate = float(p.get('expected_scan_rate_hz', configured_rate))
 
     rclpy.init()
@@ -55,18 +59,25 @@ def main():
     if not got:
         raise SystemExit('no "<node>: input rate" status on /diagnostics: is the node running?')
 
-    rows = [{kv.key: kv.value for kv in s.values} for s in got]
-    rows = [r for r in rows if 'input_rate_hz' in r]     # statuses after a window has closed
+    warns = [s.message for s in got if level(s) == 1]
+    errors = [s.message for s in got if level(s) == 2]
+    rows, seen = [], set()
+    for s in got:                                        # one row per window close
+        r = {kv.key: kv.value for kv in s.values}
+        if 'input_rate_hz' in r and r.get('windows_closed_total') not in seen:
+            seen.add(r.get('windows_closed_total'))
+            rows.append(r)
     if not rows:
         raise SystemExit('no window has closed yet: let the node run on live input for longer')
-    print(f'{len(got)} window reports over {args.seconds:g} s; window_mode {rows[-1].get("window_mode")}')
+    print(f'{len(rows)} window closes ({len(got)} status samples) over {args.seconds:g} s; '
+          f'window_mode {rows[-1].get("window_mode")}, sensors {rows[-1].get("sensors")}')
     print(f'{"value":<22}{"min":>10}{"median":>10}{"max":>10}')
     for k in NUMERIC:
         v = [float(r[k]) for r in rows if k in r]
         if v:
             print(f'{k:<22}{min(v):>10.4g}{statistics.median(v):>10.4g}{max(v):>10.4g}')
-    warns = [s.message for s in got if level(s) == 1]
-    print(f'warnings: {len(warns)} of {len(got)}' + (f' (last: {warns[-1]})' if warns else ''))
+    print(f'status samples at WARN: {len(warns)}, at ERROR: {len(errors)} of {len(got)}'
+          + (f' (last warning: {warns[-1]})' if warns else '') + (f' (last error: {errors[-1]})' if errors else ''))
 
     rates = [float(r['input_rate_hz']) for r in rows if float(r.get('input_rate_hz', 0)) > 0]
     nominals = [float(r['nominal_rate_hz']) for r in rows if float(r.get('nominal_rate_hz', 0)) > 0]
@@ -76,15 +87,20 @@ def main():
     drop = statistics.median(float(r['recent_drop_fraction']) for r in rows)
     print(f'\nsensor (nominal) rate ~{nominal:.3g} Hz, integrated ~{rate:.3g} Hz, loss ~{100 * drop:.1f} %'
           + (f' (expected_scan_rate_hz configured: {configured_rate:g})' if configured_rate > 0 else ''))
-    print('The nominal rate is estimated from gaps between stamps and is unreliable above about 80 % loss\n'
-          'or with several sensors per frame: confirm it with `ros2 topic hz` on the sensor host or the\n'
-          'datasheet, and set expected_scan_rate_hz to it.')
+    sensors = max(1, int(float(rows[-1].get('sensors', 1))))
+    per_sensor = nominal / sensors
+    print('The nominal rate is estimated from gaps between stamps and is unreliable above about 80 % loss:\n'
+          'confirm it with `ros2 topic hz` on the sensor host or the datasheet.')
+    # Time windows: the period is period_windows x window_period_s seconds whatever the load;
+    # a window should hold a few messages from each sensor so it is not starved.
+    window = max(window_period, 5.0 / per_sensor)
+    windows = round(args.target_period_s / window) if args.target_period_s else period_windows
     print('suggested settings:')
-    print(f'  expected_scan_rate_hz: {nominal:.3g}')
-    print(f'  window_mode: "time"\n  window_period_s: {layer_interval / nominal:.3g}'
-          f'   # layer_interval {layer_interval} / {nominal:.3g} Hz: the window length the shipped'
-          ' period_windows was meant for')
-
+    print(f'  expected_scan_rate_hz: {per_sensor:.3g}   # per sensor ({sensors} sensor frame(s) on the topic)')
+    print(f'  window_mode: "time"')
+    print(f'  window_period_s: {window:.3g}   # holds ~{window * per_sensor:.0f} messages per sensor')
+    print(f'  period_windows: {windows}   # periodic period {windows * window:.3g} s'
+          + ('' if args.target_period_s else ' (pass --target-period-s to choose it)'))
 
 if __name__ == '__main__':
     main()

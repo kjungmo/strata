@@ -65,6 +65,6 @@ class LayeredMap {
   std::unordered_map<CellId, CellEvidence> cells_;
   PeriodicityModel periodicity_;
   int integration_count_{0};
-  int window_count_{0};
+  int window_count_{0};   // 2^31 windows is 68 years at 1 s windows, 13.6 years at 0.2 s
 };
 }  // namespace strata_core
