@@ -6,7 +6,6 @@
 #include <stdexcept>
 #include <thread>
 #include "strata/map_writer.hpp"
-#include "strata/tf_wait.hpp"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
@@ -44,6 +43,7 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
   diag_pub_ = create_publisher<diagnostic_msgs::msg::DiagnosticArray>("/diagnostics", 10);
   start_wall_ = last_close_wall_ = last_log_wall_ = last_integrate_wall_ = last_reset_log_wall_ =
       Steady::now();
+  clock_watch_.observe(0.0, now().nanoseconds());   // a clock that never moves is frozen from here
   last_close_ros_ = now();
 
   tf_buffer_ = std::make_unique<tf2_ros::Buffer>(get_clock());
@@ -149,25 +149,29 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
 
 bool MappingNode::lookupSensorTf(const std_msgs::msg::Header& h,
                                  geometry_msgs::msg::TransformStamped& out, std::string& err) {
-  // Wait up to kTfWaitS of ROS time for the transform at the message stamp, so a
-  // message slightly ahead of its TF still resolves at playback rates down to 0.1x;
-  // below that the 1 s steady cap shortens it.
+  // Wait for the transform at the message stamp: 0.1 s of ROS time, capped at 1 s of
+  // steady time; a clock unchanged for 1 s is treated as frozen and no longer waited
+  // on (the callback where it stops can wait up to the cap). See tf_wait.hpp.
   // tf2_ros::Buffer's own timeout blocks on the node clock, which under use_sim_time
   // without /clock never advances: the callback would hang and starve every timer and
   // service. So poll the buffer (the listener fills it from its own thread) without
-  // blocking and let TfWaitRule decide: a frozen clock gives up after kTfWaitS of
-  // steady time, and no wait exceeds 1 s of steady time.
+  // blocking, and keep "frozen" an observation across calls, so a coarse sim clock
+  // that steps less often than every 0.1 s of wall time is still waited on (with a
+  // 20 ms grace when it steps past the budget, for a transform sent with that step).
   const tf2::TimePoint at{std::chrono::nanoseconds(rclcpp::Time(h.stamp).nanoseconds())};
-  const TfWaitRule rule{kTfWaitS, kTfWaitS, 1.0};
-  const auto steady0 = Steady::now();
-  const rclcpp::Time ros0 = now();
+  const TfWaitRule rule{kTfWaitS, kClockFrozenS, kTfWaitCapS};
+  std::unique_ptr<TfWait> wait;
+  {
+    std::lock_guard<std::mutex> lk(watch_mtx_);
+    wait = std::make_unique<TfWait>(rule, clock_watch_, steadyS(), now().nanoseconds());
+  }
   for (;;) {
     try {
       out = tf_buffer_->tf2::BufferCore::lookupTransform(global_frame_, h.frame_id, at);
       return true;
     } catch (const tf2::TransformException& e) {
-      const double steady = std::chrono::duration<double>(Steady::now() - steady0).count();
-      if (rule.stop(steady, (now() - ros0).seconds())) { err = e.what(); return false; }
+      std::lock_guard<std::mutex> lk(watch_mtx_);
+      if (wait->stop(steadyS(), now().nanoseconds())) { err = e.what(); return false; }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
@@ -380,10 +384,16 @@ void MappingNode::onDiagnostics() {
   // use_sim_time with a ROS clock that stands still while messages keep arriving: /clock
   // is missing or stopped. TF at the message stamps, map stamps and the stall check
   // above all run on that clock. (A paused bag stops both, which does not trip this.)
+  // The same observation of the last clock change drives the TF wait: after
+  // kClockFrozenS (1 s) unchanged TF waits stop waiting on it; after kClockStallS
+  // (3 s) unchanged, with messages still arriving, this warns.
   if (use_sim_time_) {
-    const std::int64_t ros_ns = now().nanoseconds();
-    if (ros_ns != last_ros_ns_) { last_ros_ns_ = ros_ns; ros_moved_wall_ = now_w; }
-    const double frozen = secs(ros_moved_wall_);
+    double frozen = 0.0;
+    {
+      std::lock_guard<std::mutex> wl(watch_mtx_);
+      clock_watch_.observe(steadyS(), now().nanoseconds());
+      frozen = clock_watch_.unchangedFor(steadyS());
+    }
     if (any_input_ && frozen > kClockStallS && since_input + 2.0 < frozen) {
       std::snprintf(buf, sizeof(buf), "use_sim_time is true but the ROS clock has not advanced for "
                     "%.1f s while messages arrive on %s: is /clock published?", frozen, input_topic_.c_str());

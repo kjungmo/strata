@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 28 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 31 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -287,18 +287,25 @@ evidence gathered across the loop is not independent; restart the node instead.
 Launch with `use_sim_time:=false` (the default) on a live robot and
 `use_sim_time:=true` when replaying a bag with `--clock` (a paused bag reads as
 "no input" after `input_timeout_s`). The TF lookup at each message stamp waits
-for a transform that is slightly late until 0.1 s of ROS time has passed, so a
-slowed bag or simulator gets the same tolerance as a live robot at playback
-rates down to 0.1x; below that the 1 s steady cap shortens it. The wait is
-bounded so a bad clock cannot hang the node: it gives up after 0.1 s of steady
-time if the ROS clock has not moved at all (`use_sim_time:=true` without
-`/clock`) and never waits longer than 1 s of steady time. A failed lookup holds
-the sensor callback for up to that long, and the message is dropped. Without
-`/clock` the node keeps answering services and publishing diagnostics, and
-warns that the ROS clock is not advancing while messages arrive. CI checks
-this: it starts `ros2 launch strata grid2d.launch.py rviz:=false
-use_sim_time:=true`, then runs `python3 scripts/check_sim_clock_stall.py`,
-which publishes scans but no `/clock` and no TF.
+for a transform that is slightly late: 0.1 s of ROS time, capped at 1 s of
+steady time; a clock unchanged for 1 s is treated as frozen and no longer
+waited on (the callback where it stops can wait up to the cap). So a slowed
+bag or simulator gets the same tolerance as a live robot at playback rates
+down to 0.1x (below that the cap shortens it), a coarse sim clock that steps
+less often than every 0.1 s of wall time is still waited on (when it steps past
+the budget, the lookup is retried for 20 ms more of steady time, for a
+transform published with that step), and `use_sim_time:=true` without `/clock`
+cannot hang the node. A failed lookup
+holds the sensor callback for up to that long, and the message is dropped.
+Without `/clock` the node keeps answering services and publishing
+diagnostics, and after 3 s of an unchanged clock with messages arriving warns
+that the ROS clock is not advancing (the same observation of the last clock
+change drives both). CI checks this: it starts `ros2 launch strata
+grid2d.launch.py rviz:=false use_sim_time:=true`, then runs `python3
+scripts/check_sim_clock_stall.py`, which publishes scans but no `/clock` and no
+TF; and, on a fresh launch, `python3 scripts/check_coarse_clock.py`, which runs
+a sim clock at 0.5x in 0.1 s steps (one every 0.2 s of wall time) with each
+scan stamped 30 ms ahead of the transform it needs, and requires no TF failure.
 
 Once a second the node publishes a `<node>: input rate` status on
 `/diagnostics`: input rate, estimated lost share, TF failures, window duration

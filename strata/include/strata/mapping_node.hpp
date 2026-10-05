@@ -25,6 +25,7 @@
 #include "strata_core/grid2d_backend.hpp"
 #include "strata_core/voxel3d_backend.hpp"
 #include "strata/rate_monitor.hpp"
+#include "strata/tf_wait.hpp"
 #include "strata/window_clock.hpp"
 
 namespace strata {
@@ -43,6 +44,7 @@ class MappingNode : public rclcpp::Node {
   explicit MappingNode(const rclcpp::NodeOptions& options = rclcpp::NodeOptions());
 
  private:
+  using Steady = std::chrono::steady_clock;
   strata_core::LayeredMapParams readLayerParams();
   void onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
@@ -52,12 +54,17 @@ class MappingNode : public rclcpp::Node {
   void afterIntegrate(const std::string& frame, std::int64_t t_ns);
   void windowsClosed(int k);
   void noteTfFailure();
-  // TF global_frame <- sensor at the header stamp, waiting up to kTfWaitS of ROS time
-  // (bounded on the steady clock, see TfWaitRule).
+  // TF global_frame <- sensor at the header stamp: kTfWaitS of ROS time, capped at
+  // kTfWaitCapS of steady time; a clock unchanged for kClockFrozenS is not waited on.
   bool lookupSensorTf(const std_msgs::msg::Header& h, geometry_msgs::msg::TransformStamped& out,
                       std::string& err);
   static constexpr double kTfWaitS = 0.1;
-  static constexpr double kClockStallS = 3.0;   // sim clock frozen this long -> WARN
+  static constexpr double kTfWaitCapS = 1.0;
+  static constexpr double kClockFrozenS = 1.0;  // clock unchanged this long: TF waits stop waiting
+  static constexpr double kClockStallS = 3.0;   // ... and this long, with input arriving: WARN
+  double steadyS() const {   // steady seconds since the node started
+    return std::chrono::duration<double>(Steady::now() - start_wall_).count();
+  }
   void onDiagnostics();   // 1 Hz wall timer: publishes /diagnostics even without input
   void onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
               std::shared_ptr<std_srvs::srv::Trigger::Response> res);
@@ -78,11 +85,10 @@ class MappingNode : public rclcpp::Node {
   double input_timeout_s_{5.0}, startup_timeout_s_{30.0};
   bool use_sim_time_{false};
   rclcpp::Clock steady_clock_{RCL_STEADY_TIME};   // log throttling that needs no /clock
-  std::int64_t last_ros_ns_{-1};                  // ROS clock at the last diagnostics tick
-  std::chrono::steady_clock::time_point ros_moved_wall_{std::chrono::steady_clock::now()};
+  RosClockWatch clock_watch_;   // when the ROS clock last changed (TF waits + diagnostics)
+  std::mutex watch_mtx_;
   static constexpr std::size_t kMaxSensors = 16;   // per-frame rate monitors kept at most
   static constexpr int kIdleWindowsToForget = 10;  // a frame silent this long is dropped
-  using Steady = std::chrono::steady_clock;
   Steady::time_point start_wall_, last_input_wall_, last_close_wall_, last_log_wall_,
       last_integrate_wall_, last_reset_log_wall_;
   rclcpp::Time last_close_ros_;

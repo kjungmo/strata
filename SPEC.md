@@ -83,14 +83,20 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 ### Frames (REP-105)
 The node looks up `T_global_sensor` (`global_frame → sensor frame_id`) at each
 message stamp and transforms every endpoint into `global_frame` before
-integrating. It polls the buffer for a transform that is not there yet until
-0.1 s of ROS time has passed since the wait began (`TfWaitRule`), so the
-tolerance is the same at playback rates down to 0.1x; below that the 1 s steady
-cap shortens it. It gives up earlier after 0.1 s of
-steady time if the ROS clock has not advanced at all (`use_sim_time` without
-`/clock`), and never waits longer than 1 s of steady time. A failed lookup
+integrating. It polls the buffer for a transform that is not there yet
+(`TfWaitRule`, `TfWait`): 0.1 s of ROS time, capped at 1 s of steady time; a
+clock unchanged for 1 s is treated as frozen and no longer waited on (the
+callback where it stops can wait up to the cap). "Unchanged" is observed across
+calls (`RosClockWatch`, fed by every wait and the diagnostics timer), so a coarse
+sim clock stepping less often than every 0.1 s of wall time is still waited on;
+when a clock steps past the budget (by 10 ms or more between two polls) the
+lookup is retried for 20 ms more of steady time, for a transform published with
+that step, while a smoothly moving clock stops right at the budget; a clock
+that jumps back restarts the budget. The tolerance is the same at
+playback rates down to 0.1x; below that the cap shortens it. A failed lookup
 therefore holds the sensor callback for up to that long; it counts as a TF
-failure and the message is dropped. The sensor origin (ray start, for clearing) is the translation of
+failure and the message is dropped. The `/diagnostics` stalled-clock WARN uses
+the same observation, after 3 s unchanged while messages arrive. The sensor origin (ray start, for clearing) is the translation of
 that transform. The full 6-DoF transform is used: `voxel3d` keeps z and attitude
 volumetrically; `grid2d` projects transformed endpoints onto its 2D plane.
 
@@ -391,7 +397,7 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **28 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **31 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
@@ -407,9 +413,11 @@ refused, a moved pair still resolves its image, a missing directory is reported
 as a failure naming the path, a failed YAML write leaves the previous pair
 byte-identical with no `.tmp` left, a failed second rename reports that the
 PGM was already replaced, a grid whose data does not match its size
-is refused) and `test_tf_wait` (4; a live clock waits 0.1 s, a 0.2x / 0.1x sim
-clock still gets 0.1 s of ROS time, a frozen clock gives up after 0.1 s, a
-clock that starts then freezes stops at the 1 s cap).
+is refused) and `test_tf_wait` (7; a live clock waits 0.1 s, a 0.2x / 0.1x sim
+clock still gets 0.1 s of ROS time, a coarse 10 Hz sim clock at 0.5x and at 0.2x
+gets its full 0.1 s, a clock frozen from the start is waited on at most once to
+the cap and then not at all, a clock that stops is recognised within 1 s, a
+clock that jumps back counts the budget from the jump).
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the
@@ -428,6 +436,10 @@ across the save. A last step launches grid2d with `use_sim_time:=true`, feeds
 it scans with no `/clock` and no TF (`scripts/check_sim_clock_stall.py`) and
 requires `ros2 param get` to answer within 8 s, at least 9 `/diagnostics`
 statuses over 11 s of scans, and a WARN that the ROS clock is not advancing.
+A second launch runs a sim clock at 0.5x in 0.1 s steps with scans stamped 30 ms
+ahead of a dynamic `map → sensor` TF (`scripts/check_coarse_clock.py`) and
+requires zero TF failures over at least 3 closed windows and at least 60 % of
+the sent scans integrated in them.
 
 ---
 

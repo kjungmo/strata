@@ -145,3 +145,21 @@ jobs:
           timeout 90 python3 scripts/check_sim_clock_stall.py || status=$?
           stop "$pid"
           if [ "$status" -ne 0 ]; then cat stall.log; exit 1; fi
+
+      - name: A coarse, slow sim clock must not make the node drop scans for TF
+        shell: bash
+        timeout-minutes: 3
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          stop() {
+            kill -TERM -- "-$1" 2>/dev/null || true
+            for _ in $(seq 15); do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+            kill -KILL -- "-$1" 2>/dev/null || true
+          }
+          setsid ros2 launch strata grid2d.launch.py rviz:=false use_sim_time:=true > coarse.log 2>&1 &
+          pid=$!
+          status=0
+          timeout 90 python3 scripts/check_coarse_clock.py || status=$?
+          stop "$pid"
+          if [ "$status" -ne 0 ]; then cat coarse.log; exit 1; fi
