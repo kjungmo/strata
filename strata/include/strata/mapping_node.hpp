@@ -1,7 +1,12 @@
 #pragma once
+#include <chrono>
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <rclcpp/rclcpp.hpp>
@@ -41,10 +46,12 @@ class MappingNode : public rclcpp::Node {
   void onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
   void onPublish();
-  // Window bookkeeping around one integrated message stamped t (seconds); call with mtx_ held.
-  void beforeIntegrate(double t);
-  void afterIntegrate(double t);
-  void reportWindow();
+  // Window bookkeeping around one integrated message; call with mtx_ held.
+  void beforeIntegrate(std::int64_t t_ns);
+  void afterIntegrate(const std::string& frame, std::int64_t t_ns);
+  void windowsClosed(int k);
+  void noteTfFailure();
+  void onDiagnostics();   // 1 Hz wall timer: publishes /diagnostics even without input
   void onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
               std::shared_ptr<std_srvs::srv::Trigger::Response> res);
 
@@ -57,8 +64,19 @@ class MappingNode : public rclcpp::Node {
   int layer_interval_{10};
   int period_windows_{24};
   std::unique_ptr<WindowClock> clock_;
-  std::unique_ptr<RateMonitor> rate_;
+  std::map<std::string, RateMonitor> rates_;   // one per sensor frame on the input topic
   rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_pub_;
+  rclcpp::TimerBase::SharedPtr diag_timer_;
+  std::string input_topic_;
+  double input_timeout_s_{5.0};
+  using Steady = std::chrono::steady_clock;
+  Steady::time_point start_wall_, last_input_wall_, last_close_wall_, last_log_wall_;
+  bool any_input_{false}, origin_set_{false};
+  std::int64_t origin_ns_{0};
+  long windows_closed_{0}, msgs_since_close_{0}, zero_stamps_{0};
+  int tf_failures_window_{0}, tf_failures_last_{0};
+  std::vector<std::pair<std::string, std::string>> last_values_;   // from the last window close
+  std::string last_why_;
 
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

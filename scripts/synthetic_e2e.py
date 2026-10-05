@@ -129,7 +129,7 @@ class Driver:
         self.t = 0.0
 
     def on_diag(self, msg):
-        self.diags += [s for s in msg.status if s.name == 'strata: input rate']
+        self.diags += [(time.monotonic(), s) for s in msg.status if s.name.endswith(': input rate')]
 
     def send_tf(self):
         t = TransformStamped()
@@ -254,7 +254,7 @@ def frac(cells, value_of, ok):
     return (hit / len(cells) if cells else 0.0), hit
 
 
-def check_grid(maps, final):
+def check_grid(maps, final, detuned=False):
     w = final.info.width
     def val(m):
         return lambda c: m.data[c[1] * w + c[0]]
@@ -270,11 +270,16 @@ def check_grid(maps, final):
     results = []
     f, n = frac(wall, v, lambda x: x == 100)
     results.append((f >= 0.95, f'wall cells Static (100): {n}/{len(wall)} = {f:.3f} (need >= 0.95)'))
-    f, n = frac(door, v, lambda x: x == 75)
-    results.append((f >= 0.95, f'door cells Periodic (75): {n}/{len(door)} = {f:.3f} (need >= 0.95; '
-                               f'{len(skipped)} door cells the open-door ray skips are not tested)'))
-    f, n = frac(door, v, lambda x: x == 100)
-    results.append((n == 0, f'door cells Static (100): {n}/{len(door)} (need 0)'))
+    f75, n75 = frac(door, v, lambda x: x == 75)
+    f100, n100 = frac(door, v, lambda x: x == 100)
+    if detuned:   # negative control: the stretched windows no longer match period_windows
+        results.append((n75 == 0, f'negative control: door cells Periodic (75): {n75}/{len(door)} (need 0)'))
+        results.append((f100 >= 0.95, f'negative control: door cells Static (100): {n100}/{len(door)} '
+                                      f'= {f100:.3f} (need >= 0.95)'))
+    else:
+        results.append((f75 >= 0.95, f'door cells Periodic (75): {n75}/{len(door)} = {f75:.3f} (need >= 0.95; '
+                                     f'{len(skipped)} door cells the open-door ray skips are not tested)'))
+        results.append((n100 == 0, f'door cells Static (100): {n100}/{len(door)} (need 0)'))
     ever = sum(1 for c in mover if any(val(m)(c) == 100 for m in maps))
     results.append((ever == 0, f'mover cells Static in any of {len(maps)} maps: {ever}/{len(mover)} (need 0)'))
     seen = sum(1 for c in mover if any(val(m)(c) == 50 for m in maps))
@@ -319,7 +324,7 @@ def cloud_points(msg):
     return out
 
 
-def check_voxel(maps, final, size):
+def check_voxel(maps, final, size, detuned=False):
     def keys(r, degrees):
         return {voxel_key(point(r, d, e), size) for d in degrees for e in ELEV_DEG}
     open_rays = set()
@@ -341,8 +346,12 @@ def check_voxel(maps, final, size):
     results.append((n / len(wall) >= 0.95,
                     f'wall voxels in the static map: {n}/{len(wall)} = {n / len(wall):.3f} (need >= 0.95)'))
     n = len(door & static_final)
-    results.append((n == 0, f'door voxels in the final static map: {n}/{len(door)} (need 0; '
-                            f'{len(skipped)} door voxels the open-door ray skips are not tested)'))
+    if detuned:   # negative control: the door graduates into the static map
+        results.append((n / len(door) >= 0.95, f'negative control: door voxels in the final static map: '
+                                               f'{n}/{len(door)} (need >= 0.95)'))
+    else:
+        results.append((n == 0, f'door voxels in the final static map: {n}/{len(door)} (need 0; '
+                                f'{len(skipped)} door voxels the open-door ray skips are not tested)'))
     n = len(mover & static_ever)
     results.append((n == 0, f'mover voxels in any of {len(maps)} static maps: {n}/{len(mover)} (need 0)'))
     return results
@@ -376,8 +385,10 @@ def main():
                          'scans, stretches every window and detunes the door from period_windows')
     ap.add_argument('--drop', type=float, default=0.0,
                     help='share of scans withheld (deterministic pattern), as a lossy link would')
+    ap.add_argument('--check-timeout', action='store_true',
+                    help='after the stream, wait input_timeout_s and expect an ERROR status')
     ap.add_argument('--expect-detuned', action='store_true',
-                    help='negative control: expect the door NOT to be periodic (scan windows under loss)')
+                    help='negative control: expect the door Static, not Periodic (scan windows under loss)')
     args = ap.parse_args()
 
     params = {}
@@ -403,38 +414,45 @@ def main():
     final = drv.latest_map(len(drv.maps), args.timeout)
 
     if args.backend == 'grid2d':
-        results = check_grid(drv.maps, final)
+        results = check_grid(drv.maps, final, args.expect_detuned)
     else:
-        results = check_voxel(drv.maps, final, float(params.get('voxel_size', 0.2)))
-
-    if args.expect_detuned:
-        flipped = []
-        for ok, line in results:
-            if line.startswith(('door cells Periodic', 'door voxels in the final')):
-                flipped.append((not ok, 'negative control, expected to fail: ' + line))
-            elif not line.startswith('door cells Static'):
-                flipped.append((ok, line))
-        results = flipped
+        results = check_voxel(drv.maps, final, float(params.get('voxel_size', 0.2)), args.expect_detuned)
 
     # /diagnostics: the node's own estimate of the loss and its warning.
     end = time.monotonic() + 3.0
     while time.monotonic() < end:
         rclpy.spin_once(node, timeout_sec=0.1)
-    if not drv.diags:
-        results.append((False, 'no "strata: input rate" status on /diagnostics'))
+    def vals(s):
+        return {kv.key: kv.value for kv in s.values}
+    # Statuses taken while the stream ran and after the first windows closed.
+    live = [s for _, s in drv.diags if float(vals(s).get('seconds_since_last_message', 99)) < 1.0
+            and int(vals(s).get('windows_closed_total', 0)) >= 3]
+    if not live:
+        results.append((False, 'no "<node>: input rate" status on /diagnostics during the stream'))
     else:
-        last = {kv.key: kv.value for kv in drv.diags[-1].values}
+        last = vals(live[-1])
         est = float(last.get('recent_drop_fraction', 'nan'))
-        warned = any(level(s) == 1 for s in drv.diags)
+        warned = any(level(s) == 1 for s in live)
         results.append((last.get('window_mode') == mode,
                         f'diagnostics window_mode: {last.get("window_mode")} (expected {mode})'))
         results.append((abs(est - args.drop) <= 0.05,
                         f'diagnostics recent_drop_fraction {est:.3f} vs withheld {args.drop:.3f} (need within 0.05); '
                         f'input_rate_hz {last.get("input_rate_hz")}, effective_period_s {last.get("effective_period_s")}'))
-        should_warn = args.drop > float(params.get('rate_warn_drop_fraction', 0.05))
+        # Scan windows warn on loss (they detune); time windows keep the period and warn
+        # only on starved or empty windows, which 40 % loss at 10 scans per window is not.
+        should_warn = mode == 'scans' and args.drop > float(params.get('rate_warn_drop_fraction', 0.05))
         results.append((warned == should_warn,
-                        f'diagnostics warned: {warned} (expected {should_warn}) over {len(drv.diags)} statuses'
-                        + (f'; e.g. "{next(s.message for s in drv.diags if level(s) == 1)}"' if warned else '')))
+                        f'diagnostics warned: {warned} (expected {should_warn}) over {len(live)} live statuses'
+                        + (f'; e.g. "{next(s.message for s in live if level(s) == 1)}"' if warned else '')))
+    if args.check_timeout:
+        timeout_s = float(params.get('input_timeout_s', 5.0))
+        end = time.monotonic() + timeout_s + 3.0
+        while time.monotonic() < end:
+            rclpy.spin_once(node, timeout_sec=0.1)
+        tail = [s for _, s in drv.diags][-1:]
+        ok = bool(tail) and level(tail[0]) == 2 and tail[0].message.startswith('no input')
+        results.append((ok, f'input timeout: last status level {level(tail[0]) if tail else None}, '
+                            f'"{tail[0].message if tail else ""}" (need ERROR "no input ...")'))
 
     res = save_map(node, args.timeout)
     saved = res.message.replace('saved ', '').split(' + ')[0]

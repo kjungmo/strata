@@ -145,7 +145,7 @@ and the synthetic suite:
    which the FreMEn server already provides.
 2. **A ROS-free, deterministically testable core, shown backend-equivalent
    (design goal + measured).** The engine builds and unit-tests with a plain
-   C++17 + Eigen toolchain and is exercised by 54 behavior-level tests; both
+   C++17 + Eigen toolchain and is exercised by 56 behavior-level tests; both
    backends graduate the static wall by window 3 and hold recall 1.0 through
    window 39, differing in static-layer quality only by a clutter-induced
    static-precision gap (0.9253 grid2d vs. 0.9758 voxel3d at 100 movers per
@@ -504,6 +504,7 @@ localizer. A single mutex serializes integration against publish and save.
 | Pub | `~/map_points` | `sensor_msgs/PointCloud2` | `QoS(1)`, volatile | voxel3d only |
 | Srv | `~/save_map` | `std_srvs/Trigger` | default | both (`.pgm`+`.yaml` / `.pcd`) |
 | Timer | `publish_period` (default 1.0 s) | — | — | drives publishing for both |
+| Pub | `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | default, depth 10 | both; one input-rate status per second (wall clock) |
 
 Table: ROS 2 input/output contract of the `strata` node. {#tbl:io}
 
@@ -547,6 +548,24 @@ $$\text{touched}=[\,h_w>0 \lor m_w>0\,],\quad
 \text{free}=[\,h_w=0 \land m_w>0\,].$$
 
 A single hit outweighs any number of misses in the same window.
+
+The engine counts windows in integration ticks. The ROS node can instead close
+windows on message time (`window_mode` `time`, which the shipped parameter files
+select; the code default and every experiment in §5 use `scans`): a window then
+spans `window_period_s` seconds from the first message's stamp, computed in
+integer nanoseconds, and a message stamped past the open window first closes it
+and every window since that saw no message (`closeWindows(k)`). A window that
+observes nothing changes no cell, so closing $k$ windows is exactly equivalent to
+$k$ calls of `endWindow()` (a unit test checks it) yet costs one pass: the first
+close settles every cell and the rest only advance the window index. The clock
+re-anchors when a stamp falls more than half a window behind the newest one (a
+bag loop) or lands more than $10^6$ windows ahead (an unset stamp). Silent
+windows advance the phase without a touch, and the touched windows stay
+independent of occupancy as long as message loss is, so the false-alarm bound of
+§4.4 holds in either mode; what the window rule changes is the period, in
+seconds, that `period_windows` stands for, and with it the test's power. With
+scan-counted windows a window lasts `layer_interval` divided by the rate of
+messages actually integrated, so lost messages stretch it (§6.2).
 
 ## 4.2 Log-odds persistence with survival decay {#sec:logodds}
 
@@ -942,7 +961,8 @@ shared; only these two rows of behavior differ. {#tbl:backends}
 are identical between the struct definition and both shipped YAML files. Geometry
 and node parameters (`grid_width` 400, `grid_height` 400, `grid_resolution`
 0.05 m, `grid_origin_{x,y}` $-10.0$ m for grid2d; `voxel_size` 0.2 m for voxel3d;
-frame names, topics, `publish_period` 1.0 s) are not part of the engine math.
+frame names, topics, `publish_period` 1.0 s; the window clock `window_mode` (`scans` in code, `time` in the shipped files) and `window_period_s` 1.0 s; the rate check `expected_scan_rate_hz` 0, meaning estimated, and
+`rate_warn_drop_fraction` 0.05 and `input_timeout_s` 5 s) are not part of the engine math.
 
 | Name | Default | Units | Meaning |
 |---|---|---|---|
@@ -1017,7 +1037,7 @@ single call, `bash paper/experiments/run_all.sh`, which configures and builds
 `strata_core` and the six harness executables, runs each one, and writes the
 CSVs in `paper/experiments/results/` from which every number and figure in
 this section is taken; `strata_core`'s own `ctest` suite (1/1 target,
-aggregating the 54 gtest cases: ten regression tests for the amplitude defect
+aggregating the 56 gtest cases: ten regression tests for the amplitude defect
 of [@sec:periodicity], nine for its significance test and eight for the spent
 level of [@sec:spend]) is checked first, so the harness is only
 trusted once the unit-level behavior it builds on is confirmed. Every stochastic experiment (E1–E3) derives its `std::mt19937` generator
@@ -1662,6 +1682,30 @@ longer looks reads free until it is observed; once observed it reads `50` from
 its first hit and keeps reading `50` out of view until a ray observes the cell
 free again. The bit costs one byte per grid
 cell, bounded by the grid size. voxel3d publishes no free space.
+
+**Scan-counted windows depend on the input rate.** With `window_mode` `scans` a
+window is `layer_interval` integrated messages, so its length in seconds, and
+with it the period that `period_windows` stands for, follows the rate of
+messages the node actually integrates. Messages lost on a best-effort link,
+dropped for missing TF or skipped by an overloaded node stretch every window. In
+the synthetic ROS check, withholding 40 % of the scans turns every tested door
+cell static with scan windows (grid2d), while time windows keep the door
+periodic in grid2d and out of the static map in voxel3d; CI asserts all three.
+Time windows trade this for evidence that depends on the rate: a window with few
+messages is less likely to see a hit, so a sensor rate that varies with the
+phase of a cycle can itself look periodic, outside the null of §4.4. Once a
+second, on a wall-clock timer, the node publishes on `/diagnostics` the input
+rate, the share of messages lost, the TF failures, the window duration and the
+periodic period in seconds. The loss is estimated per sensor frame from gaps
+between stamps against the 20th-percentile interval, which holds while at least
+about a fifth of consecutive messages arrive back to back; above about 80 % loss,
+or whenever the sensor rate is known, set `expected_scan_rate_hz`. The node warns
+when scan windows lose more than `rate_warn_drop_fraction` or jitter, when time
+windows go empty or get under half the expected messages, or when stamps stop
+advancing, and turns ERROR after `input_timeout_s` without input. A deployment
+should measure these on the robot (`scripts/rate_report.py`) and set
+`window_period_s` to `layer_interval` over the sensor rate. The experiments of
+§5 integrate every message and are unaffected.
 
 ## 6.3 Design trade-offs owned honestly
 

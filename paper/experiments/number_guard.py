@@ -388,8 +388,8 @@ def guard_arxiv():
           == [(r["recall"], r["precision"], r["pred_static"]) for r in e1])
     ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                  for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
-    check("54 core gtest cases", ntests == 54, str(ntests))
-    in_paper("54 tests quoted", "54 ")
+    check("56 core gtest cases", ntests == 56, str(ntests))
+    in_paper("56 tests quoted", "56 ")
     quoted = {int(n) for n in re.findall(r"(\d+)(?:~|\s)+(?:gtest cases|behaviou?r-level tests|unit tests)", text)}
     check("every quoted test count is the current one", quoted <= {ntests}, str(sorted(quoted)))
     # ---- E0 calibration and the calibrated test (Proposition prop:chernoff) ----

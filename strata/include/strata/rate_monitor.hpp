@@ -68,6 +68,11 @@ class RateMonitor {
     return s;
   }
 
+  // Forget the stamp history (the window clock re-anchored); window statistics stay.
+  void reset() { has_last_ = false; intervals_.clear(); window_intervals_.clear(); }
+  long recentDropped() const { long d = 0; for (const auto& w : windows_) d += w.dropped; return d; }
+  long recentScans() const { long n = 0; for (const auto& w : windows_) n += w.scans; return n; }
+
   // dropped / (dropped + integrated) over the recent windows.
   double recentDropFraction() const {
     long d = 0, n = 0;

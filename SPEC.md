@@ -78,6 +78,7 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 | `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
 | `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML; voxel3d → PCD |
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node>: input rate` (hardware_id: the input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close), seconds_since_last_message, windows_closed_total. From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0) a mean window more than 10 % off `layer_interval / expected_scan_rate_hz`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages. Also WARN on zero stamps or, in `time` mode, when no window has closed for 10 window periods (and 2 s) although messages arrive; ERROR after `input_timeout_s` without input |
 
 ### Frames (REP-105)
 The node looks up `T_global_sensor` (`global_frame → sensor frame_id`) at each
@@ -323,6 +324,11 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `scan_topic` | `/scan` | grid2d input topic |
 | `points_topic` | `/points` | voxel3d input topic |
 | `publish_period` | `1.0` | seconds between map publications |
+| `window_mode` | `scans` (code); `time` in the shipped YAMLs | `scans`: close a window every `layer_interval` integrated messages (the engine rule); `time`: every `window_period_s` of message time (integer ns; re-anchors on a stamp more than half a window behind the newest or 10^6 windows ahead), robust to lost messages |
+| `window_period_s` | `1.0` | window length in seconds when `window_mode` is `time` |
+| `expected_scan_rate_hz` | `0.0` | sensor rate for the loss estimate and the scan-window check; `0` estimates it from stamps |
+| `rate_warn_drop_fraction` | `0.05` | `/diagnostics` warns above this share of lost messages (scan windows) |
+| `input_timeout_s` | `5.0` | `/diagnostics` turns ERROR after this long without input |
 | `save_path` | `/tmp/strata_2d` (grid2d) / `/tmp/strata_3d` (voxel3d) | save-service output path stem |
 
 ---
@@ -331,7 +337,7 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
-streams) in `strata_core/test`, runnable with **no ROS** — **54 gtests across 9
+streams) in `strata_core/test`, runnable with **no ROS** — **56 gtests across 9
 suites**:
 
 - **Smoke** (1): version macro is defined.
@@ -348,7 +354,7 @@ suites**:
   amplitude-only rule would fire on > 20 % of such cells; square-wave doors are
   still detected (50 %-duty from n = 16, 25 %-duty from n = 32); a constant cell is
   never Periodic under any sampling; nothing is Periodic below the n ≥ T gate.
-- **LayeredMap** (17): graduates only when P(occ) ≥ threshold AND observed ≥
+- **LayeredMap** (18): graduates only when P(occ) ≥ threshold AND observed ≥
   `min_observations`; a moving obstacle (each cell hit once) never graduates;
   Schmitt hysteresis demotes only after sustained free; a square-wave cell is
   classified Periodic, not Static; `layer_interval` groups ticks into windows;
@@ -359,16 +365,17 @@ suites**:
   `periodic_false_alarm >= 1` restores the amplitude-only rule; alpha spending
   is the shipped rule; with spending, a graduated door is still demoted once
   Periodic, a noisy wall is rarely ever demoted by the periodic path, and pruned
-  clutter is rarely ever Periodic.
+  clutter is rarely ever Periodic; `closeWindows(k)` equals k `endWindow()` calls.
 - **PeriodicitySpending** (4): the spent levels are zero below the n ≥ T gate
   and sum to alpha; the per-read-out rule is not trajectory-valid but spending
   is; doors are still detected, later; the amplitude-only rule is unaffected.
-- **Grid2DBackend** (9): a hit marks the endpoint and clears the ray; repeated
+- **Grid2DBackend** (10): a hit marks the endpoint and clears the ray; repeated
   hits graduate; occupancy-grid render (100 static, 50 transient, 0 free, -1
   unknown); a cleared cell stays free after pruning; a freed transient reads
   free once a window observes it free; a new obstacle on cleared ground reads
   50 from its first hit; an obstacle last seen hit stays 50 out of view until
-  observed free; a 6-DoF (elevated) endpoint projects to the plane.
+  observed free; `closeWindows` closes windows whatever the tick count, and a
+  silent gap leaves evidence untouched; a 6-DoF (elevated) endpoint projects to the plane.
 - **Voxel3DBackend** (3): same world point → same voxel id; repeated hits
   graduate a voxel with z preserved; a moving point never graduates.
 - **Integration** (1): a deterministic room — a fixed **wall** cell, a **mover**
@@ -376,9 +383,14 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **4 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
-round-trip, no rclcpp) and `test_scan_adapter` (1; a single beam under a 6-DoF
-yaw+translation transform lands at the expected map point, z preserved).
+Plus **14 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
+yaw+translation transform lands at the expected map point, z preserved),
+`test_window_clock` (6; anchoring, gaps close every skipped window, epoch
+nanosecond stamps close exactly every period, reorder kept and a bag loop
+re-anchors, a short bag loop re-anchors, a huge forward jump re-anchors) and
+`test_rate_monitor` (4; a steady stream has no loss, 40 % loss is estimated, the
+sensor rate overrides the estimate, a back jump restarts the intervals).
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the

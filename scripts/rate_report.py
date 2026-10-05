@@ -5,8 +5,9 @@ Listens to /diagnostics for --seconds, keeps the "strata: input rate" statuses t
 publishes at every window close, and prints min / median / max of each value, how
 often the node warned, and a suggested window setting:
 
-  * window_mode "time" with window_period_s = layer_interval / measured input rate
-    keeps the shipped period_windows in seconds whatever the load does;
+  * window_mode "time" with window_period_s = layer_interval / nominal sensor rate
+    (nominal_rate_hz) keeps the window the shipped period_windows was meant for,
+    whatever the load does;
   * window_mode "scans" is only safe when the loss is near zero and the window
     duration is steady (low window_duration_cv).
 
@@ -34,25 +35,30 @@ def main():
     ap.add_argument('--seconds', type=float, default=300.0)
     ap.add_argument('--params', help='the params YAML the node runs with (for layer_interval)')
     args = ap.parse_args()
-    layer_interval = 10
+    layer_interval, configured_rate = 10, 0.0
     if args.params:
         for section in (yaml.safe_load(open(args.params)) or {}).values():
-            layer_interval = int((section or {}).get('ros__parameters', {}).get('layer_interval', layer_interval))
+            p = (section or {}).get('ros__parameters', {})
+            layer_interval = int(p.get('layer_interval', layer_interval))
+            configured_rate = float(p.get('expected_scan_rate_hz', configured_rate))
 
     rclpy.init()
     node = rclpy.create_node('strata_rate_report')
     got = []
     node.create_subscription(DiagnosticArray, '/diagnostics',
-                             lambda m: got.extend(s for s in m.status if s.name == 'strata: input rate'), 50)
+                             lambda m: got.extend(s for s in m.status if s.name.endswith(': input rate')), 50)
     end = time.monotonic() + args.seconds
     while time.monotonic() < end:
         rclpy.spin_once(node, timeout_sec=0.2)
     node.destroy_node()
     rclpy.shutdown()
     if not got:
-        raise SystemExit('no "strata: input rate" status on /diagnostics: is the node running and receiving input?')
+        raise SystemExit('no "<node>: input rate" status on /diagnostics: is the node running?')
 
     rows = [{kv.key: kv.value for kv in s.values} for s in got]
+    rows = [r for r in rows if 'input_rate_hz' in r]     # statuses after a window has closed
+    if not rows:
+        raise SystemExit('no window has closed yet: let the node run on live input for longer')
     print(f'{len(got)} window reports over {args.seconds:g} s; window_mode {rows[-1].get("window_mode")}')
     print(f'{"value":<22}{"min":>10}{"median":>10}{"max":>10}')
     for k in NUMERIC:
@@ -62,10 +68,17 @@ def main():
     warns = [s.message for s in got if level(s) == 1]
     print(f'warnings: {len(warns)} of {len(got)}' + (f' (last: {warns[-1]})' if warns else ''))
 
-    rate = statistics.median(float(r['input_rate_hz']) for r in rows if float(r.get('input_rate_hz', 0)) > 0)
-    nominal = statistics.median(float(r['nominal_rate_hz']) for r in rows if float(r.get('nominal_rate_hz', 0)) > 0)
+    rates = [float(r['input_rate_hz']) for r in rows if float(r.get('input_rate_hz', 0)) > 0]
+    nominals = [float(r['nominal_rate_hz']) for r in rows if float(r.get('nominal_rate_hz', 0)) > 0]
+    if not rates or not nominals:
+        raise SystemExit('no input or nominal rate measured yet: let the node run on live input for longer')
+    rate, nominal = statistics.median(rates), statistics.median(nominals)
     drop = statistics.median(float(r['recent_drop_fraction']) for r in rows)
-    print(f'\nsensor (nominal) rate ~{nominal:.3g} Hz, integrated ~{rate:.3g} Hz, loss ~{100 * drop:.1f} %')
+    print(f'\nsensor (nominal) rate ~{nominal:.3g} Hz, integrated ~{rate:.3g} Hz, loss ~{100 * drop:.1f} %'
+          + (f' (expected_scan_rate_hz configured: {configured_rate:g})' if configured_rate > 0 else ''))
+    print('The nominal rate is estimated from gaps between stamps and is unreliable above about 80 % loss\n'
+          'or with several sensors per frame: confirm it with `ros2 topic hz` on the sensor host or the\n'
+          'datasheet, and set expected_scan_rate_hz to it.')
     print('suggested settings:')
     print(f'  expected_scan_rate_hz: {nominal:.3g}')
     print(f'  window_mode: "time"\n  window_period_s: {layer_interval / nominal:.3g}'

@@ -87,6 +87,7 @@ Publish & \code{\textasciitilde/map} & \code{OccupancyGrid}, depth 1, transient 
 Publish & \code{\textasciitilde/map\_points} & \code{PointCloud2}, depth 1, volatile & \code{voxel3d} \\
 Service & \code{\textasciitilde/save\_map} & \code{Trigger} & both (\code{.pgm}+\code{.yaml} / \code{.pcd}) \\
 Timer & \code{publish\_period} (1.0~s) & --- & both \\
+Publish & \code{/diagnostics} & \code{DiagnosticArray}, depth 10 & both, once a second \\
 \bottomrule
 \end{tabular}
 \end{table}
