@@ -245,8 +245,9 @@ on Humble, not in CI.
 select). Scan windows stretch when scans are lost on the best-effort link,
 dropped for missing TF or skipped by an overloaded node, which detunes the
 periodicity test: in the synthetic check, losing 40 % of the scans turns the
-door static. Time windows keep the door periodic under the same loss; CI checks
-both. Time windows need sane stamps: header stamps on the same clock as TF and
+tested door cells static (at least 95 %, none periodic) with scan windows
+(grid2d), while time windows keep the door periodic in grid2d and out of the
+static map in voxel3d; CI checks all three. Time windows need sane stamps: header stamps on the same clock as TF and
 increasing; zero stamps are dropped. With time windows the periodic test's
 period is `period_windows` × `window_period_s` seconds (24 × 1.0 s shipped)
 whatever the sensor rate or load: keep a window long enough to hold several

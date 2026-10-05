@@ -170,7 +170,11 @@ bool MappingNode::beforeIntegrate(std::int64_t t_ns) {
   any_integrated_ = true;
   last_integrate_wall_ = last_input_wall_;
   tf_failures_since_integrate_ = 0;
-  if (!origin_set_) { origin_ns_ = t_ns; origin_set_ = true; }
+  if (!origin_set_) {
+    origin_ns_ = t_ns; origin_set_ = true;
+    // Stall timing starts with the first message, not at construction (no /clock yet).
+    last_close_wall_ = Steady::now(); last_close_ros_ = now();
+  }
   if (window_mode_ != "time") return true;
   // A message past the open window's end closes it (and any silent windows since)
   // before it is integrated into the window it belongs to.
@@ -301,6 +305,7 @@ void MappingNode::windowsClosed(int k) {
   };
   last_why_ = why.empty() ? "" : why.substr(0, why.size() - 2);
   tf_failures_window_ = 0;
+  frames_over_cap_ = 0;   // counted per window, so the warning clears once the cap has room
 }
 
 void MappingNode::onDiagnostics() {

@@ -1425,8 +1425,7 @@ consecutive messages arrive back to back; above about 80\,\% loss, or whenever
 the sensor rate is known, set \texttt{expected\_scan\_rate\_hz} (per sensor).
 The node warns when scan windows lose more than \texttt{rate\_warn\_drop\_fraction}
 or jitter, when time windows go empty or get under half the expected messages,
-when stamps are zero or stop advancing, or when messages arrive but the TF
-lookup fails, and turns ERROR without input for \texttt{input\_timeout\_s} (or
+when stamps are zero or stop advancing, or when messages arrive but the TF lookup fails (ERROR once something was integrated), and turns ERROR without input for \texttt{input\_timeout\_s} (or
 \texttt{startup\_timeout\_s} before the first message). With time windows the
 periodic period is \texttt{period\_windows} $\times$ \texttt{window\_period\_s}
 seconds whatever the load; a deployment should measure the rates on the robot

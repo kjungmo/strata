@@ -1708,8 +1708,7 @@ about a fifth of consecutive messages arrive back to back; above about 80 % loss
 or whenever the sensor rate is known, set `expected_scan_rate_hz` (per sensor).
 The node warns when scan windows lose more than `rate_warn_drop_fraction` or
 jitter, when time windows go empty or get under half the expected messages, when
-stamps are zero or stop advancing, or when messages arrive but the TF lookup
-fails, and turns ERROR without input for `input_timeout_s` (or
+stamps are zero or stop advancing, or when messages arrive but the TF lookup fails (ERROR once something was integrated), and turns ERROR without input for `input_timeout_s` (or
 `startup_timeout_s` before the first message). With time windows the periodic
 period is `period_windows` $\times$ `window_period_s` seconds whatever the load;
 a deployment should measure the rates on the robot (`scripts/rate_report.py`),
