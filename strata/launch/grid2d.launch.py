@@ -5,16 +5,22 @@ from launch.actions import DeclareLaunchArgument
 from launch.conditions import IfCondition
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 
 
 def generate_launch_description():
     pkg = get_package_share_directory('strata')
-    params = os.path.join(pkg, 'params', 'grid2d.yaml')
+    params = LaunchConfiguration('params_file')
     use_rviz = LaunchConfiguration('rviz')
     return LaunchDescription([
         DeclareLaunchArgument('rviz', default_value='true'),
+        # true when replaying a bag with --clock or in simulation; false on a live robot
+        DeclareLaunchArgument('use_sim_time', default_value='false'),
+        DeclareLaunchArgument('params_file',
+                              default_value=os.path.join(pkg, 'params', 'grid2d.yaml')),
         Node(package='strata', executable='strata_node_main', name='strata',
-             output='screen', parameters=[params, {'use_sim_time': True}]),
+             output='screen', parameters=[params, {'use_sim_time': ParameterValue(
+                 LaunchConfiguration('use_sim_time'), value_type=bool)}]),
         Node(package='rviz2', executable='rviz2', name='rviz2',
              condition=IfCondition(use_rviz),
              arguments=['-d', os.path.join(pkg, 'rviz', 'strata.rviz')]),

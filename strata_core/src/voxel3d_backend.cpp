@@ -24,6 +24,7 @@ void Voxel3DBackend::integrate(const Observation& obs, const Eigen::Vector3d& se
   }
 }
 bool Voxel3DBackend::tick(){ return layered_.tick(); }
+void Voxel3DBackend::closeWindows(int k){ layered_.closeWindows(k); }
 std::vector<Eigen::Vector3d> Voxel3DBackend::staticPoints() const {
   std::vector<Eigen::Vector3d> pts; for(CellId id: layered_.staticCells()) pts.push_back(voxelCenter(id)); return pts;
 }

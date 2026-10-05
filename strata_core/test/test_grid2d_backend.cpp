@@ -104,3 +104,16 @@ TEST(Grid2DBackend, ObstacleLastSeenHitStaysOutOfView) {
   b.integrate(far, o); b.tick();                                          // observed free again
   EXPECT_EQ(b.toOccupancyGrid().data[gridCellId(m,3,0)], 0);
 }
+TEST(Grid2DBackend, CloseWindowsClosesRegardlessOfTickCount) {
+  LayeredMapParams p = P(); p.layer_interval = 1000;       // tick() alone would never close
+  Grid2DBackend b(meta(), p);
+  const GridMeta m=meta();
+  Observation obs; obs.hits.push_back(Eigen::Vector3d(5.5,0.5,0.0));
+  for(int i=0;i<3;++i){ b.integrate(obs, Eigen::Vector3d(0.5,0.5,0.0)); EXPECT_FALSE(b.tick()); b.closeWindows(1); }
+  EXPECT_EQ(b.layered().windowCount(), 3);
+  EXPECT_TRUE(b.layered().isStatic(gridCellId(m,5,0)));
+  b.closeWindows(5);                                      // a silent gap: five windows, nothing seen
+  EXPECT_EQ(b.layered().windowCount(), 8);
+  EXPECT_TRUE(b.layered().isStatic(gridCellId(m,5,0)));   // unobserved evidence is untouched
+  EXPECT_EQ(b.toOccupancyGrid().data[gridCellId(m,3,0)], 0);
+}

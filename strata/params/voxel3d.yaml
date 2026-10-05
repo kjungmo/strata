@@ -4,6 +4,13 @@
     global_frame: "map"
     points_topic: "/points"
     publish_period: 1.0
+    window_mode: "time"           # "time": close a window every window_period_s of message time (robust to loss);
+                                  # "scans": every layer_interval integrated messages (the engine rule, rate-dependent)
+    window_period_s: 1.0          # with "time": window length; the periodic period is period_windows x window_period_s (24 s)
+    expected_scan_rate_hz: 0.0    # sensor rate for drop estimation and checks; 0 estimates it from stamps
+    rate_warn_drop_fraction: 0.05 # /diagnostics warns above this share of lost messages (scan windows)
+    input_timeout_s: 5.0          # /diagnostics turns ERROR after this long without input, once input was seen
+    startup_timeout_s: 30.0       # ... and after this long if no input has arrived since start
     save_path: "/tmp/strata_3d"
     voxel_size: 0.2
     layer_interval: 10

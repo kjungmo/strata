@@ -58,7 +58,7 @@ interface selected by one runtime string parameter. The only per-backend code
 is point-to-id mapping and the free-space ray walk; the classifier that
 graduates, demotes, prunes, and periodicity-labels every cell is shared by
 composition, not duplicated per dimension. The engine is a plain C++17 + Eigen
-library with no ROS, DDS, or PCL dependency, exercised by 54 behavior-level
+library with no ROS, DDS, or PCL dependency, exercised by 56 behavior-level
 tests, so its scientific logic builds and runs deterministically in a
 second-scale CI loop. A seeded synthetic characterization suite, which uses
 hand-authored synthetic hit and miss patterns (fed directly to the engine, or
@@ -186,7 +186,7 @@ and the synthetic suite:
    FreMEn server already provides.
 \item \textbf{A ROS-free, deterministically testable core, shown backend-equivalent
    (design goal + measured).} The engine builds and unit-tests with a plain
-   C++17 + Eigen toolchain and is exercised by 54 behavior-level tests; both
+   C++17 + Eigen toolchain and is exercised by 56 behavior-level tests; both
    backends graduate the static wall by window 3 and hold recall 1.0 through
    window 39, differing in static-layer quality only by a clutter-induced
    static-precision gap (0.9253 grid2d vs.\ 0.9758 voxel3d at 100 movers per
@@ -528,6 +528,7 @@ Pub & \texttt{\textasciitilde/map} & \texttt{OccupancyGrid}, QoS(1) TL reliable 
 Pub & \texttt{\textasciitilde/map\_points} & \texttt{PointCloud2}, QoS(1) volatile & voxel3d only \\
 Srv & \texttt{\textasciitilde/save\_map} & \texttt{Trigger}, default & both (.pgm+.yaml / .pcd) \\
 Timer & \texttt{publish\_period} (1.0~s) & --- & drives publishing, both \\
+Pub & \texttt{/diagnostics} & \texttt{diagnostic\_msgs/DiagnosticArray}, depth 10 & both; one input-rate status per second (wall clock) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -580,6 +581,34 @@ window counts $h_w$ and $m_w$, each cell's window is scored:
 \end{equation}
 
 A single hit outweighs any number of misses in the same window.
+
+The engine counts windows in integration ticks. The ROS node can instead close
+windows on message time (\texttt{window\_mode} \texttt{time}, which the shipped
+parameter files select; the code default and every experiment in
+\S\ref{sec:eval} use \texttt{scans}): a window then spans
+\texttt{window\_period\_s} seconds from the first message's stamp, computed in
+integer nanoseconds, and a message stamped past the open window first closes it
+and every window since that saw no message (\texttt{closeWindows(k)}). A window
+that observes nothing changes no cell, so closing $k$ windows is exactly
+equivalent to $k$ calls of \texttt{endWindow()} (a unit test checks it) yet
+costs one pass: the first close settles every cell and the rest only advance
+the window index. The clock re-anchors when a stamp falls more than half a
+window behind the newest one (a bag loop) or lands more than $10^6$ windows
+ahead (an unset stamp), after closing the open window so evidence from both
+sides of the jump is not mixed; a message with a zero stamp is dropped. A
+re-anchor resets only the clock: every cell's history carries on under a window
+index whose phase relative to the scene is now arbitrary, and replayed data are
+not independent of what was already gathered, so across a bag loop or a clock
+reset neither the false-alarm bound of \S\ref{sec:periodicity} nor the
+persistence evidence holds; restart the node rather than loop a bag. Within one
+uninterrupted stream of message time, silent windows advance the phase without a
+touch and the touched windows stay independent of occupancy as long as message
+loss and TF drops are, so the false-alarm bound holds in either mode; what
+the window rule changes is the period, in seconds, that
+\texttt{period\_windows} stands for, and with it the test's power. With
+scan-counted windows a window lasts \texttt{layer\_interval} divided by the
+rate of messages actually integrated, so lost messages stretch it
+(\S\ref{sec:discussion}).
 
 \subsection{Log-odds persistence with survival decay}
 \label{sec:logodds}
@@ -847,7 +876,9 @@ Table~\ref{tbl:params} lists the engine's tunable parameters with their defaults
 are identical between the struct definition and both shipped YAML files. Geometry
 and node parameters (\texttt{grid\_width} 400, \texttt{grid\_height} 400, \texttt{grid\_resolution}
 0.05~m, \texttt{grid\_origin\_\{x,y\}} $-10.0$~m for grid2d; \texttt{voxel\_size} 0.2~m for voxel3d;
-frame names, topics, \texttt{publish\_period} 1.0~s) are not part of the engine math.
+frame names, topics, \texttt{publish\_period} 1.0~s; the window clock \texttt{window\_mode} (\texttt{scans} in code, \texttt{time} in the shipped files) and \texttt{window\_period\_s} 1.0~s; the rate check
+\texttt{expected\_scan\_rate\_hz} 0, meaning estimated, and
+\texttt{rate\_warn\_drop\_fraction} 0.05, \texttt{input\_timeout\_s} 5~s and \texttt{startup\_timeout\_s} 30~s) are not part of the engine math.
 
 \begin{table}[t]
 \centering
@@ -932,7 +963,7 @@ single call, \texttt{bash paper/experiments/run\_all.sh}, which configures and b
 \texttt{strata\_core} and the four harness executables, runs each one, and writes the
 CSVs in \texttt{paper/experiments/results/} from which every number and figure in
 this section is taken; \texttt{strata\_core}'s own \texttt{ctest} suite (1/1 target,
-aggregating the 54 gtest cases) is checked
+aggregating the 56 gtest cases) is checked
 first, so the harness is only trusted once the unit-level behavior it builds
 on is confirmed. Every stochastic experiment (E1--E3) derives its
 \texttt{std::mt19937} generator deterministically from the fixed constant
@@ -1373,6 +1404,35 @@ sensor no longer looks reads free until it is observed; once observed it reads
 cell free again. The bit costs one byte
 per grid cell, bounded by the grid size. \texttt{voxel3d} publishes no free
 space.
+
+\textbf{Scan-counted windows depend on the input rate.} With
+\texttt{window\_mode} \texttt{scans} a window is \texttt{layer\_interval}
+integrated messages, so its length in seconds, and with it the period that
+\texttt{period\_windows} stands for, follows the rate of messages the node
+actually integrates. Messages lost on a best-effort link, dropped for missing TF
+or skipped by an overloaded node stretch every window. In the synthetic ROS
+check, withholding 40\,\% of the scans turns the tested door cells static (at least 95\,\%, none periodic) with scan windows (\texttt{grid2d}), while time windows keep the door periodic in
+\texttt{grid2d} and out of the static map in \texttt{voxel3d}; CI asserts all
+three. Time windows trade this for evidence that depends on the rate: a window
+with few messages is less likely to see a hit, so a sensor rate that varies with
+the phase of a cycle can itself look periodic, outside the null of
+\S\ref{sec:periodicity}. Once a second, on a wall-clock timer, the node
+publishes on \texttt{/diagnostics} the input rate, the share of messages lost,
+the TF failures, the window duration and the periodic period in seconds. The
+loss is estimated per sensor frame from gaps between stamps against the
+20th-percentile interval, which holds while at least about a fifth of
+consecutive messages arrive back to back; above about 80\,\% loss, or whenever
+the sensor rate is known, set \texttt{expected\_scan\_rate\_hz} (per sensor).
+The node warns when scan windows lose more than \texttt{rate\_warn\_drop\_fraction}
+or jitter, when time windows go empty or get under half the expected messages,
+when stamps are zero or stop advancing, or when messages arrive but the TF lookup fails (ERROR once something was integrated), and turns ERROR without input for \texttt{input\_timeout\_s} (or
+\texttt{startup\_timeout\_s} before the first message). With time windows the
+periodic period is \texttt{period\_windows} $\times$ \texttt{window\_period\_s}
+seconds whatever the load; a deployment should measure the rates on the robot
+(\texttt{scripts/rate\_report.py}), keep a window long enough to hold several
+messages, and choose \texttt{period\_windows} from the period it wants to
+detect. The experiments of
+\S\ref{sec:eval} integrate every message and are unaffected.
 
 \subsection{Design trade-offs owned honestly}
 

@@ -1,13 +1,19 @@
 #pragma once
+#include <chrono>
+#include <cstdint>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_eigen/tf2_eigen.hpp>
+#include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
@@ -17,6 +23,8 @@
 #include "strata_core/layered_map.hpp"
 #include "strata_core/grid2d_backend.hpp"
 #include "strata_core/voxel3d_backend.hpp"
+#include "strata/rate_monitor.hpp"
+#include "strata/window_clock.hpp"
 
 namespace strata {
 
@@ -38,10 +46,44 @@ class MappingNode : public rclcpp::Node {
   void onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
   void onPublish();
+  // Window bookkeeping around one integrated message; call with mtx_ held.
+  bool beforeIntegrate(std::int64_t t_ns);   // false: drop the message (zero stamp, time windows)
+  void afterIntegrate(const std::string& frame, std::int64_t t_ns);
+  void windowsClosed(int k);
+  void noteTfFailure();
+  void onDiagnostics();   // 1 Hz wall timer: publishes /diagnostics even without input
   void onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
               std::shared_ptr<std_srvs::srv::Trigger::Response> res);
 
   std::string backend_, global_frame_, save_path_;
+  strata_core::MapBackend* map_{nullptr};   // the selected backend
+  std::string window_mode_;                 // "scans" (layer_interval) or "time" (window_period_s)
+  double window_period_s_{1.0};
+  double drop_warn_{0.05};
+  double expected_rate_hz_{0.0};
+  int layer_interval_{10};
+  int period_windows_{24};
+  std::unique_ptr<WindowClock> clock_;
+  std::map<std::string, RateMonitor> rates_;   // one per sensor frame on the input topic
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_pub_;
+  rclcpp::TimerBase::SharedPtr diag_timer_;
+  std::string input_topic_;
+  double input_timeout_s_{5.0}, startup_timeout_s_{30.0};
+  bool use_sim_time_{false};
+  static constexpr std::size_t kMaxSensors = 16;   // per-frame rate monitors kept at most
+  static constexpr int kIdleWindowsToForget = 10;  // a frame silent this long is dropped
+  using Steady = std::chrono::steady_clock;
+  Steady::time_point start_wall_, last_input_wall_, last_close_wall_, last_log_wall_,
+      last_integrate_wall_, last_reset_log_wall_;
+  rclcpp::Time last_close_ros_;
+  bool any_integrated_{false};
+  long tf_failures_since_integrate_{0}, frames_over_cap_{0};
+  bool any_input_{false}, origin_set_{false};
+  std::int64_t origin_ns_{0};
+  long windows_closed_{0}, msgs_since_close_{0}, zero_stamps_{0};
+  int tf_failures_window_{0}, tf_failures_last_{0};
+  std::vector<std::pair<std::string, std::string>> last_values_;   // from the last window close
+  std::string last_why_;
 
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;

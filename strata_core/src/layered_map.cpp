@@ -20,6 +20,12 @@ bool LayeredMap::tick() {
   return false;
 }
 
+void LayeredMap::closeWindows(int k) {
+  if (k <= 0) return;
+  endWindow();
+  window_count_ += k - 1;
+}
+
 void LayeredMap::endWindow() {
   ++window_count_;
   for (auto it = cells_.begin(); it != cells_.end();) {

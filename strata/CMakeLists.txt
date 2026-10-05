@@ -20,6 +20,7 @@ find_package(nav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(std_srvs REQUIRED)
+find_package(diagnostic_msgs REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common io)
 find_package(Eigen3 REQUIRED)
@@ -28,7 +29,7 @@ add_definitions(${PCL_DEFINITIONS})
 
 set(deps
   strata_core rclcpp rclcpp_components tf2 tf2_ros tf2_eigen tf2_geometry_msgs
-  sensor_msgs nav_msgs geometry_msgs std_msgs std_srvs pcl_conversions)
+  sensor_msgs nav_msgs geometry_msgs std_msgs std_srvs diagnostic_msgs pcl_conversions)
 
 add_library(strata_node SHARED
   src/mapping_node.cpp
@@ -58,6 +59,10 @@ if(BUILD_TESTING)
   ament_add_gtest(test_scan_adapter test/test_scan_adapter.cpp)
   target_link_libraries(test_scan_adapter strata_node)
   ament_target_dependencies(test_scan_adapter ${deps})
+  ament_add_gtest(test_window_clock test/test_window_clock.cpp)
+  target_include_directories(test_window_clock PRIVATE include)
+  ament_add_gtest(test_rate_monitor test/test_rate_monitor.cpp)
+  target_include_directories(test_rate_monitor PRIVATE include)
 endif()
 
 ament_package()
