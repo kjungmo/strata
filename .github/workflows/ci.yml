@@ -36,6 +36,8 @@ jobs:
         run: |
           apt-get update
           apt-get install -y --no-install-recommends python3-colcon-common-extensions python3-yaml
+          # the saved-map round trip loads the PGM + YAML in Nav2's map_server
+          apt-get install -y --no-install-recommends ros-humble-nav2-map-server ros-humble-lifecycle-msgs
           rosdep update
           rosdep install --from-paths strata strata_core --ignore-src -y --rosdistro humble --skip-keys rviz2
 
@@ -90,8 +92,10 @@ jobs:
           # 10 scans at the script's default rate (grid2d 50 Hz, voxel3d 10 Hz). Under
           # 40 % loss time windows keep the door periodic; scan windows detune it (the
           # negative control), and /diagnostics must report the loss in every case.
+          # --check-map-server reloads the saved map in nav2_map_server (after the
+          # timeout wait, while the node is still up) and compares it cell by cell.
           scenarios=(
-            "grid2d scans 1.0 --check-timeout"
+            "grid2d scans 1.0 --check-timeout --check-map-server"
             "voxel3d scans 1.0"
             "grid2d time 0.2 --drop 0.4"
             "voxel3d time 1.0 --drop 0.4"
