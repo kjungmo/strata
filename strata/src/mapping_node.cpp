@@ -156,8 +156,10 @@ bool MappingNode::lookupSensorTf(const std_msgs::msg::Header& h,
   // without /clock never advances: the callback would hang and starve every timer and
   // service. So poll the buffer (the listener fills it from its own thread) without
   // blocking, and keep "frozen" an observation across calls, so a coarse sim clock
-  // that steps less often than every 0.1 s of wall time is still waited on (with a
-  // 20 ms grace when it steps past the budget, for a transform sent with that step).
+  // that steps less often than every 0.1 s of wall time is still waited on, as long
+  // as it steps at least once per second of wall time; a sparser clock counts as
+  // frozen (with a 20 ms grace when it steps past the budget, for a transform sent
+  // with that step).
   const tf2::TimePoint at{std::chrono::nanoseconds(rclcpp::Time(h.stamp).nanoseconds())};
   const TfWaitRule rule{kTfWaitS, kClockFrozenS, kTfWaitCapS};
   std::unique_ptr<TfWait> wait;

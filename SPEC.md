@@ -88,11 +88,13 @@ integrating. It polls the buffer for a transform that is not there yet
 clock unchanged for 1 s is treated as frozen and no longer waited on (the
 callback where it stops can wait up to the cap). "Unchanged" is observed across
 calls (`RosClockWatch`, fed by every wait and the diagnostics timer), so a coarse
-sim clock stepping less often than every 0.1 s of wall time is still waited on;
-when a clock steps past the budget (by 10 ms or more between two polls) the
-lookup is retried for 20 ms more of steady time, for a transform published with
-that step, while a smoothly moving clock stops right at the budget; a clock
-that jumps back restarts the budget. The tolerance is the same at
+sim clock stepping less often than every 0.1 s of wall time is still waited on,
+as long as it steps at least once per second of wall time; a sparser clock
+counts as frozen. When a clock steps past the budget, the lookup is retried
+for 20 ms more of steady time, for a transform published with that step: a
+clock that moves less than 10 ms between two polls (2 ms apart: a live robot,
+or playback below about 5x) stops at the budget; otherwise the extra 20 ms
+applies. A clock that jumps back restarts the budget. The tolerance is the same at
 playback rates down to 0.1x; below that the cap shortens it. A failed lookup
 therefore holds the sensor callback for up to that long; it counts as a TF
 failure and the message is dropped. The `/diagnostics` stalled-clock WARN uses

@@ -292,9 +292,10 @@ steady time; a clock unchanged for 1 s is treated as frozen and no longer
 waited on (the callback where it stops can wait up to the cap). So a slowed
 bag or simulator gets the same tolerance as a live robot at playback rates
 down to 0.1x (below that the cap shortens it), a coarse sim clock that steps
-less often than every 0.1 s of wall time is still waited on (when it steps past
-the budget, the lookup is retried for 20 ms more of steady time, for a
-transform published with that step), and `use_sim_time:=true` without `/clock`
+less often than every 0.1 s of wall time is still waited on, as long as it
+steps at least once per second of wall time; a sparser clock counts as frozen
+(when it steps past the budget, the lookup is retried for 20 ms more of steady
+time, for a transform published with that step), and `use_sim_time:=true` without `/clock`
 cannot hang the node. A failed lookup
 holds the sensor callback for up to that long, and the message is dropped.
 Without `/clock` the node keeps answering services and publishing

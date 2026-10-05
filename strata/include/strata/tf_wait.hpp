@@ -10,11 +10,13 @@ namespace strata {
 // for 1 s is treated as frozen and no longer waited on (the callback where it stops
 // can wait up to the cap). So a scan slightly ahead of its transform resolves the
 // same at playback rates down to 0.1x (below that the cap shortens it), a coarse sim
-// clock that steps less often than every 0.1 s of wall time is still waited on, and
-// use_sim_time without /clock cannot hang the callback. When a coarse clock steps past
-// the budget, the lookup is retried for 20 ms more of steady time, for a transform
-// published with that step. On a live robot (ROS time = wall time, moving smoothly)
-// this is a plain 0.1 s wait.
+// clock that steps less often than every 0.1 s of wall time is still waited on (as
+// long as it steps at least once per second of wall time; a sparser clock counts as
+// frozen), and use_sim_time without /clock cannot hang the callback. When a coarse
+// clock steps past the budget, the lookup is retried for 20 ms more of steady time,
+// for a transform published with that step: a clock that moves less than 10 ms
+// between two polls (2 ms apart: a live robot, or playback below about 5x) stops at
+// the budget; otherwise the extra 20 ms applies.
 
 // When the ROS clock was last seen to change, across calls (TF waits and the
 // diagnostics timer both feed it).
@@ -42,8 +44,9 @@ struct TfWaitRule {
   double hard_cap_s{1.0};        // steady time no wait exceeds
   // A coarse clock reaches the budget in one step (>= step_min_s between two polls),
   // usually together with a transform stamped at that step that is still in flight on
-  // /tf: keep retrying for step_grace_s of steady time. A smooth clock (a live robot,
-  // where polls see it move by a few ms) stops right at the budget.
+  // /tf: keep retrying for step_grace_s of steady time. A clock that moves less than
+  // 10 ms between two polls (2 ms apart: a live robot, or playback below about 5x)
+  // stops at the budget; otherwise the extra 20 ms applies.
   double step_min_s{0.01};
   double step_grace_s{0.02};
 };
@@ -65,7 +68,7 @@ class TfWait {
     if (steady_s - steady0_ >= rule_.hard_cap_s) return true;
     if (ros_ns - ros0_ns_ >= ns(rule_.budget_s)) {
       if (grace_from_ < 0.0) {
-        if (moved < ns(rule_.step_min_s)) return true;   // smooth clock: stop at the budget
+        if (moved < ns(rule_.step_min_s)) return true;   // moved < 10 ms since the last poll: stop at the budget
         grace_from_ = steady_s;                           // stepped past it: brief grace
       }
       return steady_s - grace_from_ >= rule_.step_grace_s;
