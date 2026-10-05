@@ -27,6 +27,15 @@ void Grid2DBackend::integrate(const Observation& obs, const Eigen::Vector3d& sen
 }
 bool Grid2DBackend::tick(){
   if(!layered_.tick()) return false;
+  onWindowClosed();
+  return true;
+}
+void Grid2DBackend::closeWindows(int k){
+  if(k<=0) return;
+  layered_.closeWindows(k);
+  onWindowClosed();   // the k - 1 empty windows observed no cell, so they change no flag
+}
+void Grid2DBackend::onWindowClosed(){
   // Window closed: each cell it observed records whether that observation was a hit
   // (a hit wins over a clear, as in LayeredMap). Unobserved cells keep their record.
   for(CellId id: touched_open_){
@@ -35,7 +44,6 @@ bool Grid2DBackend::tick(){
     flags_[id]=static_cast<std::uint8_t>(f&~(kHitOpen|kMissOpen));
   }
   touched_open_.clear();
-  return true;
 }
 bool Grid2DBackend::observedFree(int gx, int gy) const {
   if(gx<0||gy<0||gx>=meta_.width||gy>=meta_.height) return false;

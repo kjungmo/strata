@@ -264,3 +264,27 @@ TEST(LayeredMap, PrunedClutterRarelyEverPeriodicWithSpending) {
         << "m=" << occ;
   }
 }
+TEST(LayeredMap, CloseWindowsEqualsRepeatedEmptyWindows) {
+  // A door-like cell, a wall and a cell that is pruned on the way; then a silent gap.
+  LayeredMap a(P()), b(P());
+  for (int w = 0; w < 20; ++w) {
+    for (LayeredMap* m : {&a, &b}) {
+      m->observeHit(1);                                   // wall
+      if (w % 8 < 4) m->observeHit(2); else m->observeMiss(2);   // door, T = 8
+      if (w < 3) m->observeHit(3); else m->observeMiss(3);       // object that leaves
+    }
+    a.endWindow(); b.endWindow();
+  }
+  a.observeHit(1); b.observeHit(1);                       // open window has evidence
+  a.closeWindows(13);
+  for (int i = 0; i < 13; ++i) b.endWindow();
+  EXPECT_EQ(a.windowCount(), b.windowCount());
+  EXPECT_EQ(a.cellCount(), b.cellCount());
+  for (CellId c : {1, 2, 3}) {
+    EXPECT_EQ(a.classify(c), b.classify(c));
+    EXPECT_DOUBLE_EQ(a.occupancyProb(c), b.occupancyProb(c));
+    EXPECT_DOUBLE_EQ(a.periodicProb(c), b.periodicProb(c));
+  }
+  a.closeWindows(0);                                      // no-op
+  EXPECT_EQ(a.windowCount(), b.windowCount());
+}

@@ -76,7 +76,7 @@ jobs:
 
       - name: Feed each backend a synthetic scene and check the map it publishes
         shell: bash
-        timeout-minutes: 8
+        timeout-minutes: 15
         run: |
           source /opt/ros/humble/setup.bash
           source install/setup.bash
@@ -86,11 +86,31 @@ jobs:
             for _ in $(seq 15); do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
             kill -KILL -- "-$1" 2>/dev/null || true
           }
-          for backend in grid2d voxel3d; do
-            setsid ros2 launch strata "${backend}.launch.py" rviz:=false > "e2e_${backend}.log" 2>&1 &
+          # backend, window_mode, window_period_s, extra args. Time windows are sized to
+          # 10 scans at the script's default rate (grid2d 50 Hz, voxel3d 10 Hz). Under
+          # 40 % loss time windows keep the door periodic; scan windows detune it (the
+          # negative control), and /diagnostics must report the loss in every case.
+          scenarios=(
+            "grid2d scans 1.0"
+            "voxel3d scans 1.0"
+            "grid2d time 0.2 --drop 0.4"
+            "voxel3d time 1.0 --drop 0.4"
+            "grid2d scans 1.0 --drop 0.4 --expect-detuned"
+          )
+          for s in "${scenarios[@]}"; do
+            read -r backend mode period extra <<< "$s"
+            echo "::group::$s"
+            yaml="e2e_${backend}_${mode}.yaml"
+            sed -e "s/window_mode: \"scans\"/window_mode: \"${mode}\"/" \
+                -e "s/window_period_s: 1.0 /window_period_s: ${period} /" \
+                "install/strata/share/strata/params/${backend}.yaml" > "$yaml"
+            grep -q "window_mode: \"${mode}\"" "$yaml"
+            setsid ros2 launch strata "${backend}.launch.py" rviz:=false params_file:="$PWD/$yaml" > e2e.log 2>&1 &
             pid=$!
             status=0
-            timeout 180 python3 scripts/synthetic_e2e.py "$backend" "install/strata/share/strata/params/${backend}.yaml" || status=$?
+            # shellcheck disable=SC2086  # extra holds several flags
+            timeout 240 python3 scripts/synthetic_e2e.py "$backend" "$yaml" $extra || status=$?
             stop "$pid"
-            if [ "$status" -ne 0 ]; then cat "e2e_${backend}.log"; exit 1; fi
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then cat e2e.log; exit 1; fi
           done

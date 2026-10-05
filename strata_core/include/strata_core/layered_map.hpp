@@ -42,6 +42,12 @@ class LayeredMap {
   void observeMiss(CellId id);
   bool tick();
   void endWindow();
+  // Close k >= 1 windows at once: the open window, then k - 1 windows that observed
+  // nothing. A window with no observation changes no cell (decay, graduation,
+  // demotion and pruning read only touched evidence or values the first close
+  // already settled), so the empty ones only advance the window index. Exactly
+  // equivalent to k endWindow() calls; O(cells) instead of O(k * cells).
+  void closeWindows(int k);
   CellClass classify(CellId id) const;
   bool isStatic(CellId id) const;
   double occupancyProb(CellId id) const;

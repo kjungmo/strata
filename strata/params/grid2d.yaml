@@ -4,6 +4,10 @@
     global_frame: "map"
     scan_topic: "/scan"
     publish_period: 1.0
+    window_mode: "scans"          # "scans": close a window every layer_interval messages; "time": every window_period_s
+    window_period_s: 1.0          # used when window_mode is "time"
+    expected_scan_rate_hz: 0.0    # sensor rate for drop estimation and checks; 0 estimates it from stamps
+    rate_warn_drop_fraction: 0.05 # /diagnostics warns above this share of lost messages
     save_path: "/tmp/strata_2d"
     grid_width: 400
     grid_height: 400

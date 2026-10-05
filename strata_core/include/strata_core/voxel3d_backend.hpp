@@ -8,6 +8,7 @@ class Voxel3DBackend : public MapBackend {
   Voxel3DBackend(double voxel_size, LayeredMapParams params);
   void integrate(const Observation& obs, const Eigen::Vector3d& sensor_origin_map) override;
   bool tick() override;
+  void closeWindows(int k) override;
   std::size_t staticCellCount() const override { return layered_.staticCells().size(); }
   std::size_t transientCellCount() const override { return layered_.transientCells().size(); }
   std::vector<Eigen::Vector3d> staticPoints() const;

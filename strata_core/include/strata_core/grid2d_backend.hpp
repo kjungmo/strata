@@ -10,6 +10,7 @@ class Grid2DBackend : public MapBackend {
   Grid2DBackend(const GridMeta& meta, LayeredMapParams params);
   void integrate(const Observation& obs, const Eigen::Vector3d& sensor_origin_map) override;
   bool tick() override;
+  void closeWindows(int k) override;
   std::size_t staticCellCount() const override { return layered_.staticCells().size(); }
   std::size_t transientCellCount() const override { return layered_.transientCells().size(); }
   // Renders static 100, periodic 75, transient obstacle 50 (hit in the open window,
@@ -23,6 +24,7 @@ class Grid2DBackend : public MapBackend {
   const GridMeta& meta() const { return meta_; }
  private:
   void raycastClear(int gx0, int gy0, int gx1, int gy1);
+  void onWindowClosed();
   GridMeta meta_;
   LayeredMap layered_;
   // One byte per grid cell: kFree once a ray cleared the cell; kHitOpen / kMissOpen if

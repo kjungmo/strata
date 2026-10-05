@@ -18,8 +18,12 @@ The scene, seen from a sensor at a fixed pose:
   * free   -- cells the wall rays clear                -> grid2d: free (0), kept free after
                                                            the classifier prunes them
 
-One window is `layer_interval` scans (read from the params YAML), so the door state
-is switched on window boundaries. Door cells are tested only where an open-door ray
+One window is `layer_interval` scans, or `window_period_s` of message time with
+`window_mode: time` (both read from the params YAML), so the door state is switched
+on window boundaries. --drop F withholds a deterministic share F of the scans while
+time runs on, as a lossy best-effort link would; the node's /diagnostics must then
+report about F lost. Scan-counted windows stretch under loss and detune the door
+(--expect-detuned checks that negative control); time windows keep it periodic. Door cells are tested only where an open-door ray
 actually walks through them (the backend's own Bresenham line or half-voxel march):
 a door cell the ray skips is never observed free, so it rightly graduates to Static.
 This is a ROS-path test (topics -> node -> map), not a field result: it shows the shipped parameters classify a clean scene as the
@@ -40,6 +44,7 @@ import yaml
 from geometry_msgs.msg import TransformStamped
 from nav_msgs.msg import OccupancyGrid
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
+from diagnostic_msgs.msg import DiagnosticArray
 from rosgraph_msgs.msg import Clock
 from sensor_msgs.msg import LaserScan, PointCloud2, PointField
 from std_srvs.srv import Trigger
@@ -118,8 +123,13 @@ class Driver:
         else:
             self.cloud_pub = node.create_publisher(PointCloud2, params.get('points_topic', '/points'), 10)
             node.create_subscription(PointCloud2, '/strata/map_points', self.maps.append, 10)
+        self.diags = []
+        node.create_subscription(DiagnosticArray, '/diagnostics', self.on_diag, 50)
         self.frame = 'sensor'
         self.t = 0.0
+
+    def on_diag(self, msg):
+        self.diags += [s for s in msg.status if s.name == 'strata: input rate']
 
     def send_tf(self):
         t = TransformStamped()
@@ -171,20 +181,25 @@ class Driver:
                 sys.exit('FAIL: the node never subscribed to the sensor topic')
             rclpy.spin_once(self.node, timeout_sec=0.1)
 
-    def run(self, windows):
-        interval = int(self.p.get('layer_interval', 10))
+    def run(self, windows, interval, drop):
         period = int(self.p.get('period_windows', 24))
         self.send_tf()
         rclpy.spin_once(self.node, timeout_sec=0.5)
+        sent = 0
         for scan in range(windows * interval):
             window = scan // interval
+            if int((scan + 1) * drop) != int(scan * drop):   # lost on the link: time runs on
+                self.stamp()
+                time.sleep(1.0 / self.rate)
+                continue
+            sent += 1
             if self.backend == 'grid2d':
                 self.scan_pub.publish(self.scan_msg(window, period))
             else:
                 self.cloud_pub.publish(self.cloud_msg(window, period))
             rclpy.spin_once(self.node, timeout_sec=0.0)
             time.sleep(1.0 / self.rate)
-        return period
+        return period, sent
 
     def latest_map(self, after_count, timeout):
         """Wait for a map published after the stream ended (publish_period timer)."""
@@ -333,6 +348,11 @@ def check_voxel(maps, final, size):
     return results
 
 
+def level(status):
+    """DiagnosticStatus.level is a byte; rclpy may hand it over as bytes or int."""
+    return status.level if isinstance(status.level, int) else ord(status.level)
+
+
 def save_map(node, timeout):
     client = node.create_client(Trigger, '/strata/save_map')
     if not client.wait_for_service(timeout_sec=timeout):
@@ -354,6 +374,10 @@ def main():
                     help='scans per second (default 50 for grid2d, 10 for voxel3d). The sensor '
                          'subscription is best effort, so a rate the node cannot keep up with drops '
                          'scans, stretches every window and detunes the door from period_windows')
+    ap.add_argument('--drop', type=float, default=0.0,
+                    help='share of scans withheld (deterministic pattern), as a lossy link would')
+    ap.add_argument('--expect-detuned', action='store_true',
+                    help='negative control: expect the door NOT to be periodic (scan windows under loss)')
     args = ap.parse_args()
 
     params = {}
@@ -365,15 +389,52 @@ def main():
     rate = args.rate or (50.0 if args.backend == 'grid2d' else 10.0)
     drv = Driver(node, args.backend, params, rate)
     drv.wait_for_subscriber(args.timeout)
-    period = drv.run(args.windows)
-    print(f'{args.backend}: sent {args.windows} windows x {params.get("layer_interval", 10)} scans '
-          f'at {rate:g} Hz, door period {period} windows')
+    mode = params.get('window_mode', 'scans')
+    if mode == 'time':
+        spw = float(params.get('window_period_s', 1.0)) * rate
+        if abs(spw - round(spw)) > 1e-6 or round(spw) < 1:
+            sys.exit(f'FAIL: window_period_s x rate = {spw:g} scans per window; pick a whole number')
+        interval = int(round(spw))
+    else:
+        interval = int(params.get('layer_interval', 10))
+    period, sent = drv.run(args.windows, interval, args.drop)
+    print(f'{args.backend}: window_mode {mode}, {args.windows} windows x {interval} scans at {rate:g} Hz, '
+          f'{sent} sent ({args.drop:.0%} withheld), door period {period} windows')
     final = drv.latest_map(len(drv.maps), args.timeout)
 
     if args.backend == 'grid2d':
         results = check_grid(drv.maps, final)
     else:
         results = check_voxel(drv.maps, final, float(params.get('voxel_size', 0.2)))
+
+    if args.expect_detuned:
+        flipped = []
+        for ok, line in results:
+            if line.startswith(('door cells Periodic', 'door voxels in the final')):
+                flipped.append((not ok, 'negative control, expected to fail: ' + line))
+            elif not line.startswith('door cells Static'):
+                flipped.append((ok, line))
+        results = flipped
+
+    # /diagnostics: the node's own estimate of the loss and its warning.
+    end = time.monotonic() + 3.0
+    while time.monotonic() < end:
+        rclpy.spin_once(node, timeout_sec=0.1)
+    if not drv.diags:
+        results.append((False, 'no "strata: input rate" status on /diagnostics'))
+    else:
+        last = {kv.key: kv.value for kv in drv.diags[-1].values}
+        est = float(last.get('recent_drop_fraction', 'nan'))
+        warned = any(level(s) == 1 for s in drv.diags)
+        results.append((last.get('window_mode') == mode,
+                        f'diagnostics window_mode: {last.get("window_mode")} (expected {mode})'))
+        results.append((abs(est - args.drop) <= 0.05,
+                        f'diagnostics recent_drop_fraction {est:.3f} vs withheld {args.drop:.3f} (need within 0.05); '
+                        f'input_rate_hz {last.get("input_rate_hz")}, effective_period_s {last.get("effective_period_s")}'))
+        should_warn = args.drop > float(params.get('rate_warn_drop_fraction', 0.05))
+        results.append((warned == should_warn,
+                        f'diagnostics warned: {warned} (expected {should_warn}) over {len(drv.diags)} statuses'
+                        + (f'; e.g. "{next(s.message for s in drv.diags if level(s) == 1)}"' if warned else '')))
 
     res = save_map(node, args.timeout)
     saved = res.message.replace('saved ', '').split(' + ')[0]

@@ -8,6 +8,7 @@
 #include <tf2_ros/buffer.h>
 #include <tf2_ros/transform_listener.h>
 #include <tf2_eigen/tf2_eigen.hpp>
+#include <diagnostic_msgs/msg/diagnostic_array.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <nav_msgs/msg/occupancy_grid.hpp>
 #include <sensor_msgs/msg/laser_scan.hpp>
@@ -17,6 +18,8 @@
 #include "strata_core/layered_map.hpp"
 #include "strata_core/grid2d_backend.hpp"
 #include "strata_core/voxel3d_backend.hpp"
+#include "strata/rate_monitor.hpp"
+#include "strata/window_clock.hpp"
 
 namespace strata {
 
@@ -38,10 +41,24 @@ class MappingNode : public rclcpp::Node {
   void onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
   void onPublish();
+  // Window bookkeeping around one integrated message stamped t (seconds); call with mtx_ held.
+  void beforeIntegrate(double t);
+  void afterIntegrate(double t);
+  void reportWindow();
   void onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
               std::shared_ptr<std_srvs::srv::Trigger::Response> res);
 
   std::string backend_, global_frame_, save_path_;
+  strata_core::MapBackend* map_{nullptr};   // the selected backend
+  std::string window_mode_;                 // "scans" (layer_interval) or "time" (window_period_s)
+  double window_period_s_{1.0};
+  double drop_warn_{0.05};
+  double expected_rate_hz_{0.0};
+  int layer_interval_{10};
+  int period_windows_{24};
+  std::unique_ptr<WindowClock> clock_;
+  std::unique_ptr<RateMonitor> rate_;
+  rclcpp::Publisher<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr diag_pub_;
 
   std::unique_ptr<tf2_ros::Buffer> tf_buffer_;
   std::shared_ptr<tf2_ros::TransformListener> tf_listener_;
