@@ -52,7 +52,8 @@ class MappingNode : public rclcpp::Node {
   void afterIntegrate(const std::string& frame, std::int64_t t_ns);
   void windowsClosed(int k);
   void noteTfFailure();
-  // TF global_frame <- sensor at the header stamp, waiting at most kTfWaitS of steady time.
+  // TF global_frame <- sensor at the header stamp, waiting up to kTfWaitS of ROS time
+  // (bounded on the steady clock, see TfWaitRule).
   bool lookupSensorTf(const std_msgs::msg::Header& h, geometry_msgs::msg::TransformStamped& out,
                       std::string& err);
   static constexpr double kTfWaitS = 0.1;

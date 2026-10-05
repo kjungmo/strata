@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <thread>
 #include "strata/map_writer.hpp"
+#include "strata/tf_wait.hpp"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl/io/pcd_io.h>
@@ -148,20 +149,24 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
 
 bool MappingNode::lookupSensorTf(const std_msgs::msg::Header& h,
                                  geometry_msgs::msg::TransformStamped& out, std::string& err) {
-  // Wait up to kTfWaitS for the transform at the message stamp, so a message slightly
-  // ahead of its TF still resolves. tf2_ros::Buffer's own timeout counts on the node
-  // clock, which under use_sim_time without /clock never advances: the callback would
-  // block forever and starve every timer and service. Poll the buffer (the listener
-  // fills it from its own thread) without blocking, bounded on the steady clock.
+  // Wait up to kTfWaitS of ROS time for the transform at the message stamp, so a
+  // message slightly ahead of its TF still resolves at any playback rate.
+  // tf2_ros::Buffer's own timeout blocks on the node clock, which under use_sim_time
+  // without /clock never advances: the callback would hang and starve every timer and
+  // service. So poll the buffer (the listener fills it from its own thread) without
+  // blocking and let TfWaitRule decide: a frozen clock gives up after kTfWaitS of
+  // steady time, and no wait exceeds 1 s of steady time.
   const tf2::TimePoint at{std::chrono::nanoseconds(rclcpp::Time(h.stamp).nanoseconds())};
-  const auto deadline = Steady::now() + std::chrono::duration_cast<Steady::duration>(
-                                            std::chrono::duration<double>(kTfWaitS));
+  const TfWaitRule rule{kTfWaitS, kTfWaitS, 1.0};
+  const auto steady0 = Steady::now();
+  const rclcpp::Time ros0 = now();
   for (;;) {
     try {
       out = tf_buffer_->tf2::BufferCore::lookupTransform(global_frame_, h.frame_id, at);
       return true;
     } catch (const tf2::TransformException& e) {
-      if (Steady::now() >= deadline) { err = e.what(); return false; }
+      const double steady = std::chrono::duration<double>(Steady::now() - steady0).count();
+      if (rule.stop(steady, (now() - ros0).seconds())) { err = e.what(); return false; }
     }
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
@@ -468,10 +473,24 @@ void MappingNode::onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> 
         cloud.width = cloud.size();
         cloud.height = 1;
         cloud.is_dense = false;
-        const int rc = pcl::io::savePCDFileBinary(pcd, cloud);
-        res->success = rc == 0;
-        res->message = rc == 0 ? "saved " + pcd
-                               : "cannot write " + pcd + ": PCL returned " + std::to_string(rc);
+        // Same atomic pattern as the PGM + YAML pair: temp file, fsync, rename.
+        const std::string tmp = pcd + ".tmp";
+        std::string why;
+        if (fileName(save_path_).empty()) {
+          why = "save_path has no file name (it must not be empty or end in '/')";
+        } else {
+          try {
+            const int rc = pcl::io::savePCDFileBinary(tmp, cloud);
+            if (rc != 0) why = "PCL returned " + std::to_string(rc);
+          } catch (const std::exception& e) {
+            why = e.what();
+          }
+          if (why.empty()) why = syncPath(tmp);
+          if (why.empty() && ::rename(tmp.c_str(), pcd.c_str()) != 0) why = std::strerror(errno);
+          if (!why.empty()) ::unlink(tmp.c_str());
+        }
+        res->success = why.empty();
+        res->message = why.empty() ? "saved " + pcd : "cannot write " + pcd + ": " + why;
       }
     }
   } catch (const std::exception& e) {

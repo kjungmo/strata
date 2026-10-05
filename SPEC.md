@@ -77,16 +77,19 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 |---|---|---|---|
 | `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
-| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` relative to the YAML, resolution and origin written to read back exactly); voxel3d → PCD. `success: false` with the path and reason when a file cannot be written (e.g. a missing directory) or voxel3d has no static voxel |
+| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` single-quoted and relative to the YAML, resolution and origin written to read back exactly, "C" locale); voxel3d → PCD. Atomic: written to `.tmp` files, fsynced, then renamed (PGM before YAML), so a failed save leaves the previous files untouched. `success: false` with the path and reason when a file cannot be written (e.g. a missing directory), `save_path` has no file name (empty or ending in `/`), or voxel3d has no static voxel |
 | `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total. From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was); ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
 
 ### Frames (REP-105)
 The node looks up `T_global_sensor` (`global_frame → sensor frame_id`) at each
 message stamp and transforms every endpoint into `global_frame` before
-integrating. It waits up to 0.1 s for a transform that is not there yet,
-counted on the steady clock and polling the buffer, so a frozen sim clock (no
-`/clock`) cannot block the callback; a lookup still missing after 0.1 s counts
-as a TF failure and the message is dropped. The sensor origin (ray start, for clearing) is the translation of
+integrating. It polls the buffer for a transform that is not there yet until
+0.1 s of ROS time has passed since the wait began (`TfWaitRule`), so the
+tolerance is the same at any playback rate; it gives up earlier after 0.1 s of
+steady time if the ROS clock has not advanced at all (`use_sim_time` without
+`/clock`), and never waits longer than 1 s of steady time. A failed lookup
+therefore holds the sensor callback for up to that long; it counts as a TF
+failure and the message is dropped. The sensor origin (ray start, for clearing) is the translation of
 that transform. The full 6-DoF transform is used: `voxel3d` keeps z and attitude
 volumetrically; `grid2d` projects transformed endpoints onto its 2D plane.
 
@@ -387,18 +390,24 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **19 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **27 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
 nanosecond stamps close exactly every period, reorder kept and a bag loop
 re-anchors, a short bag loop re-anchors, a huge forward jump re-anchors) and
 `test_rate_monitor` (4; a steady stream has no loss, 40 % loss is estimated, the
-sensor rate overrides the estimate, a back jump restarts the intervals) and
-`test_map_writer` (5; PGM rows top down with the expected shades and a YAML
-naming the image relatively, resolution and origin read back within 1e-12, a
-moved pair still resolves its image, a missing directory is reported as a
-failure naming the path, a grid whose data does not match its size is refused).
+sensor rate overrides the estimate, a back jump restarts the intervals),
+`test_map_writer` (9; PGM rows top down with the expected shades and a YAML
+naming the image relatively, resolution and origin read back within 1e-12,
+numbers ignore a global locale with grouping and a decimal comma, the image
+name is single-quoted with quotes doubled, a save_path without a file name is
+refused, a moved pair still resolves its image, a missing directory is reported
+as a failure naming the path, a failed YAML write leaves the previous pair
+byte-identical with no `.tmp` left, a grid whose data does not match its size
+is refused) and `test_tf_wait` (4; a live clock waits 0.1 s, a 0.2x / 0.1x sim
+clock still gets 0.1 s of ROS time, a frozen clock gives up after 0.1 s, a
+clock that starts then freezes stops at the 1 s cap).
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the

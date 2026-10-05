@@ -582,16 +582,18 @@ def main():
         # Move the pair to a fresh directory first: map_server must find the image
         # relative to the YAML, as it would after the map is copied to a robot.
         moved_dir = tempfile.mkdtemp(prefix='strata_moved_map_')
-        base = os.path.splitext(saved)[0]
-        for ext in ('.pgm', '.yaml'):
-            shutil.move(base + ext, os.path.join(moved_dir, os.path.basename(base) + ext))
-        yaml_path = os.path.join(moved_dir, os.path.basename(base) + '.yaml')
-        results.append((not os.path.exists(base + '.pgm'), f'saved pair moved to {moved_dir} before loading'))
         try:
+            base = os.path.splitext(saved)[0]
+            for ext in ('.pgm', '.yaml'):
+                shutil.move(base + ext, os.path.join(moved_dir, os.path.basename(base) + ext))
+            yaml_path = os.path.join(moved_dir, os.path.basename(base) + '.yaml')
+            results.append((not os.path.exists(base + '.pgm'), f'saved pair moved to {moved_dir} before loading'))
             results += check_roundtrip(after_save, serve_saved_map(node, os.path.abspath(yaml_path), args.timeout))
         except RuntimeError as e:
             tail = open('map_server_roundtrip.log', errors='replace').read()[-1500:]
             results.append((False, f'map_server round trip: {e}\n{tail}'))
+        finally:
+            shutil.rmtree(moved_dir, ignore_errors=True)
 
     for ok, line in results:
         print(('ok    ' if ok else 'FAIL  ') + line)

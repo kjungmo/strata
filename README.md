@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 19 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 27 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -102,7 +102,8 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 
 > **STRATA: One Geometry-Free Persistence-and-Periodicity Engine Driving
 > Selectable 2D/3D Lifelong LiDAR Mapping in ROS 2**
-> · [Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md) · [PDF](paper/latex/main.pdf)
+> · [Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
+> · [PDF](paper/latex/main.pdf)
 
 The architecture, persistence model, and the seeded E1–E4 characterization suite
 are documented in the paper. If you use `strata` in academic work, please cite:
@@ -124,9 +125,11 @@ A machine-readable [`CITATION.cff`](CITATION.cff) mirrors this citation.
 
 - **ROS 2 Humble**, **C++17**, **Apache-2.0**. No proprietary dependencies.
 - **`strata_core`** builds and unit-tests with the plain system toolchain — it
-  needs only a **C++17** compiler + **Eigen3** + **gtest**, no rclcpp and no PCL.
+  needs only a **C++17** compiler + **Eigen3** + **gtest**, no rclcpp and no
+  PCL.
 - The **`strata`** ROS 2 package additionally needs **rclcpp**, **tf2**, and
-  **PCL** (RoboStack/conda Humble works too — run the build inside the activated env).
+  **PCL** (RoboStack/conda Humble works too — run the build inside the
+  activated env).
 
 ## 🚀 Quick start
 
@@ -213,6 +216,11 @@ checks that the published map keeps the wall static, labels the door periodic
 object static, renders cleared space free (grid2d), and that `~/save_map` writes
 a file. For grid2d it then loads the saved PGM + YAML in `nav2_map_server` and
 checks the map it serves against the last published `/strata/map` (see below).
+That check needs Nav2's map server (`apt install ros-humble-nav2-map-server`);
+to rerun it, start `ros2 launch strata grid2d.launch.py rviz:=false
+use_sim_time:=true` and run `python3 scripts/synthetic_e2e.py grid2d
+<params.yaml> --check-map-server` with the params file the node was launched
+with.
 
 ## 🔌 Interface
 
@@ -237,19 +245,24 @@ as 254, transient and periodic as 100 and static as 0, so with the thresholds
 written beside it (`occupied_thresh 0.65`, `free_thresh 0.196`)
 `nav2_map_server` reads free cells as free, static cells as occupied, and
 transient and periodic cells as unknown. The YAML names the image by file
-name, which map_server resolves next to the YAML (as Nav2's map_saver writes
-it), so the pair can be copied to a robot as is, and it writes resolution and
-origin with as many digits as a double needs to read back exactly. `save_map`
-answers `success: false` with the path and the reason (for example a missing
-directory) when a file cannot be written. CI checks this round trip on Humble
+name (single-quoted), which map_server resolves next to the YAML (as Nav2's
+map_saver writes it), so the pair can be copied to a robot as is, and it writes
+resolution and origin with as many digits as a double needs to read back
+exactly, in the "C" locale whatever the process locale. The save is atomic:
+both files are written to `.tmp` names, flushed to disk and then renamed, so a
+failed save leaves the previous pair untouched (voxel3d's PCD likewise).
+`save_map` answers `success: false` with the path and the reason when a file
+cannot be written (for example a missing directory) or when `save_path` has no
+file name (empty or ending in `/`). CI checks this round trip on Humble
 on the synthetic scene (`synthetic_e2e.py --check-map-server`): it moves the
 saved pair to a fresh directory, loads the YAML there in `nav2_map_server`,
 brings it active, and requires the served map to have the published width and
 height, resolution and origin within 1e-9 (on a grid origin of
 -10.000001234567891, -9.999998765432109 that six significant digits cannot
 hold), and every one of the 160 000 cells to map 0→0, 100→100, 50/75/-1→-1,
-with only -1, 0 and 100 served. The synthetic scene's final map holds free, static, periodic and unknown
-cells but no transient (50) cell, which shares the periodic shade in the PGM.
+with only -1, 0 and 100 served. The synthetic scene's final map holds free,
+static, periodic and unknown cells but no transient (50) cell, which shares the
+periodic shade in the PGM.
 
 **Input rate.** A window is either `layer_interval` integrated scans
 (`window_mode: "scans"`, the engine rule and the code default) or
@@ -259,8 +272,8 @@ dropped for missing TF or skipped by an overloaded node, which detunes the
 periodicity test: in the synthetic check, losing 40 % of the scans turns the
 tested door cells static (at least 95 %, none periodic) with scan windows
 (grid2d), while time windows keep the door periodic in grid2d and out of the
-static map in voxel3d; CI checks all three. Time windows need sane stamps: header stamps on the same clock as TF and
-increasing; zero stamps are dropped. With time windows the periodic test's
+static map in voxel3d; CI checks all three. Time windows need sane stamps:
+header stamps on the same clock as TF and increasing; zero stamps are dropped. With time windows the periodic test's
 period is `period_windows` × `window_period_s` seconds (24 × 1.0 s shipped)
 whatever the sensor rate or load: keep a window long enough to hold several
 messages per sensor and set `period_windows` from the period you want to detect.
@@ -270,11 +283,17 @@ evidence gathered across the loop is not independent; restart the node instead.
 Launch with `use_sim_time:=false` (the default) on a live robot and
 `use_sim_time:=true` when replaying a bag with `--clock` (a paused bag reads as
 "no input" after `input_timeout_s`). The TF lookup at each message stamp waits
-at most 0.1 s, counted on the steady clock, for a transform that is slightly
-late, so `use_sim_time:=true` without `/clock` cannot block the node: it keeps
-answering services and publishing diagnostics, and warns that the ROS clock is
-not advancing while messages arrive. CI launches it that way, with scans but no
-`/clock` and no TF, and checks both.
+for a transform that is slightly late until 0.1 s of ROS time has passed, so a
+slowed bag or simulator gets the same tolerance as a live robot. The wait is
+bounded so a bad clock cannot hang the node: it gives up after 0.1 s of steady
+time if the ROS clock has not moved at all (`use_sim_time:=true` without
+`/clock`) and never waits longer than 1 s of steady time. A failed lookup holds
+the sensor callback for up to that long, and the message is dropped. Without
+`/clock` the node keeps answering services and publishing diagnostics, and
+warns that the ROS clock is not advancing while messages arrive. CI checks
+this: it starts `ros2 launch strata grid2d.launch.py rviz:=false
+use_sim_time:=true`, then runs `python3 scripts/check_sim_clock_stall.py`,
+which publishes scans but no `/clock` and no TF.
 
 Once a second the node publishes a `<node>: input rate` status on
 `/diagnostics`: input rate, estimated lost share, TF failures, window duration
@@ -282,8 +301,9 @@ and the periodic period in seconds. It warns when scan windows lose more than
 `rate_warn_drop_fraction` or jitter, when time windows go empty or thin, when
 stamps are zero or stop advancing, when `use_sim_time` is true and the ROS
 clock has stood still for 3 s while messages arrive (no `/clock`), or when
-messages arrive but the TF lookup fails (no localizer yet), and turns ERROR after `input_timeout_s` without input
-(`startup_timeout_s` before the first message). The loss is estimated per
+messages arrive but the TF lookup fails (no localizer yet), and turns ERROR
+after `input_timeout_s` without input (`startup_timeout_s` before the first
+message). The loss is estimated per
 sensor frame from gaps between stamps and is unreliable above about 80 % loss,
 so set `expected_scan_rate_hz` (per sensor) from the datasheet or
 `ros2 topic hz`.
