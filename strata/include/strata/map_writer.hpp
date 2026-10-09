@@ -4,11 +4,13 @@
 #include <cstdio>
 #include <cstring>
 #include <fcntl.h>
+#include <fstream>
 #include <limits>
 #include <locale>
 #include <sstream>
 #include <string>
 #include <unistd.h>
+#include "strata/sha256.hpp"
 #include "strata_core/types.hpp"
 namespace strata {
 
@@ -28,6 +30,12 @@ namespace strata {
 //    untouched (its temp files are removed). A crash or failure between the two
 //    renames can pair the new PGM with the previous YAML: map_server takes the image
 //    name from the YAML, so no rename order avoids this with fixed names.
+//  * So that such a pair can be detected, the YAML records the image it belongs to:
+//    `strata_image_bytes` (the PGM's size) and `strata_image_sha256` (64 hex digits,
+//    single-quoted so it stays a string), both over the exact PGM bytes written.
+//    map_server ignores these keys and does not check them: verifyMapPair below, or
+//    scripts/check_saved_map.py, does. They tie the YAML to the image bytes only: two
+//    saves whose images are byte-identical are not told apart.
 struct MapWriteResult {
   bool ok{false};
   std::string message;   // "saved <pgm> + <yaml>", or the failing path and the reason
@@ -134,6 +142,7 @@ inline MapWriteResult writeMapPair(const strata_core::GridMap& g, const std::str
   for (int row = g.meta.height - 1; row >= 0; --row)
     for (int col = 0; col < g.meta.width; ++col)
       px += static_cast<char>(pgmShade(g.data[static_cast<std::size_t>(row) * g.meta.width + col]));
+  const std::string image = p.str() + px;   // the exact PGM bytes: written, sized and hashed
 
   std::ostringstream y;
   y.imbue(std::locale::classic());
@@ -141,7 +150,9 @@ inline MapWriteResult writeMapPair(const strata_core::GridMap& g, const std::str
     << "mode: trinary\n"
     << "resolution: " << exactDecimal(g.meta.resolution) << "\n"
     << "origin: [" << exactDecimal(g.meta.origin_x) << ", " << exactDecimal(g.meta.origin_y) << ", 0.0]\n"
-    << "negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n";
+    << "negate: 0\noccupied_thresh: 0.65\nfree_thresh: 0.196\n"
+    << "strata_image_bytes: " << image.size() << "\n"
+    << "strata_image_sha256: '" << sha256Hex(image) << "'\n";
 
   // Removes only regular temp files this call may have created (never a directory).
   auto fail = [&](const std::string& path, const std::string& why) {
@@ -149,7 +160,7 @@ inline MapWriteResult writeMapPair(const strata_core::GridMap& g, const std::str
     ::unlink(yaml_tmp.c_str());
     return MapWriteResult{false, "cannot write " + path + ": " + why};
   };
-  std::string why = writeDurable(pgm_tmp, p.str() + px);
+  std::string why = writeDurable(pgm_tmp, image);
   if (!why.empty()) return fail(pgm_tmp, why);
   why = writeDurable(yaml_tmp, y.str());
   if (!why.empty()) return fail(yaml_tmp, why);
@@ -161,6 +172,76 @@ inline MapWriteResult writeMapPair(const strata_core::GridMap& g, const std::str
   if (!why.empty()) return MapWriteResult{false, "cannot sync directory " + dirName(pgm) + ": " + why +
                                                      " (both files were renamed into place)"};
   return MapWriteResult{true, "saved " + pgm + " + " + yaml};
+}
+
+// Whether a saved YAML and the image beside it belong to the same save.
+enum class MapPairStatus {
+  Ok,            // the image has the size and SHA-256 the YAML records
+  Mismatch,      // it does not: e.g. the new PGM beside the previous YAML
+  Unverifiable,  // the YAML records neither (an older save, or another tool's)
+  Invalid        // a file cannot be read, or the YAML is not what writeMapPair writes
+};
+struct MapVerifyResult {
+  MapPairStatus status{MapPairStatus::Invalid};
+  std::string message;
+};
+
+// Reads a whole file. False when it cannot be opened or read.
+inline bool readFile(const std::string& path, std::string& out) {
+  std::ifstream f(path, std::ios::binary);
+  if (!f) return false;
+  std::ostringstream s;
+  s << f.rdbuf();
+  out = s.str();
+  return !f.bad();
+}
+
+// Checks the image a saved YAML names against the size and SHA-256 that YAML records.
+// It reads the flat YAML writeMapPair writes (one "key: value" per line) and resolves
+// a relative image name next to the YAML, as map_server does, so a moved pair
+// verifies. scripts/check_saved_map.py is the same check for a deployer, and also
+// validates the PGM header, resolution and origin.
+inline MapVerifyResult verifyMapPair(const std::string& yaml_path) {
+  using S = MapPairStatus;
+  std::string yaml;
+  if (!readFile(yaml_path, yaml)) return {S::Invalid, "cannot read " + yaml_path};
+  std::string image_name, bytes_text, sha;
+  bool has_image = false, has_bytes = false, has_sha = false;
+  const auto unquoted = [](const std::string& v) {   // 'it''s' -> it's
+    if (v.size() < 2 || v.front() != '\'' || v.back() != '\'') return v;
+    std::string out;
+    for (std::size_t i = 1; i + 1 < v.size(); ++i) {
+      out += v[i];
+      if (v[i] == '\'' && i + 2 < v.size() && v[i + 1] == '\'') ++i;
+    }
+    return out;
+  };
+  std::istringstream lines(yaml);
+  for (std::string line; std::getline(lines, line);) {
+    const std::size_t colon = line.find(": ");
+    if (colon == std::string::npos) continue;
+    const std::string key = line.substr(0, colon), value = unquoted(line.substr(colon + 2));
+    if (key == "image") { image_name = value; has_image = true; }
+    else if (key == "strata_image_bytes") { bytes_text = value; has_bytes = true; }
+    else if (key == "strata_image_sha256") { sha = value; has_sha = true; }
+  }
+  if (!has_image || image_name.empty()) return {S::Invalid, yaml_path + " names no image"};
+  const std::string image_path =
+      image_name.front() == '/' ? image_name : dirName(yaml_path) + "/" + image_name;
+  std::string image;
+  if (!readFile(image_path, image)) return {S::Invalid, "cannot read the image " + image_path};
+  if (!has_bytes && !has_sha)
+    return {S::Unverifiable, yaml_path + " records no strata_image_bytes / strata_image_sha256; " +
+                             image_path + " cannot be matched to it"};
+  if (!has_bytes || !has_sha)
+    return {S::Invalid, yaml_path + " records only one of strata_image_bytes / strata_image_sha256"};
+  const std::string actual_sha = sha256Hex(image);
+  if (bytes_text != std::to_string(image.size()) || sha != actual_sha)
+    return {S::Mismatch, "image does not match this YAML: saved by an interrupted save? (" + image_path +
+                         " is " + std::to_string(image.size()) + " bytes, sha256 " + actual_sha + "; " +
+                         yaml_path + " records " + bytes_text + " bytes, sha256 " + sha + ")"};
+  return {S::Ok, image_path + " matches " + yaml_path + " (" + std::to_string(image.size()) +
+                 " bytes, sha256 " + actual_sha + ")"};
 }
 
 }  // namespace strata

@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 31 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 40 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -254,7 +254,14 @@ fails before the renames leaves the previous pair untouched (voxel3d's PCD
 likewise). The PGM is renamed first and the YAML second, so a crash or failure
 between the two renames can pair the new PGM with the previous YAML
 (map_server takes the image name from the YAML, so no rename order avoids this
-with fixed names); the directory is fsynced after the renames.
+with fixed names); the directory is fsynced after the renames. So that such a
+pair can be detected, the YAML records the image it was written for, in two
+extra keys computed over the exact PGM bytes: `strata_image_bytes` (the file
+size) and `strata_image_sha256` (64 hex digits, single-quoted).
+`nav2_map_server` ignores both keys and does **not** check them: it loads a
+mismatched pair without complaint, with the previous resolution and origin.
+Run [`scripts/check_saved_map.py`](scripts/check_saved_map.py) (see below)
+before trusting a saved pair after an unclean shutdown or a failed `save_map`.
 `save_map` answers `success: false` with the path and the reason when a file
 cannot be written (for example a missing directory) or when `save_path` has no
 file name (empty or ending in `/`). CI checks this round trip on Humble
@@ -267,6 +274,35 @@ hold), and every one of the 160 000 cells to map 0→0, 100→100, 50/75/-1→-1
 with only -1, 0 and 100 served. The synthetic scene's final map holds free,
 static, periodic and unknown cells but no transient (50) cell, which shares the
 periodic shade in the PGM.
+
+**Checking a saved pair.** `python3 scripts/check_saved_map.py <map.yaml>`
+needs only the Python standard library (no ROS, no PyYAML), so it runs on
+whatever machine the files were copied to. It finds the image as map_server
+does (a relative `image:` is next to the YAML), compares its size and SHA-256
+with the YAML's two keys, requires a binary PGM (`P5`) whose width × height is
+exactly its pixel payload (maxval 1..65535), a finite `resolution` > 0 and an
+`origin` of three finite numbers, and prints one line:
+
+| Exit status | Line starts with | Meaning |
+|---|---|---|
+| 0 | `OK:` | the image is the one this YAML was saved with, and both files are well formed |
+| 1 | `FAIL:` | do not use the pair: `image does not match this YAML: saved by an interrupted save?`, or a file is missing or unreadable, or the YAML or the PGM is malformed |
+| 2 | (usage) | wrong command line |
+| 3 | `UNVERIFIABLE:` | the YAML has neither key (saved by an older version or another tool): the files are well formed, but nothing ties this image to this YAML |
+
+Treat anything but 0 as "not verified". On a mismatch, call `~/save_map` again
+(a completed save rewrites both files) or restore both files from the same
+backup. The keys tie the YAML to the image bytes only: two saves whose images
+are byte-identical (the same cells saved again under a different
+`grid_origin_*`, say) cannot be told apart. They detect a mixed-up or damaged
+pair, not tampering: whoever can rewrite the image can rewrite the YAML. The
+node does not run this check itself and nothing in Nav2 does; `verifyMapPair`
+in [`map_writer.hpp`](strata/include/strata/map_writer.hpp) is the same
+comparison in C++ for a caller that wants it. CI runs the checker on the pair
+the round-trip scenario saved (which map_server has just loaded, so the extra
+keys are harmless to it), on that YAML beside an image with one pixel changed
+and beside an image of another size (both exit 1), on the YAML with the keys
+removed (exit 3), and on malformed files.
 
 **Input rate.** A window is either `layer_interval` integrated scans
 (`window_mode: "scans"`, the engine rule and the code default) or

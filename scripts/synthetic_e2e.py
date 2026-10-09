@@ -35,6 +35,7 @@ namespace, lifecycle configure + activate), and
 requires the map it serves to match the last published map in size, resolution and
 origin, and cell by cell as 0->0, 100->100, 50/75/-1 -> -1 (map_server must serve
 only -1, 0, 100). A row flip, origin or resolution error in the saved pair fails it.
+--keep-map DIR copies that moved pair into DIR, for scripts/check_saved_map.py.
 
 Usage: synthetic_e2e.py grid2d|voxel3d PARAMS_YAML [--windows N] [--check-map-server]
 Run against `ros2 launch strata <backend>.launch.py rviz:=false` (use_sim_time).
@@ -493,9 +494,14 @@ def main():
     ap.add_argument('--check-map-server', action='store_true',
                     help='grid2d: load the saved YAML in nav2_map_server and compare the map it serves, '
                          'cell by cell, with the last map the node published')
+    ap.add_argument('--keep-map', metavar='DIR',
+                    help='with --check-map-server: copy the saved pair (as moved, before map_server '
+                         'loads it) into DIR, e.g. to run scripts/check_saved_map.py on it')
     args = ap.parse_args()
     if args.check_map_server and args.backend != 'grid2d':
         ap.error('--check-map-server applies to grid2d only')
+    if args.keep_map and not args.check_map_server:
+        ap.error('--keep-map needs --check-map-server')
 
     params = {}
     for section in (yaml.safe_load(open(args.params)) or {}).values():
@@ -588,6 +594,11 @@ def main():
                 shutil.move(base + ext, os.path.join(moved_dir, os.path.basename(base) + ext))
             yaml_path = os.path.join(moved_dir, os.path.basename(base) + '.yaml')
             results.append((not os.path.exists(base + '.pgm'), f'saved pair moved to {moved_dir} before loading'))
+            if args.keep_map:
+                os.makedirs(args.keep_map, exist_ok=True)
+                for ext in ('.pgm', '.yaml'):
+                    shutil.copy(os.path.join(moved_dir, os.path.basename(base) + ext), args.keep_map)
+                print(f'kept a copy of the saved pair in {args.keep_map}')
             results += check_roundtrip(after_save, serve_saved_map(node, os.path.abspath(yaml_path), args.timeout))
         except RuntimeError as e:
             tail = open('map_server_roundtrip.log', errors='replace').read()[-1500:]

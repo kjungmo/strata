@@ -11,6 +11,9 @@
 #include <unistd.h>
 #include <gtest/gtest.h>
 #include "strata/map_writer.hpp"
+using strata::MapPairStatus;
+using strata::sha256Hex;
+using strata::verifyMapPair;
 using strata::writeMapPair;
 namespace fs = std::filesystem;
 
@@ -44,6 +47,18 @@ strata_core::GridMap grid(int w, int h, double res, double ox, double oy) {
   g.meta.width = w; g.meta.height = h; g.meta.resolution = res; g.meta.origin_x = ox; g.meta.origin_y = oy;
   g.data.assign(static_cast<std::size_t>(w) * h, -1);
   return g;
+}
+void spit(const std::string& path, const std::string& data) {
+  std::ofstream f(path, std::ios::binary | std::ios::trunc);
+  f << data;
+}
+// The YAML without the lines that record the image (what an older save wrote).
+std::string withoutImageKeys(const std::string& yaml) {
+  std::istringstream in(yaml);
+  std::string out;
+  for (std::string line; std::getline(in, line);)
+    if (line.rfind("strata_image_", 0) != 0) out += line + "\n";
+  return out;
 }
 int tmpFiles(const std::string& dir) {
   int n = 0;
@@ -195,4 +210,152 @@ TEST(MapWriter, GridWhoseDataDoesNotMatchItsSizeIsRefused) {
   auto g = grid(3, 3, 0.05, 0.0, 0.0);
   g.data.pop_back();
   EXPECT_FALSE(writeMapPair(g, "/tmp/strata_map_writer_unused").ok);
+}
+
+TEST(Sha256, MatchesTheFips180Vectors) {
+  EXPECT_EQ(sha256Hex(""), "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+  EXPECT_EQ(sha256Hex("abc"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+  // Two blocks: 56 bytes leave no room for the length in the first one.
+  EXPECT_EQ(sha256Hex("abcdbcdecdefdefgefghfghighijhijkijkljklmklmnlmnomnopnopq"),
+            "248d6a61d20638b8e5c026930c3e6039a33ce45964ff2167f6ecedd419db06c1");
+  EXPECT_EQ(sha256Hex(std::string(1000000, 'a')),
+            "cdc76e5c9914fb9281a1c7e284d73e67f1809a48a497200e046d39ccc7112cd0");
+}
+
+TEST(Sha256, PaddingBoundariesAndBinaryBytes) {
+  // Lengths either side of the one-block / two-block padding boundary (55 | 56) and of
+  // a full block (64); expected values from Python's hashlib.
+  EXPECT_EQ(sha256Hex(std::string(55, 'x')), "d5e285683cd4efc02d021a5c62014694958901005d6f71e89e0989fac77e4072");
+  EXPECT_EQ(sha256Hex(std::string(56, 'x')), "04c26261370ee7541549d16dee320c723e3fd14671e66a099afe0a377c16888e");
+  EXPECT_EQ(sha256Hex(std::string(63, 'x')), "75220b47218278e656f2013bb8f0c455a25eaf01e86c64924e9d48d89776d6f2");
+  EXPECT_EQ(sha256Hex(std::string(64, 'x')), "7ce100971f64e7001e8fe5a51973ecdfe1ced42befe7ee8d5fd6219506b5393c");
+  EXPECT_EQ(sha256Hex(std::string(65, 'x')), "9537c5fdf120482f7d58d25e9ed583f52c02b4e304ea814db1633ad565aed7e9");
+  EXPECT_EQ(sha256Hex(std::string(120, 'x')), "13f05a0b594787f5ecd315edc96141bd3243203d1b7d4f0836f37308b276ba98");
+  // Bytes above 0x7f and NULs (a PGM is binary): the 256 byte values 0..255 in order.
+  std::string all;
+  for (int i = 0; i < 256; ++i) all += static_cast<char>(i);
+  EXPECT_EQ(sha256Hex(all), "40aff2e9d2d8922e47afd4648e6967497158785fbd1da870e7110266bf944880");
+}
+
+TEST(MapWriter, YamlRecordsTheSizeAndSha256OfTheImageWritten) {
+  TempDir dir;
+  ASSERT_FALSE(dir.path.empty());
+  auto g = grid(3, 2, 0.05, -10.0, -10.0);
+  g.data = {100, 0, 50, 75, -1, 0};
+  ASSERT_TRUE(writeMapPair(g, dir.path + "/m").ok);
+  // The PGM is "P5\n3 2\n255\n" + the six shades the first test checks: 17 bytes.
+  const std::string pgm = slurp(dir.path + "/m.pgm");
+  ASSERT_EQ(pgm, std::string("P5\n3 2\n255\n") + std::string("\x64\xcd\xfe\x00\xfe\x64", 6));
+  auto y = yamlKeys(dir.path + "/m.yaml");
+  EXPECT_EQ(y["strata_image_bytes"], "17");
+  // sha256 of those 17 bytes, from Python's hashlib (not from sha256Hex).
+  EXPECT_EQ(y["strata_image_sha256"], "'4014f0ce0204fe1d5abd97eb83f208306b82e28d4a75f2b7aa82c7a086baedf9'");
+  EXPECT_EQ(y["strata_image_sha256"], "'" + sha256Hex(pgm) + "'");
+  // The keys map_server reads are still there, ahead of the two it ignores.
+  const std::string yaml = slurp(dir.path + "/m.yaml");
+  EXPECT_LT(yaml.find("free_thresh: 0.196\n"), yaml.find("strata_image_bytes: "));
+  EXPECT_EQ(y.size(), 9u);
+}
+
+TEST(MapWriter, SavedPairVerifiesAndStillDoesAfterAMove) {
+  TempDir a, b;
+  ASSERT_FALSE(a.path.empty()); ASSERT_FALSE(b.path.empty());
+  auto g = grid(4, 4, 0.1, 0.0, 0.0);
+  g.data[5] = 100;
+  ASSERT_TRUE(writeMapPair(g, a.path + "/it's: #map").ok);
+  auto v = verifyMapPair(a.path + "/it's: #map.yaml");
+  EXPECT_EQ(v.status, MapPairStatus::Ok) << v.message;
+  ASSERT_EQ(std::rename((a.path + "/it's: #map.pgm").c_str(), (b.path + "/it's: #map.pgm").c_str()), 0);
+  ASSERT_EQ(std::rename((a.path + "/it's: #map.yaml").c_str(), (b.path + "/it's: #map.yaml").c_str()), 0);
+  v = verifyMapPair(b.path + "/it's: #map.yaml");
+  EXPECT_EQ(v.status, MapPairStatus::Ok) << v.message;
+  EXPECT_NE(v.message.find(b.path + "/it's: #map.pgm matches"), std::string::npos) << v.message;
+}
+
+TEST(MapWriter, NewImageBesideThePreviousYamlFailsVerification) {
+  // The state a crash between the two renames leaves: save A, then save B whose PGM
+  // reached its final name while A's YAML stayed. Once with a different grid size
+  // (the byte count already differs) and once with the same size (only the hash does).
+  struct Case { int w, h; const char* what; };
+  for (const Case& c : {Case{5, 3, "different size"}, Case{2, 2, "same size"}}) {
+    TempDir dir, other;
+    ASSERT_FALSE(dir.path.empty()); ASSERT_FALSE(other.path.empty());
+    const std::string base = dir.path + "/m";
+    auto first = grid(2, 2, 0.05, 1.0, 2.0);
+    first.data = {0, 100, -1, 0};
+    ASSERT_TRUE(writeMapPair(first, base).ok);
+    ASSERT_EQ(verifyMapPair(base + ".yaml").status, MapPairStatus::Ok) << c.what;
+    auto second = grid(c.w, c.h, 0.1, -5.0, -5.0);
+    second.data.assign(static_cast<std::size_t>(c.w) * c.h, 100);
+    ASSERT_TRUE(writeMapPair(second, other.path + "/m").ok);
+    ASSERT_EQ(std::rename((other.path + "/m.pgm").c_str(), (base + ".pgm").c_str()), 0);
+    const auto v = verifyMapPair(base + ".yaml");
+    EXPECT_EQ(v.status, MapPairStatus::Mismatch) << c.what << ": " << v.message;
+    EXPECT_NE(v.message.find("image does not match this YAML: saved by an interrupted save?"),
+              std::string::npos) << v.message;
+    // B's own YAML still describes that image.
+    ASSERT_EQ(std::rename((other.path + "/m.yaml").c_str(), (base + ".yaml").c_str()), 0);
+    EXPECT_EQ(verifyMapPair(base + ".yaml").status, MapPairStatus::Ok) << c.what;
+  }
+}
+
+TEST(MapWriter, FailedSecondRenameLeavesAPairThatFailsVerification) {
+  // The same state, produced by writeMapPair itself: the YAML's rename fails after the
+  // PGM's succeeded. The previous YAML is kept aside and put back as the "old" one.
+  TempDir dir;
+  const std::string base = dir.path + "/m";
+  auto first = grid(2, 2, 0.05, 1.0, 2.0);
+  first.data = {0, 100, -1, 0};
+  ASSERT_TRUE(writeMapPair(first, base).ok);
+  const std::string previous_yaml = slurp(base + ".yaml");
+  ASSERT_EQ(std::remove((base + ".yaml").c_str()), 0);
+  ASSERT_EQ(mkdir((base + ".yaml").c_str(), 0755), 0);
+  ASSERT_EQ(mkdir((base + ".yaml/keep").c_str(), 0755), 0);
+  auto second = grid(2, 2, 0.05, 1.0, 2.0);
+  second.data = {100, 100, -1, 0};
+  const auto r = writeMapPair(second, base);
+  ASSERT_FALSE(r.ok);
+  ASSERT_NE(r.message.find("the PGM was already replaced"), std::string::npos) << r.message;
+  ASSERT_EQ(rmdir((base + ".yaml/keep").c_str()), 0);
+  ASSERT_EQ(rmdir((base + ".yaml").c_str()), 0);
+  spit(base + ".yaml", previous_yaml);
+  const auto v = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(v.status, MapPairStatus::Mismatch) << v.message;
+}
+
+TEST(MapWriter, ChangedImageByteFailsVerification) {
+  TempDir dir;
+  const std::string base = dir.path + "/m";
+  ASSERT_TRUE(writeMapPair(grid(8, 8, 0.05, 0.0, 0.0), base).ok);
+  std::string pgm = slurp(base + ".pgm");
+  pgm.back() = static_cast<char>(254);          // one unknown pixel becomes free
+  spit(base + ".pgm", pgm);
+  EXPECT_EQ(verifyMapPair(base + ".yaml").status, MapPairStatus::Mismatch);
+  spit(base + ".pgm", pgm + "x");               // and a longer file
+  EXPECT_EQ(verifyMapPair(base + ".yaml").status, MapPairStatus::Mismatch);
+}
+
+TEST(MapWriter, YamlWithoutTheImageKeysIsUnverifiableNotOk) {
+  TempDir dir;
+  const std::string base = dir.path + "/m";
+  ASSERT_TRUE(writeMapPair(grid(2, 2, 0.05, 0.0, 0.0), base).ok);
+  const std::string yaml = slurp(base + ".yaml");
+  spit(base + ".yaml", withoutImageKeys(yaml));
+  ASSERT_EQ(yamlKeys(base + ".yaml").size(), 7u);
+  const auto v = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(v.status, MapPairStatus::Unverifiable) << v.message;
+  // Only one of the two keys is a damaged YAML, not an older save.
+  spit(base + ".yaml", withoutImageKeys(yaml) + "strata_image_bytes: 15\n");
+  EXPECT_EQ(verifyMapPair(base + ".yaml").status, MapPairStatus::Invalid);
+}
+
+TEST(MapWriter, MissingFilesAreInvalidNotVerified) {
+  TempDir dir;
+  const std::string base = dir.path + "/m";
+  EXPECT_EQ(verifyMapPair(base + ".yaml").status, MapPairStatus::Invalid);
+  ASSERT_TRUE(writeMapPair(grid(2, 2, 0.05, 0.0, 0.0), base).ok);
+  ASSERT_EQ(std::remove((base + ".pgm").c_str()), 0);
+  const auto v = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(v.status, MapPairStatus::Invalid);
+  EXPECT_NE(v.message.find(base + ".pgm"), std::string::npos) << v.message;
 }

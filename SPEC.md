@@ -77,7 +77,7 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 |---|---|---|---|
 | `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
-| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` single-quoted and relative to the YAML, resolution and origin written to read back exactly, "C" locale); voxel3d → PCD. Written to `.tmp` files and fsynced, then renamed and the directory fsynced: a save that fails before the renames leaves the previous pair untouched; the PGM is renamed first and the YAML second, so a crash or failure between the two renames can pair the new PGM with the previous YAML (map_server takes the image name from the YAML, so no rename order avoids this with fixed names). `success: false` with the path and reason when a file cannot be written (e.g. a missing directory), `save_path` has no file name (empty or ending in `/`), or voxel3d has no static voxel |
+| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` single-quoted and relative to the YAML, resolution and origin written to read back exactly, "C" locale); voxel3d → PCD. Written to `.tmp` files and fsynced, then renamed and the directory fsynced: a save that fails before the renames leaves the previous pair untouched; the PGM is renamed first and the YAML second, so a crash or failure between the two renames can pair the new PGM with the previous YAML (map_server takes the image name from the YAML, so no rename order avoids this with fixed names). To make that pair detectable the YAML also carries `strata_image_bytes` and `strata_image_sha256` (size and SHA-256 of the exact PGM bytes written; map_server ignores them and does not check them, `scripts/check_saved_map.py` does, see §6.1). `success: false` with the path and reason when a file cannot be written (e.g. a missing directory), `save_path` has no file name (empty or ending in `/`), or voxel3d has no static voxel |
 | `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total. From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was); ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
 
 ### Frames (REP-105)
@@ -399,7 +399,7 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **31 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **40 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
@@ -407,7 +407,7 @@ nanosecond stamps close exactly every period, reorder kept and a bag loop
 re-anchors, a short bag loop re-anchors, a huge forward jump re-anchors) and
 `test_rate_monitor` (4; a steady stream has no loss, 40 % loss is estimated, the
 sensor rate overrides the estimate, a back jump restarts the intervals),
-`test_map_writer` (10; PGM rows top down with the expected shades and a YAML
+`test_map_writer` (19; PGM rows top down with the expected shades and a YAML
 naming the image relatively, resolution and origin read back within 1e-12,
 numbers ignore a global locale with grouping and a decimal comma, the image
 name is single-quoted with quotes doubled, a save_path without a file name is
@@ -415,7 +415,15 @@ refused, a moved pair still resolves its image, a missing directory is reported
 as a failure naming the path, a failed YAML write leaves the previous pair
 byte-identical with no `.tmp` left, a failed second rename reports that the
 PGM was already replaced, a grid whose data does not match its size
-is refused) and `test_tf_wait` (7; a live clock waits 0.1 s, a 0.2x / 0.1x sim
+is refused; SHA-256 against the FIPS 180-4 vectors (empty, "abc", the 56-byte
+two-block message, a million "a") and against hashlib at the padding
+boundaries (55, 56, 63, 64, 65, 120 bytes) and over all 256 byte values; the
+YAML records the size and SHA-256 of the PGM written; a saved pair verifies
+and still does after a move; another save's PGM beside the previous YAML fails
+verification, with a different grid size and with the same size; the pair a
+failed second rename leaves fails it too; one changed or one extra image byte
+fails it; a YAML without the keys is unverifiable, not OK, and one with a
+single key is invalid; a missing YAML or image is invalid) and `test_tf_wait` (7; a live clock waits 0.1 s, a 0.2x / 0.1x sim
 clock still gets 0.1 s of ROS time, a coarse 10 Hz sim clock at 0.5x and at 0.2x
 gets its full 0.1 s, a clock frozen from the start is waited on at most once to
 the cap and then not at all, a clock that stops is recognised within 1 s, a
@@ -434,7 +442,13 @@ lifecycle configure + activate) and requires the map it serves to equal the last
 published `/strata/map` in width, height, resolution and origin (within 1e-9)
 and cell by cell under 0→0, 100→100, 50/75/-1→-1 (zero mismatches; served
 values only -1, 0, 100), after asserting the published map did not change
-across the save. A last step launches grid2d with `use_sim_time:=true`, feeds
+across the save. The next step runs `scripts/check_saved_map.py` (§6.1) on a
+copy of that pair (`--keep-map`): exit 0 on the pair as saved, with the recorded
+size and hash also compared against `stat` and `sha256sum`; exit 1 with the
+mismatch message on that YAML beside the image with one pixel changed (same
+size) and beside a 2 × 2 image; exit 3 on the YAML with the two keys removed;
+exit 1 on a zero resolution, a two-element origin, a truncated PGM, an ASCII
+(`P2`) PGM and a missing image. A later step launches grid2d with `use_sim_time:=true`, feeds
 it scans with no `/clock` and no TF (`scripts/check_sim_clock_stall.py`) and
 requires `ros2 param get` to answer within 8 s, at least 9 `/diagnostics`
 statuses over 11 s of scans, and a WARN that the ROS clock is not advancing.
@@ -442,6 +456,53 @@ A second launch runs a sim clock at 0.5x in 0.1 s steps with scans stamped 30 ms
 ahead of a dynamic `map → sensor` TF (`scripts/check_coarse_clock.py`) and
 requires zero TF failures over at least 3 closed windows and at least 60 % of
 the sent scans integrated in them.
+
+### 6.1 Saved-pair check
+
+`writeMapPair` cannot make the two renames one atomic step, so a crash or
+failure between them leaves the new PGM beside the previous YAML, and
+`nav2_map_server` loads that pair silently with the previous resolution and
+origin (and, if the grid size changed, with an image of another size). The
+YAML therefore records which image it belongs to:
+
+```yaml
+strata_image_bytes: 160015
+strata_image_sha256: '97e081439e8b6331dbec5cd55d7fd4cb25b2c6c1c84614d72671451735f2de53'
+```
+
+Both are computed over the exact bytes written to the PGM (header and pixels)
+and follow the keys map_server reads. The hash is single-quoted so that it is
+a string whatever its digits. SHA-256 is implemented in
+`strata/include/strata/sha256.hpp` (no new dependency). `nav2_map_server`
+(yaml-cpp) ignores unknown keys, which the round-trip scenario confirms on
+every CI run, and it does **not** check them. A deployer must run the check
+before trusting a saved pair after an unclean shutdown or a failed `save_map`:
+
+```bash
+python3 scripts/check_saved_map.py /path/to/map.yaml
+```
+
+Standard library only (no ROS, no PyYAML). It reads the flat mapping a map
+YAML is (`key: value` lines, quoted or plain scalars, `[a, b, c]` or `- a`
+lists, comments; anything else is a failure), resolves a relative `image:`
+next to the YAML as map_server does, and prints one line.
+
+| Exit status | Line | When |
+|---|---|---|
+| 0 | `OK: ...` | size and SHA-256 of the image equal the YAML's keys; the image is a binary PGM (`P5`, maxval 1..65535) whose width × height × bytes per sample is exactly its payload; `resolution` is finite and > 0; `origin` is three finite numbers |
+| 1 | `FAIL: ...` | `image does not match this YAML: saved by an interrupted save?` (size or hash differs), or the YAML or the image is missing, unreadable or malformed, or only one of the two keys is present |
+| 2 | usage text | wrong command line (argparse) |
+| 3 | `UNVERIFIABLE: ...` | neither key is present (an older save, or another tool's YAML); the other checks passed, but nothing ties the image to the YAML |
+
+`OK` goes to stdout, the other lines to stderr. `verifyMapPair(yaml_path)` in
+`map_writer.hpp` is the same size-and-hash comparison in ROS-free C++
+(`Ok`, `Mismatch`, `Unverifiable`, `Invalid`) for the flat YAML `writeMapPair`
+writes; it does not validate the PGM header, resolution or origin, and the
+node does not call it. Limits: the keys tie the YAML to the image bytes only,
+so two saves with byte-identical images (the same cells under a different
+`grid_origin_*`) are not told apart; and they are an integrity check against a
+mixed-up or damaged pair, not a signature. voxel3d saves a single PCD, so it
+has no pair to mismatch.
 
 ---
 
