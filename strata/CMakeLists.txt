@@ -51,6 +51,8 @@ install(TARGETS strata_node
 install(TARGETS strata_node_main DESTINATION lib/${PROJECT_NAME})
 install(DIRECTORY include/ DESTINATION include)
 install(DIRECTORY launch params rviz DESTINATION share/${PROJECT_NAME})
+# ros2 run strata check_saved_map.py <map.yaml>: the saved-pair check (standard library only)
+install(PROGRAMS scripts/check_saved_map.py DESTINATION lib/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)

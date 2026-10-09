@@ -291,7 +291,7 @@ TEST(MapWriter, NewImageBesideThePreviousYamlFailsVerification) {
     ASSERT_EQ(std::rename((other.path + "/m.pgm").c_str(), (base + ".pgm").c_str()), 0);
     const auto v = verifyMapPair(base + ".yaml");
     EXPECT_EQ(v.status, MapPairStatus::Mismatch) << c.what << ": " << v.message;
-    EXPECT_NE(v.message.find("image does not match this YAML: saved by an interrupted save?"),
+    EXPECT_NE(v.message.find("image does not match this YAML: interrupted save, or the image was edited or replaced"),
               std::string::npos) << v.message;
     // B's own YAML still describes that image.
     ASSERT_EQ(std::rename((other.path + "/m.yaml").c_str(), (base + ".yaml").c_str()), 0);
@@ -358,4 +358,49 @@ TEST(MapWriter, MissingFilesAreInvalidNotVerified) {
   const auto v = verifyMapPair(base + ".yaml");
   EXPECT_EQ(v.status, MapPairStatus::Invalid);
   EXPECT_NE(v.message.find(base + ".pgm"), std::string::npos) << v.message;
+}
+
+// map_server and check_saved_map.py cannot load a directory as an image; neither may this.
+TEST(MapWriter, ImageThatIsNotARegularFileIsInvalid) {
+  TempDir dir;
+  const std::string base = dir.path + "/m";
+  ASSERT_TRUE(writeMapPair(grid(2, 2, 0.05, 0.0, 0.0), base).ok);
+  ASSERT_EQ(std::remove((base + ".pgm").c_str()), 0);
+  ASSERT_EQ(::mkdir((base + ".pgm").c_str(), 0755), 0);
+  const auto with_keys = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(with_keys.status, MapPairStatus::Invalid) << with_keys.message;
+  EXPECT_NE(with_keys.message.find(base + ".pgm"), std::string::npos) << with_keys.message;
+  // Without the keys it must not pass as merely unverifiable either.
+  spit(base + ".yaml", withoutImageKeys(slurp(base + ".yaml")));
+  const auto without_keys = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(without_keys.status, MapPairStatus::Invalid) << without_keys.message;
+  // A YAML path that is a directory is invalid too.
+  EXPECT_EQ(verifyMapPair(dir.path).status, MapPairStatus::Invalid);
+}
+
+// A YAML saved or edited with CRLF line ends verifies like the LF one (as the checker reads it).
+TEST(MapWriter, YamlWithCrlfLineEndsVerifiesLikeTheLfOne) {
+  TempDir dir;
+  const std::string base = dir.path + "/m";
+  ASSERT_TRUE(writeMapPair(grid(3, 2, 0.05, 0.0, 0.0), base).ok);
+  const std::string lf = slurp(base + ".yaml");
+  const auto toCrlf = [](const std::string& text) {
+    std::string out;
+    for (char c : text) out += c == '\n' ? std::string("\r\n") : std::string(1, c);
+    return out;
+  };
+  ASSERT_NE(toCrlf(lf), lf);
+  spit(base + ".yaml", toCrlf(lf));
+  const auto ok = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(ok.status, MapPairStatus::Ok) << ok.message;
+  // Without the keys the CRLF YAML is unverifiable, and beside another image a mismatch.
+  spit(base + ".yaml", toCrlf(withoutImageKeys(lf)));
+  const auto no_keys = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(no_keys.status, MapPairStatus::Unverifiable) << no_keys.message;
+  std::string image = slurp(base + ".pgm");
+  image.back() = static_cast<char>(image.back() ^ 1);
+  spit(base + ".pgm", image);
+  spit(base + ".yaml", toCrlf(lf));
+  const auto mismatch = verifyMapPair(base + ".yaml");
+  EXPECT_EQ(mismatch.status, MapPairStatus::Mismatch) << mismatch.message;
 }

@@ -9,8 +9,12 @@ origin. To make it detectable the YAML records the image it was written for:
     strata_image_bytes: <size of the PGM in bytes>
     strata_image_sha256: '<SHA-256 of the PGM, 64 hex digits>'
 
-map_server ignores both keys and does not check them. Run this before trusting a
-saved pair, in particular after an unclean shutdown. It
+nav2_map_server ignores both keys and does not check them. Run this before trusting
+a saved pair, in particular after an unclean shutdown, for example as a gate:
+
+    ros2 run strata check_saved_map.py map.yaml && ros2 launch ... map:=map.yaml
+
+It
   * resolves `image:` as map_server does (a relative name is next to the YAML),
   * compares the image's size and SHA-256 with the YAML's two keys,
   * requires a binary PGM (P5) whose width x height x bytes per sample is exactly the
@@ -20,14 +24,25 @@ saved pair, in particular after an unclean shutdown. It
 Exit status (one line is printed in every case):
   0  OK            the image is the one this YAML was written for, and both are well formed
   1  FAIL          do not use the pair: the image does not match the YAML, a file is
-                   missing or unreadable, or the YAML or the PGM is malformed
+                   missing, unreadable or not a regular file, the YAML or the PGM is
+                   malformed, or the image is not a binary PGM (PNG, BMP and ASCII
+                   P2 images fail here, with or without the keys)
   2                usage error (argparse)
-  3  UNVERIFIABLE  the YAML has neither key (an older save, or another tool's); the
-                   files are well formed but nothing ties this image to this YAML
+  3  UNVERIFIABLE  the YAML has neither key (an older save, or another tool's) and
+                   the image is a well-formed binary PGM (P5); nothing ties this
+                   image to this YAML
 
 The two keys tie the YAML to the image bytes only: two saves whose images are
 byte-identical (say, the same map saved again under a different grid origin) cannot
 be told apart.
+
+Any edit of the image fails by design, including routine clean-up in an image
+editor: the bytes are no longer the ones the YAML records. After an intended edit
+either delete both keys from the YAML (the pair is then UNVERIFIABLE, exit 3) or
+rewrite them from the edited file:
+
+    strata_image_bytes: <output of: stat -c %s map.pgm>
+    strata_image_sha256: '<first field of: sha256sum map.pgm>'
 
 Pure standard library (no ROS, no PyYAML), so it runs on any machine the files are
 copied to. The YAML reader handles the flat mapping a map YAML is: one `key: value`
@@ -44,6 +59,7 @@ import re
 import sys
 
 OK, FAIL, UNVERIFIABLE = 0, 1, 3
+MAX_DIGITS = 18   # digits accepted in a size field; int() rejects runs over 4300 on Python >= 3.11
 BYTES_KEY, SHA_KEY = 'strata_image_bytes', 'strata_image_sha256'
 NUMBER = re.compile(r'[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?\Z')
 
@@ -95,8 +111,10 @@ def value(text, where):
 
 def read_flat_yaml(path):
     """The top-level mapping of a map YAML, values as strings or lists of strings."""
+    if not os.path.isfile(path):
+        raise Bad('cannot read the YAML: missing or not a regular file')
     try:
-        with open(path, encoding='utf-8') as fh:
+        with open(path, encoding='utf-8') as fh:   # universal newlines: CRLF reads as LF
             lines = fh.read().splitlines()
     except (OSError, UnicodeDecodeError) as e:
         raise Bad(f'cannot read the YAML: {e}')
@@ -155,9 +173,11 @@ def read_pgm(data, path):
         fields.append(data[start:pos])
         if len(fields) == 1 and fields[0] != b'P5':
             raise Bad(f'{path}: not a binary PGM (starts with {data[:2]!r}, need b\'P5\')')
-    if not all(f.isdigit() for f in fields[1:]):
+    if not all(re.match(rb'[0-9]+\Z', f) for f in fields[1:]):
         raise Bad(f'{path}: PGM width, height and maxval must be whole numbers, got '
-                  f'{[f.decode("latin-1") for f in fields[1:]]}')
+                  f'{[f[:40].decode("latin-1") for f in fields[1:]]}')
+    if any(len(f) > MAX_DIGITS for f in fields[1:]):
+        raise Bad(f'{path}: a PGM width, height or maxval has more than {MAX_DIGITS} digits')
     width, height, maxval = (int(f) for f in fields[1:])
     if width <= 0 or height <= 0:
         raise Bad(f'{path}: PGM size {width} x {height} is not positive')
@@ -190,6 +210,8 @@ def check(yaml_path):
     if not isinstance(origin, list) or len(origin) != 3:
         raise Bad(f'origin must be a list of 3 numbers [x, y, yaw], got {origin!r}')
     origin = [number(v, f'origin[{i}]') for i, v in enumerate(origin)]
+    if os.path.exists(image_path) and not os.path.isfile(image_path):
+        raise Bad(f'cannot read the image the YAML names: {image_path} is not a regular file')
     try:
         with open(image_path, 'rb') as fh:
             data = fh.read()
@@ -202,12 +224,12 @@ def check(yaml_path):
     sha = hashlib.sha256(data).hexdigest()
     if recorded:
         want_bytes, want_sha = doc[BYTES_KEY], doc[SHA_KEY]
-        if not isinstance(want_bytes, str) or not re.match(r'\d+\Z', want_bytes):
-            raise Bad(f'{BYTES_KEY} is not a byte count: {want_bytes!r}')
+        if not isinstance(want_bytes, str) or not re.match(r'[0-9]{1,%d}\Z' % MAX_DIGITS, want_bytes):
+            raise Bad(f'{BYTES_KEY} is not a byte count of at most {MAX_DIGITS} digits: {str(want_bytes)[:40]!r}')
         if not isinstance(want_sha, str) or not re.match(r'[0-9a-fA-F]{64}\Z', want_sha):
             raise Bad(f'{SHA_KEY} is not 64 hex digits: {want_sha!r}')
         if int(want_bytes) != len(data) or want_sha.lower() != sha:
-            raise Bad(f'image does not match this YAML: saved by an interrupted save? '
+            raise Bad(f'image does not match this YAML: interrupted save, or the image was edited or replaced '
                       f'({image_path} is {len(data)} bytes, sha256 {sha}; the YAML records '
                       f'{int(want_bytes)} bytes, sha256 {want_sha.lower()})')
     width, height, _ = read_pgm(data, image_path)

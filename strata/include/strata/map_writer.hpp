@@ -9,6 +9,7 @@
 #include <locale>
 #include <sstream>
 #include <string>
+#include <sys/stat.h>
 #include <unistd.h>
 #include "strata/sha256.hpp"
 #include "strata_core/types.hpp"
@@ -34,8 +35,9 @@ namespace strata {
 //    `strata_image_bytes` (the PGM's size) and `strata_image_sha256` (64 hex digits,
 //    single-quoted so it stays a string), both over the exact PGM bytes written.
 //    map_server ignores these keys and does not check them: verifyMapPair below, or
-//    scripts/check_saved_map.py, does. They tie the YAML to the image bytes only: two
-//    saves whose images are byte-identical are not told apart.
+//    check_saved_map.py (installed with this package), does. They tie the YAML to the
+//    image bytes only: two saves whose images are byte-identical are not told apart,
+//    and any later edit of the image fails the check until the keys are rewritten.
 struct MapWriteResult {
   bool ok{false};
   std::string message;   // "saved <pgm> + <yaml>", or the failing path and the reason
@@ -177,7 +179,7 @@ inline MapWriteResult writeMapPair(const strata_core::GridMap& g, const std::str
 // Whether a saved YAML and the image beside it belong to the same save.
 enum class MapPairStatus {
   Ok,            // the image has the size and SHA-256 the YAML records
-  Mismatch,      // it does not: e.g. the new PGM beside the previous YAML
+  Mismatch,      // it does not: e.g. the new PGM beside the previous YAML, or an edited image
   Unverifiable,  // the YAML records neither (an older save, or another tool's)
   Invalid        // a file cannot be read, or the YAML is not what writeMapPair writes
 };
@@ -186,8 +188,12 @@ struct MapVerifyResult {
   std::string message;
 };
 
-// Reads a whole file. False when it cannot be opened or read.
+// Reads a whole regular file. False when it cannot be opened or read, or when the
+// path is a directory or another non-regular file (an ifstream opens a directory
+// and reads nothing, which would pass for an empty file).
 inline bool readFile(const std::string& path, std::string& out) {
+  struct stat st;
+  if (::stat(path.c_str(), &st) != 0 || !S_ISREG(st.st_mode)) return false;
   std::ifstream f(path, std::ios::binary);
   if (!f) return false;
   std::ostringstream s;
@@ -199,12 +205,12 @@ inline bool readFile(const std::string& path, std::string& out) {
 // Checks the image a saved YAML names against the size and SHA-256 that YAML records.
 // It reads the flat YAML writeMapPair writes (one "key: value" per line) and resolves
 // a relative image name next to the YAML, as map_server does, so a moved pair
-// verifies. scripts/check_saved_map.py is the same check for a deployer, and also
-// validates the PGM header, resolution and origin.
+// verifies. A line may end in CRLF. check_saved_map.py is the same check for a
+// deployer, and also validates the PGM header, resolution and origin.
 inline MapVerifyResult verifyMapPair(const std::string& yaml_path) {
   using S = MapPairStatus;
   std::string yaml;
-  if (!readFile(yaml_path, yaml)) return {S::Invalid, "cannot read " + yaml_path};
+  if (!readFile(yaml_path, yaml)) return {S::Invalid, "cannot read " + yaml_path + " (missing, unreadable or not a regular file)"};
   std::string image_name, bytes_text, sha;
   bool has_image = false, has_bytes = false, has_sha = false;
   const auto unquoted = [](const std::string& v) {   // 'it''s' -> it's
@@ -218,6 +224,7 @@ inline MapVerifyResult verifyMapPair(const std::string& yaml_path) {
   };
   std::istringstream lines(yaml);
   for (std::string line; std::getline(lines, line);) {
+    if (!line.empty() && line.back() == '\r') line.pop_back();   // CRLF line end
     const std::size_t colon = line.find(": ");
     if (colon == std::string::npos) continue;
     const std::string key = line.substr(0, colon), value = unquoted(line.substr(colon + 2));
@@ -229,7 +236,8 @@ inline MapVerifyResult verifyMapPair(const std::string& yaml_path) {
   const std::string image_path =
       image_name.front() == '/' ? image_name : dirName(yaml_path) + "/" + image_name;
   std::string image;
-  if (!readFile(image_path, image)) return {S::Invalid, "cannot read the image " + image_path};
+  if (!readFile(image_path, image))
+    return {S::Invalid, "cannot read the image " + image_path + " (missing, unreadable or not a regular file)"};
   if (!has_bytes && !has_sha)
     return {S::Unverifiable, yaml_path + " records no strata_image_bytes / strata_image_sha256; " +
                              image_path + " cannot be matched to it"};
@@ -237,7 +245,8 @@ inline MapVerifyResult verifyMapPair(const std::string& yaml_path) {
     return {S::Invalid, yaml_path + " records only one of strata_image_bytes / strata_image_sha256"};
   const std::string actual_sha = sha256Hex(image);
   if (bytes_text != std::to_string(image.size()) || sha != actual_sha)
-    return {S::Mismatch, "image does not match this YAML: saved by an interrupted save? (" + image_path +
+    return {S::Mismatch, "image does not match this YAML: interrupted save, or the image was edited or replaced (" +
+                         image_path +
                          " is " + std::to_string(image.size()) + " bytes, sha256 " + actual_sha + "; " +
                          yaml_path + " records " + bytes_text + " bytes, sha256 " + sha + ")"};
   return {S::Ok, image_path + " matches " + yaml_path + " (" + std::to_string(image.size()) +
