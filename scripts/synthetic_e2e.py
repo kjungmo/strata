@@ -29,13 +29,22 @@ a door cell the ray skips is never observed free, so it rightly graduates to Sta
 This is a ROS-path test (topics -> node -> map), not a field result: it shows the shipped parameters classify a clean scene as the
 paper's E1-E3 harness does, on Humble, through the real node.
 
-Usage: synthetic_e2e.py grid2d|voxel3d PARAMS_YAML [--windows N]
+--check-map-server (grid2d) closes the loop to Nav2: after ~/save_map it loads the
+saved YAML in nav2_map_server (own namespace, lifecycle configure + activate), and
+requires the map it serves to match the last published map in size, resolution and
+origin, and cell by cell as 0->0, 100->100, 50/75/-1 -> -1 (map_server must serve
+only -1, 0, 100). A row flip, origin or resolution error in the saved pair fails it.
+
+Usage: synthetic_e2e.py grid2d|voxel3d PARAMS_YAML [--windows N] [--check-map-server]
 Run against `ros2 launch strata <backend>.launch.py rviz:=false` (use_sim_time).
 """
 import argparse
+import collections
 import math
 import os
+import signal
 import struct
+import subprocess
 import sys
 import time
 
@@ -373,6 +382,95 @@ def save_map(node, timeout):
     return future.result()
 
 
+ROUNDTRIP_NS = '/strata_e2e_roundtrip'   # map_server's namespace, so its map topic cannot collide
+# What nav2_map_server must serve for each published value, given the PGM shades
+# onSave writes (free 254, transient/periodic 100, static 0, unknown 205) and the
+# thresholds beside them (occupied_thresh 0.65, free_thresh 0.196, trinary mode).
+SERVED_FOR = {0: 0, 100: 100, 50: -1, 75: -1, -1: -1}
+
+
+def wait_future(node, future, timeout, what):
+    rclpy.spin_until_future_complete(node, future, timeout_sec=timeout)
+    if future.result() is None:
+        raise RuntimeError(f'{what} did not answer within {timeout:g} s')
+    return future.result()
+
+
+def stop_group(proc):
+    """SIGTERM the subprocess's process group, SIGKILL if it lingers."""
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+        proc.wait(timeout=10)
+    except ProcessLookupError:
+        pass
+    except subprocess.TimeoutExpired:
+        os.killpg(proc.pid, signal.SIGKILL)
+        proc.wait()
+
+
+def serve_saved_map(node, yaml_path, timeout):
+    """Load the saved YAML in nav2_map_server, bring it active, return the map it serves."""
+    from lifecycle_msgs.msg import Transition
+    from lifecycle_msgs.srv import ChangeState
+    log = open('map_server_roundtrip.log', 'wb')
+    proc = subprocess.Popen(
+        ['ros2', 'run', 'nav2_map_server', 'map_server', '--ros-args',
+         '-r', f'__ns:={ROUNDTRIP_NS}', '-r', '__node:=map_server',
+         '-p', f'yaml_filename:={yaml_path}'],
+        stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        served = []
+        qos = QoSProfile(depth=1, reliability=ReliabilityPolicy.RELIABLE,
+                         durability=DurabilityPolicy.TRANSIENT_LOCAL)
+        sub = node.create_subscription(OccupancyGrid, f'{ROUNDTRIP_NS}/map', served.append, qos)
+        client = node.create_client(ChangeState, f'{ROUNDTRIP_NS}/map_server/change_state')
+        if not client.wait_for_service(timeout_sec=timeout):
+            raise RuntimeError(f'{ROUNDTRIP_NS}/map_server/change_state not available')
+        for tid, name in ((Transition.TRANSITION_CONFIGURE, 'configure'),
+                          (Transition.TRANSITION_ACTIVATE, 'activate')):
+            req = ChangeState.Request()
+            req.transition.id = tid
+            if not wait_future(node, client.call_async(req), timeout, f'map_server {name}').success:
+                raise RuntimeError(f'map_server failed to {name} with {yaml_path}')
+        end = time.monotonic() + timeout
+        while not served and time.monotonic() < end:
+            rclpy.spin_once(node, timeout_sec=0.1)
+        node.destroy_subscription(sub)
+        node.destroy_client(client)
+        if not served:
+            raise RuntimeError(f'no {ROUNDTRIP_NS}/map from the active map_server')
+        return served[-1]
+    finally:
+        stop_group(proc)
+        log.close()
+
+
+def check_roundtrip(published, served):
+    """Compare the map the node published with the one map_server serves from the saved file."""
+    pi, si = published.info, served.info
+    results = []
+    same_size = (pi.width, pi.height) == (si.width, si.height)
+    geo = max(abs(pi.resolution - si.resolution), abs(pi.origin.position.x - si.origin.position.x),
+              abs(pi.origin.position.y - si.origin.position.y))
+    results.append((same_size and geo <= 1e-9,
+                    f'map_server info: {si.width}x{si.height}, resolution {si.resolution:g}, origin '
+                    f'({si.origin.position.x:g}, {si.origin.position.y:g}) vs published {pi.width}x{pi.height}, '
+                    f'{pi.resolution:g}, ({pi.origin.position.x:g}, {pi.origin.position.y:g}) '
+                    f'(need equal size; resolution and origin within 1e-9, max diff {geo:.3g})'))
+    if same_size:
+        bad = [(i, p, s) for i, (p, s) in enumerate(zip(published.data, served.data))
+               if SERVED_FOR.get(p) != s]
+        pub_hist = dict(sorted(collections.Counter(published.data).items()))
+        results.append((not bad, f'map_server cell by cell over {len(published.data)} cells, published {pub_hist} '
+                                 f'(0->0, 100->100, 50/75/-1 -> -1): {len(bad)} mismatches (need 0)'
+                                 + (f'; first (index, published, served): {bad[:5]}' if bad else '')))
+    else:
+        results.append((False, 'map_server cell by cell: not compared, the sizes differ'))
+    hist = dict(sorted(collections.Counter(served.data).items()))
+    results.append((set(hist) <= {-1, 0, 100}, f'map_server served values {hist} (need a subset of -1, 0, 100)'))
+    return results
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('backend', choices=['grid2d', 'voxel3d'])
@@ -389,7 +487,12 @@ def main():
                     help='after the stream, wait input_timeout_s and expect an ERROR status')
     ap.add_argument('--expect-detuned', action='store_true',
                     help='negative control: expect the door Static, not Periodic (scan windows under loss)')
+    ap.add_argument('--check-map-server', action='store_true',
+                    help='grid2d: load the saved YAML in nav2_map_server and compare the map it serves, '
+                         'cell by cell, with the last map the node published')
     args = ap.parse_args()
+    if args.check_map_server and args.backend != 'grid2d':
+        ap.error('--check-map-server applies to grid2d only')
 
     params = {}
     for section in (yaml.safe_load(open(args.params)) or {}).values():
@@ -454,6 +557,7 @@ def main():
         results.append((ok, f'input timeout: last status level {level(tail[0]) if tail else None}, '
                             f'"{tail[0].message if tail else ""}" (need ERROR "no input ...")'))
 
+    before_save = drv.maps[-1]   # the stream has ended, so this is the state the file captures
     res = save_map(node, args.timeout)
     saved = res.message.replace('saved ', '').split(' + ')[0]
     results.append((res.success and os.path.getsize(saved) > 0, f'save_map: {res.message}'))
@@ -465,6 +569,19 @@ def main():
         free_px, occ_px = pixels.count(bytes([254])), pixels.count(bytes([0]))
         results.append((free_px > 0 and occ_px > 0,
                         f'saved PGM has free (254) and occupied (0) pixels: {free_px} free, {occ_px} occupied'))
+    if args.check_map_server and res.success:
+        # The node keeps publishing on its timer. With no input since the stream ended,
+        # the map published after the save must equal the one before it; compare
+        # map_server against that map, so it is the state the saved file holds.
+        after_save = drv.latest_map(len(drv.maps), args.timeout)
+        stable = (after_save.info == before_save.info and list(after_save.data) == list(before_save.data))
+        results.append((stable, f'published map unchanged across save_map (needed to compare it with the file): {stable}'))
+        yaml_path = os.path.splitext(saved)[0] + '.yaml'
+        try:
+            results += check_roundtrip(after_save, serve_saved_map(node, os.path.abspath(yaml_path), args.timeout))
+        except RuntimeError as e:
+            tail = open('map_server_roundtrip.log', errors='replace').read()[-1500:]
+            results.append((False, f'map_server round trip: {e}\n{tail}'))
 
     for ok, line in results:
         print(('ok    ' if ok else 'FAIL  ') + line)

@@ -211,7 +211,8 @@ synthetic wall, periodic door and moving object over its real topics and TF, and
 checks that the published map keeps the wall static, labels the door periodic
 (grid2d) or keeps it out of the static map (voxel3d), never makes the moving
 object static, renders cleared space free (grid2d), and that `~/save_map` writes
-a file.
+a file. For grid2d it then loads the saved PGM + YAML in `nav2_map_server` and
+checks the map it serves against the last published `/strata/map` (see below).
 
 ## 🔌 Interface
 
@@ -235,9 +236,13 @@ where the sensor no longer looks reads free until it is observed; do not treat
 as 254, transient and periodic as 100 and static as 0, so with the thresholds
 written beside it (`occupied_thresh 0.65`, `free_thresh 0.196`)
 `nav2_map_server` reads free cells as free, static cells as occupied, and
-transient and periodic cells as unknown. CI checks that the synthetic scene's
-PGM has free and occupied pixels; the map_server load was checked once by hand
-on Humble, not in CI.
+transient and periodic cells as unknown. CI checks this round trip on Humble on
+the synthetic scene (`synthetic_e2e.py --check-map-server`): it loads the saved
+YAML in `nav2_map_server`, brings it active, and requires the served map to have
+the published width and height, resolution and origin within 1e-9, and every one
+of the 160 000 cells to map 0→0, 100→100, 50/75/-1→-1, with only -1, 0 and 100
+served. The synthetic scene's final map holds free, static, periodic and unknown
+cells but no transient (50) cell, which shares the periodic shade in the PGM.
 
 **Input rate.** A window is either `layer_interval` integrated scans
 (`window_mode: "scans"`, the engine rule and the code default) or

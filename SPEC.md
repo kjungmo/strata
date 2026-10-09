@@ -395,7 +395,16 @@ sensor rate overrides the estimate, a back jump restarts the intervals).
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the
-`ros2_humble` env.
+`ros2_humble` env. On Humble, CI also launches each backend with its shipped
+YAML and checks every parameter is applied (`scripts/check_param_binding.py`),
+and feeds five synthetic scenarios through the real topics and TF
+(`scripts/synthetic_e2e.py`). One grid2d scenario adds `--check-map-server`:
+after `~/save_map` it loads the saved YAML in `nav2_map_server` (own namespace,
+lifecycle configure + activate) and requires the map it serves to equal the last
+published `/strata/map` in width, height, resolution and origin (within 1e-9)
+and cell by cell under 0→0, 100→100, 50/75/-1→-1 (zero mismatches; served
+values only -1, 0, 100), after asserting the published map did not change
+across the save.
 
 ---
 
