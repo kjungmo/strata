@@ -29,8 +29,9 @@ a door cell the ray skips is never observed free, so it rightly graduates to Sta
 This is a ROS-path test (topics -> node -> map), not a field result: it shows the shipped parameters classify a clean scene as the
 paper's E1-E3 harness does, on Humble, through the real node.
 
---check-map-server (grid2d) closes the loop to Nav2: after ~/save_map it loads the
-saved YAML in nav2_map_server (own namespace, lifecycle configure + activate), and
+--check-map-server (grid2d) closes the loop to Nav2: after ~/save_map it moves the
+saved pair to a fresh directory, loads the YAML there in nav2_map_server (own
+namespace, lifecycle configure + activate), and
 requires the map it serves to match the last published map in size, resolution and
 origin, and cell by cell as 0->0, 100->100, 50/75/-1 -> -1 (map_server must serve
 only -1, 0, 100). A row flip, origin or resolution error in the saved pair fails it.
@@ -42,10 +43,12 @@ import argparse
 import collections
 import math
 import os
+import shutil
 import signal
 import struct
 import subprocess
 import sys
+import tempfile
 import time
 
 import rclpy
@@ -454,8 +457,8 @@ def check_roundtrip(published, served):
               abs(pi.origin.position.y - si.origin.position.y))
     results.append((same_size and geo <= 1e-9,
                     f'map_server info: {si.width}x{si.height}, resolution {si.resolution:g}, origin '
-                    f'({si.origin.position.x:g}, {si.origin.position.y:g}) vs published {pi.width}x{pi.height}, '
-                    f'{pi.resolution:g}, ({pi.origin.position.x:g}, {pi.origin.position.y:g}) '
+                    f'({si.origin.position.x:.17g}, {si.origin.position.y:.17g}) vs published {pi.width}x{pi.height}, '
+                    f'{pi.resolution:g}, ({pi.origin.position.x:.17g}, {pi.origin.position.y:.17g}) '
                     f'(need equal size; resolution and origin within 1e-9, max diff {geo:.3g})'))
     if same_size:
         bad = [(i, p, s) for i, (p, s) in enumerate(zip(published.data, served.data))
@@ -576,12 +579,21 @@ def main():
         after_save = drv.latest_map(len(drv.maps), args.timeout)
         stable = (after_save.info == before_save.info and list(after_save.data) == list(before_save.data))
         results.append((stable, f'published map unchanged across save_map (needed to compare it with the file): {stable}'))
-        yaml_path = os.path.splitext(saved)[0] + '.yaml'
+        # Move the pair to a fresh directory first: map_server must find the image
+        # relative to the YAML, as it would after the map is copied to a robot.
+        moved_dir = tempfile.mkdtemp(prefix='strata_moved_map_')
         try:
+            base = os.path.splitext(saved)[0]
+            for ext in ('.pgm', '.yaml'):
+                shutil.move(base + ext, os.path.join(moved_dir, os.path.basename(base) + ext))
+            yaml_path = os.path.join(moved_dir, os.path.basename(base) + '.yaml')
+            results.append((not os.path.exists(base + '.pgm'), f'saved pair moved to {moved_dir} before loading'))
             results += check_roundtrip(after_save, serve_saved_map(node, os.path.abspath(yaml_path), args.timeout))
         except RuntimeError as e:
             tail = open('map_server_roundtrip.log', errors='replace').read()[-1500:]
             results.append((False, f'map_server round trip: {e}\n{tail}'))
+        finally:
+            shutil.rmtree(moved_dir, ignore_errors=True)
 
     for ok, line in results:
         print(('ok    ' if ok else 'FAIL  ') + line)
