@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 42 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 46 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -321,7 +321,10 @@ are byte-identical (the same cells saved again under a different
 pair, not tampering: whoever can rewrite the image can rewrite the YAML. The
 node does not run this check itself and nothing in Nav2 does; `verifyMapPair`
 in [`map_writer.hpp`](strata/include/strata/map_writer.hpp) is the same
-comparison in C++ for a caller that wants it. CI runs the checker on the pair
+comparison in C++ for a caller that wants it: it reads a hand-edited YAML by
+the checker's rules (quoting, comments, blanks after the colon, leading zeros
+in the byte count, upper-case hex; a key given twice is refused), and its
+gtests run the checker on every such YAML and expect the same verdict. CI runs the checker on the pair
 the round-trip scenario saved (which map_server has just loaded, so the extra
 keys are harmless to it), on that YAML beside an image with one pixel changed
 and beside an image of another size (both exit 1), on the edited image with the

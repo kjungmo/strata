@@ -1,3 +1,4 @@
+#include <cctype>
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
@@ -8,6 +9,7 @@
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
+#include <sys/wait.h>
 #include <unistd.h>
 #include <gtest/gtest.h>
 #include "strata/map_writer.hpp"
@@ -403,4 +405,146 @@ TEST(MapWriter, YamlWithCrlfLineEndsVerifiesLikeTheLfOne) {
   spit(base + ".yaml", toCrlf(lf));
   const auto mismatch = verifyMapPair(base + ".yaml");
   EXPECT_EQ(mismatch.status, MapPairStatus::Mismatch) << mismatch.message;
+}
+
+namespace {
+// Exit status of check_saved_map.py (0 OK, 1 FAIL, 3 UNVERIFIABLE) on a YAML; -1 if it did not run.
+int checkerExit(const std::string& yaml_path) {
+  const std::string cmd = std::string("python3 '") + STRATA_CHECK_SAVED_MAP + "' '" + yaml_path + "' >/dev/null 2>&1";
+  const int rc = std::system(cmd.c_str());
+  return rc != -1 && WIFEXITED(rc) ? WEXITSTATUS(rc) : -1;
+}
+// A saved 3 x 2 pair whose YAML lines a test rewrites by hand, as a deployer would.
+struct EditedPair {
+  TempDir dir;
+  std::string base, yaml, bytes, sha;
+  EditedPair() : base(dir.path + "/m") {
+    EXPECT_TRUE(writeMapPair(grid(3, 2, 0.05, 0.0, 0.0), base).ok);
+    yaml = slurp(base + ".yaml");
+    const std::string pgm = slurp(base + ".pgm");
+    bytes = std::to_string(pgm.size());
+    sha = sha256Hex(pgm);
+  }
+  // The YAML with the line of `key` replaced by `line` (no line end in `line`).
+  std::string with(const std::string& key, const std::string& line) const {
+    std::istringstream in(yaml);
+    std::string out;
+    for (std::string l; std::getline(in, l);) out += (l.rfind(key + ":", 0) == 0 ? line : l) + "\n";
+    return out;
+  }
+  // The status verifyMapPair gives this YAML text. It also runs check_saved_map.py on
+  // the same file and expects the matching exit status, so every row of every test
+  // below is an agreement case between the two.
+  MapPairStatus verify(const std::string& text) const {
+    spit(base + ".yaml", text);
+    const MapPairStatus status = verifyMapPair(base + ".yaml").status;
+    const int want = status == MapPairStatus::Ok ? 0 : status == MapPairStatus::Unverifiable ? 3 : 1;
+    EXPECT_EQ(checkerExit(base + ".yaml"), want) << "check_saved_map.py disagrees on:\n" << text;
+    return status;
+  }
+};
+std::string upper(std::string s) {
+  for (char& c : s) c = static_cast<char>(std::toupper(static_cast<unsigned char>(c)));
+  return s;
+}
+}  // namespace
+
+// Rewriting the two keys by hand is the documented remedy after an image edit, so a
+// YAML that check_saved_map.py accepts must verify here too, and the other way round.
+// Each row is OK (exit 0) for the checker. Before the fix only the last two rows
+// were Ok here: the tab row was Invalid and the others Mismatch.
+TEST(MapWriter, HandEditedKeysVerifyAsTheCheckerReadsThem) {
+  const EditedPair p;
+  ASSERT_EQ(p.verify(p.yaml), MapPairStatus::Ok);
+  const std::string b = "strata_image_bytes", s = "strata_image_sha256";
+  const struct { const char* what; std::string text; } rows[] = {
+      {"leading zeros in the byte count", p.with(b, b + ": 00" + p.bytes)},
+      {"zero-padded to 18 digits", p.with(b, b + ": " + std::string(18 - p.bytes.size(), '0') + p.bytes)},
+      {"upper-case hash", p.with(s, s + ": '" + upper(p.sha) + "'")},
+      {"double-quoted hash", p.with(s, s + ": \"" + p.sha + "\"")},
+      {"unquoted hash", p.with(s, s + ": " + p.sha)},
+      {"quoted byte count", p.with(b, b + ": '" + p.bytes + "'")},
+      {"trailing spaces after the byte count", p.with(b, b + ": " + p.bytes + "  ")},
+      {"comment after the byte count", p.with(b, b + ": " + p.bytes + " # edited")},
+      {"comment after the hash", p.with(s, s + ": '" + p.sha + "'\t# edited")},
+      {"two spaces after the colon", p.with(b, b + ":  " + p.bytes)},
+      {"tab after the colon", p.with(b, b + ":\t" + p.bytes)},
+      {"spaces before the colon", p.with(s, s + " : '" + p.sha + "'")},
+      {"quoted key", p.with(b, "'" + b + "': " + p.bytes)},
+      {"lone CR line ends", [&] { std::string t = p.yaml; for (char& c : t) if (c == '\n') c = '\r'; return t; }()},
+      {"comment and blank lines", "# saved map\n\n---\n" + p.yaml + "  # end\n"},
+      {"commented-out copies of the keys", p.yaml + "# strata_image_bytes: 1\n#strata_image_sha256: 'x'\n"},
+  };
+  for (const auto& r : rows) EXPECT_EQ(p.verify(r.text), MapPairStatus::Ok) << r.what << "\n" << r.text;
+  // The same edits still fail once the image is another one.
+  std::string pgm = slurp(p.base + ".pgm");
+  pgm.back() = static_cast<char>(pgm.back() ^ 1);
+  spit(p.base + ".pgm", pgm);
+  for (const auto& r : rows) EXPECT_EQ(p.verify(r.text), MapPairStatus::Mismatch) << r.what << "\n" << r.text;
+}
+
+// The checker refuses a YAML that gives a key twice (FAIL), even with the same value:
+// which of the two lines a reader takes is not defined. Before the fix the first,
+// second and last rows were Ok here.
+TEST(MapWriter, KeyGivenTwiceIsInvalid) {
+  const EditedPair p;
+  const std::string rows[] = {
+      p.yaml + "strata_image_bytes: " + p.bytes + "\n",
+      p.yaml + "strata_image_sha256: '" + p.sha + "'\n",
+      p.yaml + "strata_image_bytes: 1\n",
+      p.yaml + "image: 'm.pgm'\n",
+      p.yaml + "'strata_image_bytes' : " + p.bytes + "\n",
+  };
+  for (const auto& text : rows) {
+    EXPECT_EQ(p.verify(text), MapPairStatus::Invalid) << text;
+    const auto v = verifyMapPair(p.base + ".yaml");
+    EXPECT_NE(v.message.find("appears twice"), std::string::npos) << v.message;
+  }
+}
+
+// Values the checker refuses outright (FAIL before any comparison) are Invalid, and
+// no digit run is turned into a number: 18 digits is the cap, as in the checker.
+TEST(MapWriter, ByteCountsAndHashesTheCheckerRefusesAreInvalid) {
+  const EditedPair p;
+  const std::string b = "strata_image_bytes", s = "strata_image_sha256";
+  const struct { const char* what; std::string text; MapPairStatus want; } rows[] = {
+      {"18 nines: a count, the wrong one", p.with(b, b + ": " + std::string(18, '9')), MapPairStatus::Mismatch},
+      {"19 digits", p.with(b, b + ": " + std::string(19 - p.bytes.size(), '0') + p.bytes), MapPairStatus::Invalid},
+      {"5000 digits", p.with(b, b + ": " + std::string(5000, '9')), MapPairStatus::Invalid},
+      {"signed count", p.with(b, b + ": +" + p.bytes), MapPairStatus::Invalid},
+      {"count with a decimal point", p.with(b, b + ": " + p.bytes + ".0"), MapPairStatus::Invalid},
+      {"empty count", p.with(b, b + ":"), MapPairStatus::Invalid},
+      {"count as a list", p.with(b, b + ": [" + p.bytes + "]"), MapPairStatus::Invalid},
+      {"63 hex digits", p.with(s, s + ": '" + p.sha.substr(1) + "'"), MapPairStatus::Invalid},
+      {"65 hex digits", p.with(s, s + ": '0" + p.sha + "'"), MapPairStatus::Invalid},
+      {"a letter that is not hex", p.with(s, s + ": 'g" + p.sha.substr(1) + "'"), MapPairStatus::Invalid},
+      {"hash with a 0x prefix", p.with(s, s + ": 0x" + p.sha), MapPairStatus::Invalid},
+      {"quote not closed", p.with(s, s + ": '" + p.sha), MapPairStatus::Invalid},
+      {"double quote not closed", p.with(s, s + ": \"" + p.sha), MapPairStatus::Invalid},
+  };
+  for (const auto& r : rows) EXPECT_EQ(p.verify(r.text), r.want) << r.what << "\n" << r.text;
+}
+
+// Lines the checker's reader does not take make the whole YAML Invalid, with or
+// without the keys: an indented key is not a top-level key, so it must not count.
+TEST(MapWriter, YamlTheCheckerRefusesIsInvalid) {
+  const EditedPair p;
+  const std::string b = "strata_image_bytes";
+  const struct { const char* what; std::string text; } rows[] = {
+      {"indented line", p.with("negate", " negate: 0")},
+      {"no blank after the colon", p.with("negate", "negate:0")},
+      {"line without a colon", p.yaml + "strata\n"},
+      {"flow mapping value", p.yaml + "extra: {a: 1}\n"},
+      {"list item with no list open", p.yaml + "- 1\n"},
+      {"list not closed on its line", p.with("origin", "origin: [0.0, 0.0,")},
+  };
+  for (const auto& r : rows) {
+    EXPECT_EQ(p.verify(r.text), MapPairStatus::Invalid) << r.what << "\n" << r.text;
+    EXPECT_EQ(p.verify(withoutImageKeys(r.text)), MapPairStatus::Invalid) << r.what << " (no keys)";
+  }
+  EXPECT_EQ(p.verify(p.with(b, " " + b + ": " + p.bytes)), MapPairStatus::Invalid);
+  EXPECT_EQ(p.verify(p.with(b, b + ":" + p.bytes)), MapPairStatus::Invalid);
+  // A block list and a double-quoted image name are read, as the checker reads them.
+  EXPECT_EQ(p.verify(p.with("origin", "origin:\n  - 0.0\n  - 0.0\n  - 0.0")), MapPairStatus::Ok);
+  EXPECT_EQ(p.verify(p.with("image", "image: \"m.pgm\"  # the image")), MapPairStatus::Ok);
 }

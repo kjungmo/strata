@@ -400,7 +400,7 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **42 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **46 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
@@ -408,7 +408,7 @@ nanosecond stamps close exactly every period, reorder kept and a bag loop
 re-anchors, a short bag loop re-anchors, a huge forward jump re-anchors) and
 `test_rate_monitor` (4; a steady stream has no loss, 40 % loss is estimated, the
 sensor rate overrides the estimate, a back jump restarts the intervals),
-`test_map_writer` (21; PGM rows top down with the expected shades and a YAML
+`test_map_writer` (25; PGM rows top down with the expected shades and a YAML
 naming the image relatively, resolution and origin read back within 1e-12,
 numbers ignore a global locale with grouping and a decimal comma, the image
 name is single-quoted with quotes doubled, a save_path without a file name is
@@ -426,7 +426,15 @@ failed second rename leaves fails it too; one changed or one extra image byte
 fails it; a YAML without the keys is unverifiable, not OK, and one with a
 single key is invalid; a missing YAML or image is invalid; an image or YAML
 path that is a directory is invalid, with or without the keys; a YAML with
-CRLF line ends gives the same three results as the LF one) and `test_tf_wait` (7; a live clock waits 0.1 s, a 0.2x / 0.1x sim
+CRLF line ends gives the same three results as the LF one; hand-edited keys
+verify as the checker reads them (leading zeros, upper-case, double-quoted or
+unquoted hash, quoted count, trailing blanks or a comment, two spaces or a tab
+after the colon, a quoted key, lone CR line ends) and fail again beside another
+image; a key given twice is invalid even with the same value; a count over 18
+digits, signed or not whole, a hash that is not 64 hex digits and an unclosed
+quote are invalid; a YAML line the checker's reader refuses is invalid, with or
+without the keys; each of these YAMLs is also given to `check_saved_map.py`,
+whose exit status must match) and `test_tf_wait` (7; a live clock waits 0.1 s, a 0.2x / 0.1x sim
 clock still gets 0.1 s of ROS time, a coarse 10 Hz sim clock at 0.5x and at 0.2x
 gets its full 0.1 s, a clock frozen from the start is waited on at most once to
 the cap and then not at all, a clock that stops is recognised within 1 s, a
@@ -516,9 +524,17 @@ them: `strata_image_bytes` from `stat -c %s map.pgm` and `strata_image_sha256`
 `OK` goes to stdout, the other lines to stderr; after a non-zero exit
 `ros2 run` adds its own `[ros2run]: Process exited with failure N` line. `verifyMapPair(yaml_path)` in
 `map_writer.hpp` is the same size-and-hash comparison in ROS-free C++
-(`Ok`, `Mismatch`, `Unverifiable`, `Invalid`) for the flat YAML `writeMapPair`
-writes; a path that is not a regular file is `Invalid`, and CRLF line ends are
-read like LF, as in the checker. It does not validate the PGM header,
+(`Ok`, `Mismatch`, `Unverifiable`, `Invalid`). It reads the YAML by the
+checker's rules, so a hand-edited YAML gets the same verdict from both: a
+value may be plain, single-quoted or double-quoted, with any blanks after the
+colon and a trailing ` # comment`; the byte count is 1 to 18 digits, leading
+zeros allowed; the hash is 64 hex digits in either case; a key given twice, a
+nested line or another line the checker refuses is `Invalid`, as is a path
+that is not a regular file; CRLF line ends are read like LF. `Ok` is exit 0,
+`Unverifiable` exit 3, `Mismatch` and `Invalid` exit 1, and the gtests run the
+checker on each hand-edited YAML to hold the two together. Two differences
+remain: the C++ treats only ASCII blanks as whitespace and does not reject
+text that is not UTF-8. It does not validate the PGM header,
 resolution or origin, and the node does not call it. Limits: the keys tie the YAML to the image bytes only,
 so two saves with byte-identical images (the same cells under a different
 `grid_origin_*`) are not told apart; and they are an integrity check against a

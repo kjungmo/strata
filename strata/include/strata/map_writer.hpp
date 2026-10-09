@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <cerrno>
 #include <cstdint>
 #include <cstdio>
@@ -7,6 +8,7 @@
 #include <fstream>
 #include <limits>
 #include <locale>
+#include <map>
 #include <sstream>
 #include <string>
 #include <sys/stat.h>
@@ -202,53 +204,200 @@ inline bool readFile(const std::string& path, std::string& out) {
   return !f.bad();
 }
 
+// The flat map YAML, read by the rules of check_saved_map.py (read_flat_yaml and its
+// helpers), which is the specification: the two must give the same verdict on a
+// hand-edited YAML. One `key: value` per line; a value is a plain, single-quoted or
+// double-quoted scalar, or a `[a, b]` / `- a` list; a `#` at the line start or after
+// a space or tab starts a comment; a line ends at LF, CRLF or CR. Anything else
+// (nesting, a key given twice, an unclosed quote, a `{...}` value) is refused, not
+// guessed at. Whitespace here is ASCII only, and the text is not checked to be UTF-8.
+namespace flat_yaml {
+struct Value {
+  bool is_scalar{false};   // false: a list (its items are checked, not kept)
+  std::string text;
+};
+inline bool isBlank(char c) { return c == ' ' || c == '\t' || c == '\x1f'; }
+inline std::string rtrimmed(std::string s) {
+  while (!s.empty() && isBlank(s.back())) s.pop_back();
+  return s;
+}
+inline std::string trimmed(const std::string& s) {
+  std::size_t b = 0;
+  while (b < s.size() && isBlank(s[b])) ++b;
+  return rtrimmed(s.substr(b));
+}
+// Drops a `# comment` outside quotes.
+inline std::string withoutComment(const std::string& line) {
+  char quote = 0;
+  for (std::size_t i = 0; i < line.size(); ++i) {
+    const char c = line[i];
+    if (quote) { if (c == quote) quote = 0; }
+    else if (c == '\'' || c == '"') quote = c;
+    else if (c == '#' && (i == 0 || line[i - 1] == ' ' || line[i - 1] == '\t')) return line.substr(0, i);
+  }
+  return line;
+}
+// One scalar: 'it''s' -> it's, "a\"b" -> a"b, plain text as it is. False when a quote is not closed.
+inline bool scalar(const std::string& raw, std::string& out) {
+  const std::string t = trimmed(raw);
+  out.clear();
+  if (!t.empty() && t.front() == '\'') {
+    if (t.size() < 2 || t.back() != '\'') return false;
+    for (std::size_t i = 1; i + 1 < t.size(); ++i) {
+      if (t[i] == '\'') {
+        if (i + 2 < t.size() && t[i + 1] == '\'') ++i;
+        else return false;                       // a lone quote inside the value
+      }
+      out += t[i];
+    }
+    return true;
+  }
+  if (!t.empty() && t.front() == '"') {
+    if (t.size() < 2 || t.back() != '"') return false;
+    const std::string body = t.substr(1, t.size() - 2);
+    std::size_t backslashes = 0;
+    for (char c : body) {
+      if (c == '\\') { ++backslashes; continue; }
+      if (c == '"' && backslashes % 2 == 0) return false;   // an unescaped quote inside the value
+      backslashes = 0;
+    }
+    for (std::size_t i = 0; i < body.size(); ++i) {
+      if (body[i] == '\\' && i + 1 < body.size()) {
+        ++i;
+        out += body[i] == 'n' ? '\n' : body[i] == 't' ? '\t' : body[i];
+      } else {
+        out += body[i];
+      }
+    }
+    return true;
+  }
+  out = t;
+  return true;
+}
+inline bool value(const std::string& raw, Value& v) {
+  const std::string t = trimmed(raw);   // not empty: the caller checked
+  v = Value{};
+  if (t.front() == '[') {
+    if (t.back() != ']') return false;
+    const std::string inner = trimmed(t.substr(1, t.size() - 2));
+    std::string item;
+    for (std::size_t from = 0; !inner.empty() && from <= inner.size();) {
+      const std::size_t comma = std::min(inner.find(',', from), inner.size());
+      if (!scalar(inner.substr(from, comma - from), item)) return false;
+      from = comma + 1;
+    }
+    return true;
+  }
+  if (std::string("{|>&*!").find(t.front()) != std::string::npos) return false;
+  v.is_scalar = true;
+  return scalar(t, v.text);
+}
+// The top-level mapping. False, with the reason in `why`, when a line is not one this reader takes.
+inline bool read(const std::string& text, std::map<std::string, Value>& out, std::string& why) {
+  out.clear();
+  bool list_open = false;   // the last key had no value on its line: `- item` lines may follow
+  std::size_t number = 0;
+  const auto refuse = [&](const std::string& what) {
+    why = "line " + std::to_string(number) + ": " + what;
+    return false;
+  };
+  const std::string line_ends("\n\r\v\f\x1c\x1d\x1e");
+  for (std::size_t pos = 0; pos < text.size();) {
+    std::size_t end = pos;
+    while (end < text.size() && line_ends.find(text[end]) == std::string::npos) ++end;
+    const std::string line = rtrimmed(withoutComment(text.substr(pos, end - pos)));
+    pos = end + (end + 1 < text.size() && text[end] == '\r' && text[end + 1] == '\n' ? 2 : 1);
+    ++number;
+    const std::string core = trimmed(line);
+    if (core.empty() || core == "---" || core == "...") continue;
+    if (core.front() == '-' && (core.size() == 1 || isBlank(core[1]))) {
+      std::string item;
+      if (!list_open) return refuse("list item outside a `key:` list");
+      if (!scalar(core.substr(1), item)) return refuse("bad quoted value " + core);
+      continue;
+    }
+    if (line.front() == ' ' || line.front() == '\t') return refuse("nested YAML is not a map YAML: " + core);
+    // The key: quoted, or plain up to the first colon; the colon is followed by a blank or ends the line.
+    std::size_t colon = std::string::npos;
+    if (line.front() == '\'') {
+      for (std::size_t i = 1; i < line.size(); ++i) {
+        if (line[i] != '\'') continue;
+        if (i + 1 < line.size() && line[i + 1] == '\'') { ++i; continue; }
+        colon = i + 1;
+        break;
+      }
+    } else if (line.front() == '"') {
+      const std::size_t close = line.find('"', 1);
+      if (close != std::string::npos) colon = close + 1;
+    } else if (!isBlank(line.front()) && line.front() != ':') {
+      colon = line.find(':');
+    }
+    if (line.front() == '\'' || line.front() == '"')
+      while (colon < line.size() && isBlank(line[colon])) ++colon;
+    if (colon >= line.size() || line[colon] != ':' || (colon + 1 < line.size() && !isBlank(line[colon + 1])))
+      return refuse("not a `key: value` line: " + core);
+    std::string key;
+    if (!scalar(line.substr(0, colon), key)) return refuse("not a `key: value` line: " + core);
+    if (out.count(key)) return refuse("key '" + key + "' appears twice");
+    const std::string rest = trimmed(line.substr(colon + 1));
+    list_open = rest.empty();
+    if (list_open) out[key] = Value{};
+    else if (!value(rest, out[key])) return refuse("unsupported or badly quoted value " + rest);
+  }
+  return true;
+}
+}  // namespace flat_yaml
+
 // Checks the image a saved YAML names against the size and SHA-256 that YAML records.
-// It reads the flat YAML writeMapPair writes (one "key: value" per line) and resolves
-// a relative image name next to the YAML, as map_server does, so a moved pair
-// verifies. A line may end in CRLF. check_saved_map.py is the same check for a
-// deployer, and also validates the PGM header, resolution and origin.
+// It reads the YAML as check_saved_map.py does (flat_yaml above) and resolves a
+// relative image name next to the YAML, as map_server does, so a moved pair verifies.
+// The two values are compared as the checker compares them: the byte count is 1..18
+// decimal digits, leading zeros allowed; the hash is 64 hex digits in either case.
+// A YAML the checker's reader refuses is Invalid here. check_saved_map.py also
+// validates the PGM header, resolution and origin, which this does not.
 inline MapVerifyResult verifyMapPair(const std::string& yaml_path) {
   using S = MapPairStatus;
+  const std::size_t kMaxDigits = 18;   // as MAX_DIGITS in check_saved_map.py
   std::string yaml;
   if (!readFile(yaml_path, yaml)) return {S::Invalid, "cannot read " + yaml_path + " (missing, unreadable or not a regular file)"};
-  std::string image_name, bytes_text, sha;
-  bool has_image = false, has_bytes = false, has_sha = false;
-  const auto unquoted = [](const std::string& v) {   // 'it''s' -> it's
-    if (v.size() < 2 || v.front() != '\'' || v.back() != '\'') return v;
-    std::string out;
-    for (std::size_t i = 1; i + 1 < v.size(); ++i) {
-      out += v[i];
-      if (v[i] == '\'' && i + 2 < v.size() && v[i + 1] == '\'') ++i;
-    }
-    return out;
-  };
-  std::istringstream lines(yaml);
-  for (std::string line; std::getline(lines, line);) {
-    if (!line.empty() && line.back() == '\r') line.pop_back();   // CRLF line end
-    const std::size_t colon = line.find(": ");
-    if (colon == std::string::npos) continue;
-    const std::string key = line.substr(0, colon), value = unquoted(line.substr(colon + 2));
-    if (key == "image") { image_name = value; has_image = true; }
-    else if (key == "strata_image_bytes") { bytes_text = value; has_bytes = true; }
-    else if (key == "strata_image_sha256") { sha = value; has_sha = true; }
-  }
-  if (!has_image || image_name.empty()) return {S::Invalid, yaml_path + " names no image"};
+  std::map<std::string, flat_yaml::Value> doc;
+  std::string why;
+  if (!flat_yaml::read(yaml, doc, why)) return {S::Invalid, yaml_path + ": " + why};
+  const auto image_it = doc.find("image");
+  if (image_it == doc.end() || !image_it->second.is_scalar || image_it->second.text.empty())
+    return {S::Invalid, yaml_path + " names no image"};
+  const std::string& image_name = image_it->second.text;
   const std::string image_path =
       image_name.front() == '/' ? image_name : dirName(yaml_path) + "/" + image_name;
   std::string image;
   if (!readFile(image_path, image))
     return {S::Invalid, "cannot read the image " + image_path + " (missing, unreadable or not a regular file)"};
+  const auto bytes_it = doc.find("strata_image_bytes"), sha_it = doc.find("strata_image_sha256");
+  const bool has_bytes = bytes_it != doc.end(), has_sha = sha_it != doc.end();
   if (!has_bytes && !has_sha)
     return {S::Unverifiable, yaml_path + " records no strata_image_bytes / strata_image_sha256; " +
                              image_path + " cannot be matched to it"};
   if (!has_bytes || !has_sha)
     return {S::Invalid, yaml_path + " records only one of strata_image_bytes / strata_image_sha256"};
+  // Digits are compared as text, so no count is ever converted to a number.
+  std::string want_bytes = bytes_it->second.text, want_sha = sha_it->second.text;
+  const bool bytes_ok = bytes_it->second.is_scalar && !want_bytes.empty() && want_bytes.size() <= kMaxDigits &&
+                        want_bytes.find_first_not_of("0123456789") == std::string::npos;
+  if (!bytes_ok)
+    return {S::Invalid, yaml_path + ": strata_image_bytes is not a byte count of at most " +
+                        std::to_string(kMaxDigits) + " digits: " + want_bytes.substr(0, 40)};
+  const bool sha_ok = sha_it->second.is_scalar && want_sha.size() == 64 &&
+                      want_sha.find_first_not_of("0123456789abcdefABCDEF") == std::string::npos;
+  if (!sha_ok) return {S::Invalid, yaml_path + ": strata_image_sha256 is not 64 hex digits: " + want_sha.substr(0, 80)};
+  want_bytes.erase(0, std::min(want_bytes.find_first_not_of('0'), want_bytes.size() - 1));
+  for (char& c : want_sha)
+    if (c >= 'A' && c <= 'F') c = static_cast<char>(c - 'A' + 'a');
   const std::string actual_sha = sha256Hex(image);
-  if (bytes_text != std::to_string(image.size()) || sha != actual_sha)
+  if (want_bytes != std::to_string(image.size()) || want_sha != actual_sha)
     return {S::Mismatch, "image does not match this YAML: interrupted save, or the image was edited or replaced (" +
                          image_path +
                          " is " + std::to_string(image.size()) + " bytes, sha256 " + actual_sha + "; " +
-                         yaml_path + " records " + bytes_text + " bytes, sha256 " + sha + ")"};
+                         yaml_path + " records " + want_bytes + " bytes, sha256 " + want_sha + ")"};
   return {S::Ok, image_path + " matches " + yaml_path + " (" + std::to_string(image.size()) +
                  " bytes, sha256 " + actual_sha + ")"};
 }
