@@ -530,7 +530,7 @@ value may be plain, single-quoted or double-quoted, with any blanks after the
 colon and a trailing ` # comment`; the byte count is 1 to 18 digits, leading
 zeros allowed; the hash is 64 hex digits in either case; a key given twice, a
 nested line or another line the checker refuses is `Invalid`, as is a path
-that is not a regular file; CRLF line ends are read like LF. `Ok` is exit 0,
+that is not a regular file or an image name that holds a NUL byte; CRLF line ends are read like LF. `Ok` is exit 0,
 `Unverifiable` exit 3, `Mismatch` and `Invalid` exit 1, and the gtests run the
 checker on each hand-edited YAML to hold the two together. Two differences
 remain: the C++ treats only ASCII blanks as whitespace and does not reject

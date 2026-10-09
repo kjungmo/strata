@@ -367,6 +367,9 @@ inline MapVerifyResult verifyMapPair(const std::string& yaml_path) {
   if (image_it == doc.end() || !image_it->second.is_scalar || image_it->second.text.empty())
     return {S::Invalid, yaml_path + " names no image"};
   const std::string& image_name = image_it->second.text;
+  // No file name holds a NUL byte, and open(2) would stop reading the name at it.
+  if (image_name.find('\0') != std::string::npos)
+    return {S::Invalid, yaml_path + ": the image name holds a NUL byte"};
   const std::string image_path =
       image_name.front() == '/' ? image_name : dirName(yaml_path) + "/" + image_name;
   std::string image;

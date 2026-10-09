@@ -408,17 +408,32 @@ TEST(MapWriter, YamlWithCrlfLineEndsVerifiesLikeTheLfOne) {
 }
 
 namespace {
-// Exit status of check_saved_map.py (0 OK, 1 FAIL, 3 UNVERIFIABLE) on a YAML; -1 if it did not run.
+// Whether python3 can run check_saved_map.py at all (probed once, with --help).
+bool checkerRuns() {
+  static const bool runs =
+      std::system((std::string("python3 '") + STRATA_CHECK_SAVED_MAP + "' --help >/dev/null 2>&1").c_str()) == 0;
+  return runs;
+}
+// Exit status of check_saved_map.py (0 OK, 1 FAIL, 3 UNVERIFIABLE) on a YAML; -1 if it
+// did not run, -2 if it printed anything but its one line (a Python traceback exits 1 too).
 int checkerExit(const std::string& yaml_path) {
-  const std::string cmd = std::string("python3 '") + STRATA_CHECK_SAVED_MAP + "' '" + yaml_path + "' >/dev/null 2>&1";
-  const int rc = std::system(cmd.c_str());
-  return rc != -1 && WIFEXITED(rc) ? WEXITSTATUS(rc) : -1;
+  const std::string cmd = std::string("python3 '") + STRATA_CHECK_SAVED_MAP + "' '" + yaml_path + "' 2>&1";
+  FILE* out = ::popen(cmd.c_str(), "r");
+  if (out == nullptr) return -1;
+  int lines = 0;
+  for (int c; (c = std::fgetc(out)) != EOF;) lines += c == '\n';
+  const int rc = ::pclose(out);
+  if (rc == -1 || !WIFEXITED(rc)) return -1;
+  return lines == 1 ? WEXITSTATUS(rc) : -2;
 }
 // A saved 3 x 2 pair whose YAML lines a test rewrites by hand, as a deployer would.
 struct EditedPair {
   TempDir dir;
   std::string base, yaml, bytes, sha;
   EditedPair() : base(dir.path + "/m") {
+    // A hard failure, not a skip: without the checker no row below compares anything.
+    EXPECT_TRUE(checkerRuns()) << "python3 or " << STRATA_CHECK_SAVED_MAP
+                               << " not found: the agreement check with check_saved_map.py cannot run";
     EXPECT_TRUE(writeMapPair(grid(3, 2, 0.05, 0.0, 0.0), base).ok);
     yaml = slurp(base + ".yaml");
     const std::string pgm = slurp(base + ".pgm");
@@ -439,6 +454,7 @@ struct EditedPair {
     spit(base + ".yaml", text);
     const MapPairStatus status = verifyMapPair(base + ".yaml").status;
     const int want = status == MapPairStatus::Ok ? 0 : status == MapPairStatus::Unverifiable ? 3 : 1;
+    if (!checkerRuns()) return status;   // already failed in the constructor, once
     EXPECT_EQ(checkerExit(base + ".yaml"), want) << "check_saved_map.py disagrees on:\n" << text;
     return status;
   }
@@ -537,6 +553,8 @@ TEST(MapWriter, YamlTheCheckerRefusesIsInvalid) {
       {"flow mapping value", p.yaml + "extra: {a: 1}\n"},
       {"list item with no list open", p.yaml + "- 1\n"},
       {"list not closed on its line", p.with("origin", "origin: [0.0, 0.0,")},
+      // open(2) would read the name up to the NUL and find m.pgm; Python's open() refuses it.
+      {"NUL byte in the image name", p.with("image", std::string("image: m.pgm\0x", 15))},
   };
   for (const auto& r : rows) {
     EXPECT_EQ(p.verify(r.text), MapPairStatus::Invalid) << r.what << "\n" << r.text;

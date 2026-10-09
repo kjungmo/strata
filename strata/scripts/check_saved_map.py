@@ -116,7 +116,7 @@ def read_flat_yaml(path):
     try:
         with open(path, encoding='utf-8') as fh:   # universal newlines: CRLF reads as LF
             lines = fh.read().splitlines()
-    except (OSError, UnicodeDecodeError) as e:
+    except (OSError, ValueError) as e:   # ValueError: not UTF-8, or a NUL byte in the path
         raise Bad(f'cannot read the YAML: {e}')
     out, open_list = {}, None
     for number, raw in enumerate(lines, 1):
@@ -215,8 +215,8 @@ def check(yaml_path):
     try:
         with open(image_path, 'rb') as fh:
             data = fh.read()
-    except OSError as e:
-        raise Bad(f'cannot read the image the YAML names: {e}')
+    except (OSError, ValueError) as e:   # ValueError: a NUL byte in the name
+        raise Bad(f'cannot read the image the YAML names: {image_path!r}: {e}')
 
     recorded = [k for k in (BYTES_KEY, SHA_KEY) if k in doc]
     if len(recorded) == 1:
@@ -245,6 +245,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('yaml', metavar='MAP_YAML', help='the saved map YAML (its image is found as map_server finds it)')
     args = ap.parse_args()
+    sys.stdout.reconfigure(errors='backslashreplace')   # a path that is not UTF-8 prints, as on stderr
     try:
         status, line = check(args.yaml)
     except Bad as e:
