@@ -245,7 +245,8 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('yaml', metavar='MAP_YAML', help='the saved map YAML (its image is found as map_server finds it)')
     args = ap.parse_args()
-    sys.stdout.reconfigure(errors='backslashreplace')   # a path that is not UTF-8 prints, as on stderr
+    if sys.stdout is not None:   # None when the caller closed it (>&-); the exit status still answers
+        sys.stdout.reconfigure(errors='backslashreplace')   # a path that is not UTF-8 prints, as on stderr
     try:
         status, line = check(args.yaml)
     except Bad as e:
