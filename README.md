@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 31 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 46 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -254,11 +254,19 @@ fails before the renames leaves the previous pair untouched (voxel3d's PCD
 likewise). The PGM is renamed first and the YAML second, so a crash or failure
 between the two renames can pair the new PGM with the previous YAML
 (map_server takes the image name from the YAML, so no rename order avoids this
-with fixed names); the directory is fsynced after the renames.
+with fixed names); the directory is fsynced after the renames. So that such a
+pair can be detected, the YAML records the image it was written for, in two
+extra keys computed over the exact PGM bytes: `strata_image_bytes` (the file
+size) and `strata_image_sha256` (64 hex digits, single-quoted).
+`nav2_map_server` ignores both keys and does **not** check them: it loads a
+mismatched pair without complaint, with the previous resolution and origin.
+Run [`check_saved_map.py`](strata/scripts/check_saved_map.py) (see below)
+before trusting a saved pair after an unclean shutdown or a failed `save_map`.
 `save_map` answers `success: false` with the path and the reason when a file
 cannot be written (for example a missing directory) or when `save_path` has no
-file name (empty or ending in `/`). CI checks this round trip on Humble
-on the synthetic scene (`synthetic_e2e.py --check-map-server`): it moves the
+file name (empty or ending in `/`). That map_server loads the YAML with the two
+extra keys was verified on Humble only; no Jazzy job exists. CI checks this
+round trip on Humble on the synthetic scene (`synthetic_e2e.py --check-map-server`): it moves the
 saved pair to a fresh directory, loads the YAML there in `nav2_map_server`,
 brings it active, and requires the served map to have the published width and
 height, resolution and origin within 1e-9 (on a grid origin of
@@ -267,6 +275,62 @@ hold), and every one of the 160 000 cells to map 0→0, 100→100, 50/75/-1→-1
 with only -1, 0 and 100 served. The synthetic scene's final map holds free,
 static, periodic and unknown cells but no transient (50) cell, which shares the
 periodic shade in the PGM.
+
+**Checking a saved pair.** The checker is installed with the package:
+
+```bash
+ros2 run strata check_saved_map.py map.yaml
+# nav2_map_server does not check the keys, so gate the launch on the checker:
+ros2 run strata check_saved_map.py map.yaml && ros2 launch nav2_bringup bringup_launch.py map:=map.yaml
+```
+
+It needs only the Python standard library (no ROS, no PyYAML). On a machine
+without the package, copy
+[`strata/scripts/check_saved_map.py`](strata/scripts/check_saved_map.py) there
+and run `python3 check_saved_map.py map.yaml`. It finds the image as map_server
+does (a relative `image:` is next to the YAML), compares its size and SHA-256
+with the YAML's two keys, requires a binary PGM (`P5`) whose width × height is
+exactly its pixel payload (maxval 1..65535), a finite `resolution` > 0 and an
+`origin` of three finite numbers, and prints one line (after a non-zero exit
+`ros2 run` adds its own `[ros2run]: Process exited with failure N` line):
+
+| Exit status | Line starts with | Meaning |
+|---|---|---|
+| 0 | `OK:` | the image is the one this YAML was saved with, and both files are well formed |
+| 1 | `FAIL:` | do not use the pair: `image does not match this YAML: interrupted save, or the image was edited or replaced`, or a file is missing, unreadable or not a regular file, or the YAML or the PGM is malformed, or the image is not a binary PGM (a PNG, BMP or ASCII `P2` image fails here, with or without the keys) |
+| 2 | (usage) | wrong command line |
+| 3 | `UNVERIFIABLE:` | the YAML has neither key (saved by an older version or another tool) and the image is a well-formed binary PGM (`P5`): nothing ties this image to this YAML |
+
+Treat anything but 0 as "not verified". On a mismatch, call `~/save_map` again
+(a completed save rewrites both files) or restore both files from the same
+backup.
+
+**Any edit of the image fails by design.** Cleaning a map up in an image editor
+changes the PGM bytes, so the checker reports a mismatch. After an intended
+edit, do one of these:
+
+1. Delete both `strata_image_*` lines from the YAML. The pair is then
+   `UNVERIFIABLE` (exit 3).
+2. Rewrite both keys from the edited file: `strata_image_bytes` from
+   `stat -c %s map.pgm`, and `strata_image_sha256` (single-quoted) from the
+   first field of `sha256sum map.pgm`.
+
+The keys tie the YAML to the image bytes only: two saves whose images
+are byte-identical (the same cells saved again under a different
+`grid_origin_*`, say) cannot be told apart. They detect a mixed-up or damaged
+pair, not tampering: whoever can rewrite the image can rewrite the YAML. The
+node does not run this check itself and nothing in Nav2 does; `verifyMapPair`
+in [`map_writer.hpp`](strata/include/strata/map_writer.hpp) is the same
+comparison in C++ for a caller that wants it: it reads a hand-edited YAML by
+the checker's rules (quoting, comments, blanks after the colon, leading zeros
+in the byte count, upper-case hex; a key given twice is refused), and its
+gtests run the checker on every such YAML and expect the same verdict. CI runs the checker on the pair
+the round-trip scenario saved (which map_server has just loaded, so the extra
+keys are harmless to it), on that YAML beside an image with one pixel changed
+and beside an image of another size (both exit 1), on the edited image with the
+keys rewritten from `stat` and `sha256sum` (exit 0), on the YAML with CRLF line
+ends (exit 0), on the YAML with the keys removed (exit 3), and on malformed
+files, a directory or PNG as the image, and over-long digit runs (exit 1).
 
 **Input rate.** A window is either `layer_interval` integrated scans
 (`window_mode: "scans"`, the engine rule and the code default) or

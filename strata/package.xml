@@ -28,6 +28,7 @@
   <exec_depend>rviz2</exec_depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>python3</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

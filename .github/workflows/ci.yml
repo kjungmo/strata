@@ -96,8 +96,10 @@ jobs:
           # nav2_map_server (after the timeout wait, while the node is still up) and
           # compares it cell by cell. That scenario runs on a grid origin that six
           # significant digits cannot hold, so a YAML written short fails the 1e-9 check.
+          # --keep-map copies that pair (the one map_server loaded, with the
+          # strata_image_* keys it ignores) into saved_map/ for the next step.
           scenarios=(
-            "grid2d scans 1.0 --check-timeout --check-map-server"
+            "grid2d scans 1.0 --check-timeout --check-map-server --keep-map saved_map"
             "voxel3d scans 1.0"
             "grid2d time 0.2 --drop 0.4"
             "voxel3d time 1.0 --drop 0.4"
@@ -127,6 +129,104 @@ jobs:
             echo "::endgroup::"
             if [ "$status" -ne 0 ]; then cat e2e.log; exit 1; fi
           done
+
+      - name: Check the saved pair, an image beside the wrong YAML, and a YAML without the keys
+        shell: bash
+        timeout-minutes: 2
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          # saved_map/ holds the pair the round-trip scenario saved (save_path /tmp/strata_2d in
+          # the shipped grid2d.yaml) and nav2_map_server loaded. The checker is run as a
+          # deployer runs it: the copy installed with the package, through ros2 run.
+          test -x install/strata/lib/strata/check_saved_map.py
+          expect() {  # expected exit status, text its one line must contain, YAML
+            local want="$1" text="$2" yaml="$3" out code=0
+            out=$(ros2 run strata check_saved_map.py "$yaml" 2>&1) || code=$?
+            echo "exit $code: ${out:0:600}"
+            # one line from the checker; ros2 run adds "[ros2run]: Process exited with failure N"
+            out=$(grep -v '^\[ros2run\]' <<< "$out" || true)
+            [ "$(wc -l <<< "$out")" -eq 1 ] || { echo "expected one line, not a traceback"; exit 1; }
+            [ "$code" -eq "$want" ] || { echo "expected exit status $want"; exit 1; }
+            grep -qF -- "$text" <<< "$out" || { echo "expected the line to contain: $text"; exit 1; }
+          }
+          test -s saved_map/strata_2d.pgm
+          grep -Eq "^strata_image_bytes: [0-9]+$" saved_map/strata_2d.yaml
+          grep -Eq "^strata_image_sha256: '[0-9a-f]{64}'$" saved_map/strata_2d.yaml
+          # The recorded values against coreutils, independent of the node and the checker.
+          test "$(sed -n 's/^strata_image_bytes: //p' saved_map/strata_2d.yaml)" = "$(stat -c %s saved_map/strata_2d.pgm)"
+          test "$(sed -n "s/^strata_image_sha256: '\(.*\)'$/\1/p" saved_map/strata_2d.yaml)" = \
+               "$(sha256sum saved_map/strata_2d.pgm | cut -d' ' -f1)"
+          echo "1. the pair as saved"
+          expect 0 "OK: saved_map/strata_2d.yaml: the image is the one this YAML was saved with" saved_map/strata_2d.yaml
+          # What a crash between the two renames leaves: another save's image beside this
+          # YAML. Once with the same grid size (one pixel differs, so only the hash can
+          # tell) and once with another size.
+          mkdir -p mismatch_pixel mismatch_size no_keys
+          cp saved_map/strata_2d.yaml mismatch_pixel/
+          cp saved_map/strata_2d.yaml mismatch_size/
+          python3 -c "import sys; d = bytearray(open(sys.argv[1], 'rb').read()); d[-1] ^= 1; open(sys.argv[2], 'wb').write(d)" \
+            saved_map/strata_2d.pgm mismatch_pixel/strata_2d.pgm
+          test "$(stat -c %s mismatch_pixel/strata_2d.pgm)" = "$(stat -c %s saved_map/strata_2d.pgm)"
+          printf 'P5\n2 2\n255\n\315\315\315\315' > mismatch_size/strata_2d.pgm
+          echo "2. an image that is not the one the YAML was saved with"
+          expect 1 "image does not match this YAML: interrupted save, or the image was edited or replaced" mismatch_pixel/strata_2d.yaml
+          expect 1 "image does not match this YAML: interrupted save, or the image was edited or replaced" mismatch_size/strata_2d.yaml
+          # The documented remedy after an intended edit of the image: rewrite both keys
+          # from stat and sha256sum (deleting them instead is case 3).
+          mkdir -p edited
+          cp mismatch_pixel/strata_2d.pgm edited/
+          sed -e "s/^strata_image_bytes: .*/strata_image_bytes: $(stat -c %s edited/strata_2d.pgm)/" \
+              -e "s/^strata_image_sha256: .*/strata_image_sha256: '$(sha256sum edited/strata_2d.pgm | cut -d' ' -f1)'/" \
+              saved_map/strata_2d.yaml > edited/strata_2d.yaml
+          expect 0 "OK: edited/strata_2d.yaml" edited/strata_2d.yaml
+          # The gate a deployer puts before the launch: only the pair as saved lets the next command run.
+          ros2 run strata check_saved_map.py saved_map/strata_2d.yaml && echo "gate open"
+          if ros2 run strata check_saved_map.py mismatch_pixel/strata_2d.yaml 2>/dev/null; then
+            echo "the gate must stay closed on a mismatched pair"; exit 1
+          fi
+          # A YAML with CRLF line ends is the same pair.
+          mkdir -p crlf
+          cp saved_map/strata_2d.pgm crlf/
+          sed 's/$/\r/' saved_map/strata_2d.yaml > crlf/strata_2d.yaml
+          grep -q $'\r$' crlf/strata_2d.yaml
+          expect 0 "OK: crlf/strata_2d.yaml" crlf/strata_2d.yaml
+          # A YAML as saved before the keys existed: well formed, but nothing to check against.
+          grep -v "^strata_image_" saved_map/strata_2d.yaml > no_keys/strata_2d.yaml
+          if grep -q strata_image no_keys/strata_2d.yaml; then echo "the keys were not removed"; exit 1; fi
+          cp saved_map/strata_2d.pgm no_keys/
+          echo "3. a YAML without the keys"
+          expect 3 "UNVERIFIABLE: no_keys/strata_2d.yaml" no_keys/strata_2d.yaml
+          echo "4. malformed files (without the keys, so the hash cannot be what rejects them)"
+          mkdir -p bad
+          cp no_keys/strata_2d.pgm bad/
+          sed "s/^resolution: .*/resolution: 0/" no_keys/strata_2d.yaml > bad/resolution.yaml
+          expect 1 "resolution must be > 0" bad/resolution.yaml
+          sed "s/^origin: .*/origin: [0.0, 0.0]/" no_keys/strata_2d.yaml > bad/origin.yaml
+          expect 1 "origin must be a list of 3 numbers" bad/origin.yaml
+          sed "s/^image: .*/image: 'short.pgm'/" no_keys/strata_2d.yaml > bad/short.yaml
+          head -c 1000 no_keys/strata_2d.pgm > bad/short.pgm
+          expect 1 "PGM header says 400 x 400 (160000 pixel bytes) but the file holds 985" bad/short.yaml
+          sed "s/^image: .*/image: 'ascii.pgm'/" no_keys/strata_2d.yaml > bad/ascii.yaml
+          printf 'P2\n1 1\n255\n205\n' > bad/ascii.pgm
+          expect 1 "not a binary PGM" bad/ascii.yaml
+          sed "s/^image: .*/image: 'gone.pgm'/" no_keys/strata_2d.yaml > bad/gone.yaml
+          expect 1 "cannot read the image the YAML names" bad/gone.yaml
+          sed "s/^image: .*/image: 'a_directory'/" no_keys/strata_2d.yaml > bad/directory.yaml
+          mkdir -p bad/a_directory
+          expect 1 "is not a regular file" bad/directory.yaml
+          # Other image formats fail, with or without the keys: exit 3 needs a binary PGM.
+          sed "s/^image: .*/image: 'map.png'/" no_keys/strata_2d.yaml > bad/png.yaml
+          printf '\211PNG\r\n\032\n' > bad/map.png
+          expect 1 "not a binary PGM" bad/png.yaml
+          # Digit runs longer than Python's int() accepts (4300 digits from 3.11 on) are a
+          # one-line FAIL, not a traceback: in the YAML's byte count and in the PGM header.
+          long=$(printf '9%.0s' $(seq 5000))
+          sed "s/^strata_image_bytes: .*/strata_image_bytes: ${long}/" saved_map/strata_2d.yaml > bad/long_bytes.yaml
+          expect 1 "strata_image_bytes is not a byte count" bad/long_bytes.yaml
+          sed "s/^image: .*/image: 'long.pgm'/" no_keys/strata_2d.yaml > bad/long_pgm.yaml
+          printf 'P5\n%s 1\n255\n\315' "$long" > bad/long.pgm
+          expect 1 "has more than 18 digits" bad/long_pgm.yaml
 
       - name: Launch with use_sim_time but no /clock and no TF; the node must stay responsive
         shell: bash
