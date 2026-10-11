@@ -54,7 +54,7 @@ class MappingNode : public rclcpp::Node {
   bool beforeIntegrate(std::int64_t t_ns);   // false: drop the message (zero stamp, time windows)
   void afterIntegrate(const std::string& frame, std::int64_t t_ns);
   void windowsClosed(int k);
-  void noteTfFailure();
+  void noteTfFailure(const std::string& sensor_frame, const std::string& error);
   // TF global_frame <- sensor at the header stamp: kTfWaitS of ROS time, capped at
   // kTfWaitCapS of steady time; a clock unchanged for kClockFrozenS is not waited on.
   bool lookupSensorTf(const std_msgs::msg::Header& h, geometry_msgs::msg::TransformStamped& out,

@@ -117,7 +117,7 @@ void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
   std::string err;
   if (!lookupSensorTf(msg->header, tf, err)) {
     RCLCPP_WARN_THROTTLE(get_logger(), steady_clock_, 2000, "scan TF: %s", err.c_str());
-    noteTfFailure();
+    noteTfFailure(msg->header.frame_id, err);
     return;
   }
   const strata_core::Pose3D iso = tf2::transformToEigen(tf);
@@ -135,7 +135,7 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
   std::string err;
   if (!lookupSensorTf(msg->header, tf, err)) {
     RCLCPP_WARN_THROTTLE(get_logger(), steady_clock_, 2000, "points TF: %s", err.c_str());
-    noteTfFailure();
+    noteTfFailure(msg->header.frame_id, err);
     return;
   }
   const strata_core::Pose3D iso = tf2::transformToEigen(tf);
@@ -179,10 +179,10 @@ bool MappingNode::lookupSensorTf(const std_msgs::msg::Header& h,
   }
 }
 
-void MappingNode::noteTfFailure() {
+void MappingNode::noteTfFailure(const std::string& sensor_frame, const std::string& error) {
   std::lock_guard<std::mutex> lk(mtx_);
   ++tf_failures_window_;
-  tally_.tfFailure();           // the sensor is alive even if its pose is not
+  tally_.tfFailure(sensor_frame, error);   // the sensor is alive even if its pose is not
   last_input_wall_ = Steady::now();
 }
 
@@ -418,6 +418,8 @@ void MappingNode::onDiagnostics() {
   kv("tf_failures_since_integrate", std::to_string(tally_.tf_failures_since_integrate));
   std::snprintf(buf, sizeof(buf), "%.2f", since_integrate);
   kv("seconds_since_last_integrate", buf);   // since start until the first one integrates
+  // The tf2 text of the last failed lookup while the streak runs; "" when it is 0.
+  kv("last_tf_error", tally_.last_tf_error);
   arr.status.push_back(st);
   diag_pub_->publish(arr);
   zero_stamps_ = 0;

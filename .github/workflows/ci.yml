@@ -240,10 +240,12 @@ jobs:
             kill -KILL -- "-$1" 2>/dev/null || true
           }
           # Wall clock, no /clock. The script publishes nothing, then messages without a
-          # transform (level OK "waiting for TF ..." until startup_timeout_s, WARN after),
-          # then with it ("ok"), then without it again (named after 1 s, ERROR after
-          # input_timeout_s), then nothing (ERROR), and checks the level, message and
-          # counts of every status. startup_timeout_s is shortened from 30 s to 15 s.
+          # transform and with one that is 5 s too old (level OK "no usable TF ... yet"
+          # until startup_timeout_s, WARN after; the cause in last_tf_error), then with
+          # a current one ("ok"), then without it again (named once nothing integrated
+          # for 1 s, ERROR after input_timeout_s), then nothing (ERROR), and checks the
+          # level, message, values and value order of every status. startup_timeout_s is
+          # shortened from 30 s to 15 s.
           for backend in grid2d voxel3d; do
             echo "::group::$backend"
             yaml="nolocalizer_${backend}.yaml"
