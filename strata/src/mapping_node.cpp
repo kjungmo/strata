@@ -117,7 +117,7 @@ void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
   std::string err;
   if (!lookupSensorTf(msg->header, tf, err)) {
     RCLCPP_WARN_THROTTLE(get_logger(), steady_clock_, 2000, "scan TF: %s", err.c_str());
-    noteTfFailure();
+    noteTfFailure(msg->header.frame_id, err);
     return;
   }
   const strata_core::Pose3D iso = tf2::transformToEigen(tf);
@@ -135,7 +135,7 @@ void MappingNode::onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg) {
   std::string err;
   if (!lookupSensorTf(msg->header, tf, err)) {
     RCLCPP_WARN_THROTTLE(get_logger(), steady_clock_, 2000, "points TF: %s", err.c_str());
-    noteTfFailure();
+    noteTfFailure(msg->header.frame_id, err);
     return;
   }
   const strata_core::Pose3D iso = tf2::transformToEigen(tf);
@@ -179,16 +179,15 @@ bool MappingNode::lookupSensorTf(const std_msgs::msg::Header& h,
   }
 }
 
-void MappingNode::noteTfFailure() {
+void MappingNode::noteTfFailure(const std::string& sensor_frame, const std::string& error) {
   std::lock_guard<std::mutex> lk(mtx_);
   ++tf_failures_window_;
-  ++tf_failures_since_integrate_;
-  any_input_ = true;            // the sensor is alive even if its pose is not
+  tally_.tfFailure(sensor_frame, error);   // the sensor is alive even if its pose is not
   last_input_wall_ = Steady::now();
 }
 
 bool MappingNode::beforeIntegrate(std::int64_t t_ns) {
-  any_input_ = true;
+  tally_.tfResolved();
   last_input_wall_ = Steady::now();
   if (t_ns == 0) {
     ++zero_stamps_;
@@ -197,9 +196,8 @@ bool MappingNode::beforeIntegrate(std::int64_t t_ns) {
     if (window_mode_ == "time") return false;
   }
   ++msgs_since_close_;
-  any_integrated_ = true;
+  tally_.integratedOne();
   last_integrate_wall_ = last_input_wall_;
-  tf_failures_since_integrate_ = 0;
   if (!origin_set_) {
     origin_ns_ = t_ns; origin_set_ = true;
     // Stall timing starts with the first message, not at construction (no /clock yet).
@@ -342,15 +340,18 @@ void MappingNode::onDiagnostics() {
   std::lock_guard<std::mutex> lk(mtx_);
   const auto now_w = Steady::now();
   auto secs = [&now_w](Steady::time_point t) { return std::chrono::duration<double>(now_w - t).count(); };
-  const double since_input = any_input_ ? secs(last_input_wall_) : secs(start_wall_);
+  const bool any_input = tally_.received > 0, any_integrated = tally_.integrated > 0;
+  const double since_input = any_input ? secs(last_input_wall_) : secs(start_wall_);
   using DS = diagnostic_msgs::msg::DiagnosticStatus;
-  unsigned char lvl = last_why_.empty() ? DS::OK : DS::WARN;
+  static_assert(DS::OK == kInputOk && DS::WARN == kInputWarn && DS::ERROR == kInputError,
+                "input_status.hpp levels are DiagnosticStatus levels");
+  int lvl = last_why_.empty() ? DS::OK : DS::WARN;
   std::string msg = last_why_.empty() ? "ok" : last_why_;
   char buf[240];
   // Stall: messages keep arriving but no time window closes. Measured on the ROS clock
   // under use_sim_time, so slow bag playback does not trip it.
   const double since_close = use_sim_time_ ? (now() - last_close_ros_).seconds() : secs(last_close_wall_);
-  if (window_mode_ == "time" && any_integrated_ && msgs_since_close_ > 1 &&
+  if (window_mode_ == "time" && any_integrated && msgs_since_close_ > 1 &&
       since_close > 10.0 * window_period_s_ && since_close > 2.0) {
     std::snprintf(buf, sizeof(buf), "no time window has closed for %.1f s although %ld messages "
                   "arrived: are header stamps advancing?", since_close, msgs_since_close_);
@@ -363,26 +364,16 @@ void MappingNode::onDiagnostics() {
     if (msg.size() >= 2 && msg.compare(msg.size() - 2, 2, "; ") == 0) msg.resize(msg.size() - 2);
   }
   const double since_integrate = secs(last_integrate_wall_);
-  if (!any_input_) {
-    // Drivers can take tens of seconds to start: wait startup_timeout_s before ERROR.
-    if (since_input > startup_timeout_s_) {
-      std::snprintf(buf, sizeof(buf), "no input on %s yet after %.0f s", input_topic_.c_str(), since_input);
-      lvl = DS::ERROR; msg = buf;
-    } else {
-      lvl = DS::OK; msg = "waiting for input on " + input_topic_;
-    }
-  } else if (since_input > input_timeout_s_) {
-    std::snprintf(buf, sizeof(buf), "no input on %s for %.1f s (sensor, driver or link down?)",
-                  input_topic_.c_str(), since_input);
-    lvl = DS::ERROR; msg = buf;
-  } else if (tf_failures_since_integrate_ > 0 &&
-             since_integrate > (any_integrated_ ? input_timeout_s_ : startup_timeout_s_)) {
-    // Messages arrive but none can be placed: the pose source (localizer, TF tree) is missing.
-    std::snprintf(buf, sizeof(buf), "messages arrive on %s but the TF lookup %s -> sensor has "
-                  "failed %ld times; nothing integrated for %.1f s", input_topic_.c_str(),
-                  global_frame_.c_str(), tf_failures_since_integrate_, since_integrate);
-    lvl = any_integrated_ ? DS::ERROR : DS::WARN; msg = buf;
-  }
+  // No input, input lost, or messages that cannot be placed (no localizer, broken TF
+  // tree): the states and their levels are in input_status.hpp. Inside the startup
+  // grace a failing TF lookup keeps the level but is named in the message.
+  InputState input;
+  input.tally = tally_;
+  input.since_input_s = since_input;
+  input.since_integrate_s = since_integrate;
+  input.input_timeout_s = input_timeout_s_;
+  input.startup_timeout_s = startup_timeout_s_;
+  applyInput(judgeInput(input, input_topic_, global_frame_), lvl, msg);
   // use_sim_time with a ROS clock that stands still while messages keep arriving: /clock
   // is missing or stopped. TF at the message stamps, map stamps and the stall check
   // above all run on that clock. (A paused bag stops both, which does not trip this.)
@@ -396,10 +387,10 @@ void MappingNode::onDiagnostics() {
       clock_watch_.observe(steadyS(), now().nanoseconds());
       frozen = clock_watch_.unchangedFor(steadyS());
     }
-    if (any_input_ && frozen > kClockStallS && since_input + 2.0 < frozen) {
+    if (any_input && frozen > kClockStallS && since_input + 2.0 < frozen) {
       std::snprintf(buf, sizeof(buf), "use_sim_time is true but the ROS clock has not advanced for "
                     "%.1f s while messages arrive on %s: is /clock published?", frozen, input_topic_.c_str());
-      msg = lvl == DS::OK ? std::string(buf) : std::string(buf) + "; " + msg;
+      msg = msg == "ok" ? std::string(buf) : std::string(buf) + "; " + msg;   // keeps a TF note
       if (lvl == DS::OK) lvl = DS::WARN;
     }
   }
@@ -409,7 +400,7 @@ void MappingNode::onDiagnostics() {
   st.name = std::string(get_name()) + ": input rate";
   st.hardware_id = std::string(get_namespace()) + " " +
                    (scan_sub_ ? scan_sub_->get_topic_name() : points_sub_->get_topic_name());
-  st.level = lvl;
+  st.level = static_cast<unsigned char>(lvl);
   st.message = msg;
   auto kv = [&st](const std::string& k, const std::string& v) {
     diagnostic_msgs::msg::KeyValue p; p.key = k; p.value = v; st.values.push_back(p);
@@ -419,6 +410,16 @@ void MappingNode::onDiagnostics() {
   std::snprintf(buf, sizeof(buf), "%.2f", since_input);
   kv("seconds_since_last_message", buf);
   kv("windows_closed_total", std::to_string(windows_closed_));
+  // In every status from the first one (the window values above need a closed window,
+  // and no window closes while nothing integrates). Counted over all sensor frames.
+  kv("messages_received_total", std::to_string(tally_.received));
+  kv("messages_integrated_total", std::to_string(tally_.integrated));
+  kv("tf_failures_total", std::to_string(tally_.tf_failures));
+  kv("tf_failures_since_integrate", std::to_string(tally_.tf_failures_since_integrate));
+  std::snprintf(buf, sizeof(buf), "%.2f", since_integrate);
+  kv("seconds_since_last_integrate", buf);   // since start until the first one integrates
+  // The tf2 text of the last failed lookup while the streak runs; "" when it is 0.
+  kv("last_tf_error", tally_.last_tf_error);
   arr.status.push_back(st);
   diag_pub_->publish(arr);
   zero_stamps_ = 0;
@@ -428,7 +429,8 @@ void MappingNode::onDiagnostics() {
     last_log_wall_ = now_w;
     if (lvl == DS::ERROR) RCLCPP_ERROR(get_logger(), "input rate: %s", msg.c_str());
     else if (lvl == DS::WARN) RCLCPP_WARN(get_logger(), "input rate: %s", msg.c_str());
-    else RCLCPP_INFO(get_logger(), "input rate: ok (%s windows closed)", std::to_string(windows_closed_).c_str());
+    else RCLCPP_INFO(get_logger(), "input rate: %s (%s windows closed)", msg.c_str(),
+                     std::to_string(windows_closed_).c_str());
   }
 }
 

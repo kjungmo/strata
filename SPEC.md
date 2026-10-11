@@ -78,7 +78,86 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 | `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
 | `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` single-quoted and relative to the YAML, resolution and origin written to read back exactly, "C" locale); voxel3d → PCD. Written to `.tmp` files and fsynced, then renamed and the directory fsynced: a save that fails before the renames leaves the previous pair untouched; the PGM is renamed first and the YAML second, so a crash or failure between the two renames can pair the new PGM with the previous YAML (map_server takes the image name from the YAML, so no rename order avoids this with fixed names). To make that pair detectable the YAML also carries `strata_image_bytes` and `strata_image_sha256` (size and SHA-256 of the exact PGM bytes written; map_server ignores them and does not check them, `check_saved_map.py` does, see §6.1). `success: false` with the path and reason when a file cannot be written (e.g. a missing directory), `save_path` has no file name (empty or ending in `/`), or voxel3d has no static voxel |
-| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total. From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was); ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total, and, in every status from the first one, messages_received_total, messages_integrated_total, tf_failures_total, tf_failures_since_integrate, seconds_since_last_integrate, last_tf_error (see "Input states on `/diagnostics`" below). From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was), and before that the message names the failing lookup at the level the other checks give; ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
+
+### Input states on `/diagnostics`
+
+Six values are in **every** `<node name>: input rate` status, from the first one,
+after the values listed above and in this order (the window values need a closed
+window, and no window closes while nothing integrates):
+
+| Key | Value |
+|---|---|
+| `messages_received_total` | messages the input callback has handled since the node started: TF failed or resolved (messages the middleware dropped before the callback are not in it) |
+| `messages_integrated_total` | those that went into the map |
+| `tf_failures_total` | those dropped because the TF lookup `global_frame → <frame_id of the message>` failed |
+| `tf_failures_since_integrate` | the running failure streak: TF failures since the last integrated message, `0` again as soon as one integrates |
+| `seconds_since_last_integrate` | steady seconds since the last integrated message; until the first one, since the node started |
+| `last_tf_error` | why the last lookup of the running streak failed: the tf2 exception text as one line (control characters and line breaks become one space, bytes that are not well-formed UTF-8 become `?`, at most 120 bytes, ending in `...` when cut). Set exactly while `tf_failures_since_integrate` is above 0; the empty string otherwise |
+
+`last_tf_error` is cleared when a message integrates and does not keep the last
+text: a status that reads `ok` beside an old error would have to be read
+together with the streak to be understood, and this way the value is non-empty
+if and only if lookups are failing now. The cost is that the cause of a failure
+between two integrated messages is only in the node log (`scan TF: ...` /
+`points TF: ...`, at most every 2 s) and counted in `tf_failures_total`.
+
+The counts are decimal strings (64-bit counters; the seconds with two decimals),
+taken over all sensor frames on the input topic, for both backends. They are
+written by the input callback and read by the 1 Hz diagnostics wall timer under
+the node's one mutex. The times are steady-clock times, so `use_sim_time`, a
+slow bag or a missing `/clock` does not change them.
+
+The status then says which input state the node is in. `startup_timeout_s`
+(default 30 s) is how long the node may run before its first message **and**
+before its first integrated message without the level rising; `input_timeout_s`
+(default 5 s) is the same allowance once messages were arriving or integrating.
+Each limit is exclusive: a state changes when the time is greater than it.
+
+| # | State | Level | Message |
+|---|---|---|---|
+| 1 | no message yet, up to `startup_timeout_s` after start | OK | `waiting for input on <topic>` |
+| 2 | no message yet, after `startup_timeout_s` | ERROR | `no input on <topic> yet after N s` |
+| 3 | messages arrived, then none for more than `input_timeout_s` | ERROR | `no input on <topic> for N s (sensor, driver or link down?)` |
+| 4 | messages arrive, TF lookups fail, nothing integrated yet, up to `startup_timeout_s` after start | OK (unchanged) | `no usable TF <global_frame> -> <frame> yet: N message(s) received on <topic>, 0 integrated, N TF lookup(s) failed (WARN after startup_timeout_s = 30 s)` |
+| 5 | the same after `startup_timeout_s` | WARN | `messages arrive on <topic> but the TF lookup <global_frame> -> <frame> has failed N times; nothing integrated for N s` |
+| 6 | integrating (no running streak) | from the window and stamp checks | `ok`, or those warnings |
+| 7 | was integrating; a streak runs, and something integrated within the last 1 s | unchanged | unchanged (the streak shows in `tf_failures_since_integrate` and `last_tf_error` only) |
+| 8 | ... nothing integrated for more than 1 s, up to `input_timeout_s` | unchanged | `TF lookup <global_frame> -> <frame> failing: last N message(s) on <topic> not integrated, nothing integrated for N s (ERROR after input_timeout_s = 5 s)` |
+| 9 | ... nothing integrated for more than `input_timeout_s` | ERROR | as row 5 |
+
+`<frame>` is the `frame_id` of the last message whose lookup failed (as one line
+of at most 64 bytes; `(empty frame_id)` when it is empty), and the numbers in
+the parentheses are the configured timeouts. The messages name the lookup that
+fails and not its cause: the transform may be absent, too old or too new for the
+stamp, or the frame unknown. `last_tf_error` gives the cause.
+
+The 1 s of rows 7-8 runs from the last integrated message, not from the first
+failure. One failed lookup leaves a gap of two message intervals, so with input
+faster than 2 Hz a single late transform stays in row 7 and does not change the
+message; at 2 Hz or slower one failed lookup is already named (row 8) until the
+next message integrates. Timing the streak from its first failure would need one
+more time stamp and would still name a single failure at 1 Hz or slower, so the
+existing time since the last integrated message is used, which is also the one
+the ERROR of row 9 has always used.
+
+Rows 1-3, 5 and 9 replace the level and message of the window and stamp checks.
+Rows 4 and 8 are notes: they leave the level alone, replace a bare `ok` and are
+appended (after `; `) to any other warning. Under `use_sim_time` without
+`/clock`, the stalled-clock WARN is put in front of the note, so the status
+reads `use_sim_time is true but ...; no usable TF ...` at WARN. Messages whose
+TF resolved but which were dropped for a zero stamp (`time` windows) count as
+received, not as integrated and not as TF failures, and do not end a streak; the
+zero-stamp WARN reports them. Once a message integrates, rows 4-5 never return:
+the node is in rows 6-9.
+
+Why row 4 stays OK: at bring-up the mapper is commonly up before the localizer
+publishes `global_frame`, and `startup_timeout_s` is the parameter that says for
+how long that is expected. A WARN on every launch would be routine noise, and
+the levels an aggregator or an existing consumer sees are the same as before;
+what changed is that the message and the values no longer say `ok` with nothing
+behind it. The node also logs the note every 30 s (`input rate: no usable TF
+...`), where it logged `input rate: ok` before.
 
 ### Frames (REP-105)
 The node looks up `T_global_sensor` (`global_frame → sensor frame_id`) at each
@@ -345,7 +424,7 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `expected_scan_rate_hz` | `0.0` | per-sensor rate for the loss estimate and the scan-window check; `0` estimates it from stamps |
 | `rate_warn_drop_fraction` | `0.05` | `/diagnostics` warns above this share of lost messages (scan windows) |
 | `input_timeout_s` | `5.0` | `/diagnostics` turns ERROR after this long without input, once input was seen |
-| `startup_timeout_s` | `30.0` | ... and after this long if no input has arrived since start |
+| `startup_timeout_s` | `30.0` | ... and after this long if no input has arrived since start; also how long messages may arrive with a failing TF lookup and nothing integrated before `/diagnostics` turns WARN (until then: OK, `no usable TF ... yet`) |
 | `save_path` | `/tmp/strata_2d` (grid2d) / `/tmp/strata_3d` (voxel3d) | save-service output path stem |
 
 ---
@@ -400,7 +479,7 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **46 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **64 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
@@ -438,7 +517,26 @@ whose exit status must match) and `test_tf_wait` (7; a live clock waits 0.1 s, a
 clock still gets 0.1 s of ROS time, a coarse 10 Hz sim clock at 0.5x and at 0.2x
 gets its full 0.1 s, a clock frozen from the start is waited on at most once to
 the cap and then not at all, a clock that stops is recognised within 1 s, a
-clock that jumps back counts the budget from the jump).
+clock that jumps back counts the budget from the jump) and `test_input_status`
+(18; the tally counts received, integrated and the failure streak, a resolved
+but dropped message does not end a streak, and `last_tf_error` and the failed
+frame are set while the streak runs and cleared when a message integrates;
+`oneLine` turns control characters and line breaks into single spaces, keeps
+well-formed UTF-8 and replaces every other byte (overlong forms, surrogates,
+past U+10FFFF, cut-short sequences), and cuts at 120 bytes between characters;
+one test per row of the input-state table above with the exact message and each
+limit tested at the limit and at the next double above it: rows 1, 2, 3
+(whatever TF did), 4 (with received and failed counts that differ), 5, 6 (no
+stale text after a late localizer, a slow sensor), 7-9 together; a single
+failed lookup is named at 1 Hz and not at 10 Hz; the message carries the frame
+of the failed message and no cause, for a missing, a stale and an unconnected
+transform; resolved but dropped messages are not a TF state; the configured
+timeouts and names are used; a note keeps the level, replaces a bare `ok` and
+is appended to another warning, an overriding state replaces both). 98 mutants
+of `input_status.hpp` (every comparison, every count, time and frame used in a
+message, the tally updates and the text rules) were run against it: 96 fail
+it, 2 are equivalent (the streak and the failure total are equal while nothing
+has integrated; a space is already a space).
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the
@@ -470,7 +568,24 @@ statuses over 11 s of scans, and a WARN that the ROS clock is not advancing.
 A second launch runs a sim clock at 0.5x in 0.1 s steps with scans stamped 30 ms
 ahead of a dynamic `map → sensor` TF (`scripts/check_coarse_clock.py`) and
 requires zero TF failures over at least 3 closed windows and at least 60 % of
-the sent scans integrated in them.
+the sent scans integrated in them. The stalled-clock run also requires every
+status while scans arrive to carry the input counts (received > 0, integrated 0,
+a growing failure streak, `last_tf_error` set) and the WARN to keep the `no
+usable TF` note.
+A further step walks each backend, on the wall clock with `startup_timeout_s`
+shortened to 15 s, through the input states (`scripts/check_no_localizer.py`):
+nothing published (row 1), messages without any transform and then with one
+stamped 5 s behind them (row 4 with the exact message built from the status's
+own counts, then row 5; `last_tf_error` is not an extrapolation in the first
+case and is one in the second, and the message does not say the transform is
+missing), messages with a transform stamped at each message (row 6: `ok`,
+streak 0, the total kept, no TF text left, `last_tf_error` empty), the
+transform stopped again (row 8, then row 9), and nothing published (row 3). In
+every status of the run it requires the earlier values in their order (3 before
+a window close, 15 after) followed by the six new ones, and `last_tf_error` to
+be one line of at most 120 bytes that is set exactly while the streak is above
+0. Rows 2 and 7 are covered by the gtests only. Verified on Humble; no Jazzy
+job exists.
 
 ### 6.1 Saved-pair check
 

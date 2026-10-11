@@ -24,6 +24,7 @@
 #include "strata_core/layered_map.hpp"
 #include "strata_core/grid2d_backend.hpp"
 #include "strata_core/voxel3d_backend.hpp"
+#include "strata/input_status.hpp"
 #include "strata/rate_monitor.hpp"
 #include "strata/tf_wait.hpp"
 #include "strata/window_clock.hpp"
@@ -53,7 +54,7 @@ class MappingNode : public rclcpp::Node {
   bool beforeIntegrate(std::int64_t t_ns);   // false: drop the message (zero stamp, time windows)
   void afterIntegrate(const std::string& frame, std::int64_t t_ns);
   void windowsClosed(int k);
-  void noteTfFailure();
+  void noteTfFailure(const std::string& sensor_frame, const std::string& error);
   // TF global_frame <- sensor at the header stamp: kTfWaitS of ROS time, capped at
   // kTfWaitCapS of steady time; a clock unchanged for kClockFrozenS is not waited on.
   bool lookupSensorTf(const std_msgs::msg::Header& h, geometry_msgs::msg::TransformStamped& out,
@@ -92,9 +93,11 @@ class MappingNode : public rclcpp::Node {
   Steady::time_point start_wall_, last_input_wall_, last_close_wall_, last_log_wall_,
       last_integrate_wall_, last_reset_log_wall_;
   rclcpp::Time last_close_ros_;
-  bool any_integrated_{false};
-  long tf_failures_since_integrate_{0}, frames_over_cap_{0};
-  bool any_input_{false}, origin_set_{false};
+  // Messages received / integrated / failed on TF since start. Like every counter
+  // here, written by the input callback and read by the diagnostics timer under mtx_.
+  InputTally tally_;
+  long frames_over_cap_{0};
+  bool origin_set_{false};
   std::int64_t origin_ns_{0};
   long windows_closed_{0}, msgs_since_close_{0}, zero_stamps_{0};
   int tf_failures_window_{0}, tf_failures_last_{0};

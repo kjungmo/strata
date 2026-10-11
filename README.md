@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 46 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 64 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -380,7 +380,29 @@ stamps are zero or stop advancing, when `use_sim_time` is true and the ROS
 clock has stood still for 3 s while messages arrive (no `/clock`), or when
 messages arrive but the TF lookup fails (no localizer yet), and turns ERROR
 after `input_timeout_s` without input (`startup_timeout_s` before the first
-message). The loss is estimated per
+message).
+
+Every status, from the first one, also carries `messages_received_total`,
+`messages_integrated_total`, `tf_failures_total`, `tf_failures_since_integrate`
+(the running streak, `0` again once a message integrates),
+`seconds_since_last_integrate` and `last_tf_error` (the tf2 text of the last
+failed lookup as one line of at most 120 bytes while the streak runs, empty
+otherwise). When messages arrive but cannot be placed, the level stays OK until
+`startup_timeout_s` (30 s) has passed since start and is WARN after it, as
+before, but the message is no longer `ok`: it reads `no usable TF map ->
+<frame> yet: N message(s) received on /scan, 0 integrated, N TF lookup(s)
+failed (WARN after startup_timeout_s = 30 s)`, with the `frame_id` of the
+message that failed. That is true without a localizer, with a transform that is
+too old for the stamp and with a wrong frame alike; `last_tf_error` says which.
+If lookups start failing in mid-run, the message names it once nothing has
+integrated for 1 s (`TF lookup map -> <frame> failing: ...`; with input at 2 Hz
+or slower that is already after one failed lookup) and the level turns ERROR
+after `input_timeout_s`. The states, levels and messages are tabulated in
+[SPEC.md](SPEC.md) ("Input states on `/diagnostics`"); CI walks both backends
+through them on Humble with
+[`scripts/check_no_localizer.py`](scripts/check_no_localizer.py).
+
+The loss is estimated per
 sensor frame from gaps between stamps and is unreliable above about 80 % loss,
 so set `expected_scan_rate_hz` (per sensor) from the datasheet or
 `ros2 topic hz`.

@@ -7,7 +7,11 @@ use_sim_time:=true, and checks that
     the scans keep coming (a TF wait counted on the frozen ROS clock would block the
     scan callback forever, and with it every service and timer of the node), and
   * /diagnostics keeps arriving and reports WARN or worse saying the ROS clock is not
-    advancing while messages arrive.
+    advancing while messages arrive, and
+  * every status while the scans arrive carries the input counts (received > 0,
+    integrated 0, a growing TF failure streak), and the stalled-clock warning keeps
+    the "no usable TF" text beside it, with the cause in last_tf_error: nothing here
+    can be placed in the map.
 
 Usage: check_sim_clock_stall.py [--node /strata] [--topic /scan] [--seconds 12]
 Run against `ros2 launch strata grid2d.launch.py rviz:=false use_sim_time:=true`.
@@ -96,6 +100,23 @@ def main():
     results.append((bool(stall), 'diagnostics report the stalled sim clock: '
                     + (f'level {level(stall[-1])}, "{stall[-1].message}"' if stall else
                        f'no (last: "{during[-1].message if during else ""}")')))
+    def counts(status):
+        v = {kv.key: kv.value for kv in status.values}
+        try:
+            return (int(v['messages_received_total']), int(v['messages_integrated_total']),
+                    int(v['tf_failures_total']), int(v['tf_failures_since_integrate']),
+                    float(v['seconds_since_last_integrate']), v['last_tf_error'])
+        except (KeyError, ValueError):
+            return None
+    got = [counts(s) for s in during]
+    ok = bool(got) and all(c is not None and c[0] > 0 and c[1] == 0 and c[2] == c[0] and c[3] == c[0] and c[5] != ''
+                           for c in got) and got[-1][3] > got[0][3]
+    results.append((ok, 'every status while scans arrived: messages_received_total > 0, messages_integrated_total 0, '
+                        'tf_failures_total = tf_failures_since_integrate = received and growing, last_tf_error set: '
+                        + (f'first {got[0]}, last {got[-1]}' if got else 'no status')))
+    both = [s for s in stall if '; no usable TF map -> sensor yet: ' in s.message and ', 0 integrated, ' in s.message]
+    results.append((bool(stall) and len(both) == len(stall),
+                    f'the stalled-clock warning keeps the TF text: {len(both)} of {len(stall)} statuses'))
     for ok, line in results:
         print(('ok    ' if ok else 'FAIL  ') + line)
     node.destroy_node()

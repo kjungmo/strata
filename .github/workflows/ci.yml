@@ -228,6 +228,40 @@ jobs:
           printf 'P5\n%s 1\n255\n\315' "$long" > bad/long.pgm
           expect 1 "has more than 18 digits" bad/long_pgm.yaml
 
+      - name: No localizer, then TF, then TF lost; /diagnostics must name each input state
+        shell: bash
+        timeout-minutes: 6
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          stop() {
+            kill -TERM -- "-$1" 2>/dev/null || true
+            for _ in $(seq 15); do kill -0 "$1" 2>/dev/null || return 0; sleep 1; done
+            kill -KILL -- "-$1" 2>/dev/null || true
+          }
+          # Wall clock, no /clock. The script publishes nothing, then messages without a
+          # transform and with one that is 5 s too old (level OK "no usable TF ... yet"
+          # until startup_timeout_s, WARN after; the cause in last_tf_error), then with
+          # a current one ("ok"), then without it again (named once nothing integrated
+          # for 1 s, ERROR after input_timeout_s), then nothing (ERROR), and checks the
+          # level, message, values and value order of every status. startup_timeout_s is
+          # shortened from 30 s to 15 s.
+          for backend in grid2d voxel3d; do
+            echo "::group::$backend"
+            yaml="nolocalizer_${backend}.yaml"
+            sed -e "s/startup_timeout_s: 30.0 /startup_timeout_s: 15.0 /" \
+                "install/strata/share/strata/params/${backend}.yaml" > "$yaml"
+            grep -q "startup_timeout_s: 15.0 " "$yaml"
+            setsid ros2 launch strata "${backend}.launch.py" rviz:=false params_file:="$PWD/$yaml" \
+              > nolocalizer.log 2>&1 &
+            pid=$!
+            status=0
+            timeout 150 python3 scripts/check_no_localizer.py "$backend" "$yaml" || status=$?
+            stop "$pid"
+            echo "::endgroup::"
+            if [ "$status" -ne 0 ]; then cat nolocalizer.log; exit 1; fi
+          done
+
       - name: Launch with use_sim_time but no /clock and no TF; the node must stay responsive
         shell: bash
         timeout-minutes: 3
