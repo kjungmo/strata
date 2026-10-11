@@ -63,7 +63,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
-suites, plus 46 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 58 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -380,7 +380,23 @@ stamps are zero or stop advancing, when `use_sim_time` is true and the ROS
 clock has stood still for 3 s while messages arrive (no `/clock`), or when
 messages arrive but the TF lookup fails (no localizer yet), and turns ERROR
 after `input_timeout_s` without input (`startup_timeout_s` before the first
-message). The loss is estimated per
+message).
+
+Every status, from the first one, also carries `messages_received_total`,
+`messages_integrated_total`, `tf_failures_total`, `tf_failures_since_integrate`
+(the running streak, `0` again once a message integrates) and
+`seconds_since_last_integrate`. Without a localizer the level stays OK until
+`startup_timeout_s` (30 s) has passed since start and is WARN after it, as
+before, but the message is no longer `ok`: it reads `waiting for TF map ->
+sensor: N message(s) received on /scan, 0 integrated, N TF lookup(s) failed
+(WARN after startup_timeout_s = 30 s)`. If the transform is lost in mid-run,
+the message names it after 1 s (`TF lookup map -> sensor failing: ...`) and the
+level turns ERROR after `input_timeout_s`. The states, levels and messages are
+tabulated in [SPEC.md](SPEC.md) ("Input states on `/diagnostics`"); CI walks
+both backends through them on Humble with
+[`scripts/check_no_localizer.py`](scripts/check_no_localizer.py).
+
+The loss is estimated per
 sensor frame from gaps between stamps and is unreliable above about 80 % loss,
 so set `expected_scan_rate_hz` (per sensor) from the datasheet or
 `ros2 topic hz`.

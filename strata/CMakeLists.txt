@@ -73,6 +73,8 @@ if(BUILD_TESTING)
     STRATA_CHECK_SAVED_MAP="${CMAKE_CURRENT_SOURCE_DIR}/scripts/check_saved_map.py")
   ament_add_gtest(test_tf_wait test/test_tf_wait.cpp)
   target_include_directories(test_tf_wait PRIVATE include)
+  ament_add_gtest(test_input_status test/test_input_status.cpp)
+  target_include_directories(test_input_status PRIVATE include)
 endif()
 
 ament_package()
