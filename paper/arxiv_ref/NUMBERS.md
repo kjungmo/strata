@@ -5,7 +5,7 @@ Tables `tables/{e0,e1,e2,e3,e3_full,e4,e5,e5_choice,e5_confusion,e5_full,fix}.te
 `tools/make_artifacts.py` from those CSVs; no number in them is hand-typed.
 `python3 paper/experiments/number_guard.py` checks both `strata_paper.md` and this package
 (including that generated files are current, and that the code directories the paper pins are
-unchanged). Last run: `PASS GUARDCOUNT`, no failures. CI runs it on every push.
+unchanged). Last run: `PASS 656`, no failures. CI runs it on every push.
 
 **Code pin (2026-10-12).** The paper describes `strata_core/`, `strata/` and `scripts/` at commit
 `312b09c`; the guard compares their git tree ids with that commit's. E0–E3 and E5 reproduce their

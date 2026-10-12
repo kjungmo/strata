@@ -26,8 +26,8 @@ movers (plasticity) and treat a scheduled door as signal, not noise
 (periodicity). Per-cell persistence and periodicity models already exist; the
 closest precedent is Frequency Map Enhancement (FreMEn), in the 2D grid of
 Krajník et al. (2016) and in FROctomap, while several recent LiDAR
-lifelong-mapping systems (e.g. ELite, LT-mapper) embed persistence logic inside
-full lifelong-SLAM pipelines. We present STRATA, a small, SLAM-free engine that
+lifelong-mapping systems embed persistence logic inside
+lifelong-SLAM pipelines. We present STRATA, a SLAM-free engine that
 combines known ingredients in one per-cell state machine — windowed log-odds
 with survival decay, a Schmitt-trigger graduation band, pruning, and a
 FreMEn-style Fourier test at one configured base period and its harmonics,
@@ -44,9 +44,8 @@ removing hysteresis raises flicker from 54 to 574 toggles. With the level fixed
 on calibration seeds, at most 2 of 2000 Bernoulli clutter cells are ever
 labelled Periodic within 1024 windows in every held-out configuration (Wilson
 95% upper limit 0.0036), and 50%-duty doors are detected from 25 windows (8
-without the test). The dominant labelling error is not periodic: without decay,
-1221 of 2000 aperiodic cells end falsely Static, and temporally correlated
-clutter is labelled Periodic. Code:
+without it). The dominant error is a false Static label (1221 of 2000 aperiodic
+cells without decay), and temporally correlated clutter is labelled Periodic. Code:
 <https://github.com/kjungmo/strata>.
 
 # 1 Introduction
@@ -236,8 +235,8 @@ LT-mapper's live-to-static pipeline wrap around, and its measured evaluation
 characterization, not the real-data and field-scale validation ELite and
 LT-mapper report. Khronos
 [@schmid2024khronos] generalizes the same two-timescale idea to an
-active-window/long-term-reconstruction split with semantics and a scene
-graph; STRATA stays at the raw per-cell level with no object or scene-graph
+active-window/long-term-reconstruction split with semantics and object-level
+change reasoning; STRATA stays at the raw per-cell level with no object
 layer, a narrower and cheaper instance of the same principle. Classifying
 cells by their temporal behaviour predates these systems. Temporal occupancy
 grids [@arbuckle2002temporal] classify cells by occupancy over several

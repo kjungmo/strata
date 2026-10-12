@@ -1,0 +1,2 @@
+REPRODUCED 2026-10-12 | c++ (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0 | Linux x86_64 | strata_core tree 401e7c7fced30ee44ed9888d397158492dc38eb2 | results tree 04e22a6e31105f7c81c2ca9e68b431eb319073b7: E0-E3 and E5 files byte-identical, E4 cell counts equal
+REPRODUCED 2026-10-12 | x86_64-conda-linux-gnu-c++ (conda-forge gcc 14.3.0-19) 14.3.0 | Linux x86_64 | strata_core tree 401e7c7fced30ee44ed9888d397158492dc38eb2 | results tree 04e22a6e31105f7c81c2ca9e68b431eb319073b7: E0-E3 and E5 files byte-identical, E4 cell counts equal
