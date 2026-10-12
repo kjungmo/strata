@@ -1,15 +1,21 @@
 \section{Reproduction}\label{app:repro}
 
-\sname\ is released under the Apache-2.0 license at \url{https://github.com/kjungmo/strata} and targets ROS~2 Humble. From the repository root:
+\sname\ is released under the Apache-2.0 license at \url{https://github.com/kjungmo/strata} and targets ROS~2 Humble.
+
+\noindent\textbf{Code pin.} The revision of that repository that carries this paper, its result files and its reproduction scripts is the tag \code{paper-v1}. The engine (\code{strata\_core}), the node (\code{strata}) and the check scripts (\nolinkurl{scripts/}) in it are those of commit \code{312b09c} (11 October 2026): the experiment harness, experiment E6, the result files and this manuscript were completed after that commit without changing those three directories, and the number check compares their tree identifiers with that commit's. Commit \code{312b09c} itself predates E6 and the reproduction scripts named below.
+
+\noindent\textbf{What reproduces.} \nolinkurl{paper/experiments/check_reproduction.sh} rebuilds the harness from a clean checkout and requires every result file of E0--E3, E5 and E6 to come out byte for byte; \nolinkurl{paper/experiments/reproduction_log.txt} lists the compilers with which it did (GCC~9.4.0 with libstdc++, on one x86-64 Linux host). The result is not independent of the C++ standard library. The streams come from \code{std::mt19937}, whose output the standard fixes, through three standard distributions, whose algorithms it does not fix. With clang~23.1.2 and libc++ (\nolinkurl{check_stdlib.sh}, record in \nolinkurl{results/stdlib_libcxx/}), 15 of the 19 seeded result files are byte-identical and four differ: the two E1 files, the E0 door file and the E6 confusion file. These are the experiments whose outcome depends on integers drawn with \code{std::uniform\_int\_distribution} (mover cells in E1's \code{grid2d} runs, door phases in E0 and E6). Under libc++ the final \code{grid2d} precision at high clutter in E1 is 0.9583 with 168 predicted cells instead of 0.9253 with 174, and every other final value of Table~\ref{tab:e1} is unchanged; five of the 20 E0 door medians move by one window (at $\delta{=}0.1$, 20 to 21 and 23 to 24) and the selected levels do not change; and 1976 instead of 1960 of the 2000 aperiodic cells of E6 are Static with the shipped defaults. E5's confusion draws door phases the same way, but its counts do not depend on the phases and its file is identical. No third standard library was tried.
+
+\noindent From the repository root:
 \begin{itemize}
   \item Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on \code{ubuntu-latest}):
 \begin{quote}\small\ttfamily
 cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
-cmake --build build \&\& (cd build \&\& ctest)
+cmake -{}-build build \&\& (cd build \&\& ctest)
 \end{quote}
-  \item Unit tests, the calibration E0 (seeds from 20260928), experiments E1--E4 (seed 12345) and E5 (calibration seeds from 30260928, evaluation seeds from 40260928), writing the CSVs under \nolinkurl{paper/experiments/results/}. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}), against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}) and against the engine with the single-read-out level (\nolinkurl{results/pre_spending_2026-09-28/}):
+  \item Unit tests, the calibration E0 (seeds from 20260928), experiments E1--E4 (seed 12345), E5 (calibration seeds from 30260928, evaluation seeds from 40260928) and E6 (sweep seeds from 50260928), writing the CSVs under \nolinkurl{paper/experiments/results/}. E0--E3, E5 and E6 rewrite their files byte for byte. E4 reads the wall clock: this script writes its output to \nolinkurl{paper/experiments/build/e4_throughput_local.csv} and fails if a cell count or byte estimate differs from the committed one (\nolinkurl{check_e4_local.py}); timings for the paper are recorded separately with \nolinkurl{paper/experiments/measure_e4.sh}. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}), against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}) and against the engine with the single-read-out level (\nolinkurl{results/pre_spending_2026-09-28/}):
 \begin{quote}\small\ttfamily bash paper/experiments/run\_all.sh\end{quote}
-  \item Tables and plot data of this paper, and the number check that maps every quantitative claim to its CSV field (see \nolinkurl{paper/arxiv_ref/NUMBERS.md}):
+  \item Tables and plot data of this paper, and the number check (\nolinkurl{paper/arxiv_ref/NUMBERS.md}). The check regenerates every table and plot-data file and compares it with the committed one. For the hand-written text it locates each numeral and requires it to be tied to a value recomputed from the result files or the code, or to be listed as structural with a reason (an experiment design constant restated from the harness, a symbol in a formula, a plot layout value). A numeral that is neither fails the check. Its limits are these. Structural numerals, among them the scenario sizes of \S\ref{subsec:setup} and the design constants written as symbol and value, are not parsed from the harness; they are kept in a committed list (\nolinkurl{paper/arxiv_ref/structural_numerals.tsv}), so that changing one fails the check until the list is rewritten on purpose. A numeral that is tied to a recomputed value only by being equal to it, and not by its sentence, could be exchanged for another recomputed value without the check noticing; \nolinkurl{NUMBERS.md} gives the count of each kind.
 \begin{quote}\small\ttfamily python3 paper/arxiv\_ref/tools/make\_artifacts.py\\
 python3 paper/experiments/number\_guard.py\end{quote}
 \end{itemize}
@@ -19,7 +25,7 @@ Alternative backends can be replayed against the reference scenario of the unit 
 
 \begin{table}[H]
 \centering
-\caption{Engine parameters and shipped defaults (the \code{LayeredMapParams} struct and both \code{params/*.yaml} files agree). Geometry and node parameters are not part of the engine: \code{grid\_width}/\code{grid\_height} 400, \code{grid\_resolution} 0.05~m and origin $(-10,-10)$~m for \code{grid2d}; \code{voxel\_size} 0.2~m for \code{voxel3d}; \code{publish\_period} 1.0~s.}
+\caption{Engine parameters and shipped defaults (the \code{LayeredMapParams} struct and both \code{params/*.yaml} files agree). Geometry and node parameters are not part of the engine: \code{grid\_width}/\code{grid\_height} 400, \code{grid\_resolution} 0.05~m and origin $(-10,-10)$~m for \code{grid2d}; \code{voxel\_size} 0.2~m for \code{voxel3d}; \code{publish\_period} 1.0~s; \code{window\_mode} \code{time} in both files (\code{scans} when the parameter is not set) with \code{window\_period\_s} 1.0~s; \code{expected\_scan\_rate\_hz} 0 (estimated from stamps), \code{rate\_warn\_drop\_fraction} 0.05, \code{input\_timeout\_s} 5~s and \code{startup\_timeout\_s} 30~s.}
 \label{tab:params}
 \small
 \begin{tabular}{llll}
@@ -74,7 +80,7 @@ $\delta$ (0.2, spent) & --- & --- & --- & n/a \\
 
 \begin{table}[H]
 \centering
-\caption{ROS~2 input/output contract of the \code{strata} node. Every scan or cloud is transformed with a full 6-DoF lookup of \code{global\_frame} (default \code{map}) $\leftarrow$ sensor frame at the message stamp; lookup failures drop the message with a throttled warning. The node neither subscribes to \code{/initialpose} nor broadcasts \code{map}$\to$\code{odom}; one mutex serialises integration, publishing and saving.}
+\caption{ROS~2 input/output contract of the \code{strata} node. Every scan or cloud is transformed with a full 6-DoF lookup of \code{global\_frame} (default \code{map}) $\leftarrow$ sensor frame at the message stamp; a lookup that still fails after the wait of Table~\ref{tab:node} drops the message with a throttled warning. The node neither subscribes to \code{/initialpose} nor broadcasts \code{map}$\to$\code{odom}; one mutex serialises integration, publishing, saving and the diagnostics status. Both timers run on the wall clock.}
 \label{tab:io}
 \footnotesize
 \begin{tabular}{llll}
@@ -87,7 +93,31 @@ Publish & \code{\textasciitilde/map} & \code{OccupancyGrid}, depth 1, transient 
 Publish & \code{\textasciitilde/map\_points} & \code{PointCloud2}, depth 1, volatile & \code{voxel3d} \\
 Service & \code{\textasciitilde/save\_map} & \code{Trigger} & both (\code{.pgm}+\code{.yaml} / \code{.pcd}) \\
 Timer & \code{publish\_period} (1.0~s) & --- & both \\
-Publish & \code{/diagnostics} & \code{DiagnosticArray}, depth 10 & both, once a second \\
+Publish & \code{/diagnostics} & \code{DiagnosticArray}, depth 10 & both, one status a second \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Node behaviour that a deployment depends on.} The node's rules for time, transforms, input health and saving live in ROS-free headers with their own unit tests, and continuous integration runs the launched node against synthetic input on ROS~2 Humble. Table~\ref{tab:node} states each rule as implemented and names the check that exercises it; a rule without a check says so. None of these checks uses a robot or a recorded bag (\S\ref{sec:disc}).
+
+\begin{table}[H]
+\centering
+\caption{Behaviour of the \code{strata} node at the pinned commit and the committed check that exercises each rule. Unit tests are the 64 gtest cases of the node package (\nolinkurl{strata/test/}); scripts are in \nolinkurl{scripts/} and run in the Humble job of the continuous integration against the launched node with synthetic input. ``---'': no dedicated check.}
+\label{tab:node}
+\footnotesize
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.50\linewidth}>{\raggedright\arraybackslash}p{0.28\linewidth}}
+\toprule
+Topic & Rule as implemented & Checked by \\
+\midrule
+Time windows & Windows of \code{window\_period\_s} on header stamps, in integer nanoseconds from the first stamp. A later stamp closes the open window and every silent one. A stamp more than half a window behind the newest, or more than $10^6$ windows ahead, re-anchors the clock after closing the open window. & \code{test\_window\_clock} (6 cases); \nolinkurl{synthetic_e2e.py} with time windows \\
+Zero stamps & Dropped with time windows, integrated with scan windows; reported as a warning in both. & --- \\
+TF wait & The lookup at the message stamp is polled without blocking for 0.1~s of ROS time, at most 1~s of steady time. A ROS clock unchanged for 1~s counts as frozen and is not waited on. A clock that steps past the budget gets 20~ms more. A failed lookup drops the message. & \code{test\_tf\_wait} (7 cases); \nolinkurl{check_coarse_clock.py}; \nolinkurl{check_sim_clock_stall.py} \\
+Input status & One status a second on \code{/diagnostics}. No message yet: OK, then ERROR after \code{startup\_timeout\_s}. Messages stop: ERROR after \code{input\_timeout\_s}. Lookups fail before anything was integrated: OK with the failing lookup named, then WARN after \code{startup\_timeout\_s}. Lookups fail later: named once nothing was integrated for 1~s, then ERROR after \code{input\_timeout\_s}. Every status carries message, integration and TF-failure totals, the running failure streak and the last tf2 error text. & \code{test\_input\_status} (18 cases); \nolinkurl{check_no_localizer.py} on both backends \\
+Clock and stamp warnings & WARN when \code{use\_sim\_time} is set and the ROS clock stands still for 3~s while messages arrive, and when messages are integrated but no time window closes for 10 window periods (and more than 2~s). & \nolinkurl{check_sim_clock_stall.py} (clock); --- (no window closing) \\
+Rate statistics & Per sensor frame, from the stamps of integrated messages: rate, window duration, and loss estimated from gaps against the 20th-percentile interval or \code{expected\_scan\_rate\_hz}. At most 16 frames are tracked; a frame silent for 10 window closes is forgotten. WARN on loss above \code{rate\_warn\_drop\_fraction} or jittery scan windows, and on empty or thin time windows. & \code{test\_rate\_monitor} (4 cases); \nolinkurl{synthetic_e2e.py} with 40\,\% of the scans withheld; --- (frame cap and expiry) \\
+Saving & \code{grid2d}: PGM and \code{nav2\_map\_server} YAML are written to temporary files, flushed, renamed (image first) and the directory flushed. A save that fails before the renames leaves the previous pair untouched and answers \code{success: false} with the reason. A failure between the two renames can leave the new image beside the previous YAML, so the YAML records the size and SHA-256 of its image and \nolinkurl{check_saved_map.py} verifies a pair; neither the node nor Nav2 runs that check. \code{voxel3d}: one PCD through the same steps. & \code{test\_map\_writer} (25 cases); saved-pair step of the CI job; \nolinkurl{synthetic_e2e.py} with \code{-{}-check-map-server} \\
+Saved-map values & Free 254, Transient and Periodic 100, Static 0, Unknown 205 with thresholds 0.65 and 0.196, so \code{nav2\_map\_server} serves free, unknown, occupied and unknown. & \nolinkurl{synthetic_e2e.py} with \code{-{}-check-map-server}: all 160{,}000 cells of the synthetic scene, which holds no Transient cell \\
+Parameters & Every key of both shipped YAML files is declared by the node and holds the file's value. & \nolinkurl{check_param_binding.py} on both backends \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -108,7 +138,7 @@ Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\l
 Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
 Periodic & Transient / Unknown & $\pi$ becomes false (pruned only once also $a<\amin$) \\
 Periodic & Static & $\lnot\pi$ and Eq.~\eqref{eq:grad} holds \\
-Periodic & --- & never graduates; never pruned while $a\ge\amin$ \\
+Periodic & --- & never graduates while $\pi$; never pruned while $a\ge\amin$ \\
 Static & --- & never pruned while $g$ \\
 \bottomrule
 \end{tabular}

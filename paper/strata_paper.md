@@ -1,19 +1,23 @@
 ---
-title: "STRATA: One Geometry-Free Persistence-and-Periodicity Engine Driving Selectable 2D/3D Lifelong LiDAR Mapping in ROS 2"
+title: "STRATA: One Geometry-Free Persistence-and-Periodicity Engine for Selectable 2D/3D Lifelong LiDAR Mapping"
 author:
   - name: Jungmo Kang
-    affiliation: Independent Researcher
+    affiliation: Independent Researcher, Seoul, Republic of Korea
     email: kangjmo91@gmail.com
-    url: https://github.com/kjungmo
+    orcid: 0009-0002-0394-1861
+    url: https://github.com/kjungmo/strata
 keywords:
   - lifelong mapping
   - occupancy grids
-  - voxel mapping
+  - voxel hashing
   - persistence filtering
   - FreMEn periodicity
   - ROS 2
-  - open-source robotics software
 ---
+
+> This Markdown file is the long-form companion of the submitted manuscript, whose
+> source is `paper/arxiv_ref/` (PDF: `paper/strata_paper.pdf`). Numbers, claims and
+> scope are the same; where the wording differs, the manuscript is authoritative.
 
 # Abstract {-}
 
@@ -21,9 +25,7 @@ A robot that maps one building for weeks must keep walls (durability), forget
 movers (plasticity) and treat a scheduled door as signal, not noise
 (periodicity). Per-cell persistence and periodicity models already exist; the
 closest precedent is Frequency Map Enhancement (FreMEn), in the 2D grid of
-Krajník et al. (2016) and in FROctomap, while several recent LiDAR
-lifelong-mapping systems (e.g. ELite, LT-mapper) embed persistence logic inside
-full lifelong-SLAM pipelines. We present STRATA, a small, SLAM-free engine that
+Krajník et al. (2016) and in FROctomap. We present STRATA, a SLAM-free engine that
 combines known ingredients in one per-cell state machine — windowed log-odds
 with survival decay, a Schmitt-trigger graduation band, pruning, and a
 FreMEn-style Fourier test at one configured base period and its harmonics,
@@ -39,9 +41,12 @@ Both backends graduate a static wall by the third window and keep recall 1.0;
 removing hysteresis raises flicker from 54 to 574 toggles. With the level fixed
 on calibration seeds, at most 2 of 2000 Bernoulli clutter cells are ever
 labelled Periodic within 1024 windows in every held-out configuration (Wilson
-95% upper limit 0.0036), and 50%-duty doors are detected from 25 windows (8
-without the test). With periodicity off, the estimated memory is 56 B per live
-cell (evidence record and hash node only). Code:
+95% upper limit 0.0036; the proved bound is 0.2 per unpruned history), and
+50%-duty doors are detected from 25 windows (8 without the test). The dominant
+error is a false Static label: with the shipped defaults 1960 of 2000
+Bernoulli(0.5) clutter cells end Static, because the classifier cannot tell
+random clutter from a noisy wall of similar occupancy. At the shipped period,
+temporally correlated clutter is labelled Periodic. Code:
 <https://github.com/kjungmo/strata>.
 
 # 1 Introduction
@@ -90,14 +95,15 @@ lifelong-**SLAM** pipelines, coupled to multi-session point-cloud registration,
 place recognition, and alignment. RTAB-Map [@labbe2019rtabmap] offers
 selectable 2D and 3D geometry under one framework, as a complete SLAM system
 with loop closure and memory tiering. Khronos [@schmid2024khronos] generalizes
-the two-timescale idea to a metric-semantic scene graph, and MTD-Map
+the two-timescale idea to a dense spatio-temporal metric-semantic map, and MTD-Map
 [@kim2026mtdmap], concurrent with this work, maintains static, dynamic and
 transition maps from per-voxel statistics of occupancy transitions. Every
 ingredient STRATA uses therefore has precedent. What we did not find in this
 literature is their particular combination: one small, SLAM-free
 implementation that assigns each cell a discrete label through hysteresis
 graduation and pruning, is shared unchanged by a 2D grid and a 3D voxel hash,
-and bounds the false-alarm probability of its periodic label in finite samples.
+and bounds the false-alarm probability of its periodic label in finite samples
+under an iid null.
 
 We present STRATA. The name is literal: a cell in the map carries temporal
 strata — Static, Periodic, and Transient layers over an Unknown baseline —
@@ -119,8 +125,8 @@ We are explicit about scope up front (§6 consolidates the non-claims). STRATA i
 **not SLAM**: it estimates no pose, closes no loops, and aligns no sessions,
 consuming instead an external `map → sensor` transform. Its evaluation is
 **synthetic only** — every number below comes from deterministic seeded
-harnesses and unit tests, not a field deployment, in contrast to the multi-day
-validations of ELite, LT-mapper, and Berrio et al. [@berrio2021longterm] — and
+harnesses and unit tests, not a field deployment, whereas ELite, LT-mapper, and
+Berrio et al. [@berrio2021longterm] report long-term real-world evidence — and
 it runs **no external baseline**. It models **single-session** temporal
 persistence, not multi-session remapping: a graduated cell simply *is* the
 current static map, with no session versioning. And its periodicity test checks
@@ -128,40 +134,32 @@ current static map, with no session versioning. And its periodicity test checks
 from a spectrum as FreMEn does. These are the boundaries of the tool, stated as scope rather than buried as
 gaps.
 
-**Contributions.** This paper makes six, each backed only by the shipped code
+**Contributions.** This paper makes four, each backed only by the shipped code
 and the synthetic suite:
 
-1. **One geometry-free engine, two geometries, one switch (by construction).**
+1. **One geometry-free engine, two geometries.**
    A single `int64`-keyed persistence-and-periodicity engine (`LayeredMap` +
    `PeriodicityModel`) drives both a fixed-array 2D occupancy grid and a
    sparse 3D voxel hash behind one `MapBackend` interface, chosen by a single
-   runtime string parameter, with no state-machine logic duplicated across
-   dimensions ([@fig:architecture]; §3–4). Per-cell periodic grids already
+   runtime string parameter; the only per-backend code is the point-to-key map
+   and the free-space ray walk ([@fig:architecture]; §3–4), and the core builds
+   with a plain C++17 + Eigen toolchain under 56 behavior-level tests. Per-cell
+   periodic grids already
    exist in 2D and in 3D [@krajnik2016persistent; @krajnik2014froctomap], as
    separate implementations [@fremenrepo]; what is added here is one
    implementation that serves both, and the geometry-free part is the whole
    persistence, graduation, pruning and classification state machine together
    with the periodicity test, not per-identifier periodicity modelling alone,
    which the FreMEn server already provides.
-2. **A ROS-free, deterministically testable core, shown backend-equivalent
-   (design goal + measured).** The engine builds and unit-tests with a plain
-   C++17 + Eigen toolchain and is exercised by 56 behavior-level tests; both
-   backends graduate the static wall by window 3 and hold recall 1.0 through
-   window 39, differing in static-layer quality only by a clutter-induced
-   static-precision gap (0.9253 grid2d vs. 0.9758 voxel3d at 100 movers per
-   window) that traces to the backends' native-geometry sampling, not to the
-   classifier; a
-   separate per-`integrate()` cost gap between the backends is characterized in
-   contribution 6 (§3, §5).
-3. **A minimal lifelong classifier assembled from known parts.**
+2. **A minimal lifelong classifier assembled from known parts.**
    Persistence-Filter survival decay [@rosen2016persistence], Removert-motivated
    Schmitt hysteresis [@kim2020removert], ReFusion-style negative-evidence ray
    clearing [@palazzolo2019refusion], and a parallel FreMEn-lite periodicity
    test at a fixed period [@krajnik2017fremen], emitting a four-class label from
-   one dependency-light, SLAM-free module, with every equation transcribed from
+   one SLAM-free module, with every equation transcribed from
    the shipped code and the implementation-versus-specification differences
    stated explicitly (§4.8).
-4. **A calibrated periodic label.** A known moment-generating-function bound
+3. **A calibrated periodic label.** A known moment-generating-function bound
    for quadratic forms of sub-Gaussian vectors [@hsu2012tail, Remark 2],
    applied to the floating-mean periodogram [@zechmeister2009gls], bounds the
    probability that the periodic label fires on iid clutter under
@@ -172,29 +170,45 @@ and the synthetic suite:
    standard; the contribution is their use for per-cell occupancy periodicity
    and the measurement that repeated read-outs inflate false Periodic labels
    without such a correction.
-5. **A mechanistic characterization of the shared classifier (measured,
-   synthetic).**
-   50%-duty periodicity is detected cleanly (dominant-harmonic amplitude
-   0.653/0.707) at true-positive rate 2/3 from 25 windows on, with the single
-   miss diagnosed as a prune/maturity race; after calibration, random clutter
-   is never labelled Periodic at any read-out length (before: 0 to 4 of 5
-   per length), and over whole 1024-window runs of the live, pruned detector at
-   most 2 of 2000 held-out clutter cells are ever labelled Periodic, against
-   953 of 2000 at a constant level (E5); and hysteresis is the dominant stabilizer — removing it yields 574
-   flicker toggles at F1 0.810 versus 54 toggles at F1 1.000 on identical
-   replayed noise at the same decay ($\lambda=0.90$) (§5).
-6. **A unified engine that adds no per-dimension cost, released as a
-   reproducible tool (measured).** Estimated memory is a fixed ~56 B per live
-   cell with periodicity off, and per-window cost tracks live-cell count
-   linearly; the 5.5–15.0× per-`integrate()` gap between backends is explained
-   by 3D free-space voxel proliferation (4.4–10.0× more live cells), geometry
-   rather than the engine. The whole system ships as
-   an open-source ROS 2 package with a documented I/O contract and a seeded
-   harness whose figures regenerate from measured CSVs (§3, §5).
+4. **A mechanistic, reproducible synthetic characterization.** Calibration runs
+   on dedicated calibration seeds (E0, and the calibration half of E5), disjoint
+   from all evaluation seeds; four seeded experiments (E1–E4) isolate backend
+   equivalence, periodicity detection, the contribution of hysteresis and decay,
+   and per-dimension cost; and a multi-seed, trajectory-level evaluation of the
+   live detector reports a four-class confusion (E5). Every table and figure is
+   regenerated from committed CSVs, and failure modes are diagnosed rather than
+   averaged away (§5).
+
+Across the suite, both backends graduate a 161-cell wall by the third window
+and keep recall at 1.0 through window 39. Their only quality gap is a final
+static precision of 0.9253 (grid2d) against 0.9758 (voxel3d) under 100 movers
+per window; it arises in the backends' native sampling rather than in the shared
+classifier. We report and correct two defects of the first release's periodicity
+test, with before-and-after results. An uncentred Fourier amplitude could demote
+constant walls. An uncalibrated amplitude threshold labelled Bernoulli clutter
+Periodic at 0 to 4 of 5 cells depending on read-out length, a mean
+false-positive rate of 0.331 even after centring. Because the map re-tests every
+window, a constant significance level still let up to 953 of 2000 clutter cells
+be labelled Periodic at some window of a 1024-window run; with the level spent
+over the touch count, at most 2 of 2000 are, on held-out seeds, and the E2
+false-positive rate is 0 at every read-out length from 8 to 100 windows. Both
+50%-duty doors are still detected (dominant-harmonic amplitudes 0.653 and
+0.707), for a true-positive rate of 2/3, but only from 25 windows instead of 8,
+and the one miss is a provable interaction between pruning and the amplitude
+gate. Over 20 held-out scenes the dominant labelling error is a false Static
+label on aperiodic cells, not a false Periodic one: with the shipped defaults
+1960 of 2000 Bernoulli(0.5) cells end Static, and the graduation rule cannot
+separate such clutter from a noisy wall of similar occupancy ([@sec:mdagger]).
+Removing the hysteresis band raises flicker from 54 to 574 toggles at the same
+decay ($\lambda=0.90$; F1 1.000 against 0.810), and the estimated footprint is a
+flat 56 B per cell with periodicity off. grid2d is cheaper per `integrate()`
+call than voxel3d at every tested extent in every timing recording, by a factor
+that we do not report because it was not measured reliably, alongside 4.4–10.0×
+more live 3D cells.
 
 On this synthetic suite, the results are consistent with a lifelong-mapping
-core that is written once and shared across dimensions, with the per-dimension
-cost arising in each backend's geometry rather than in the shared engine.
+core that is written once and shared across dimensions, with the two backends
+differing in how many cells their geometry creates.
 Whether the calibrated test improves on FreMEn's own component selection, and
 how the classifier behaves on real LiDAR data, remain to be evaluated (§6).
 
@@ -203,8 +217,9 @@ under an open-source license, with a thin ROS adapter node and a reusable
 characterization harness; it is designed to plug beneath an external localizer
 such as `prism_loc`. The remainder of the paper positions STRATA against the
 prior art (§2), specifies its two-band, testable architecture (§3), gives the
-as-shipped engine mathematics including three honest implementation-versus-
-specification differences (§4), reports the synthetic evaluation (§5), and
+as-shipped engine mathematics including the two remaining
+implementation-versus-specification differences (§4), reports the synthetic
+evaluation (§5), and
 states the limitations, boundaries, and reproducibility of the tool (§6–7).
 
 # 2 Related Work
@@ -213,26 +228,25 @@ We organize prior work into seven themes and, for each entry, state STRATA's
 exact relation rather than a generic contrast.
 
 **Lifelong and persistent mapping.** ELite [@gil2025elite] and LT-mapper
-[@kim2022ltmapper] are recent LiDAR lifelong-mapping systems with the same aim
-as STRATA. ELite computes a
-two-timescale ephemerality score per point (within-session dynamic vs.
-across-session transient) and drives a Lifelong/Static/Delta map triad;
-LT-mapper composes a live map, a meta map, and a delta map through explicit
-LT-SLAM alignment, LT-removert removal, and LT-map graduation stages. Both
+[@kim2022ltmapper] are recent LiDAR lifelong-mapping systems. ELite scores
+each point's ephemerality at two timescales and maintains a
+lifelong/static/delta map triad;
+LT-mapper composes live, meta and delta maps through explicit
+alignment, removal and change-management stages. Both
 are full lifelong-SLAM pipelines with multi-session point-cloud registration
 and place recognition. STRATA implements only the graduation half of that
 pattern — one per-cell state machine (Static/Periodic/Transient/Unknown,
 §4.5) inside a ROS-free engine, with no scan matching, no loop closure, no
 cross-session alignment, and no semantics. STRATA is not a competing full
-system; it is the persistence-and-classification core that ELite's triad and
-LT-mapper's live-to-static pipeline wrap around, and its measured evaluation
+system; it is intended as the persistence-and-classification core that such
+systems wrap, and its evaluation
 (§5) is correspondingly narrower — a synthetic, single-session
-characterization, not the real-data and field-scale validation ELite and
+characterization that lacks the real-data and field-scale evidence ELite and
 LT-mapper report. Khronos
-[@schmid2024khronos] generalizes the same two-timescale idea to an
-active-window/long-term-reconstruction split with semantics and a scene
-graph; STRATA stays at the raw per-cell level with no object or scene-graph
-layer, a narrower and cheaper instance of the same principle. Classifying
+[@schmid2024khronos] splits an active window from a long-term reconstruction
+with semantics and object-level
+change reasoning; STRATA stays at the raw per-cell level with no object
+layer, a narrower instance of the same principle. Classifying
 cells by their temporal behaviour predates these systems. Temporal occupancy
 grids [@arbuckle2002temporal] classify cells by occupancy over several
 timescales with planar laser range-finders and locate doors in a real-world
@@ -243,18 +257,17 @@ cells, in simulation with known poses. Biber and Duckett
 contribute the multi-timescale and static/temporary-split ideas STRATA's
 window/decay/hysteresis/periodicity combination descends from. RTAB-Map
 [@labbe2019rtabmap] offers selectable 2D/3D geometry inside one shipped
-framework, coupled to full SLAM and STM/WM/LTM memory management; STRATA
+framework, as a complete SLAM system with loop closure and memory tiering; STRATA
 narrows this to the mapping/persistence layer alone, behind a `MapBackend`
 interface selected by a single string parameter, consuming an externally
 supplied pose rather than estimating one. Berrio et al. [@berrio2021longterm]
-report an 18-month field deployment of the same purge/promote pattern STRATA
-implements as a Schmitt trigger (§4.3) — field-scale evidence for the pattern
-that STRATA currently lacks for itself, and Pomerleau et al.
+describe a long-term map maintenance pipeline for autonomous vehicles,
+and Pomerleau et al.
 [@pomerleau2014longterm] infer online whether each 3D point is static or
 dynamic from repeated observations, over seven months of data. Yang et al.
 [@yang2025lifelong3d]
-keep positive/negative version deltas over a base map so any past session can
-be reconstructed; STRATA does no session versioning at all — a graduated cell
+keep versioned deltas over a base map so that past sessions can
+be rebuilt; STRATA does no session versioning at all — a graduated cell
 is simply part of the current static map, its history implicit in log-odds
 and observation counts, not explicitly replayable. For 2D occupancy grids,
 Stefanini et al. [@stefanini2022efficient; @stefanini2023safe] update a LiDAR
@@ -269,17 +282,17 @@ and removed observed-dynamic layers from geometric and semantic evidence.
 Neither describes an explicit periodic class.
 
 **Persistence and forgetting.** The Persistence Filter [@rosen2016persistence]
-recursively estimates each feature's survival probability from a Bayesian
-survival-time model. STRATA's per-window survival-decay multiplier $\lambda$
-(§4.2) is a discretized, single-scalar simplification of that idea: one tunable
-multiplicative factor pulls belief toward unknown each window in place of a
-full survival-time posterior. The log-odds hit/miss update with clamping in
-Thrun et al. [@thrun2005probabilistic] is used verbatim as STRATA's per-window
-occupancy accumulation, with decay and hysteresis layered on top. Tipaldi et
-al. [@tipaldi2013lifelong] and Saarinen et al. (iMac) [@saarinen2012imac]
-model each cell as a two-state Markov process with a recency-weighted or
-online-learned transition rate — the principled, per-cell-learned form of
-"how fast a cell should forget." Perpetua [@saavedraruiz2025perpetua] combines
+estimates each feature's survival probability from a Bayesian
+survival-time model. STRATA's survival-decay multiplier $\lambda$
+(§4.2) is a single-scalar simplification of that idea: one global
+multiplicative factor, applied in every window in which a cell is touched, in
+place of a survival-time posterior. STRATA uses the log-odds update of
+Thrun et al. [@thrun2005probabilistic], clamped as in OctoMap
+[@hornung2013octomap], as its per-window
+occupancy accumulation, with decay and hysteresis layered on top. The
+Markov-chain occupancy models of Tipaldi et
+al. [@tipaldi2013lifelong] and Saarinen et al. [@saarinen2012imac]
+learn per-cell transition rates. Perpetua [@saavedraruiz2025perpetua] combines
 persistence and emergence filters under multiple hypotheses for features that
 disappear and reappear. `survival_decay` is a single global
 constant, a constant-rate special case of that formalism; STRATA states this
@@ -294,7 +307,7 @@ et al. [@krajnik2016persistent] use it in a 2D spatio-temporal occupancy grid
 in which each cell represents both persistence (through the mean time between
 state changes) and periodicity; the grid integrates one map per patrol,
 replaces the ROS map server, and predicts time-specific maps for localisation
-and planning. FROctomap [@krajnik2014froctomap] applies the same model to 3D
+and planning. FROctomap [@krajnik2014froctomap] applies the FreMEn spectral model to 3D
 octree voxels, the exploration work of Krajník et al.
 [@krajnik2015exploration] displays the static and daily-periodic cells of such
 a grid, and the open-source FreMEn repository [@fremenrepo] provides separate
@@ -314,30 +327,26 @@ Periodic rather than mis-graduated to Static or mis-pruned as Transient — the
 third class exists specifically to answer this argument, at the cost of a
 bounded harmonic count and a validity gate tied to touched-window count
 rather than elapsed time (a documented implementation-versus-specification
-divergence, §4.8). Krajník et al.
-[@krajnik2014spectral] is the earlier, more general spectral-analysis
-lineage FreMEn later packaged as a mapping method; STRATA's bounded
-incremental-Fourier approximation is a further narrowing of that lineage, not
-the full spectral machinery.
+divergence, §4.8). FreMEn descends from the spectral analysis of long-term
+maps of Krajník et al. [@krajnik2014spectral]; STRATA's bounded
+incremental-Fourier model is a further narrowing of that lineage.
 
 **Dynamic-object removal.** Removert [@kim2020removert] conservatively
-removes dynamic points and then reverts wrongly removed static ones, because
-aggressive removal erases real structure. This is the exact justification for
-STRATA's hysteresis band (§4.3): on the occupancy path a graduated cell
+retains definite static points and then reverts wrongly removed ones. It
+motivates STRATA's hysteresis band (§4.3): on the occupancy path a graduated cell
 demotes only when its probability falls below `p_dem < p_grad`, i.e. sustained
 contradicting evidence across windows rather than a single contradicting frame
 (the periodic guard of §4.3 has no band of its own) — the same
-failure mode Removert's revert pass patches after the fact, STRATA prevents
-online by construction. ReFusion [@palazzolo2019refusion] treats a reliably
+failure that Removert's revert pass repairs after the fact, STRATA prevents
+online. ReFusion [@palazzolo2019refusion] treats a reliably
 observed empty voxel as evidence, not merely an absence of evidence; STRATA's
 ray-clearing — exact Bresenham for `grid2d`, sub-voxel-step sampling for
 `voxel3d` (§4.6) — applies the same negative-information logic online, with
 misses accumulating as `l_miss` and eventually demoting a graduated cell once
-an object vacates it. ERASOR [@lim2021erasor] removes dynamic points from an
-already-accumulated 3D map offline via per-bin pseudo-occupancy ratios; STRATA
-never batches and performs no object-level reasoning — every cell's class is
-a running online per-window hit/miss-and-decay state, the baseline ERASOR's
-batch, object-level approach is not attempting to be.
+an object vacates it. ERASOR [@lim2021erasor] removes dynamic points
+offline from pseudo-occupancy ratios; STRATA
+never batches — every cell's class is a running online per-window
+hit/miss-and-decay state.
 
 **Production stacks.** OctoMap [@hornung2013octomap] shares STRATA's
 log-odds-with-clamping core but compresses storage with an octree; `voxel3d`
@@ -347,31 +356,28 @@ voxel-hashing scheme of Nießner et al. [@niessner2013hashing] is the direct
 data-structure this hash follows. UFOMap [@duberg2020ufomap] makes "never
 observed" an explicit third per-voxel state; STRATA gets the same distinction
 implicitly from the `observations` counter and log-odds value rather than a
-dedicated state, cheaper to implement and less explicit to query. Nav2 STVL
-[@macenski2020stvl] decays costmap obstacle evidence for short-horizon
-planning using the same decay-rate mechanism family STRATA's
-`survival_decay` uses to decay mapping evidence toward unknown — same knob,
-different consumer. Layered Costmaps [@lu2014layered] composite independently
+dedicated state. Nav2's spatio-temporal voxel layer
+[@macenski2020stvl] decays costmap evidence for
+planning, whereas STRATA's
+`survival_decay` decays mapping evidence. Layered Costmaps [@lu2014layered] composite independently
 maintained plugin layers per cell; STRATA's output value convention
 (`static→100, periodic→75, transient→50, free→0, unknown→-1`) reproduces the same
 layered mental model from one cell-level state machine, plus a per-cell byte
 for the free and last-observation values, rather than from multiple composited
 layers. SLAM Toolbox [@macenski2021slamtoolbox]
-bounds compute by adding and removing pose-graph nodes while performing its
-own 2D SLAM; STRATA has no pose graph and no SLAM, consuming an externally
+is a 2D SLAM library that includes prototype lifelong mapping; STRATA has no
+pose graph and no SLAM, consuming an externally
 supplied transform and pruning at the per-cell evidence level (§4.5) instead
-— a different layer of the stack, included as the standard 2D lifelong-mapping
-comparison point.
+— a different layer of the stack.
 
-**Pluggable-backend architecture.** ROS 2 Pluginlib [@ros2pluginlib] is the
-canonical swappable-backend mechanism — abstract base class, XML plugin
-description, runtime `dlopen`-based loading — and the pattern STRATA
-deliberately rejects, not adopts. With exactly two backends, STRATA resolves
+**Pluggable-backend architecture.** For swappable backends, ROS 2 offers
+pluginlib [@ros2pluginlib], a runtime `dlopen`-based plugin registry; STRATA
+deliberately uses one interface and a two-way factory instead. With exactly two backends, STRATA resolves
 `MapBackend` to one of two `unique_ptr`s at construction from a single
 runtime string parameter (§3); no plugin XML, no dynamic loading, no
-`ament_index` registry. This is the right choice at two backends; pluginlib
-becomes the right choice only once backend count grows past what a single
-`if`/`else` factory reads clearly. RTAB-Map [@labbe2019rtabmap] is re-cited
+`ament_index` registry. We judge this the right amount of mechanism for two
+backends; a third backend would argue for a registry such as pluginlib. This is
+a design judgement, not a measured result. RTAB-Map [@labbe2019rtabmap] is re-cited
 here as a shipped system offering selectable 2D/3D geometry under one
 framework, narrowed by STRATA to a persistence-only
 module with the classifier shared by composition rather than duplicated per
@@ -435,7 +441,7 @@ it.](figures/fig_architecture.pdf){#fig:architecture}
 
 ## 3.1 The `MapBackend` interface and the geometry-free invariant {#sec:mapbackend}
 
-`strata_core::MapBackend` is a pure abstract base with four methods:
+`strata_core::MapBackend` is a pure abstract base with five methods:
 
 ```cpp
 struct Observation { std::vector<Eigen::Vector3d> hits; };  // endpoints, MAP frame
@@ -443,6 +449,7 @@ class MapBackend {
   virtual void integrate(const Observation& obs,
                          const Eigen::Vector3d& sensor_origin_map) = 0;
   virtual bool tick() = 0;
+  virtual void closeWindows(int k) = 0;
   virtual std::size_t staticCellCount() const = 0;
   virtual std::size_t transientCellCount() const = 0;
 };
@@ -451,11 +458,14 @@ class MapBackend {
 `Observation::hits` is a flat list of 3D endpoints already expressed in the map
 frame; producing it from a sensor message and a `sensor_to_map` transform is
 the caller's job, so the backend never touches TF. `integrate()` performs one
-discrete map update from one sweep or cloud: for each hit it clears the
+discrete map update from one sweep or cloud: for each hit that the backend
+accepts it clears the
 free-space cells between `sensor_origin_map` and the hit via a backend-specific
-ray operation, then registers the hit itself as an occupied observation.
+ray operation, then registers the hit itself as an occupied observation. A hit
+that the backend does not accept contributes nothing, not even its ray (§4.6).
 `tick()` advances the temporal window and returns whether a window boundary was
-crossed. `staticCellCount()` and `transientCellCount()` are read-only
+crossed; `closeWindows(k)` closes $k$ windows at once, whatever the tick count,
+for the node's time-based windows (§4.1). `staticCellCount()` and `transientCellCount()` are read-only
 introspection forwarded to the shared classifier.
 
 Both concrete backends hold a `LayeredMap` member and satisfy the interface
@@ -467,8 +477,9 @@ by composition, not duplicated per dimension.** `LayeredMap` and
 `PeriodicityModel` hold no coordinates, no resolution, and no origin — only
 integer ids — so the identical engine drives both 2D and 3D. The consequence,
 which the evaluation returns to, is that any cross-backend behavioral
-divergence or cost gap must originate in the geometry layer, because that is
-the only layer that differs.
+divergence or cost gap must originate in the geometry layer (the point-to-id
+map, the ray walk) or in its input sampling, because the engine code is the
+same.
 
 ## 3.2 Backend selection {#sec:selection}
 
@@ -477,7 +488,8 @@ Selection is a single string ROS parameter, `backend` (`"grid2d"` or
 over a `MapBackend*`: the node holds both `std::unique_ptr<Grid2DBackend>` and
 `std::unique_ptr<Voxel3DBackend>` as separate members, and an `if`/`else` at
 construction instantiates exactly one of them, leaving the other null, and
-wires up the backend-specific parameters, publisher, and subscriber. We use a
+wires up the backend-specific parameters, publisher, and subscriber. The string
+is not validated: any value other than `"grid2d"` selects voxel3d. We use a
 compile-time interface plus one runtime switch rather than `dlopen`-based
 plugin loading. At two backends, `pluginlib` [@ros2pluginlib] would add a
 registration and discovery mechanism whose cost is not repaid until the backend
@@ -490,11 +502,13 @@ periodicity tuning surface is backend-independent by construction.
 The node is `strata::MappingNode`, default node name `strata`. It looks up
 `global_frame` (default `map`) &larr; sensor frame on every incoming
 scan or cloud, at the message stamp, as a full 6-DoF `Eigen::Isometry3d`; there
-is no yaw-only flattening on the input side. Lookup failures are caught and
-rate-throttled rather than fatal, and that scan or cloud is dropped. STRATA is
+is no yaw-only flattening on the input side. A lookup that still fails after
+the wait of [@tbl:node] is caught and rate-throttled rather than fatal, and that
+scan or cloud is dropped. STRATA is
 mapping-only: it neither subscribes to `/initialpose` nor broadcasts
 `map`&rarr;`odom`. Pose must already be published on TF by an external
-localizer. A single mutex serializes integration against publish and save.
+localizer. A single mutex serializes integration, publishing, saving and the
+diagnostics status; both timers run on the wall clock.
 
 | Direction | Name | Type | QoS | Condition |
 |---|---|---|---|---|
@@ -516,6 +530,31 @@ PGM writes `0`&rarr;254, `50` and `75`&rarr;100, `100`&rarr;0 and
 loads free cells as free, static cells as occupied, and transient and periodic
 cells as unknown. For voxel3d, only the static-cell
 set is emitted as points on `~/map_points`.
+
+**Node behaviour that a deployment depends on.** The node's rules for time,
+transforms, input health and saving live in ROS-free headers with their own unit
+tests, and continuous integration runs the launched node against synthetic input
+on ROS 2 Humble. [@tbl:node] states each rule as implemented and names the check
+that exercises it; a rule without a check says so. None of these checks uses a
+robot or a recorded bag (§6.1).
+
+| Topic | Rule as implemented | Checked by |
+|---|---|---|
+| Time windows | Windows of `window_period_s` on header stamps, in integer nanoseconds from the first stamp. A later stamp closes the open window and every silent one. A stamp more than half a window behind the newest, or more than $10^6$ windows ahead, re-anchors the clock after closing the open window. | `test_window_clock` (6 cases); `synthetic_e2e.py` with time windows |
+| Zero stamps | Dropped with time windows, integrated with scan windows; reported as a warning in both. | — |
+| TF wait | The lookup at the message stamp is polled without blocking for 0.1 s of ROS time, at most 1 s of steady time. A ROS clock unchanged for 1 s counts as frozen and is not waited on. A clock that steps past the budget gets 20 ms more. A failed lookup drops the message. | `test_tf_wait` (7 cases); `check_coarse_clock.py`; `check_sim_clock_stall.py` |
+| Input status | One status a second on `/diagnostics`. No message yet: OK, then ERROR after `startup_timeout_s`. Messages stop: ERROR after `input_timeout_s`. Lookups fail before anything was integrated: OK with the failing lookup named, then WARN after `startup_timeout_s`. Lookups fail later: named once nothing was integrated for 1 s, then ERROR after `input_timeout_s`. Every status carries message, integration and TF-failure totals, the running failure streak and the last tf2 error text. | `test_input_status` (18 cases); `check_no_localizer.py` on both backends |
+| Clock and stamp warnings | WARN when `use_sim_time` is set and the ROS clock stands still for 3 s while messages arrive, and when messages are integrated but no time window closes for 10 window periods (and more than 2 s). | `check_sim_clock_stall.py` (clock); — (no window closing) |
+| Rate statistics | Per sensor frame, from the stamps of integrated messages: rate, window duration, and loss estimated from gaps against the 20th-percentile interval or `expected_scan_rate_hz`. At most 16 frames are tracked; a frame silent for 10 window closes is forgotten. WARN on loss above `rate_warn_drop_fraction` or jittery scan windows, and on empty or thin time windows. | `test_rate_monitor` (4 cases); `synthetic_e2e.py` with 40 % of the scans withheld; — (frame cap and expiry) |
+| Saving | grid2d: PGM and `nav2_map_server` YAML are written to temporary files, flushed, renamed (image first) and the directory flushed. A save that fails before the renames leaves the previous pair untouched and answers `success: false` with the reason. A failure between the two renames can leave the new image beside the previous YAML, so the YAML records the size and SHA-256 of its image and `check_saved_map.py` verifies a pair; neither the node nor Nav2 runs that check. voxel3d: one PCD through the same steps. | `test_map_writer` (25 cases); saved-pair step of the CI job; `synthetic_e2e.py` with `--check-map-server` |
+| Saved-map values | Free 254, Transient and Periodic 100, Static 0, Unknown 205 with thresholds 0.65 and 0.196, so `nav2_map_server` serves free, unknown, occupied and unknown. | `synthetic_e2e.py` with `--check-map-server`: all 160,000 cells of the synthetic scene, which holds no Transient cell |
+| Parameters | Every key of both shipped YAML files is declared by the node and holds the file's value. | `check_param_binding.py` on both backends |
+
+Table: Behaviour of the `strata` node at the pinned commit (§7.1) and the
+committed check that exercises each rule. Unit tests are the 64 gtest cases of
+the node package (`strata/test/`); scripts are in `scripts/` and run in the
+Humble job of the continuous integration against the launched node with
+synthetic input. "—": no dedicated check. {#tbl:node}
 
 ---
 
@@ -615,18 +654,45 @@ The interval $[p_{\text{dem}},\,p_{\text{grad}}]$ is the hysteresis band that
 suppresses flicker at the static boundary; the motivation is the same
 observation-consistency argument as in dynamic-object removal by
 reverting [@kim2020removert]. Two periodicity guards go beyond a bare
-threshold rule: `!periodic` blocks a strongly periodic cell from ever
-graduating to Static, and `|| periodic` force-demotes a graduated cell that
+threshold rule: `!periodic` keeps a cell out of the static map while it is
+periodic, and `|| periodic` force-demotes a graduated cell that
 later reveals periodicity. That second guard has no band of its own, but with
 the centred amplitude of [@sec:periodicity] it can only fire on a cell that has
 been observed free in a substantial share of its touched windows ($a\le
-4\bar v(1-\bar v)$), never on a wall that is occupied whenever seen, and the
-significance test below, with its level spent over the touch count, bounds the
-chance that it ever fires on a merely noisy wall: a graduated cell is never
-pruned, so its history is uninterrupted and, on iid noise, it is demoted by this
-term at some point of the run with probability at most $\delta$. The two rules cannot fight in one window, because
+4\bar v(1-\bar v)$), never on a wall that is occupied whenever seen. The
+predicate also requires the significance test below, with its level spent over
+the touch count. A graduated cell is never pruned, so by the trajectory-level
+bound of [@sec:spend] a wall whose occupancy is merely iid noise is demoted by
+this term with probability at most $\delta$ for as long as its history is not
+interrupted. A noisy wall that the occupancy disjunct demotes can afterwards be
+pruned and re-created, and the new history has a budget of its own. The term
+still acts in a single window when it does fire; E3 measures its cost in flicker
+with periodicity on (§5.4). The two rules cannot fight in one window, because
 graduation requires $\lnot\text{periodic}$ and
-$p\ge p_{\text{grad}}>p_{\text{dem}}$.
+$p\ge p_{\text{grad}}>p_{\text{dem}}$, and neither $p$ nor the periodic
+predicate is recomputed between them.
+
+### 4.3.1 Which occupancy rates graduate {#sec:mdagger}
+
+The graduation rule sees a cell only through its log-odds. Take a cell that is
+touched in every window and occupied independently with probability $m$. While
+the clamp is inactive, the update of [@sec:logodds] reads
+$\ell\leftarrow\lambda(\ell+x)$ with
+$\mathbb E\,x=m\,l_{\text{hit}}+(1-m)\,l_{\text{miss}}$. For $\lambda<1$ the mean
+of $\ell$ converges to $\lambda\,\mathbb E\,x/(1-\lambda)$, which lies above the
+graduation threshold $\operatorname{logit}p_{\text{grad}}$ exactly when
+
+$$m>m^\dagger=\frac{\tfrac{1-\lambda}{\lambda}\operatorname{logit}p_{\text{grad}}-l_{\text{miss}}}{l_{\text{hit}}-l_{\text{miss}}}.$$
+
+For $\lambda=1$ the same expression is the rate
+$-l_{\text{miss}}/(l_{\text{hit}}-l_{\text{miss}})$ above which the walk drifts
+upward. The shipped defaults give $m^\dagger=0.354$ and the E2 parameters
+$m^\dagger=0.5$. This is a statement about a mean, not a bound: it ignores the
+clamp and pruning, and fluctuations graduate cells below $m^\dagger$; E6
+measures the transition ([@tbl:e6]). Its consequence is that Static means no
+more than "occupied in more than roughly $m^\dagger$ of the touched windows".
+The engine holds no evidence that separates a wall seen in 60% of its windows
+from clutter present in 50% of them.
 
 ## 4.4 FreMEn-lite periodicity {#sec:periodicity}
 
@@ -805,9 +871,13 @@ probability that it begins by $N$; summing over $\ell$ gives
 $\delta\,\mathbb E[L_N]$. $\square$
 
 The proposition is strongest where pruning does not act. A graduated cell is
-exempt from pruning, so a Static wall has one history, and the probability that
-the `|| periodic` demotion ever fires on iid noise is at most $\delta$ for the
-whole run. For clutter that is pruned and re-created, the bound grows with the
+exempt from pruning, so while a wall stays Static its history is not
+interrupted, and the probability that the `|| periodic` demotion ever fires on
+iid noise during that history is at most $\delta$. A noisy wall can still be
+demoted through the occupancy disjunct, pruned and re-created (Bernoulli(0.6)
+cells begin 5 histories in 1024 windows under the E2 parameters,
+`results/e5_trajectory.csv`), so over a whole run the bound for a wall is
+$\delta\,\mathbb E[L_N]$ as well. For clutter that is pruned and re-created, the bound grows with the
 number of histories, which depends on the data: a Bernoulli(0.4) cell under the
 E2 parameters begins about 62 histories in 1024 windows, and
 $\delta\,\mathbb E[L_N]$ is then vacuous. That regime is measured (E5), not
@@ -861,7 +931,8 @@ same condition under which it is generally pruned in the same window.
 | Transient | Unknown (erased) | $p<p_{\text{prune}}\land a<a_{\min}\land\lnot g$ (prune) |
 | Static | Transient / Periodic / Unknown | demote ($p\le p_{\text{dem}}\lor\text{periodic}$), then re-classified by ladder |
 | Periodic | Transient / Unknown | periodic becomes false (pruned only once also $a<a_{\min}$) |
-| Periodic | — | never graduates (`!periodic` guard), never pruned while $a\ge a_{\min}$ |
+| Periodic | Static | periodic is false and the graduation condition holds |
+| Periodic | — | never graduates while periodic (`!periodic` guard); never pruned while $a\ge a_{\min}$ |
 | Static | — | never pruned while $g$ |
 
 Table: Cell-class transitions, all evidence-driven and evaluated at window
@@ -872,7 +943,8 @@ The complete per-window update is Algorithm&nbsp;1.
 ```
 Algorithm 1  endWindow(): one layered update per closed window, over all live cells
 
-  for each live cell c:                       # main update pass
+  t <- t + 1
+  for each live cell c:                       # one pass
       touched <- [h_w>0 or m_w>0]
       occ     <- [h_w>0]
       free    <- [h_w=0 and m_w>0]
@@ -888,13 +960,11 @@ Algorithm 1  endWindow(): one layered update per closed window, over all live ce
                   exists k: a_k >= a_min and H * B(d_k) <= delta * T / (n (n + 1))
       if not g and not periodic and p >= p_grad and observations >= N_min:
           g <- true                               # graduate -> Static
-      else if g and (p <= p_dem or periodic):
+      if g and (p <= p_dem or periodic):
           g <- false                              # demote
       reset h_w <- 0, m_w <- 0
-  for each live cell c:                       # prune pass
       if not g and p < p_prune and a < a_min:
-          erase c and its FreMEn coefficients
-  t <- t + 1
+          erase c and its FreMEn coefficients     # prune, same pass
 ```
 
 The window update is $O(N\cdot H)$ for $N$ live cells and $H$ constant, hence
@@ -909,13 +979,20 @@ free-space ray is walked; both delegate all evidence updates to the shared
 `LayeredMap`.
 
 `Grid2DBackend` addresses a fixed-size, fixed-origin 2D array described by
-`GridMeta` $=\{$`width, height, resolution, origin_x, origin_y`$\}$. It buckets
+`GridMeta` $=\{$`width, height, resolution, origin_x, origin_y`$\}$: the grid
+has $W$ columns (`width`) and $R$ rows (`height`). It buckets
 each hit's $(x,y)$ (dropping $z$) into a row-major id
-$\texttt{gridCellId}(m,g_x,g_y)=g_y\cdot\texttt{width}+g_x$; points outside the
-array are dropped. Free space is cleared with integer Bresenham's line algorithm
+$\texttt{gridCellId}(m,g_x,g_y)=g_y\cdot W+g_x$. An endpoint outside the
+array is dropped together with its ray: a beam that ends beyond the array
+registers no hit and clears no cell, including the cells it crosses inside the
+array. A sweep whose origin lies outside the array registers its
+hits but clears no ray. Free space is cleared with integer Bresenham's line algorithm
 [@bresenham1965] from the sensor cell up to but excluding the hit cell, calling `observeMiss`
 on every cell in that half-open span — including the sensor-origin cell — so
-the hit cell receives only `observeHit`. Outside the classifier, the backend
+the hit cell receives only `observeHit`. The node adds a filter of its own
+before the backend: its scan adapter drops every beam whose range is not finite
+or lies outside [`range_min`, `range_max`], so a beam without a return clears
+nothing, and a reading equal to `range_max` is kept as a hit. Outside the classifier, the backend
 keeps one byte per grid cell: an "observed free" bit set by the ray clear and
 never cleared, a bit marking a hit in the open window, and a bit recording
 whether the last closed window that observed the cell saw a hit (a window that
@@ -944,8 +1021,9 @@ a point outside it would receive a wrong key rather than being dropped. Free spa
 cleared by ray-sample marching, not geometric voxel traversal: the ray is
 subdivided into $\lfloor\text{len}/(0.5\cdot\texttt{voxel\_size})\rfloor$
 half-voxel steps, and each interior sample is hashed to its containing voxel and
-marked `observeMiss`. This is simpler than exact traversal but can over-sample a
-long ray and can skip a thin voxel when the step count rounds down. The hit is
+marked `observeMiss`. This is simpler than exact traversal but can visit a voxel
+more than once along a long ray and can skip a thin voxel when the step count
+rounds down. The hit is
 always `observeHit`, with no bounds check: the hash grows to fit, and the key
 range is not checked (above).
 `staticPoints()` maps the static-cell set through `voxelCenter` to a point
@@ -953,9 +1031,9 @@ cloud. [@tbl:backends] contrasts the two.
 
 | | `Grid2DBackend` | `Voxel3DBackend` |
 |---|---|---|
-| Cell addressing | 2D array index via `GridMeta` (fixed $W\times H$, fixed origin) | 3D spatial hash, sparse, `int64` packed key (21 bits per axis) |
+| Cell addressing | 2D array index via `GridMeta` (fixed $W$ columns by $R$ rows, fixed origin) | 3D spatial hash, sparse, `int64` packed key (21 bits per axis) |
 | Hit dimensionality | $x,y$ (z dropped by projection) | $x,y,z$ (full volumetric) |
-| Free-space ray | Bresenham line (exact, on-grid) | ray-sample march at 0.5-voxel step (approximate, off-grid) |
+| Free-space ray | Bresenham line (exact, on-grid); only for endpoints inside the array | ray-sample march at 0.5-voxel step (approximate, off-grid) |
 | Growth | none — pre-sized at construction | sparse — hash grows with exploration; per-axis index range fixed by the 21-bit key |
 | Output | `nav_msgs/OccupancyGrid` (dense `-1/0/50/75/100`) | static voxel centers &rarr; `PointCloud2` |
 
@@ -1007,8 +1085,11 @@ the ids touched in the open window, outside the per-cell estimate.
 ## 4.8 Implementation versus specification {#sec:specdiff}
 
 We document the code that ships, not the design prose. Three points where the
-implementation diverges from `SPEC.md` are surfaced here rather than smoothed
-over, because each changes the operational semantics.
+implementation diverged from `SPEC.md` are surfaced here rather than smoothed
+over; two remain (#1 and #3) and each changes the operational semantics.
+
+(The first release is v0.1.0, commit `a82f935`; the package version string has
+not been raised since, so "v0.1.0" in this paper always means that commit.)
 
 **SPEC-DIFF #1 (forgetting is coupled to re-observation).** The specification
 states that decay happens "every window" and that "a cell that stops being
@@ -1037,44 +1118,73 @@ behind the low-duty periodicity miss reported in the evaluation.
 
 ## 5.1 Setup
 
-All experiments (E1–E5), and the calibration run E0, are driven by a standalone harness in
+All experiments (E1–E6), and the calibration run E0, are driven by a standalone harness in
 `paper/experiments/` that links directly against the `strata_core` sources —
 no ROS 2, no ament, no colcon. Reproduction from the repository root is a
 single call, `bash paper/experiments/run_all.sh`, which configures and builds
-`strata_core` and the six harness executables, runs each one, and writes the
+`strata_core` and the harness executables, runs each one, and writes the
 CSVs in `paper/experiments/results/` from which every number and figure in
 this section is taken; `strata_core`'s own `ctest` suite (1/1 target,
 aggregating the 56 gtest cases: ten regression tests for the amplitude defect
 of [@sec:periodicity], nine for its significance test and eight for the spent
 level of [@sec:spend]) is checked first, so the harness is only
-trusted once the unit-level behavior it builds on is confirmed. Every stochastic experiment (E1–E3) derives its `std::mt19937` generator
-deterministically from the fixed constant `kSeed = 12345` (with
-per-backend/per-configuration offsets recorded in code), and the seed is
-logged in each CSV's `#seed` row (E1–E4 use offsets 0–1500 from 12345; the
-calibration E0 uses seeds from 20260928 upward, and E5 draws its calibration
-seeds from 30260928 and its evaluation seeds from 40260928 upward, so no
-calibration stream coincides with an evaluation stream), so the reported
-precision/recall/F1/flicker/TPR/FPR numbers are exactly reproducible. E1–E4
-magnitudes are single-seed (12345) point estimates: no cross-seed variance is
-characterized for them, so figures such as 0.9253 vs. 0.9758 should be
-read as illustrative of a mechanism rather than as robust distributional
-estimates. E5 is multi-seed and reports Wilson 95% intervals: Bernoulli($m$)
+trusted once the unit-level behavior it builds on is confirmed.
+
+**Seeds and reproducibility.** Every stochastic experiment E1–E4 derives its
+`std::mt19937` generator from the fixed constant `kSeed = 12345` plus a
+per-backend or per-configuration offset recorded in code (offsets 0–1500), and
+the seed is logged in each CSV's `#seed` row. The calibration E0 uses seeds
+from 20260928 upward, and E5 draws its calibration seeds from 30260928 and its
+evaluation seeds from 40260928 upward, so no calibration stream coincides with
+an evaluation stream. E6 reuses the scene seeds of E5's confusion and draws its
+sweep from 50260928 upward, and the unit tests use a further disjoint range.
+E0–E3, E5 and E6 reproduce their committed files byte for byte with GCC and
+libstdc++; E1, part of E0 and the confusion file of E6 change under another
+standard library (§7.1). E4's timings are wall-clock and are recorded
+separately. E1–E4 magnitudes are single-seed (12345) point estimates: we report
+no cross-seed dispersion for them, and gaps such as 0.9253 against 0.9758
+illustrate a mechanism rather than a distributional estimate. E5 and E6 are
+multi-seed and report Wilson 95% intervals.
+
+**Metrics.** Static-set precision, recall and F1 against a known wall set (E1,
+E3); per-read-out false-alarm rates on pure-noise cells and the read-out length
+from which a door stays Periodic (E0); the trajectory-level false-alarm rate,
+i.e. the share of non-periodic cells labelled Periodic at some window up to a
+horizon $N$, the per-window labelling rate, and the four-class confusion (E5);
+Periodic-class true- and false-positive rates against ground truth and the
+dominant amplitude $a$ (E2); flicker, the number of per-window toggles of a wall
+cell's Static flag (E3); the share of Bernoulli($m$) cells labelled Static (E6);
+final live-cell count and estimated memory at 56 B per cell (E4; no latency is
+reported, see below).
+
+**Scenarios of E5, E6 and E4.** E5: Bernoulli($m$)
 clutter, $m=0.1,\dots,0.9$, plus always-occupied, always-free and temporally
 correlated cells (a two-state Markov chain with mean 0.5 and mean dwell 10
 windows), 2000 cells per configuration (10 seeds of 200), through the live
 `LayeredMap` with the E2 and with the shipped parameters, touched every window
 or independently with probability $q=0.5$, over 1024 windows, labelled after
 every window; four door types for detection delay; and 20 E2-style scenes for
-a four-class confusion. The calibration half of E5 fixes the shipped level on
-its own seeds before the evaluation half runs. All E1–E4 results are from the
-current engine (centred coefficients and the test at $\delta=0.2$ spent over
-the touch count); the same harness run against three earlier engines (v0.1.0,
-the centred amplitude-only rule, and the test at the single-read-out level
-$\delta=0.1$, archived in `results/pre_spending_2026-09-28/`) is kept for
-comparison. E4 additionally reads the wall clock to
-time `integrate()`/`endWindow()` calls; its absolute microsecond figures are
-therefore machine-dependent, while the live-cell counts it also reports are
-deterministic (they follow only from ray geometry, not timing).
+the four-class confusion of [@tbl:e5conf]. The calibration half of E5 fixes the
+shipped level on its own seeds before the evaluation half runs. E6, added after
+E5 showed many false Static labels, repeats that confusion on the same 20 scene
+seeds under the E2 parameters with $\lambda=0.97$ and under the shipped defaults
+(whose doors have the same duty cycles at three times the period, since $T=24$),
+and sweeps Bernoulli($m$) cells over $m=0.05,0.10,\dots,0.95$, 2000 cells per
+point (10 seeds of 200), touched every window for 256 windows, under four
+parameter sets: E2, E2 with $\lambda=0.97$, the shipped defaults, and the
+shipped defaults with $l_{\text{miss}}=-l_{\text{hit}}$. All E1–E4 results are
+from the current engine (centred coefficients and the test at $\delta=0.2$ spent
+over the touch count); the same harness run against three earlier engines
+(v0.1.0, the centred amplitude-only rule, and the test at the single-read-out
+level $\delta=0.1$, archived in `results/pre_spending_2026-09-28/`) is kept for
+comparison. E4: 150 random hits per window for 20 windows at nominal extents
+$100^2$, $250^2$ and $500^2$, resolution 1.0, periodicity off, each
+configuration run 15 times on a fresh map after one discarded warm-up run. E4
+alone reads the wall clock. Its timings were so far taken on a loaded host only,
+so this paper reports no latency and no latency ratio. Timings are to be
+recorded on a quiet host with `paper/experiments/measure_e4.sh` (15 repeats
+after one discarded warm-up; see the manuscript for the numbers once recorded).
+The live-cell counts of E4 follow only from ray geometry and are deterministic.
 
 **What is compared.** There is no external baseline. The lifelong-SLAM systems
 of §2 do not expose a persistence core that this harness could drive. The
@@ -1085,8 +1195,7 @@ internal. The centred amplitude-only rule kept in @tbl:fix thresholds
 FreMEn-style coefficients at one fixed period; it is STRATA's own earlier rule,
 not an implementation of FreMEn.
 
-The four experiments map onto the two thesis claims of §3–4 (C2, C5)
-differently. E1 and E4 probe *backend-behavior equivalence*: each backend is
+The experiments probe the design of §3–4 in two ways. E1 and E4 probe *backend-behavior equivalence*: each backend is
 driven, in its native geometry, by its own deterministically seeded hit
 stream — `Grid2DBackend` on the 2D integer cell lattice, `Voxel3DBackend` in
 continuous 3D, with per-run seeds `kSeed`+offset recorded in code — and we
@@ -1095,26 +1204,27 @@ compare the outcomes. Because the classifier both backends call is the same
 (point&rarr;`CellId` mapping and the free-space ray walk) together with its
 native input sampling; this is a native-geometry comparison, not a controlled
 same-input isolation. E2 and E3, by contrast, drive `LayeredMap`/`PeriodicityModel`
-directly, with no backend in the loop at all — a choice that is itself an
-argument for C1: because persistence, hysteresis, and periodicity are
+directly, with no backend in the loop at all — a choice that the geometry-free
+design permits: because persistence, hysteresis, and periodicity are
 implemented once, independent of `CellId` provenance, characterizing them
 against `LayeredMap` directly is valid for whichever backend supplies the
 cell ids in production. Each harness constructs its own `LayeredMapParams`
 in code rather than loading the shipped YAML, so several values deviate from
 the [@tbl:params] production defaults; [@tbl:eparams] lists every deviation,
 per experiment, so the runs are reproducible without reading the harness
-source. Three deviations are common to interpreting the results below: all
-four harnesses run at `layer_interval` 1 (one window per integration tick,
+source; E0, E5 and E6 use the E2 parameters or the shipped defaults, as stated
+with each. Three deviations are common to interpreting the results below: every
+harness, E0, E5 and E6 included, runs at `layer_interval` 1 (one window per integration tick,
 against the production default of 10), so "window" and "frame" coincide in
 every reported count; E1 and E3 are each run twice, with periodicity off to
 isolate the persistence layer and on at the shipped defaults, E4 runs with it
 off, and E2 exercises the FreMEn model at $T=8$; and
 E4 and E2 both set `survival_decay` 1.0 (no forgetting). E2 in particular
-raises all six of the log-odds/graduation defaults it touches
+changes six of the log-odds and graduation defaults
 ($l_{\text{hit}}$ 1.0, $l_{\text{miss}}$ $-1.0$, $\lambda$ 1.0,
 $p_{\text{grad}}$ 0.9, $p_{\text{dem}}$ 0.4, $N_{\min}$ 5) to drive its
-detected-versus-pruned classification, and E3 lowers `prune_prob` to 0.01 to
-keep noisy walls alive; these are the values actually compiled into each
+detected-versus-pruned classification, and E3 lowers `prune_prob` to 0.01;
+these are the values actually compiled into each
 harness.
 
 | Parameter (default) | E1 | E2 | E3 | E4 |
@@ -1161,7 +1271,7 @@ precision/recall/F1 against the 161-cell wall set is logged per window
 | voxel3d | high (100/window) | window 3 | 0.9758 | 0.9877 |
 
 Table: E1 — final static-set precision/recall/F1, both backends, all three
-clutter densities. {#tbl:e1}
+clutter densities. Single seed (12345), so no dispersion is reported. {#tbl:e1}
 
 ![E1: static-set F1 vs. window index, one panel per backend, one line per
 clutter density. Both backends recover F1$\approx$1.0 within three windows;
@@ -1250,16 +1360,20 @@ come from a non-pruning model fed the identical stream. Periodic TPR $=2/3$,
 FPR $=0/5$. {#tbl:e2}
 
 ![E2: (left) Periodic-class TPR/FPR bars; (right) FreMEn dominant-harmonic
-amplitude vs. observation length for all 8 probe cells, with the
-$a_{\min}=0.3$ threshold, the calibrated-test amplitude $a^\star(n)$
-($\delta=0.1$ at a single read-out, $H=3$, uniform phase coverage; the shipped
-spent level requires more) and the $n\ge T$ validity gate
-marked — a cell is Periodic only above both thresholds; the two 50%-duty doors
-clear them, the 25%-duty door is pruned before it matures, and the constant
+amplitude vs. observation length for all 8 probe cells, from a non-pruning
+reference model, with the
+$a_{\min}=0.3$ threshold and the $n\ge T$ validity gate marked. The dotted
+curve $a^\star(n)$ is the amplitude that the earlier single-read-out test
+required ($\delta=0.1$, $H=3$, uniform phase coverage). The shipped test
+($\delta=0.2$ spent over the touch count) requires a larger amplitude at every
+$n$, and this figure does not draw that threshold. A cell is Periodic only above
+both $a_{\min}$ and the threshold of the shipped test. The two 50%-duty doors
+settle above $a_{\min}$, and the 25%-duty door would too, yet the live pipeline
+prunes it first; the constant
 wall stays at exactly 0.](figures/fig_e2_periodicity.pdf){#fig:e2}
 
-**Single-read-out calibration (E0).** The single-read-out level $\delta$ (constant in $n$) is chosen first, on held-out
-seeds, by the rule of [@sec:periodicity] (@tbl:e0). The null grid covers iid
+**Single-read-out calibration (E0).** The single-read-out level $\delta$ (constant in $n$) is chosen first, on
+calibration seeds of its own, by the rule of [@sec:periodicity] (@tbl:e0). The null grid covers iid
 Bernoulli($m$) streams at $T/H\in\{8/3,24/2\}$, $m$ from 0.05 to 0.95 and 12
 read-out lengths in $8$–100 ($T=8$) or 8 in $24$–240 ($T=24$), with 20,000 streams per point; the pipeline check runs
 3000 clutter cells through the live `LayeredMap` with the E2 parameters and
@@ -1271,7 +1385,8 @@ is selected as the single-read-out level; the shipped rule replaced it (E5). Rel
 length at which a 4-on/4-off door becomes stably Periodic from 22 to 15
 windows. The Gaussian-residual approximation of the periodogram, the textbook
 false-alarm formula [@zechmeister2009gls], fails the same check: at a level of
-0.01 it reaches a null rate of 0.037 for $n$ near $T$.
+0.01 it reaches a null rate of 0.037 for $n$ near $T$, where binary sequences
+put real mass on exactly periodic patterns. No E1–E4 seed was used in E0.
 
 | $\delta$ | null rate | pipeline rate | door, median first $n$ | selected |
 |---|---|---|---|---|
@@ -1311,9 +1426,17 @@ $p_{\text{grad}}$, and it was previously masked by a spurious Periodic label
 over 20 scenes, and finds this failure common (@tbl:e5conf).
 
 The one miss, the 25%-duty door (`door_p8_2on6off`), is a **prune/maturity
-race**, not a failure of the test: the real pipeline erases the cell within at
-most 7 touched windows of each re-creation, before the $n\ge T$ gate is
-reached, and each erasure discards its accumulators. The reference model
+race**, not a failure of the test. Under the E2 parameters
+($l_{\text{hit}}=1$, $l_{\text{miss}}=-1$, $\lambda=1$, $p_{\text{prune}}=0.05$,
+$T=8$) the log-odds of a cell touched every window with the 2-on/6-off pattern
+is an integer walk that reaches $-3$, where $p<p_{\text{prune}}$, within at
+most 7 consecutive touched windows of its creation. The prune rule also needs
+$a<a_{\min}$, which the amplitude gate provides: $a=0$ while $n<T$. The cell
+never graduates, because its log-odds stays at or below 2 and
+$\sigma(2)\approx0.881<p_{\text{grad}}=0.9$. So the real pipeline erases the cell
+before the $n\ge T$ gate is
+reached, each erasure discards its accumulators, and the cell is never
+classified Periodic. The reference model
 detects it at every length from $n=57$ with the spent level (from $n=26$ at a
 single read-out), with amplitude 0.462 at $n=64$; the miss is
 specifically an interaction between pruning and the touched-window amplitude
@@ -1351,17 +1474,17 @@ identical replayed noise throughout. {#tbl:e3}
 ![E3: three heatmap panels (one per `survival_decay`); rows =
 `graduate_prob`, columns = hysteresis-band width, cells colored by
 flicker-transition count (log scale) and annotated with the raw count and
-final F1 — the degenerate (zero-band) column drives both the worst flicker
-and the worst F1 at every decay
-setting.](figures/fig_e3_sensitivity.pdf){#fig:e3}
+final F1 — the degenerate (zero-band) column holds the highest flicker count
+of every
+panel.](figures/fig_e3_sensitivity.pdf){#fig:e3}
 
 Removing hysteresis is the single largest effect in the sweep: at
 `graduate_prob = demote_prob = 0.9`, `survival_decay = 0.90` (the worst
-degenerate configuration), the wall layer flickers 574 times and loses
-19% of its final F1 (0.810, recall collapses to 0.68), while a
+degenerate configuration), the wall layer flickers 574 times and its final F1
+drops to 0.810 (recall 0.68), while a
 same-noise, same-decay run with the hysteresis band widened to 0.6
-(`demote_prob = 0.3`) flickers only 54 times at F1 1.000 — the band alone
-accounts for a $>10\times$ reduction in flicker. The degenerate
+(`demote_prob = 0.3`) flickers only 54 times at F1 1.000 — a more than tenfold
+reduction in flicker attributable to the band alone. The degenerate
 (zero-band) configurations are also internally monotonic in threshold: at
 `survival_decay = 0.90`, flicker rises with the coincident threshold value
 (250 at 0.7, 343 at 0.8, 574 at 0.9) even though a higher threshold is
@@ -1388,9 +1511,9 @@ their centred amplitude is sampling noise; under the amplitude-only rule it
 crossed $a_{\min}$ often and the unbanded `|| periodic` demotion toggled the
 wall out of the Static layer. With the single-read-out level, 1 or 2 such
 demotions remained per configuration, because each wall was re-tested in every
-window. With the spent level a graduated wall has one history, and by the
-trajectory-level bound ([@sec:spend]) the probability that it is ever demoted by
-the periodic predicate is at most $\delta$; none is demoted in any
+window. With the spent level, the probability that the periodic predicate
+demotes a wall during one uninterrupted history is at most $\delta$
+(trajectory-level bound, [@sec:spend]); none is demoted in any
 configuration.
 
 ## 5.5 E5 — Trajectory-level false alarms and four-class confusion {#sec:e5}
@@ -1400,7 +1523,8 @@ labels every cell after every window, so the event that matters for a deployed
 map is that a non-periodic cell is labelled Periodic at *some* window of the
 run. E5 measures this event directly on held-out seeds, for the live detector
 with pruning, re-creation and re-testing, over horizons of 64, 256 and 1024
-windows (@tbl:e5; `results/e5_trajectory.csv`).
+windows (@tbl:e5; every configuration, with the mean number of histories a cell
+began, is in `results/e5_trajectory.csv`).
 
 | $\delta$ | worst ever-Periodic (of 2000) | Wilson upper | door, $T=8$ / $T=24$ | selected |
 |---|---|---|---|---|
@@ -1475,124 +1599,188 @@ windows from 26 to 48; at the shipped $T=24$ a 12-on/12-off door stays at 24
 windows, and with 10% flips it moves from 25 to 40. No door run fails to become
 Periodic (`results/e5_doors.csv`).
 
-| ground truth (cells) | Static | Periodic | Transient | Unknown | single P | ever P, $N=256$ (single / spent) |
+| parameters | ground truth (cells) | Static | Periodic | Transient | Unknown | single P / ever P (single, spent) |
 |---|---|---|---|---|---|---|
-| wall (1000) | 1000 | 0 | 0 | 0 | 0 | 0 / 0 |
-| door (1200) | 0 | 800 | 400 | 0 | 800 | 800 / 800 |
-| aperiodic (2000) | 1221 | 0 | 672 | 107 | 12 | 219 / 1 |
-| dynamic (1000) | 1 | 0 | 705 | 294 | 0 | 1 / 0 |
+| E2 ($\lambda=1$) | wall (1000) | 1000 | 0 | 0 | 0 | 0 / 0, 0 |
+| | door (1200) | 0 | 800 | 400 | 0 | 800 / 800, 800 |
+| | aperiodic (2000) | 1221 | 0 | 672 | 107 | 12 / 219, 1 |
+| | dynamic (1000) | 1 | 0 | 705 | 294 | 0 / 1, 0 |
+| | *aperiodic cells falsely Static: 0.611 [0.589, 0.632] (Wilson 95%); after 256 windows 1223 of 2000* | | | | | |
+| E2 with $\lambda=0.97$ | wall (1000) | 1000 | 0 | 0 | 0 | — |
+| | door (1200) | 0 | 1200 | 0 | 0 | — |
+| | aperiodic (2000) | 1042 | 0 | 861 | 97 | — |
+| | dynamic (1000) | 0 | 0 | 686 | 314 | — |
+| | *aperiodic cells falsely Static: 0.521 [0.499, 0.543] (Wilson 95%); after 256 windows 1019 of 2000* | | | | | |
+| shipped defaults | wall (1000) | 1000 | 0 | 0 | 0 | — |
+| | door (1200) | 0 | 1091 | 18 | 91 | — |
+| | aperiodic (2000) | 1960 | 0 | 40 | 0 | — |
+| | dynamic (1000) | 11 | 0 | 917 | 72 | — |
+| | *aperiodic cells falsely Static: 0.980 [0.973, 0.985] (Wilson 95%); after 256 windows 1983 of 2000* | | | | | |
 
-Table: E5 — four-class confusion on 20 held-out E2-style scenes (E2 parameters,
-touched every window), read out after 64 windows with the shipped test. Per
-scene: 50 walls, 20 doors of each E2 type at random phase, 100 aperiodic
-Bernoulli(0.5) cells, and 50 dynamic cells crossed by a mover with probability
-0.1 per window. Single P: Periodic count under the single-read-out rule.
-Precision / recall with Wilson 95% intervals: Static 0.450 [0.429, 0.471] /
-1.000 [0.996, 1.000]; Periodic 1.000 [0.995, 1.000] / 0.667 [0.640, 0.693];
-not persistent (Transient or Unknown) 0.816 [0.800, 0.832] / 0.593 [0.575,
-0.610] (`results/e5_confusion.csv`). {#tbl:e5conf}
+Table: Four-class confusion on 20 held-out scenes, touched every window, read
+out after 64 windows with the shipped test (E5 for the E2 parameters, E6 for the
+others; same seeds). Per scene: 50 walls, 20 doors of each of three types at
+random phase, 100 aperiodic Bernoulli(0.5) cells, and 50 dynamic cells crossed
+by a mover with probability 0.1 per window. Doors: 4-on/4-off, 2-on/6-off and
+2-on/2-off for the E2 parameter sets ($T=8$); the same duty cycles at three
+times the period for the shipped defaults ($T=24$). Single P: Periodic count
+under the single-read-out rule and, after the slash, cells labelled Periodic at
+some window up to 256 under the single-read-out and the spent rule (E2
+parameters only). The recall of a class over this fixed mix of cell types is a
+property of the mix, so counts are reported per type
+(`results/e5_confusion.csv`, `results/e6_confusion.csv`). {#tbl:e5conf}
 
 **Four-class confusion.** @tbl:e5conf scores all four labels over 20 held-out
-E2-style scenes. Walls are Static and dynamic cells Transient or Unknown, with
-one exception in 1000. The Periodic label has precision 1.000 [0.995, 1.000]
-and recall 0.667 [0.640, 0.693]; the 400 misses are exactly the 400
-25%-duty doors, which the prune/maturity race proves are never Periodic. Within
+scenes. Under the E2 parameters walls are Static and dynamic cells Transient or
+Unknown, with one exception in 1000. No cell other than a door is Periodic. All
+800 50%-duty doors are Periodic and none of the 400 25%-duty doors, which the
+prune/maturity race (§5.3) proves are never Periodic. The recall of the Periodic
+class is therefore a property of the scene mix, and we report counts per cell
+type rather than a recall. Within
 256 windows the single-read-out level labels 219 of 2000 aperiodic cells
 Periodic at some window, the spent level 1. The dominant error is elsewhere:
-1221 of 2000 aperiodic Bernoulli(0.5) cells end falsely Static, so Static
-precision is only 0.450 [0.429, 0.471]. Under the E2 parameters ($\lambda=1$,
-unit increments) the log-odds of such a cell is a random walk reflected at
-$l_{\max}=5$; it often reaches $p_{\text{grad}}=0.9$, and a Static cell is
-demoted only when the walk falls back to $p_{\text{dem}}=0.4$. The periodicity
-test is not what decides this; the graduation band is, and E2's parameters
-without decay are the adversarial case for it.
+1221 of 2000 aperiodic Bernoulli(0.5) cells end falsely Static, a share of
+0.611 [0.589, 0.632].
 
-## 5.6 E4 — Throughput and memory
+## 5.6 E6 — False Static labels {#sec:e6}
+
+The periodicity test does not decide this error; the graduation rule does, and
+decay does not remove it. With $\lambda=0.97$ added to the E2 parameters, 1042
+of 2000 aperiodic cells still end Static. With the shipped defaults 1960 of 2000
+do, a share of 0.980 [0.973, 0.985] (1983 after 256 windows), and so do 11 of
+1000 dynamic cells; of the 1200 doors of that scene 1091 are Periodic after 64
+windows and all 1200 after 256 (@tbl:e5conf). With $\lambda=0.97$ all 1200 doors
+of the E2 scenes are Periodic, the 25%-duty ones included; we did not analyse
+why the prune/maturity race is not lost there.
+
+[@sec:mdagger] gives the reason for the Static labels: the shipped
+$l_{\text{hit}}=0.85$ and $l_{\text{miss}}=-0.4$ put the mean-field threshold at
+$m^\dagger=0.354$, so a cell that is occupied in half of its windows drifts up
+to the clamp. @tbl:e6 measures the transition. With the shipped defaults, 396 of
+2000 Bernoulli(0.25) cells are Static after 256 windows, 783 at m=0.30, 1279 at
+0.35, 1698 at 0.40 and 1974 at 0.50; and 485 of 2000 Bernoulli(0.10) cells are
+Static at some window. Symmetric increments
+($l_{\text{miss}}=-l_{\text{hit}}$) move m^\dagger to 0.525 and the count at
+m=0.50 to 1156, but they cost noisy walls: of Bernoulli(0.60) cells, which E3
+scores as walls, 1741 of 2000 are then Static, against 1998 with the shipped
+defaults.
+
+No parameter set of the sweep separates the two populations. On the 0.05 grid
+the share of Static cells rises from below 10% to above 95% over an interval of
+$m$ that is 0.30 wide with the shipped defaults and 0.35 wide with the other
+three sets. A user who knows the occupancy rate of the clutter to reject and of
+the walls to keep can place $m^\dagger$ between them through
+$l_{\text{miss}}$ and $\lambda$, as far as the two rates lie further apart than
+that interval. We measured only these four sets, on iid cells touched in every
+window, and changed no default.
+
+| $m$ | E2 ($\lambda=1$) | E2, $\lambda=0.97$ | shipped | shipped, symmetric |
+|---|---|---|---|---|
+| $m^\dagger$ | 0.500 | 0.534 | 0.354 | 0.525 |
+| 0.10 | 0 (65) | 0 (44) | 11 (485) | 7 (395) |
+| 0.20 | 32 (788) | 21 (605) | 172 (1767) | 51 (1618) |
+| 0.25 | 65 (1356) | 44 (1098) | 396 (1973) | 120 (1900) |
+| 0.30 | 138 (1735) | 87 (1559) | 783 (1995) | 196 (1986) |
+| 0.35 | 288 (1921) | 177 (1857) | 1279 (2000) | 320 (1998) |
+| 0.40 | 481 (1996) | 367 (1975) | 1698 (2000) | 537 (2000) |
+| 0.50 | 1206 (2000) | 1043 (2000) | 1974 (2000) | 1156 (2000) |
+| 0.60 | 1797 (2000) | 1695 (2000) | 1998 (2000) | 1741 (2000) |
+| 0.70 | 1965 (2000) | 1950 (2000) | 2000 (2000) | 1965 (2000) |
+| 0.80 | 1998 (2000) | 1997 (2000) | 2000 (2000) | 1999 (2000) |
+
+Table: E6 — Bernoulli($m$) cells labelled Static: of 2000 cells per entry (10
+seeds of 200, sweep seeds from 50260928), touched every window, the number
+Static after 256 windows and, in parentheses, the number Static at some window
+up to 256. Shipped, symmetric: the shipped defaults with
+$l_{\text{miss}}=-l_{\text{hit}}$. $m^\dagger$ is the mean-field threshold of
+[@sec:mdagger]. E3 scores Bernoulli(0.6) cells as walls, for which Static is the
+correct label; E5 scores Bernoulli(0.5) cells as clutter, for which it is an
+error. The rows shown are a selection of the sweep
+(`results/e6_static_vs_m.csv`). {#tbl:e6}
+
+## 5.7 E4 — Live cells and memory
 
 **Setup.** 150 random hits per window over 20 windows, for `Grid2DBackend`
 vs. `Voxel3DBackend` at three nominal extents (100/250/500, resolution/voxel
-size 1.0), periodicity disabled. Reported: mean per-`integrate()` call
-latency, mean per-`endWindow()` cell-update rate, final live-cell count, and
+size 1.0), periodicity disabled. Reported: final live-cell count and
 estimated memory at the fixed 56 B/cell footprint documented in §4
 (`CellEvidence` 24 B + $\approx$32 B `unordered_map` node overhead, with
 FreMEn storage excluded since periodicity is off in this run)
-(`results/e4_throughput.csv`). The committed E4 timings predate grid2d's per-cell flag
-byte (§4.6), which adds a one-byte write per cleared ray cell and per hit to
-`integrate()`; the cost ratio has not been re-measured since.
+(`results/e4_throughput.csv`). No latency is tabulated (see below).
 
-| backend | extent | µs/`integrate()` | endWindow updates/s | live cells | est. memory |
-|---|---|---|---|---|---|
-| grid2d | $100^2$ | 320.8 | $9.41\times10^{6}$ | 8,553 | 479 KB |
-| voxel3d | $100^2$ | 4,796.8 | $7.06\times10^{6}$ | 85,399 | 4.78 MB |
-| grid2d | $250^2$ | 1,702.6 | $1.07\times10^{7}$ | 45,657 | 2.56 MB |
-| voxel3d | $250^2$ | 18,469.5 | $4.46\times10^{6}$ | 295,300 | 16.5 MB |
-| grid2d | $500^2$ | 6,548.9 | $8.64\times10^{6}$ | 150,096 | 8.41 MB |
-| voxel3d | $500^2$ | 35,958.3 | $4.45\times10^{6}$ | 661,410 | 37.0 MB |
+| backend | extent | live cells | est. memory | live cells, voxel3d / grid2d |
+|---|---|---|---|---|
+| grid2d | $100^2$ | 8,553 | 479 KB | |
+| voxel3d | $100^2$ | 85,399 | 4.78 MB | 10.0× |
+| grid2d | $250^2$ | 45,657 | 2.56 MB | |
+| voxel3d | $250^2$ | 295,300 | 16.5 MB | 6.5× |
+| grid2d | $500^2$ | 150,096 | 8.41 MB | |
+| voxel3d | $500^2$ | 661,410 | 37.0 MB | 4.4× |
 
-Table: E4 — per-call latency, throughput, live-cell count, and estimated
-memory, both backends, all three extents. Absolute µs are single-machine
-wall-clock samples; live-cell counts (and the ratios derived from them) are
-geometry-determined and reproducible. {#tbl:e4}
+Table: E4 — size of the map each backend builds from the same number of hits:
+150 random hits per window, 20 windows, resolution 1.0, periodicity off.
+Live-cell counts and memory (at 56 B per cell) follow from the seeded geometry;
+the ratio is voxel3d over grid2d at equal extent. No latency is tabulated.
+{#tbl:e4}
 
-![E4: grouped bars by backend $\times$ extent — per-`integrate()` latency in
-µs (log scale, left) and `endWindow()` cell-update throughput in
-$10^6$ updates/s (right). grid2d is cheaper per call than voxel3d at every
-tested extent; the gap tracks voxel3d's larger live-cell
-count.](figures/fig_e4_throughput.pdf){#fig:e4}
+![E4: grouped bars by backend $\times$ extent — live cells at the end of the
+run (left) and estimated memory at 56 B per cell (right), both on a log scale.
+No latency is plotted.](figures/fig_e4_throughput.pdf){#fig:e4}
 
-At every tested extent, `Grid2DBackend`'s `integrate()` call is cheaper than
-`Voxel3DBackend`'s at the identical nominal extent and hit rate — by
-$4{,}796.8/320.8\approx15.0\times$ at $100^2$, $18{,}469.5/1{,}702.6\approx
-10.8\times$ at $250^2$, and $35{,}958.3/6{,}548.9\approx5.5\times$ at
-$500^2$, the multiple shrinking as extent grows. The live-cell counts
-explain why: `Voxel3DBackend` ends each run holding
+grid2d is the cheaper backend per `integrate()` call in every timing recording
+that exists, at every tested extent. Timings were so far taken on a loaded host
+only, so no latency and no ratio is reported here. Timings are to be recorded on
+a quiet host with `paper/experiments/measure_e4.sh` (15 repeats after one
+discarded warm-up; see the manuscript for the numbers once recorded).
+
+The live-cell counts are exact:
+`Voxel3DBackend` ends each run holding
 $85{,}399/8{,}553\approx10.0\times$, $295{,}300/45{,}657\approx6.5\times$,
 and $661{,}410/150{,}096\approx4.4\times$ as many cells as `Grid2DBackend`
-at the same extent, because its free-space ray-sample march (§4.6) walks a
-full 3D volume and spawns far more traversed voxels than `Grid2DBackend`'s
-exact 2D Bresenham clear over the same nominal footprint — the same
-geometric asymmetry that drives the latency gap also drives the cell-count
-gap, and both narrow together as the extent grows and the ray paths (and
-hence the per-ray voxel counts) become a smaller fraction of the total
-volume. Memory is not measured: the harness multiplies the live-cell count by
+at the same extent, because its half-voxel ray march (§4.6) creates a hash entry
+for every traversed free voxel, whereas the exact 2D Bresenham walk clears a
+bounded strip. We measured neither ray steps nor the per-cell update cost under
+each backend separately, so we do not attribute the latency difference to one
+cause. Memory is not measured: the harness multiplies the live-cell count by
 a fixed 56 B/cell (evidence and hash node with periodicity off; table and
 backend overhead excluded), so the estimate tracks live-cell count by
-construction, topping out at 37.0 MB for the largest 3D
-configuration tested (661,410 cells $\times$ 56 B) — inexpensive even at
-the largest map in this sweep. Absolute microsecond values here are
-single-run wall-clock measurements on one machine and are not claimed to be
-portable; the live-cell counts, and the ratios and memory figures derived
-from them, follow only from ray/hash geometry and reproduce under the fixed
-seed regardless of machine.
+construction, and gives 37.0 MB for the largest 3D
+configuration tested (661,410 cells). The
+live-cell counts, and the ratios and memory figures derived
+from them, follow only from the seeded ray and hash geometry, not from timing.
+They reproduce exactly with GCC and libstdc++, and `run_all.sh` fails if one
+differs from the committed value; E4 was not compared under another standard
+library (§7.1).
 
-## 5.7 Synthesis
+## 5.8 Synthesis
 
-Across E1–E4, the two backends behave as one engine wearing two geometries,
-exactly as C1 asserts by construction: E1's near-identical F1 trajectories
+Across E1–E4, the two backends behave as one engine wearing two geometries.
+E1's near-identical F1 trajectories
 (both backends graduate the wall by the third window and hold recall 1.0
 through $w{=}39$) and E4's live-cell counts are the
-empirical face of "no per-dimension logic or cost," since `LayeredMap` and
-`PeriodicityModel` — exercised directly and identically in E2 and E3 — never
-see which backend produced the `CellId` they are updating. The two places
-where the backends *do* diverge trace to native geometry rather than to the
-shared classifier — which E2 and E3 exercise directly, backend-free, so it is
-provably identical for both backends:
-E1's high-clutter precision gap (0.9253 vs. 0.9758) reflects the backends'
-different native mover sampling (grid2d on the integer cell lattice, voxel3d
-continuously, both at a single $z$-plane in E1) rather than a demonstrated
-$z$-separation mechanism, and E4's per-call latency gap
-(5.5–15.0$\times$, narrowing with extent) follows from `Voxel3DBackend`'s
-free-space ray-sample march spawning 4.4–10.0$\times$ more live voxels than
-`Grid2DBackend`'s exact line clear at the same nominal extent. E2 and E3,
+empirical face of the factorization of §3.1: `LayeredMap` and
+`PeriodicityModel` — exercised directly in E2 and E3 — never
+see which backend produced the `CellId` they are updating. The backends
+diverge in two places, E1's high-clutter precision gap (0.9253 vs. 0.9758) and
+the per-call cost. Both runs execute the same classifier code on differently
+sampled input (in E1, grid2d movers on the integer cell lattice and voxel3d
+movers drawn continuously, both in a single $z$-plane); neither difference was
+isolated to one mechanism. The one cross-backend difference that is exact is
+the live-cell count: `Voxel3DBackend` holds 4.4–10.0$\times$ as many live cells
+as `Grid2DBackend` at the same nominal extent. E2 and E3,
 run once against `LayeredMap` with no backend involved at all, characterize
 the shared engine's own behavior — 50%-duty periodicity detection from 25
 windows on with no false positive on clutter once the test is calibrated and
 its level spent (E5 extends this to whole runs: at most 2 of 2000 held-out
 clutter cells are ever labelled Periodic within 1024 windows), a
 diagnosed prune/maturity-race failure mode at low duty cycle, and
-hysteresis as the dominant flicker suppressor, decay a secondary one — and
-that characterization is, by the same construction argument, valid for
-whichever backend feeds it cell ids in production.
+hysteresis as the dominant flicker suppressor, decay a secondary one. By the
+same construction argument, that characterization applies to
+whichever backend feeds the engine cell ids. E5 and E6 add the dominant
+labelling error of the classifier: aperiodic cells of moderate occupancy end
+Static (1221 of 2000 Bernoulli(0.5) cells under the E2 parameters, 1960 of 2000
+with the shipped defaults), and at the shipped period temporally correlated
+clutter is labelled Periodic (1908 of 2000 Markov cells).
 
 # 6 Discussion and Limitations
 
@@ -1600,13 +1788,14 @@ whichever backend feeds it cell ids in production.
 
 The evaluation in §5 characterizes a shipped engine; it does not validate a
 deployed system. Every number in this paper — E1's precision/recall curves,
-E2's TPR/FPR, E3's flicker counts, E4's throughput and memory — comes from a
+E2's TPR/FPR, E3's flicker counts, E4's cell counts and memory estimate, the
+label counts of E5 and E6 — comes from a
 deterministic, seeded synthetic harness compiled directly against
 `strata_core`, driving hand-authored hit/miss patterns through the real
 `LayeredMap`/`PeriodicityModel` code. No real sensor, no real robot motion,
 and no field deployment enters any of these results. This is a statement of
 present scope, not a hidden gap: ELite [@gil2025elite], LT-mapper
-[@kim2022ltmapper], the long field deployment of Berrio et al.
+[@kim2022ltmapper], the long-term map maintenance work of Berrio et al.
 [@berrio2021longterm] and the FreMEn grid of Krajník et al.
 [@krajnik2016persistent] all report long-term real-world evidence that STRATA
 does not yet have. No external baseline is run, not even a FreMEn model driven
@@ -1614,8 +1803,9 @@ by the same streams, so this paper does not show that the calibrated test
 labels periodic cells better than FreMEn's amplitude-ranked component
 selection, or that the classifier is useful on real sensor data. The evidence
 establishes a transparent state machine on synthetic streams, not a reliable
-four-class scene classifier: many aperiodic cells end Static under the E2
-parameters, low-duty doors are lost to pruning, and at the shipped period
+four-class scene classifier: most aperiodic cells of moderate occupancy end
+Static, low-duty doors are lost to pruning under the E2 parameters, and at the
+shipped period
 correlated clutter is labelled Periodic (below). STRATA is, so far, validated
 the way a library is validated — by unit and characterization tests against
 known ground truth — not the way a robot behavior is validated, by miles
@@ -1634,11 +1824,12 @@ session management or Yang et al.'s versioned base-map-plus-deltas
 session. STRATA cannot do either; it only ever has "now."
 
 Finally, the paper does not claim bit-identical cross-backend behavior.
-Section 5.7 already frames grid2d and voxel3d as *equivalent to within
-geometry- and native-input-induced differences* rather than identical, and
+Section 5.8 frames grid2d and voxel3d as the same classifier code run on
+differently sampled input rather than as identical, and
 E1's clutter-driven precision gap (0.9253 vs 0.9758 at 100 movers/window) and
-E4's 5.5–15.0× per-`integrate()` cost gap are exactly those differences,
-measured rather than glossed over.
+E4's per-`integrate()` cost gap are those differences; neither was isolated to
+one mechanism. E4 reports no latency: its timing recordings establish only
+which backend is cheaper per call.
 
 Periodicity detection is the least mature part. The first release shipped an
 uncentred Fourier amplitude that could demote constant walls, and an
@@ -1651,14 +1842,31 @@ shipped level, a cell that is never pruned is labelled Periodic at some window
 of the run with probability at most 0.2. The 0.01 target is a measurement: at
 most 2 of 2000 clutter cells within 1024 windows on held-out seeds (E5), and for
 pruned clutter the proved bound grows with the number of re-created histories.
+The Wilson limits quoted with it are computed per configuration and are not
+adjusted for the 36 held-out clutter configurations examined.
 Temporally correlated clutter violates the null, and at the shipped $T=24$ the
 test labels most slowly switching cells Periodic (1908 of 2000 in E5). Spending
 costs detection delay: a noiseless 50%-duty door with $T=8$ needs 25 windows
-instead of 15, and one with 10% flipped windows 48 instead of 26. Finally, the
-four-class confusion shows that the dominant labelling error under the E2
-parameters is not periodic at all: 1221 of 2000 aperiodic cells end falsely
-Static, which is a property of the graduation band without decay. E1–E4 are
-single-seed; only E5 is multi-seed.
+instead of 15, and one with 10% flipped windows 48 instead of 26.
+
+Finally, the dominant labelling error is not periodic at all. The graduation
+rule labels a cell Static when it is occupied in more than roughly $m^\dagger$
+of its touched windows ([@sec:mdagger]; 0.354 with the shipped defaults), so it
+cannot separate random clutter from a noisy wall of similar occupancy: E3 scores
+Bernoulli(0.6) cells as walls and E5 scores Bernoulli(0.5) cells as clutter, and
+with the shipped defaults 1998 and 1974 of 2000 such cells are Static after 256
+windows (E6). The defaults were not changed in response; this is an open defect
+of the default parameters, and E6 covers only iid cells touched in every window
+under four parameter sets. E1–E4 are single-seed and carry no dispersion
+estimate; E5 and E6 are multi-seed.
+
+The ROS node has not been run on a robot or on a recorded bag: its evidence is
+the unit tests of its ROS-free helpers and the synthetic scenarios of
+[@tbl:node], which continuous integration runs on ROS 2 Humble only, in one
+container image; the zero-stamp rule, the no-window-closing warning and the
+sensor-frame cap and expiry have no dedicated check. The saved map was loaded by
+`nav2_map_server` in that Humble job only; no other distribution is in the
+continuous integration, and the node does not verify a saved pair itself.
 
 ## 6.2 The out-of-FOV forgetting caveat is an operational limitation, not a footnote
 
@@ -1687,7 +1895,12 @@ class claims it, so free means "last observed free, with no current occupied
 evidence", not "currently free". An obstacle that appears where the sensor no
 longer looks reads free until it is observed; once observed it reads `50` from
 its first hit and keeps reading `50` out of view until a ray observes the cell
-free again. The bit costs one byte per grid
+free again. Free space is also carved only along beams that return a hit inside
+the array (§4.6): a beam without a return, or one that ends beyond the array,
+clears nothing, so open space bounded only by such beams stays Unknown, and
+occupied evidence along them is never contradicted. A map smaller than the
+sensor's range therefore keeps cells that a model clearing every ray would
+release. The bit costs one byte per grid
 cell, bounded by the grid size. voxel3d publishes no free space.
 
 **Scan-counted windows depend on the input rate.** With `window_mode` `scans` a
@@ -1708,8 +1921,10 @@ about a fifth of consecutive messages arrive back to back; above about 80 % loss
 or whenever the sensor rate is known, set `expected_scan_rate_hz` (per sensor).
 The node warns when scan windows lose more than `rate_warn_drop_fraction` or
 jitter, when time windows go empty or get under half the expected messages, when
-stamps are zero or stop advancing, or when messages arrive but the TF lookup fails (ERROR once something was integrated), and turns ERROR without input for `input_timeout_s` (or
-`startup_timeout_s` before the first message). With time windows the periodic
+stamps are zero or stop advancing, and when the simulation clock stands still;
+it names a failing TF lookup, and turns ERROR when input or integration stops
+for `input_timeout_s` (`startup_timeout_s` before the first message).
+[@tbl:node] gives the exact levels and the check behind each. With time windows the periodic
 period is `period_windows` $\times$ `window_period_s` seconds whatever the load;
 a deployment should measure the rates on the robot (`scripts/rate_report.py`),
 keep a window long enough to hold several messages, and choose `period_windows`
@@ -1730,8 +1945,8 @@ learn its own forgetting rate from observed transition statistics — a wall
 in a rarely-disturbed alcove and a doormat in a busy doorway would decay at
 different, empirically fit rates. STRATA's one-parameter simplification is
 what E3 characterizes: a single `survival_decay` value, uniformly applied,
-already buys most of the achievable stability once paired with hysteresis
-(F1 1.000 for the wide-band configuration at both `decay=0.90` and
+already yields F1 1.000 once paired with hysteresis
+(the wide-band configuration at both `decay=0.90` and
 `decay=1.0`), so the paper does not claim the uniform rate is a limitation
 in the tested regime — only that it is a strictly less expressive model
 than the per-cell-learned alternative, and a scene with sharply
@@ -1765,8 +1980,8 @@ migration to `pluginlib`-style dynamic loading. The paper takes no position
 on which is correct beyond two backends; it only argues the current
 structure is not premature generalization at the current backend count.
 
-**Honesty has a cost the paper pays openly.** Choosing the systems/tool
-framing over an accuracy-SOTA framing means every claim in §5 is scoped to
+**Honesty has a cost the paper pays openly.** Choosing a systems/tool
+framing over an accuracy-comparison framing means every claim in §5 is scoped to
 "what the shipped code measurably does," not "how well STRATA localizes or
 maps relative to a competing system." No baseline comparison against
 OctoMap, ELite, LT-mapper, or FreMEn is run in this paper. The lifelong-SLAM
@@ -1788,8 +2003,8 @@ specific past session, needs LT-mapper- or Yang et al.-style session
 versioning [@kim2022ltmapper; @yang2025lifelong3d] that STRATA does not
 provide. And it is not a substitute for semantic or object-level reasoning —
 the cell-class state machine of §4.5 has no notion of "this cluster of cells
-is one dynamic agent," unlike Khronos's scene graph [@schmid2024khronos] or
-ERASOR's per-object removal [@lim2021erasor]. And it does not discover
+is one dynamic agent," unlike the object-level change reasoning of Khronos
+[@schmid2024khronos]. And it does not discover
 periods: where the relevant cycles are unknown or are not harmonics of one base
 period, FreMEn's selection among candidate periods [@krajnik2017fremen] or
 warped hypertime [@krajnik2019warped] is the better tool. Within those
@@ -1799,30 +2014,30 @@ occupancy-cell level, in 2D or 3D — STRATA is the intended fit.
 
 ## 6.5 Future work
 
-Five items follow directly from the limitations above, in the order they
-would be tackled: (0) a noise null that allows temporal correlation, for example by testing
+Seven items follow directly from the limitations above: (1) a noise null that
+allows temporal correlation, for example by testing
 the harmonic against a local noise floor rather than against white noise, and
 an anytime-valid test that also covers re-created histories, for which
 time-uniform supermartingale bounds [@howard2020timeuniform] are the natural
 tool, addressing the independence assumption of the calibrated test and the
 pruned-clutter regime that E5 measures but the trajectory bound does not cover;
-(1) a FreMEn baseline on the same synthetic streams and a four-class confusion
-under the shipped defaults, then validation on at least one real 2D and one
-real 3D LiDAR sequence, and real-robot and multi-session field validation,
-closing the synthetic-only gap of §6.1, on both a 2D wheeled platform and a
-3D-LiDAR platform to exercise both backends under real sensor noise; (2) a
+(2) a FreMEn baseline on the same synthetic streams; (3) default increments and
+a graduation rule that reject clutter of moderate occupancy, the open defect of
+the default parameters that E6 measures; (4) validation on at least one real 2D
+and one real 3D LiDAR sequence, and then in the field on a 2D wheeled platform
+and a 3D-LiDAR platform, closing the synthetic-only gap of §6.1; (5) a
 per-cell-learned decay rate along the lines of iMac/Tipaldi
 [@saarinen2012imac; @tipaldi2013lifelong], replacing the global
-`survival_decay` scalar characterized in §6.3 with region- or cell-adaptive
-forgetting; (3) resolving the prune/maturity race identified in E2 — the
+`survival_decay` scalar characterized in §6.3; (6) resolving the prune/maturity
+race identified in E2 — the
 25%-duty periodic door is pruned during its own vacant stretches before its
 FreMEn amplitude has enough touched-window support to mature (§5.3) — by
 either exempting recently-active cells from pruning or feeding a running
-amplitude estimate into the prune decision itself; and (4) decoupling
+amplitude estimate into the prune decision itself; and (7) decoupling
 forgetting from re-observation, i.e. fixing SPEC-DIFF #1 (§6.2) so an
-untouched cell's log-odds relaxes toward the unknown prior on a wall-clock
-or tick basis rather than only ever decaying when re-touched, closing the
-out-of-FOV persistence gap without changing the touched-cell update path E1–E4
+untouched cell's log-odds relaxes toward the unknown prior on a tick basis
+rather than only ever decaying when re-touched, without changing the
+touched-cell update path E1–E4
 already characterize.
 
 # 7 Conclusion
@@ -1839,22 +2054,23 @@ switch. The only code that differs per backend is point-to-cell-id mapping
 and the free-space ray walk (§3–§4); the classifier that decides Static,
 Periodic, Transient, or Unknown is written once and shared by composition.
 That engine builds and unit-tests with a plain C++17 + Eigen toolchain,
-independent of ROS 2, DDS, or PCL (§3), and its behavior is characterized —
-not merely asserted — by a seeded, reproducible synthetic harness: near-
-identical static-layer quality across backends up to a clutter-induced,
-geometrically-explained precision gap (E1), detection of 50%-duty
+independent of ROS 2, DDS, or PCL (§3). A seeded synthetic characterization
+shows: near-identical static-layer quality across backends up to a
+sampling-induced precision gap (E1); detection of 50%-duty
 periodicity from 25 windows on, with the probability of ever labelling iid
 clutter Periodic during an unpruned history bounded by the spent level and
 measured at no more than 2 of 2000 cells over 1024 windows on held-out seeds,
-and a diagnosed failure mode at low duty cycles (E0, E2, E5), walls that stay Static with periodicity on once the Fourier
-coefficients are centred (E1, E3),
-hysteresis as the dominant stabilizer against flicker (E3), and a flat
-estimated per-cell memory footprint with periodicity off, with a 5.5–15.0×
-backend cost gap attributable to 3D free-space voxel proliferation, not to the
-shared engine (E4). Its closest prior work, the FreMEn spatio-temporal grid of
+and a provable failure mode at low duty cycle (E0, E2, E5); a dominant false
+Static label on aperiodic cells of moderate occupancy (1960 of 2000
+Bernoulli(0.5) cells with the shipped defaults) that the graduation rule cannot
+avoid (E5, E6); walls that stay Static with periodicity on once the Fourier
+coefficients are centred (E1, E3);
+hysteresis as the dominant stabilizer against flicker (E3); and a flat
+estimated per-cell memory footprint with periodicity off, with voxel3d holding
+4.4–10.0× as many live cells as grid2d (E4). Its closest prior work, the FreMEn spatio-temporal grid of
 Krajník et al. [@krajnik2016persistent], has long-term real-world evidence that
 STRATA lacks; a FreMEn baseline on the same streams and real LiDAR sequences
-are the next evaluation steps. None of this replaces field validation, a
+are the next evaluation steps. None of this replaces real-sensor validation, a
 comparison with an external baseline, multi-session mapping, period discovery,
 or semantic reasoning — §6 states those boundaries explicitly — but within them (synthetic
 evidence, no external baseline, a single session, a fixed base period, an
@@ -1864,25 +2080,85 @@ of rather than a competing full lifelong-SLAM pipeline.
 ## 7.1 Reproducibility
 
 STRATA is open source under the Apache-2.0 license at
-`github.com/kjungmo/strata`, targeting ROS 2 Humble. The `strata_core`
-package alone builds and unit-tests without ROS installed
-(`cmake -S strata_core -B build -DSTRATA_CORE_BUILD_TESTS=ON && ctest`, §3);
-the continuous-integration workflow builds and tests this core with a C++17
-toolchain (g++, Eigen3) on `ubuntu-latest`. All figures and tables in §5
-regenerate from the CSVs the harness itself
-writes: `bash paper/experiments/run_all.sh` configures and builds the
-calibration E0, the four E1–E4 executables and E5 against `strata_core`, runs
-them (E0 with its own seeds from 20260928, E1–E4 with the fixed harness seed
-`kSeed = 12345`, E5 with calibration seeds from 30260928 and evaluation seeds
-from 40260928), and writes `paper/experiments/results/*.csv`; a
-follow-up `paper/experiments/plot/run_all_plots.sh` regenerates every figure
-from those CSVs. The comparison columns of [@tbl:fix] are archived in
-`results/pre_fix_2026-09-28/`, `results/pre_calibration_2026-09-28/` and
-`results/pre_spending_2026-09-28/`. To reproduce or audit the parameterization, the engine
+`github.com/kjungmo/strata`, targeting ROS 2 Humble.
+
+**Code pin.** The revision of that repository that carries this paper, its
+result files and its reproduction scripts is the tag `paper-v1`. The engine
+(`strata_core`), the node (`strata`) and the check scripts (`scripts/`) in it
+are those of commit `312b09c` (11 October 2026): the experiment harness,
+experiment E6, the result files and the manuscript were completed after that
+commit without changing those three directories, and the number check compares
+their tree identifiers with that commit's. Commit `312b09c` itself predates E6
+and the reproduction scripts named below.
+
+**What reproduces.** `paper/experiments/check_reproduction.sh` rebuilds the
+harness from a clean checkout and requires every result file of E0–E3, E5 and
+E6 to come out byte for byte; `paper/experiments/reproduction_log.txt` lists the
+compilers with which it did (GCC 9.4.0 with libstdc++, on one x86-64 Linux
+host). The result is not independent of the C++ standard library. The streams
+come from `std::mt19937`, whose output the standard fixes, through three
+standard distributions, whose algorithms it does not fix. With clang 23.1.2 and
+libc++ (`check_stdlib.sh`, record in `results/stdlib_libcxx/`), 15 of the 19
+seeded result files are byte-identical and four differ: the two E1 files, the E0
+door file and the E6 confusion file. These are the experiments whose outcome
+depends on integers drawn with `std::uniform_int_distribution` (mover cells in
+E1's grid2d runs, door phases in E0 and E6). Under libc++ the final grid2d
+precision at high clutter in E1 is 0.9583 with 168 predicted cells instead of
+0.9253 with 174, and every other final value of [@tbl:e1] is unchanged; five of
+the 20 E0 door medians move by one window (at $\delta=0.1$, 20 to 21 and 23 to
+24) and the selected levels do not change; and 1976 instead of 1960 of the 2000
+aperiodic cells of E6 are Static with the shipped defaults. E5's confusion draws
+door phases the same way, but its counts do not depend on the phases and its
+file is identical. No third standard library was tried.
+
+From the repository root:
+
+- **Core engine and unit tests, no ROS required.** The `strata_core`
+  package alone builds and unit-tests without ROS installed
+  (`cmake -S strata_core -B build -DSTRATA_CORE_BUILD_TESTS=ON`, then
+  `cmake --build build && (cd build && ctest)`, §3);
+  continuous integration runs the same build with g++, Eigen3 and GoogleTest on
+  `ubuntu-latest`.
+- **Experiments.** `bash paper/experiments/run_all.sh` runs the unit tests, the
+  calibration E0 (seeds from 20260928), experiments E1–E4 (the fixed harness
+  seed `kSeed = 12345`), E5 (calibration seeds from 30260928, evaluation seeds
+  from 40260928) and E6 (sweep seeds from 50260928), and writes the CSVs under
+  `paper/experiments/results/`. E0–E3, E5 and E6 rewrite their files byte for
+  byte. E4 reads the wall clock: the script writes its output to
+  `paper/experiments/build/e4_throughput_local.csv` and fails if a cell count or
+  byte estimate differs from the committed one (`check_e4_local.py`); timings
+  for the paper are recorded separately with
+  `paper/experiments/measure_e4.sh`. The comparison columns of [@tbl:fix] are
+  the same harness built against the v0.1.0 `strata_core`
+  (`results/pre_fix_2026-09-28/`), against the centred engine before the
+  significance test (`results/pre_calibration_2026-09-28/`) and against the
+  engine with the single-read-out level (`results/pre_spending_2026-09-28/`).
+- **Tables, plot data and the number check of the manuscript**
+  (`paper/arxiv_ref/NUMBERS.md`): `python3 paper/arxiv_ref/tools/make_artifacts.py`,
+  then `python3 paper/experiments/number_guard.py`. The check regenerates every
+  table and plot-data file of the manuscript and compares it with the committed
+  one. For the hand-written text of the manuscript it locates each numeral and
+  requires it to be tied to a value recomputed from the result files or the
+  code, or to be listed as structural with a reason (an experiment design
+  constant restated from the harness, a symbol in a formula, a plot layout
+  value). A numeral that is neither fails the check. Its limits are these.
+  Structural numerals, among them the scenario sizes of the setup section and
+  the design constants written as symbol and value, are not parsed from the
+  harness; they are kept in a committed list
+  (`paper/arxiv_ref/structural_numerals.tsv`), so that changing one fails the
+  check until the list is rewritten on purpose. A numeral that is tied to a
+  recomputed value only by being equal to it, and not by its sentence, could be
+  exchanged for another recomputed value without the check noticing;
+  `NUMBERS.md` gives the count of each kind. For this companion the same script
+  checks less: it requires the source-derived phrases to be present, and it does
+  not examine the other numerals of this file.
+- **Figures of this companion.** `paper/experiments/plot/run_all_plots.sh`
+  regenerates the figures in `paper/figures/` from the CSVs.
+
+To reproduce or audit the parameterization, the engine
 parameters and production defaults are in [@tbl:params] (§4.7) and the
 per-experiment deviations from those defaults are in [@tbl:eparams] (§5.1).
-`strata_core`'s own `ctest` suite (1/1) is checked before
-the harness output is trusted. We invite integration reports, alternative
+We invite integration reports, alternative
 backend implementations replayed against the
 `Integration.WallStaticMoverTransientDoorPeriodic` reference scenario,
 and pairing with an external localizer such as `prism_loc` for end-to-end

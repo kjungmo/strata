@@ -7,8 +7,8 @@
   grid=major, grid style={gray!20}, tick label style={font=\scriptsize}, label style={font=\small},
   legend style={font=\scriptsize, at={(0.5,1.03)}, anchor=south, legend columns=3}, legend cell align=left]
 \addplot[const plot, thick, gray, densely dashed] table[x=len,y=fpr] {figures/data/e2_fpr_pre.dat};
-\addplot[const plot, thick, orange!80!black] table[x=len,y=fpr] {figures/data/e2_fpr_mid.dat};
-\addplot[const plot, thick, violet!70!black] table[x=len,y=fpr] {figures/data/e2_fpr_one.dat};
+\addplot[const plot, thick, orange!80!black, dash dot] table[x=len,y=fpr] {figures/data/e2_fpr_mid.dat};
+\addplot[const plot, thick, violet!70!black, loosely dashed] table[x=len,y=fpr] {figures/data/e2_fpr_one.dat};
 \addplot[const plot, very thick, blue!70!black] table[x=len,y=fpr] {figures/data/e2_fpr_post.dat};
 \addplot[const plot, thin, violet!70!black, densely dotted] table[x=len,y=reffpr] {figures/data/e2_fpr_one.dat};
 \addplot[const plot, thin, blue!70!black, densely dotted] table[x=len,y=reffpr] {figures/data/e2_fpr_post.dat};
@@ -22,8 +22,8 @@
   xlabel={read-out length $n$ (windows)}, ylabel={TPR (of 3)},
   grid=major, grid style={gray!20}, tick label style={font=\scriptsize}, label style={font=\small}]
 \addplot[const plot, thick, gray, densely dashed] table[x=len,y=tpr] {figures/data/e2_fpr_pre.dat};
-\addplot[const plot, thick, orange!80!black] table[x=len,y=tpr] {figures/data/e2_fpr_mid.dat};
-\addplot[const plot, thick, violet!70!black] table[x=len,y=tpr] {figures/data/e2_fpr_one.dat};
+\addplot[const plot, thick, orange!80!black, dash dot] table[x=len,y=tpr] {figures/data/e2_fpr_mid.dat};
+\addplot[const plot, thick, violet!70!black, loosely dashed] table[x=len,y=tpr] {figures/data/e2_fpr_one.dat};
 \addplot[const plot, very thick, blue!70!black] table[x=len,y=tpr] {figures/data/e2_fpr_post.dat};
 \addplot[const plot, thin, blue!70!black, densely dotted] table[x=len,y=reftpr] {figures/data/e2_fpr_post.dat};
 \draw[gray!70, dashed] (axis cs:64,-0.05) -- (axis cs:64,1.05);

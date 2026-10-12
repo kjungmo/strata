@@ -48,7 +48,7 @@ D.~Duberg and P.~Jensfelt.
 
 \bibitem[Gil et~al.(2025)Gil, Lee, Kim, and Kim]{gil2025elite}
 H.~Gil, D.~Lee, G.~Kim, and A.~Kim.
-\newblock {ELite}: Ephemerality meets {LiDAR}-based lifelong mapping.
+\newblock Ephemerality meets {LiDAR}-based lifelong mapping.
 \newblock In \emph{2025 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3312--3319, 2025.
 \newblock \doi{10.1109/ICRA55743.2025.11127618}.
 
@@ -67,13 +67,13 @@ A.~Hornung, K.~M. Wurm, M.~Bennewitz, C.~Stachniss, and W.~Burgard.
 \bibitem[Howard et~al.(2020)Howard, Ramdas, McAuliffe, and Sekhon]{howard2020timeuniform}
 S.~R. Howard, A.~Ramdas, J.~McAuliffe, and J.~Sekhon.
 \newblock Time-uniform {Chernoff} bounds via nonnegative supermartingales.
-\newblock \emph{Probability Surveys}, 17, 2020.
+\newblock \emph{Probability Surveys}, 17:\penalty0 257--317, 2020.
 \newblock \doi{10.1214/18-PS321}.
 
 \bibitem[Hsu et~al.(2012)Hsu, Kakade, and Zhang]{hsu2012tail}
 D.~Hsu, S.~Kakade, and T.~Zhang.
 \newblock A tail inequality for quadratic forms of subgaussian random vectors.
-\newblock \emph{Electronic Communications in Probability}, 17, 2012.
+\newblock \emph{Electronic Communications in Probability}, 17:\penalty0 1--6, 2012.
 \newblock \doi{10.1214/ECP.v17-2079}.
 
 \bibitem[Kim and Kim(2020)]{kim2020removert}
@@ -103,7 +103,7 @@ T.~Krajn\'{i}k, J.~P. Fentanes, G.~Cielniak, C.~Dondrup, and T.~Duckett.
 \bibitem[Krajn\'{i}k et~al.(2014{\natexlab{b}})Krajn\'{i}k, Santos, Seemann, and Duckett]{krajnik2014froctomap}
 T.~Krajn\'{i}k, J.~Santos, B.~Seemann, and T.~Duckett.
 \newblock {FROctomap}: An efficient spatio-temporal environment representation.
-\newblock In \emph{Advances in Autonomous Robotics Systems (TAROS 2014)}, Lecture Notes in Computer Science. Springer, 2014{\natexlab{b}}.
+\newblock In \emph{Advances in Autonomous Robotics Systems (TAROS 2014)}, volume 8717 of \emph{Lecture Notes in Computer Science}, pages 281--282, Cham, 2014{\natexlab{b}}. Springer.
 
 \bibitem[Krajn\'{i}k et~al.(2015)Krajn\'{i}k, Santos, and Duckett]{krajnik2015exploration}
 T.~Krajn\'{i}k, J.~M. Santos, and T.~Duckett.
@@ -131,8 +131,9 @@ T.~Krajn\'{i}k, T.~Vintr, S.~Molina, J.~P. Fentanes, G.~Cielniak, O.~M. Mozos, G
 
 \bibitem[Labb\'{e} and Michaud(2019)]{labbe2019rtabmap}
 M.~Labb\'{e} and F.~Michaud.
-\newblock {RTAB}-map as an open-source lidar and visual {SLAM} library for large-scale and long-term online operation.
+\newblock {RTAB}-map as an open-source lidar and visual simultaneous localization and mapping library for large-scale and long-term online operation.
 \newblock \emph{Journal of Field Robotics}, 36\penalty0 (2):\penalty0 416--446, 2019.
+\newblock \doi{10.1002/rob.21831}.
 
 \bibitem[Lan and DeMets(1983)]{lan1983discrete}
 K.~K.~G. Lan and D.~L. DeMets.
@@ -212,8 +213,8 @@ J.~Saarinen, H.~Andreasson, and A.~J. Lilienthal.
 \bibitem[Saavedra-Ruiz et~al.(2025)Saavedra-Ruiz, Nashed, Gauthier, and Paull]{saavedraruiz2025perpetua}
 M.~Saavedra-Ruiz, S.~B. Nashed, C.~Gauthier, and L.~Paull.
 \newblock Perpetua: Multi-hypothesis persistence modeling for semi-static environments.
-\newblock arXiv:2507.18808, 2025.
-\newblock Accepted to IROS 2025.
+\newblock In \emph{2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 13843--13850, 2025.
+\newblock \doi{10.1109/IROS60139.2025.11247086}.
 
 \bibitem[Schmid et~al.(2024)Schmid, Abate, Chang, and Carlone]{schmid2024khronos}
 L.~Schmid, M.~Abate, Y.~Chang, and L.~Carlone.

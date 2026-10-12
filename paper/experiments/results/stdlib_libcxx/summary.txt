@@ -1,0 +1,23 @@
+compiler: clang version 23.1.2 (https://github.com/conda-forge/clangdev-feedstock 790b452829aae3c1261820656dab09eb6850b87f)
+standard_library: libc++.so.1
+host: Linux x86_64
+strata_core_tree: 401e7c7fced30ee44ed9888d397158492dc38eb2
+identical: e0_calibration_choice.csv
+different: e0_calibration_doors.csv
+identical: e0_calibration_null.csv
+identical: e0_calibration_pipeline.csv
+different: e1_static_quality.csv
+different: e1_static_quality_periodic.csv
+identical: e2_amplitude_vs_length.csv
+identical: e2_classification.csv
+identical: e2_rates_vs_length.csv
+identical: e2_summary.csv
+identical: e3_sensitivity.csv
+identical: e3_sensitivity_periodic.csv
+identical: e5_calibration.csv
+identical: e5_calibration_choice.csv
+identical: e5_confusion.csv
+identical: e5_doors.csv
+identical: e5_trajectory.csv
+different: e6_confusion.csv
+identical: e6_static_vs_m.csv

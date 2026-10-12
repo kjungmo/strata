@@ -1,17 +1,12 @@
 """
-Figure: E4 throughput and memory.
+Figure: E4 live cells and estimated memory.
 
-Source: paper/experiments/results/e4_throughput.csv
-  columns: backend,size_label,extent,hits_per_window,windows,us_per_integrate,
-           hits_per_sec,us_per_endwindow,cell_updates_per_sec,final_cells,
-           bytes_per_cell,est_bytes
+Source: paper/experiments/results/e4_throughput.csv (columns final_cells, est_bytes)
 
-Grouped bar chart, two panels: (a) per-integrate() latency in microseconds
-(log scale — grid2d vs voxel3d differ by up to ~11x), (b) endWindow()
-cell-update throughput in updates/second, both grouped by backend at each
-grid/voxel extent. Absolute latencies are machine-dependent (see
-notes/experiments_summary.md); the cross-backend/size ratios are the
-reproducible quantity.
+Grouped bar chart, two panels: (a) live cells at the end of the run, (b) estimated
+memory at 56 B per cell, grouped by backend at each extent. Both follow from the
+seeded geometry and are exact. Latency is not plotted here: timings are taken
+separately on a quiet host (measure_e4.sh) and appear only in the manuscript.
 """
 import os
 import sys
@@ -30,10 +25,10 @@ def main():
     header, rows = read_csv("e4_throughput.csv")
     bi = header.index("backend")
     si = header.index("size_label")
-    ui = header.index("us_per_integrate")
-    ci = header.index("cell_updates_per_sec")
+    ui = header.index("final_cells")
+    ci = header.index("est_bytes")
 
-    data = {}  # (backend, size) -> (us_per_integrate, cell_updates_per_sec)
+    data = {}  # (backend, size) -> (final_cells, est_bytes)
     for r in rows:
         data[(r[bi], r[si])] = (float(r[ui]), float(r[ci]))
 
@@ -50,11 +45,12 @@ def main():
         ax_thr.bar(x + offset, thr, width, color=BACKEND_COLOR[backend], label=backend)
 
     ax_lat.set_yscale("log")
-    ax_lat.set_ylabel("time per integrate() call (µs, log scale)")
-    ax_lat.set_title("Per-call latency (lower is better)")
+    ax_lat.set_ylabel("live cells at end of run (log scale)")
+    ax_lat.set_title("Live cells (exact)")
 
-    ax_thr.set_ylabel("endWindow() throughput (10$^6$ cell-updates/s)")
-    ax_thr.set_title("Cell-update throughput (higher is better)")
+    ax_thr.set_yscale("log")
+    ax_thr.set_ylabel("estimated memory (MB, 56 B per cell, log scale)")
+    ax_thr.set_title("Estimated memory")
 
     for ax in (ax_lat, ax_thr):
         ax.set_xticks(x)
@@ -62,10 +58,9 @@ def main():
         ax.set_xlabel("map extent (cells / voxels per side)")
         ax.legend(frameon=False)
 
-    fig.suptitle("E4: throughput vs. backend and map extent "
+    fig.suptitle("E4: map size vs. backend and extent "
                   "(150 hits/window, 20 windows)")
     save_fig(fig, "fig_e4_throughput")
-
 
 if __name__ == "__main__":
     main()

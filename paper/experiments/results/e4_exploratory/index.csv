@@ -1,0 +1,14 @@
+file,taken_by,harness,compiler,load_1min,note
+2026-07-03_single_run_unrecorded_machine.csv,author,single run per configuration (first release),not recorded,not recorded,machine not recorded; made before grid2d kept its flag byte
+author_record1.csv,author,15 repeats no warm-up,GCC 9.4.0,17.6 at end,loaded host; exploratory
+author_record2.csv,author,15 repeats no warm-up,GCC 9.4.0,12.9 at end,loaded host; exploratory; environment in author_record2_environment.txt; same file as ../e4_throughput.csv
+author_reproduction_gcc9.csv,author,15 repeats no warm-up,GCC 9.4.0,not recorded,loaded host; exploratory; written by check_reproduction.sh
+author_reproduction_gcc14.csv,author,15 repeats no warm-up,GCC 14.3.0,not recorded,loaded host; exploratory; written by check_reproduction.sh
+reviewerA_run1.csv,reviewer A,15 repeats no warm-up,GCC 9.4.0,12.5 before 13.9 after,loaded host; exploratory
+reviewerA_run2.csv,reviewer A,15 repeats no warm-up,GCC 9.4.0,13.9 before 16.0 after,loaded host; exploratory
+reviewerA_run3.csv,reviewer A,15 repeats no warm-up,GCC 9.4.0,16.0 before 20.5 after,loaded host; exploratory
+reviewerB_run1.csv,reviewer B,15 repeats no warm-up,GCC 9.4.0,not recorded per file,loaded host; exploratory; the review reports loads of 7 to 15 over this reviewer's runs
+reviewerB_run2.csv,reviewer B,15 repeats no warm-up,GCC 9.4.0,not recorded per file,loaded host; exploratory
+reviewerB_run3.csv,reviewer B,15 repeats no warm-up,GCC 9.4.0,not recorded per file,loaded host; exploratory
+reviewerB_reproduction_a.csv,reviewer B,15 repeats no warm-up,not recorded,not recorded per file,loaded host; exploratory
+reviewerB_reproduction_b.csv,reviewer B,15 repeats no warm-up,not recorded,not recorded per file,loaded host; exploratory
