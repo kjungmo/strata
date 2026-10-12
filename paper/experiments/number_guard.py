@@ -692,16 +692,16 @@ def guard_code(full):
             valid.append((p, env))
     msh = (HERE / "measure_e4.sh").read_text()
     check("measure_e4.sh thresholds 0.50 / 1.50", "MAX_LOAD_BEFORE=0.50" in msh and "MAX_LOAD_AFTER=1.50" in msh)
-    in_paper("E4 admission threshold quoted", "load average is below 0.50")
-    in_paper("E4 after-run threshold quoted", "afterwards is 1.50 or more")
-    n_expl = len(files) + len(recs) - len(valid)
-    in_paper("E4 number of timing files quoted", f"In all {len(allr)} timing files")
-    if len(valid) < 3:
-        in_paper("E4 exploratory ratio range at 100^2", f"({min(r[0] for r in allr):.1f}–{max(r[0] for r in allr):.1f}× at 100^2)")
-        check("E4: no latency in the paper without three valid recordings",
-              "integrate} [min, max]" not in (ARXIV / "tables" / "e4.tex").read_text())
-    else:
-        in_paper("E4 number of valid recordings quoted", f"{len(valid)} quiet-host recordings")
+    if full:   # the E4 sentences are generated for the manuscript; the companion gives the direction only
+        in_paper("E4 admission threshold quoted", "load average is below 0.50")
+        in_paper("E4 after-run threshold quoted", "afterwards is 1.50 or more")
+        in_paper("E4 number of timing files quoted", f"In all {len(allr)} timing files")
+        if len(valid) < 3:
+            in_paper("E4 exploratory ratio range at 100^2", f"({min(r[0] for r in allr):.1f}–{max(r[0] for r in allr):.1f}× at 100^2)")
+            check("E4: no latency in the paper without three valid recordings",
+                  "integrate} [min, max]" not in (ARXIV / "tables" / "e4.tex").read_text())
+        else:
+            in_paper("E4 number of valid recordings quoted", f"{len(valid)} quiet-host recordings")
 
     # ---- E6: shipped-default confusion and the Static share against m ----
     c5 = {(r["rule"], r["readout"], r["gt"]): r for r in rows("e5_confusion.csv")}
@@ -928,6 +928,9 @@ def guard_rules():
             a = b = n
     R("4_experiments", r"at (\d+) of (\d+) lengths \(n=(\d+)\u2013(\d+), (\d+)\u2013(\d+) and (\d+)\u2013(\d+)\)", str(len(ref_fp)), str(len(tp)), *runs)
     R("4_experiments", r"H\\,B=0.056<([\d.]+),", "0.1")
+    s64 = lambda sub_: {r["metric"]: r for r in rows(sub_ + "e2_summary.csv")}["periodic_FPR"]["note"]
+    R("4_experiments", r"false-positive rate of (\d)/(\d); the two earliest engines scored (\d)/(\d) \(v0\.1\.0\) and (\d)/(\d) \(centred only\)",
+      s64(""), "5", s64("pre_fix_2026-09-28/"), "5", s64("pre_calibration_2026-09-28/"), "5")
     R("4_experiments", r"\\delta_\{64\}=([\d.]+)\\cdot(\d+)/\((\d+)\\cdot(\d+)\)\\approx([\d.]+)\u00d710\^\{-(\d)\}", "0.2", "8", "64", "65", f"{0.2 * 8 / (64 * 65) * 1e4:.1f}", "4")
     R("4_experiments", r"bounds below 10\^\{-(\d)\}", "3")
     amp = {(r["cell"], r["obs_length"]): float(r["amplitude"]) for r in rows("e2_amplitude_vs_length.csv")} if "cell" in rows("e2_amplitude_vs_length.csv")[0] else {}

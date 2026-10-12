@@ -17,15 +17,15 @@ Tables `tables/*.tex`, `tables/e4_text.tex` (the E4 sentences), `figures/data/*.
 
 | Numerals | Kind |
 |---:|---|
-| 116 | source: equal to a recomputed value (bare number, any location in the file) |
-| 118 | source: inside a phrase recomputed from the results or the code |
-| 233 | source: tied at this sentence to a value recomputed from the results or the code |
+| 110 | source: equal to a recomputed value (bare number, any location in the file) |
+| 119 | source: inside a phrase recomputed from the results or the code |
+| 239 | source: tied at this sentence to a value recomputed from the results or the code |
 | 20 | structural: duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval |
 | 275 | structural: inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text |
 | 91 | structural: name of a scenario, data type, standard or layout width |
 | 257 | structural: plot layout (axis limits, sizes, tick positions, styles) |
 | 102 | structural: scenario size or grid restated by hand from the harness source named in the sentence (not parsed) |
-| 6 | structural: year, date, version or licence identifier (versions are also checked against the records) |
+| 5 | structural: year, date, version or licence identifier (versions are also checked against the records) |
 
 Limits, stated plainly:
 
@@ -177,6 +177,17 @@ byte-identical; the E2 sweep and E3 periodic were rerun; E4 was not rerun.
 | range of the ratio at 100² over the files (shown while fewer than three valid recordings exist) | the same files, `us_per_integrate` |
 | thresholds 0.50 / 1.50 | `MAX_LOAD_BEFORE`, `MAX_LOAD_AFTER` in `measure_e4.sh`, `env.txt` of each recording |
 | latencies and ratio ranges (only with three agreeing valid recordings) | `e4_recordings/*/summary.csv`, per repeat in `timings.csv` |
+
+## E6: `e6_confusion.csv`, `e6_static_vs_m.csv`
+
+| Claim | Source |
+|---|---|
+| 1960 of 2000 (0.980 [0.973, 0.985]); 1983 after 256 windows; 11 of 1000 dynamic; 1091 / 1200 doors | `e6_confusion.csv`, `params` = shipped |
+| 1042 of 2000 with λ = 0.97 added to the E2 parameters; all 1200 doors Periodic | `params` = e2_decay097 |
+| 1221 of 2000 (0.611 [0.589, 0.632]) | `params` = e2; the guard requires these rows to equal E5's |
+| Static counts against m (Table of E6), 485 ever Static at m = 0.10, widths 0.30 / 0.35 | `e6_static_vs_m.csv` (`static_256`, `ever_static_256`) |
+| m† = 0.354, 0.500, 0.534, 0.525 | column `mean_field_threshold`; recomputed in the guard from the parameters |
+| libc++: 15 of 19 files identical; E1 0.9583 / 168; five E0 door medians; 1976 | `results/stdlib_libcxx/summary.txt` and the four files beside it |
 
 ## E6: `e6_confusion.csv`, `e6_static_vs_m.csv`
 

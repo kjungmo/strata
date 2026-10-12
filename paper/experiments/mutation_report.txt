@@ -1,0 +1,33 @@
+baseline failures in the copy (not a git checkout): 26
+sections/0_abstract.tex: 19 numerals mutated, 19 caught, 0 survived
+sections/1_introduction.tex: 47 numerals mutated, 47 caught, 0 survived
+sections/2_related_works.tex: 11 numerals mutated, 11 caught, 0 survived
+sections/3_method.tex: 269 numerals mutated, 269 caught, 0 survived
+SURVIVOR sections/4_experiments.tex: '0' ...ate of 2/3 and a false-positive rate of 0/5; the two earliest...
+SURVIVOR sections/4_experiments.tex: '1' ...of 0/5; the two earliest engines scored 1/5 (v0.1.0) and 2/5 ...
+sections/4_experiments.tex: 442 numerals mutated, 440 caught, 2 survived
+sections/5_discussion.tex: 43 numerals mutated, 43 caught, 0 survived
+sections/6_conclusion.tex: 12 numerals mutated, 12 caught, 0 survived
+sections/appendix.tex: 119 numerals mutated, 119 caught, 0 survived
+figures/e1_f1.tex: 29 numerals mutated, 29 caught, 0 survived
+figures/e2_amplitude.tex: 73 numerals mutated, 73 caught, 0 survived
+figures/e2_fpr.tex: 79 numerals mutated, 79 caught, 0 survived
+figures/e3_flicker.tex: 42 numerals mutated, 42 caught, 0 survived
+figures/overview.tex: 38 numerals mutated, 38 caught, 0 survived
+tables/e0.tex: 13 numerals mutated, 13 caught, 0 survived
+tables/e1.tex: 12 numerals mutated, 12 caught, 0 survived
+tables/e2.tex: 11 numerals mutated, 11 caught, 0 survived
+tables/e3.tex: 17 numerals mutated, 17 caught, 0 survived
+tables/e3_full.tex: 112 numerals mutated, 112 caught, 0 survived
+tables/e4.tex: 12 numerals mutated, 12 caught, 0 survived
+tables/e4_text.tex: 3 numerals mutated, 3 caught, 0 survived
+tables/e5.tex: 31 numerals mutated, 31 caught, 0 survived
+tables/e5_choice.tex: 14 numerals mutated, 14 caught, 0 survived
+tables/e5_confusion.tex: 39 numerals mutated, 39 caught, 0 survived
+tables/e5_full.tex: 75 numerals mutated, 75 caught, 0 survived
+tables/e6.tex: 35 numerals mutated, 35 caught, 0 survived
+tables/fix.tex: 40 numerals mutated, 40 caught, 0 survived
+figures/e4_cost.tex: 7 numerals mutated, 7 caught, 0 survived
+TOTAL: 1644 numerals mutated, 1642 caught, 2 survived
+
+Note (2026-10-12): the two survivors above were closed afterwards by one sentence rule in number_guard.py (the fractions 0/5, 1/5, 2/5 of the E2 paragraph); the full sweep was not repeated after that change.
