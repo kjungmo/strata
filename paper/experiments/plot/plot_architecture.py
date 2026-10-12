@@ -78,7 +78,7 @@ def main():
     # ---- content --------------------------------------------------------
     layered_lines = [
         "log-odds occupancy: observeHit / observeMiss (l_hit/l_miss, clamped)",
-        "survival decay → toward “unknown” each window",
+        "survival decay → toward “unknown” in each touched window",
         "Schmitt trigger: graduate_prob / demote_prob thresholds",
         "  → CellClass: Unknown | Transient | Periodic | Static",
         "PeriodicityModel: FreMEn-lite Fourier fit (period_windows, n_harmonics)",
@@ -91,7 +91,7 @@ def main():
         "toOccupancyGrid(): -1/0/50/75/100",
     ]
     voxel_lines = [
-        "int64 spatial hash id=(vx<<42)|(vy<<21)|vz, unbounded",
+        "int64 spatial hash id=(vx<<42)|(vy<<21)|vz, 21 bits per axis",
         "hit → voxelId(x,y,z)  [full 3D, no bounds check]",
         "clear → ray-sample march (0.5-voxel step points)",
         "staticPoints(): voxel centers → point cloud",
@@ -162,7 +162,7 @@ def main():
     ax.plot([x_left, x_right], [sep_y, sep_y], linestyle="--", color=BLACK, linewidth=1.3, zorder=2)
     label_at(ax, ((x_left + x_right) / 2, sep_y),
              "MapBackend interface:  integrate(Observation hits[MAP frame], origin) "
-             "· tick() · staticCellCount() · transientCellCount()",
+             "· tick() · closeWindows(k) · staticCellCount() · transientCellCount()",
              fontsize=7.3)
 
     # ---- strata_core band content ------------------------------------

@@ -88,7 +88,7 @@ strata_core   (pure C++17 + Eigen, no ROS / no PCL, gtest-tested):
                 Chernoff false-alarm bound <= periodic_false_alarm,
                 spent over the touch count (alpha spending)
 
-  MapBackend  (interface: integrate(obs, sensor_origin) / tick())
+  MapBackend  (interface: integrate(obs, sensor_origin) / tick() / closeWindows(k))
     ├─ Grid2DBackend   6-DoF hits projected to a 2D plane, Bresenham ray clearing
     └─ Voxel3DBackend  fully volumetric voxel-hash, ray-sample clearing
 
@@ -112,8 +112,9 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 
 The manuscript is a preprint and has not been peer reviewed. It documents the
 architecture, the persistence and periodicity model, and the seeded synthetic
-characterization suite (calibration E0, experiments E1–E5), and it describes the
-code of commit `312b09c`. If you use `strata` in academic work, please cite:
+characterization suite (calibration E0, experiments E1–E6), and it describes the
+code of commit `312b09c`; the revision that carries the paper and its
+reproduction scripts is the tag `paper-v1`. If you use `strata` in academic work, please cite:
 
 ```bibtex
 @misc{kang2026strata,
@@ -175,10 +176,13 @@ ros2 launch strata grid2d.launch.py rviz:=false use_sim_time:=true
 # terminal 2, from <ws>: prints one ok/FAIL line per check, calls ~/save_map, ends with PASS
 python3 src/strata/scripts/synthetic_e2e.py grid2d install/strata/share/strata/params/grid2d.yaml
 ros2 run strata check_saved_map.py /tmp/strata_2d.yaml      # OK: ... (exit 0)
-ros2 topic echo /diagnostics --once                         # the input-rate status
 # terminal 3, while the script of terminal 2 is still sending (about 75 s):
+ros2 topic echo /diagnostics --once                         # the input-rate status, level OK
 python3 src/strata/scripts/rate_report.py --seconds 30
 ```
+
+Once the script has ended, `/diagnostics` turns ERROR with `no input on /scan for
+... s` after `input_timeout_s`: that is the intended report of a stopped sensor.
 
 This sequence was run from a fresh clone on Humble (RoboStack, GCC 14.3) for the
 paper audit of 2026-10-12. Build and CI cover ROS 2 Humble only.
@@ -190,7 +194,7 @@ dataset.** Every number below comes from a deterministic `strata_core` harness
 — no real sensor, no robot motion, no field deployment enters any result, and
 no external baseline is run. E1–E4 are single-seed point estimates (seed
 `12345`) with no cross-seed variance characterized, so they illustrate a
-mechanism rather than a distributional performance claim; E5 is multi-seed.
+mechanism rather than a distributional performance claim; E5 and E6 are multi-seed.
 `strata` itself performs no SLAM.
 
 <table>
@@ -219,10 +223,10 @@ suppresses the flicker.
 </tr>
 </table>
 
-E4 estimates a flat **56 B/cell** footprint (periodicity off) and finds
-`grid2d` cheaper per `integrate()` call than `voxel3d` at every tested extent
-(**4.9–27.6×** in the committed reference run; the ratio depends on the machine
-and its load, the **4.4–10.0×** live-cell gap does not), and E2 detects
+E4 estimates a flat **56 B/cell** footprint (periodicity off): `voxel3d` holds
+**4.4–10.0×** as many live cells as `grid2d` at equal extent, and `grid2d` is the
+cheaper backend per `integrate()` call in every timing recording (the paper gives
+a ratio only where recordings on a quiet host agree). E2 detects
 50%-duty periodic doors at true-positive rate **2/3** (from 25 windows on)
 with no false positive on Bernoulli clutter at any read-out length from 8 to
 100 windows. The periodicity test is noise-calibrated and spends its level over
@@ -230,9 +234,15 @@ repeated read-outs: over 1024-window runs on held-out seeds (E5), at most
 **2 of 2000** Bernoulli clutter cells are ever labelled Periodic, against up to
 953 of 2000 with a constant level. The test has known limits: its null is iid
 clutter, so slowly switching (temporally correlated) clutter is labelled
-Periodic at the shipped period (1908 of 2000 cells in E5); and under the E2
-parameters without decay the dominant labelling error is a false Static label
-on aperiodic cells (1221 of 2000).
+Periodic at the shipped period (1908 of 2000 cells in E5).
+
+**Known defect of the default parameters.** The dominant labelling error is a
+false Static label. With the shipped defaults, 1960 of 2000 random clutter cells
+that are occupied in half of their windows end Static (E6): the graduation rule
+labels a cell Static when it is occupied in more than roughly 35 % of the windows
+in which it is observed, and it cannot tell such clutter from a noisy wall of
+similar occupancy. `l_miss` and `survival_decay` move that threshold (paper,
+the remark "Which occupancy rates graduate" and the E6 table); the defaults were left unchanged.
 
 Full setup, all tables and the limitations are in the
 [paper](paper/strata_paper.pdf) §4–§5. Reproduce end-to-end with
@@ -298,8 +308,10 @@ before trusting a saved pair after an unclean shutdown or a failed `save_map`.
 `save_map` answers `success: false` with the path and the reason when a file
 cannot be written (for example a missing directory) or when `save_path` has no
 file name (empty or ending in `/`). That map_server loads the YAML with the two
-extra keys is verified in CI on Humble only; no Jazzy job exists (one manual
-load in Jazzy's `nav2_map_server` 1.3.11 succeeded, outside CI). CI checks this
+extra keys is verified in CI on Humble only; no Jazzy job exists. One manual
+load in Jazzy's `nav2_map_server` 1.3.11 succeeded; the script, the pair and the
+recorded output are in
+[`paper/deploy_checks/jazzy_map_server/`](paper/deploy_checks/jazzy_map_server/). CI checks this
 round trip on Humble on the synthetic scene (`synthetic_e2e.py --check-map-server`): it moves the
 saved pair to a fresh directory, loads the YAML there in `nav2_map_server`,
 brings it active, and requires the served map to have the published width and
@@ -461,7 +473,7 @@ See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame convent
 | [`paper/strata_paper_KR.md`](paper/strata_paper_KR.md) | Korean translation of the companion |
 | [`paper/README.md`](paper/README.md) | What is where under `paper/`, the code pin, how to reproduce |
 | [`SPEC.md`](SPEC.md) | Design spec — algorithm, parameters, frames, module layout, test strategy |
-| [`paper/experiments/`](paper/experiments/) | Reproduction harness (E0 calibration, E1–E5) + `run_all.sh` + `number_guard.py` |
+| [`paper/experiments/`](paper/experiments/) | Reproduction harness (E0 calibration, E1–E6) + `run_all.sh` + `number_guard.py` |
 | [`paper/figures/README.md`](paper/figures/README.md) | Figure design notes and CSV sources |
 
 ## 🗺️ Roadmap
@@ -482,10 +494,10 @@ next steps, drawn from `SPEC.md` §8 and the paper's future-work section:
 
 `strata` stands on a line of published work:
 
-- **FreMEn** — Krajník et al., *Spatio-Temporal Representation of Dynamic Environments* (IEEE T-RO 2017) — the incremental-Fourier periodicity model.
+- **FreMEn** — Krajník et al., *FreMEn: Frequency Map Enhancement for Long-Term Mobile Robot Autonomy in Changing Environments* (IEEE T-RO 2017) — the incremental-Fourier periodicity model; its spatio-temporal occupancy grid (Krajník et al., IROS 2016) is the closest prior work.
 - **Persistence Filter** — Rosen, Mason & Leonard, *Towards Lifelong Feature-Based Mapping in Semi-Static Environments* (ICRA 2016) — the survival-decay forgetting model.
-- **ELite** (ICRA 2025) and **LT-mapper** (ICRA 2022) — the closest published lifelong-mapping systems; `strata` isolates their shared persistence-and-classification core into a ROS-free engine.
-- **Removert** (IROS 2020) — motivates the conservative, hysteresis-gated removal that keeps clearing from erasing real structure.
+- **ELite** (ICRA 2025) and **LT-mapper** (ICRA 2022) — recent LiDAR lifelong-mapping systems that embed persistence logic in full lifelong-SLAM pipelines; `strata` is a small ROS-free engine for that layer only and was not derived from or compared with their code.
+- **Removert** (IROS 2020) — motivates the hysteresis band: a Static cell is demoted only after sustained contradicting evidence.
 - **Nav2 STVL** (Macenski et al., 2020) and **OctoMap** (Hornung et al., 2013) — lineage for the voxel backend's decaying-occupancy and log-odds-with-clamping cores.
 - Sibling project [`prism_loc`](https://github.com/kjungmo/prism_loc) — the intended external pose source that publishes the `map → sensor` TF `strata` maps against.
 

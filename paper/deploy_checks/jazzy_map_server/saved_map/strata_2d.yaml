@@ -1,0 +1,9 @@
+image: 'strata_2d.pgm'
+mode: trinary
+resolution: 0.05
+origin: [-10, -10, 0.0]
+negate: 0
+occupied_thresh: 0.65
+free_thresh: 0.196
+strata_image_bytes: 160015
+strata_image_sha256: '97e081439e8b6331dbec5cd55d7fd4cb25b2c6c1c84614d72671451735f2de53'

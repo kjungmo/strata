@@ -1,0 +1,500 @@
+file	numeral	preceding text	reason
+sections/0_abstract.tex	2	nhancement (FreMEn), in the 	name of a scenario, data type, standard or layout width
+sections/0_abstract.tex	2016	rid of Krajn\'{i}k et al.\ (	year, date, version or licence identifier (versions are also checked against the records)
+sections/0_abstract.tex	2	 unchanged by a fixed-array 	name of a scenario, data type, standard or layout width
+sections/0_abstract.tex	3	-array 2D grid and a sparse 	name of a scenario, data type, standard or layout width
+sections/0_abstract.tex	95	d-out configuration (Wilson 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/0_abstract.tex	50	 per unpruned history), and 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/0_abstract.tex	0.5	ults 1960 of 2000 Bernoulli(	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	2	the FreMEn line. maintain a 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	3	al model to the voxels of a 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	2	 RTAB-Map offers selectable 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	3	ap offers selectable 2D and 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	2	g, is shared unchanged by a 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	3	nchanged by a 2D grid and a 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	2	the shared engine. Choosing 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	3	ared engine. Choosing 2D or 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	2	odel}) drives a fixed-array 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	3	-array 2D grid and a sparse 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	17	and the core builds with C++	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	2	odic grids already exist in 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	3	 already exist in 2D and in 	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	50	from 8 to 100 windows. Both 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/1_introduction.tex	0.5	ults 1960 of 2000 Bernoulli(	name of a scenario, data type, standard or layout width
+sections/1_introduction.tex	3	Intro{} 4.4–10.0× more live 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	3	. infer online whether each 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	2	or autonomous vehicles. For 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	2026	elling periodic change. Two 	year, date, version or licence identifier (versions are also checked against the records)
+sections/2_related_works.tex	2	work to \sname. use it in a 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	3	he FreMEn spectral model to 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	2	epository provides separate 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	2	Map data structures and ROS 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	2	yers, and SLAM Toolbox is a 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	2	For swappable backends, ROS 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	2	res, unchanged, between its 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	3	changed, between its 2D and 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	2	me\ is delivered as two ROS 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	17	th geometry backends, in C++	name of a scenario, data type, standard or layout width
+sections/3_method.tex	3	n \mathbf{o}_k\in\mathbb{R}^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	3	thcal{P}_k\subset\mathbb{R}^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	r). A backend b\in\{\mathrm{	name of a scenario, data type, standard or layout width
+sections/3_method.tex	3	d b\in\{\mathrm{2D},\mathrm{	name of a scenario, data type, standard or layout width
+sections/3_method.tex	3	key map \kappa_b:\mathbb{R}^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 are grouped into windows w=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	re grouped into windows w=1,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	}_w=\Phi\big(\mathcal{X}_{w-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	 on first touch with \ell_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	st touch with \ell_i=0, N_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ode. \noindent\textbf{Fixed 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	2	n{equation} \kappa_{\mathrm{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	de the array. \rho_{\mathrm{	name of a scenario, data type, standard or layout width
+sections/3_method.tex	3	it. \noindent\textbf{Sparse 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	2	voxel size v, offsets it by 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	20	el size v, offsets it by 2^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	21	gative, and packs the three 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	64	hree 21-bit fields into one 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	3	n{equation} \kappa_{\mathrm{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	42	D}}(\mathbf{p})=\big(u_x\ll 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	21	42\big)\,\big|\,\big(u_y\ll 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ad u_a=\lfloor p_a/v\rfloor+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	20	u_a=\lfloor p_a/v\rfloor+2^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	21	s nevertheless finite: each 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	2	eld represents the indices -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	20	 represents the indices -2^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ents the indices -2^{20} to 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	20	s the indices -2^{20} to 2^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	e indices -2^{20} to 2^{20}-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	3	eing dropped. \rho_{\mathrm{	name of a scenario, data type, standard or layout width
+sections/3_method.tex	2	 S=\lfloor\|\mathbf{d}\|/(v/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	hbf{o}+s\,\mathbf{d}/\max(S,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	+s\,\mathbf{d}/\max(S,1), s=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	d}/\max(S,1), s=1,\dots,S{-}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	ntegration tick k when L\le 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	 k when L\le 1 or k \bmod L=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	10	a clock reset) or more than 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	equation} \tau_{i}=[h_{i,w}>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	_{i}=[h_{i,w}>0\lor m_{i,w}>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	w}>0],\qquad o_{i}=[h_{i,w}>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	w}>0],\qquad f_{i}=[h_{i,w}=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	{i}=[h_{i,w}=0\land m_{i,w}>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	touched} cells only (\tau_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	g),\qquad N_i\leftarrow N_i+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	bability p_i=\sigma(\ell_i)=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	ility p_i=\sigma(\ell_i)=1/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ell is hit in every window, 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 in every window, 0<\lambda<	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	 window, 0<\lambda<1, \lhit>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	onverges monotonically from 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	th \ell^\star=\lambda\lhit/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	point \ell^\star; from \ell=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.97	d defaults (Table ; \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.85	Table ; \lambda=0.97, \lhit=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	5	the clamp binds at l_{\max}=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	5	\max}=5 and p_{\max}=\sigma(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.8	e default thresholds \pgrad=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.05	olds \pgrad=0.8 and \pprune=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	4	05 correspond to \ell\ge\ln 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	4\approx 1.386 and \ell<\ln(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	19	approx 1.386 and \ell<\ln(1/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	ith \mathbb{E}\,x=m\,\lhit+(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	+(1-m)\,\lmiss. For \lambda<	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 to \lambda\,\mathbb{E}\,x/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	n} m>m^\dagger=\frac{\tfrac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 \end{equation} For \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	60	at separates a wall seen in 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	50	ows from clutter present in 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ndows), H harmonics, \omega=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	harmonics, \omega=2\pi/\max(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	), occupancy sample o_i\in\{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 occupancy sample o_i\in\{0,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	in\{0,1\} and \theta_k=(k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	\boldsymbol{\phi}_i=(n_i,S_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	in{equation} n_i\mathrel{+}=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	} n_i\mathrel{+}=1,\quad S_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	eta_k, \end{equation} for k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	equation} for k=0,\dots,H{-}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ed-window mean \bar{o}_i=S_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	} coefficients are \alpha_k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	^{c}_{k,i})/n_i and \beta_k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	_k+\mathrm{i}\beta_k=\tfrac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ion} a_{i,k}=\sqrt{\alpha_k^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	k}=\sqrt{\alpha_k^2+\beta_k^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	^2},\qquad a_i=\begin{cases}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	n{cases}0, & n_i<T,\\ \max_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	hat{p}_i(w)=\mathrm{clip}_{[	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	t{p}_i(w)=\mathrm{clip}_{[0,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	mathrm{clip}_{[0,1]}\big(S_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	_i+\sum_k[\alpha_k\cos((k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	)\omega w)+\beta_k\sin((k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	o_{i,w}-\bar{o}_i| averages 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	r{o}_i| averages 2\bar{o}_i(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	4	equality gives \[ a_i\;\le\;	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	s \[ a_i\;\le\;4\,\bar{o}_i(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ed window therefore has a_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.3	a_i=0, and \pi_i with \amin=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	{o}_i<0.919: at least about 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ouches this is \[ a_i=\max_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	\[ a_i=\max_{0\le k<H}\frac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	frac{2\,\big|\sin\big(n(k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	big|}{n\,\big|\sin\big((k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	pi/T\big)\big|}\;\le\;\frac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	eeds \amin at n=10–13 for T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	11	13 for T=8 (peak 0.439 at n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	24	t n=29–40 for the shipped T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	–40 for the shipped T=24, H=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	10	 120 integration ticks at L=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ed coefficient has variance 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	coefficient has variance 2m(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.5	standard deviation of \sqrt{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	dard deviation of \sqrt{0.5/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	}=0.25 at m=\tfrac12, n_i=T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	e{\mathbf{z}}_w=\tfrac{n_i}{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	k}^{\top}\mathbf{M}_{i,k}^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	k},\qquad B(r)=\begin{cases}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	ad B(r)=\begin{cases}2r\,e^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	 B(r)=\begin{cases}2r\,e^{1-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	\,e^{1-2r}, & r>\tfrac12,\\ 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	in2\theta_k, since \sum c_w^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	li}(m) for one unknown m\in[	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	}(m) for one unknown m\in[0,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	}\ge r)\le B(r) for every r>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ly, for every \amin\ge0 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	tilde{\mathbf{z}}_w=\mathbf{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	hbf{b}_w=\mathbf{M}_{i,k}^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	f{b}_w=\mathbf{M}_{i,k}^{-1/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	that d_{i,k}=\|\mathbf{u}\|^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	es in an interval of length 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	thbb{E}\,e^{t\xi_w}\le e^{t^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	bb{E}\,e^{t\xi_w}\le e^{t^2/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	thbf{v}^{\top}\mathbf{b}_w)^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	w)^2\big)=e^{\|\mathbf{v}\|^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	^2\big)=e^{\|\mathbf{v}\|^2/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ery \mathbf{v}\in\mathbb{R}^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	f{g}\sim\mathcal{N}(\mathbf{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ependent of \mathbf{u}. For 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	of \mathbf{u}. For 0\le\eta<	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	b{E}_{\mathbf{g}}\,e^{\sqrt{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	f{u}}=e^{\eta\|\mathbf{u}\|^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	b{E}_{\mathbf{u}}\,e^{\sqrt{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	{g}}\,e^{\eta\|\mathbf{g}\|^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	4	}}\,e^{\eta\|\mathbf{g}\|^2/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	e^{\eta\|\mathbf{g}\|^2/4}=(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	\|\mathbf{g}\|^2/4}=(1-\eta/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	thbf{g}\|^2/4}=(1-\eta/2)^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 gives \Pr(d_{i,k}\ge r)\le(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	\Pr(d_{i,k}\ge r)\le(1-\eta/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	_{i,k}\ge r)\le(1-\eta/2)^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	)^{-1}e^{-\eta r}, and \eta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	{-1}e^{-\eta r}, and \eta=2-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ible for r>\tfrac12) yields 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	r r>\tfrac12) yields 2r\,e^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	r>\tfrac12) yields 2r\,e^{1-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 for r\le\tfrac12 the bound 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	. B decreases strictly from 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ecreases strictly from 1 to 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	g} gives the smaller bound (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	s the smaller bound (1-\eta/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	 smaller bound (1-\eta/2)^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	maller bound (1-\eta/2)^{-1/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	coverage at a harmonic with 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	ge at a harmonic with 2(k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	anish; the defaults T/H\in\{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	3	ish; the defaults T/H\in\{8/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	24	h; the defaults T/H\in\{8/3,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	the defaults T/H\in\{8/3,24/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	 \mathbf{M}_{i,k}=\tfrac{n}{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	I}_2 and d_{i,k}=n\,a_{i,k}^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	_2 and d_{i,k}=n\,a_{i,k}^2/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ig),\qquad a^\star(n)=\sqrt{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.1	. \end{equation} For \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	3	ation} For \delta=0.1 and H=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	8	, r^\star=3.115, so a^\star(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	64	^\star(8)=0.883 and a^\star(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	2, \Pr(d_{i,k}\ge r)\to e^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	\ge r)\to e^{-2r}, a factor 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.01	took the largest \delta\in\{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.02	the largest \delta\in\{0.01,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.05	argest \delta\in\{0.01,0.02,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.1	t \delta\in\{0.01,0.02,0.05,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.2	elta\in\{0.01,0.02,0.05,0.1,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.1	ine, and it selected \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.1	rst pipeline rate at \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	elta_n=\delta\,\frac{T}{n(n+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	telescopes because T/(n(n{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	use T/(n(n{+}1))=T/n-T/(n{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	f the cell begin in windows 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.6	d and re-created (Bernoulli(	name of a scenario, data type, standard or layout width
+sections/3_method.tex	0.4	ds on the data: a Bernoulli(	name of a scenario, data type, standard or layout width
+sections/3_method.tex	0.01	akes the largest \delta\in\{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.02	the largest \delta\in\{0.01,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.05	argest \delta\in\{0.01,0.02,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.1	t \delta\in\{0.01,0.02,0.05,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.2	elta\in\{0.01,0.02,0.05,0.1,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	95	n 1024 windows has a Wilson 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/3_method.tex	0.2	guration. It selects \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	of becomes a^\star(n)=\sqrt{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	\sqrt{\log n/n} rather than 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	50	delay is the price: in E2 a 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/3_method.tex	8	 E2 a 50\%-duty door with T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	reated cell restarts at n_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	ndow closes a sweep costs O(	name of a scenario, data type, standard or layout width
+sections/3_method.tex	24	y walk. Per-cell state is a 	name of a scenario, data type, standard or layout width
+sections/3_method.tex	1	i; window index w} w\gets w+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	ve cell i}{ \tau\gets[h_i{>}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	\tau\gets[h_i{>}0\lor m_i{>}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	\lor m_i{>}0], o\gets[h_i{>}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	o\gets[h_i{>}0], f\gets[h_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	0], f\gets[h_i=0\land m_i{>}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	l_{\max}\big), N_i\gets N_i+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	2	_core} sources, with no ROS 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	95	ulti-seed and report Wilson 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	1	with one window per tick (L=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	8	oulli(m) streams at T/H\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	3	lli(m) streams at T/H\in\{8/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	24	(m) streams at T/H\in\{8/3, 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	 streams at T/H\in\{8/3, 24/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.05	 T/H\in\{8/3, 24/2\}, m\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.1	in\{8/3, 24/2\}, m\in\{0.05,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.2	8/3, 24/2\}, m\in\{0.05,0.1,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.9	}, m\in\{0.05,0.1,0.2,\dots,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.95	\in\{0.05,0.1,0.2,\dots,0.9,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	12	.1,0.2,\dots,0.9,0.95\} and 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	8	d 12 read-out lengths n\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	100	d-out lengths n\in\{8,\dots,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	8	s n\in\{8,\dots,100\} for T=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	8	\{8,\dots,100\} for T=8 and 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	24	for T=8 and 8 lengths n\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	240	nd 8 lengths n\in\{24,\dots,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	24	 n\in\{24,\dots,240\} for T=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	20,000	e0\_calibration.cpp}), with 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	3000	h 20,000 streams per point; 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.3	lli(m) clutter cells (m\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.5	m) clutter cells (m\in\{0.3,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.7	lutter cells (m\in\{0.3,0.5,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	8	meters, read out at every n=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	100	ters, read out at every n=8–	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	4	ry n=8–100; and four doors (	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	4	8–100; and four doors (4-on/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	and four doors (4-on/4-off, 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	our doors (4-on/4-off, 2-on/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	3	rs (4-on/4-off, 2-on/2-off, 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	5	-on/4-off, 2-on/2-off, 3-on/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	4	2-on/2-off, 3-on/5-off, and 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	4	2-off, 3-on/5-off, and 4-on/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	10	/5-off, and 4-on/4-off with 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	40	th 10\% flipped windows) in 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	60	tatic cross (the segments y=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	60	ss (the segments y=60 and x=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	20,100	egments y=60 and x=60 over [	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	5	00]) hit every window, plus 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	25	) hit every window, plus 5, 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	100	every window, plus 5, 25 or 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	40	ndom movers per window, for 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	120	indow, for 40 windows, on a 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	120	 for 40 windows, on a 120{×}	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	1.0	xel map, both at resolution 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	24	with it on at the shipped T=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	t on at the shipped T=24, H=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	8	hree periodic doors (period 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	4	periodic doors (period 8 at 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	4	dic doors (period 8 at 4-on/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	(period 8 at 4-on/4-off and 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	6	od 8 at 4-on/4-off and 2-on/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	4	-off and 2-on/6-off, period 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	and 2-on/6-off, period 4 at 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	-on/6-off, period 4 at 2-on/	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.5	ant wall and four Bernoulli(	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	8	 aperiodic controls, with T=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	3	iodic controls, with T=8, H=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	64	 with T=8, H=3, read out at 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	8	sweep, after every length n=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	100	eep, after every length n=8–	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	50	 fresh map per length). E3: 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.6	d occupied with probability 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	10	bility 0.6 per window among 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	80	among 10 movers per window, 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	36	same noise replayed for all 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.6	onfigurations of \pgrad\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.7	gurations of \pgrad\in\{0.6,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.8	tions of \pgrad\in\{0.6,0.7,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.9	s of \pgrad\in\{0.6,0.7,0.8,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.3	0.6,0.7,0.8,0.9\}×\pdem\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.5	0.7,0.8,0.9\}×\pdem\in\{0.3,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.90	.3,0.5,\pgrad\}×\lambda\in\{	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.97	5,\pgrad\}×\lambda\in\{0.90,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	1.0	rad\}×\lambda\in\{0.90,0.97,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.1	E5: Bernoulli(m) clutter, m=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.9	lli(m) clutter, m=0.1,\dots,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.5	tate Markov chain with mean 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	10	ith mean 0.5 and mean dwell 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2000	and mean dwell 10 windows), 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	10	00 cells per configuration (	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	200	 configuration (10 seeds of 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.5	endently with probability q=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	20	es for detection delay; and 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	20	 that confusion on the same 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.97	 E2 parameters with \lambda=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	24	e times the period, since T=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.05	s Bernoulli(m) cells over m=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.10	noulli(m) cells over m=0.05,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.95	ells over m=0.05,0.10,\dots,	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2000	ver m=0.05,0.10,\dots,0.95, 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	10	0.95, 2000 cells per point (	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	200	ells per point (10 seeds of 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.97	r sets: E2, E2 with \lambda=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.2	ents and the test at \delta=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	0.1	ingle-read-out level \delta=	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	20	 random hits per window for 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	100	 windows at nominal extents 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	dows at nominal extents 100^	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	 nominal extents 100^2, 250^	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	500	al extents 100^2, 250^2 and 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	2	xtents 100^2, 250^2 and 500^	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	1.0	250^2 and 500^2, resolution 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
+sections/4_experiments.tex	3	tic layer (E1).} With \Nmin=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	39	then holds at 1.0 through t=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	24	 at the shipped defaults (T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	2	e shipped defaults (T=24, H=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.2	defaults (T=24, H=2, \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0	 is 0 (Remark ) and d_{i,k}=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	39	or 165 predicted cells at t=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.1	 candidate level. At \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.2	0.01 target, whereas \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.1	t level is therefore \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	4	 read-out length at which a 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	4	-out length at which a 4-on/	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	50	icity detection (E2).} Both 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	10	rroni-adjusted bounds below 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	64	ol is Periodic, so at the n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	8	ead-out. Over all lengths n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	100	d-out. Over all lengths n=8–	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	8	two earliest engines from n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	64	ositive rate of 0.054: at n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	64	any length, because \delta_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	10	cdot8/(64\cdot65)\approx3.8×	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	1	} ends Static. With \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	4	nfirm the gate of : for the 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	4	 the gate of : for the 4-on/	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	6	amplitude is exactly 0 at n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	8	ry sampled multiple of T (n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	16	 sampled multiple of T (n=8,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	12	16,\dots,64) and 0.581 at n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	25	71 (Figure ). The miss, the 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	64	, with amplitude 0.462 at n=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	1	er the E2 parameters (\lhit=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	1	ameters (\lhit=1, \lmiss={-}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	1	hit=1, \lmiss={-}1, \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.05	ss={-}1, \lambda=1, \pprune=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	8	 \lambda=1, \pprune=0.05, T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	2	uched every window with the 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	6	 every window with the 2-on/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	7	is erased by within at most 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0	oughout every lifetime, a_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	1	 \begin{proof} With \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0	l_i is an integer walk from 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	2	binds below). Since \sigma(-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	3	prox0.119\ge\pprune>\sigma(-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	3	 when \ell_i first reaches -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	3	t in its cycle, it reaches -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	3	 cycle, it reaches -3 after 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	2	in, \ell_i reaches -j, then 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	3	two occupied windows, then -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	5	pied windows, then -3 after 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	7	5-j further vacant windows: 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	3	after at most two hits and -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	7	 more misses, again at most 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	7	ase the lifetime is at most 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	8	the lifetime is at most 7<T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0	T=8 touched windows, so a_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	2	throughout, so p_i\le\sigma(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.9	sigma(2)\approx0.881<\pgrad=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0	 cell starts again from n_i=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	2	d free voxel, whereas exact 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	3	ves 37.0 MB for the largest 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	0.1	ot control it.} With \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.4	thin 1024 (E2 parameters, m=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	95	1024 (E2 parameters, m=0.4, 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	0.3	till flip at some window (m=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.2	nt level does.} With \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	95	out configuration, a Wilson 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	10	indow rate is at most 3.9{×}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.4	_N] is vacuous (a Bernoulli(	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	24	encies. Under the shipped T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	8	at a single read-out); at T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	4	ndow from which a noiseless 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	4	from which a noiseless 4-on/	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	2	odic moves from 15 to 25, a 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	2	moves from 15 to 25, a 2-on/	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	3	2-off door from 13 to 20, a 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	5	 door from 13 to 20, a 3-on/	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	4	f door from 21 to 31, and a 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	4	r from 21 to 31, and a 4-on/	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	10	 and a 4-on/4-off door with 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	24	 26 to 48; at the shipped T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	12	o 48; at the shipped T=24 a 	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	12	at the shipped T=24 a 12-on/	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	50	a door is Periodic. All 800 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	25	eriodic and none of the 400 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	0.5	of 2000 aperiodic Bernoulli(	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	0.97	not remove it. With \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.97	 256 (Table ). With \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	25	E2 scenes are Periodic, the 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	0.85	c labels: the shipped \lhit=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.4	ed \lhit=0.85 and \lmiss={-}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.60	t noisy walls: of Bernoulli(	name of a scenario, data type, standard or layout width
+sections/4_experiments.tex	10	atic cells rises from below 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	95	es from below 10\% to above 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/4_experiments.tex	0.9	 the sweep: at \pgrad=\pdem=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.90	pgrad=\pdem=0.9 and \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.3	 band widened to 0.6 (\pdem=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.90	d configurations at \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.90	tting slows (574 at \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	0.90	nd configuration at \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	40	0). These walls are free in 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/5_discussion.tex	3	ry large, sparsely occupied 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	1	. We accept the trade for O(	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	0.90	ds F1 1.000 at both \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	1.0	00 at both \lambda=0.90 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	2	, at the raw cell level, in 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	3	he raw cell level, in 2D or 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	2	ous integration runs on ROS 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	24	 null, and at the shipped T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	50	etection delay: a noiseless 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/5_discussion.tex	8	eless 50\%-duty door with T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	10	instead of 15, and one with 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/5_discussion.tex	0.6	upancy: E3 scores Bernoulli(	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	0.5	lls and E5 scores Bernoulli(	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	2	dation on at least one real 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	3	st one real 2D and one real 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	2	 and then in the field on a 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	3	a 2D wheeled platform and a 	name of a scenario, data type, standard or layout width
+sections/6_conclusion.tex	2	y-free engine that drives a 	name of a scenario, data type, standard or layout width
+sections/6_conclusion.tex	3	s a 2D occupancy grid and a 	name of a scenario, data type, standard or layout width
+sections/6_conclusion.tex	50	precision gap, detection of 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
+sections/6_conclusion.tex	0.5	ncy (1960 of 2000 Bernoulli(	name of a scenario, data type, standard or layout width
+sections/appendix.tex	2.0	s released under the Apache-	year, date, version or licence identifier (versions are also checked against the records)
+sections/appendix.tex	2	 license at and targets ROS 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	11	e of commit \code{312b09c} (	year, date, version or licence identifier (versions are also checked against the records)
+sections/appendix.tex	2026	 \code{312b09c} (11 October 	year, date, version or licence identifier (versions are also checked against the records)
+sections/appendix.tex	9.4	lers with which it did (GCC 	year, date, version or licence identifier (versions are also checked against the records)
+sections/appendix.tex	64	 with libstdc++, on one x86-	name of a scenario, data type, standard or layout width
+sections/appendix.tex	0.1	ve by one window (at \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/appendix.tex	2	[H] \centering \caption{ROS 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	6	 is transformed with a full 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	1	\code{OccupancyGrid}, depth 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	1	& \code{PointCloud2}, depth 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	10	ode{DiagnosticArray}, depth 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	2	inst synthetic input on ROS 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	0.14	aggedright\arraybackslash}p{	name of a scenario, data type, standard or layout width
+sections/appendix.tex	0.50	aggedright\arraybackslash}p{	name of a scenario, data type, standard or layout width
+sections/appendix.tex	0.28	aggedright\arraybackslash}p{	name of a scenario, data type, standard or layout width
+sections/appendix.tex	10	nd the newest, or more than 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/appendix.tex	20	mated from gaps against the 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	256	ML records the size and SHA-	name of a scenario, data type, standard or layout width
+sections/appendix.tex	0	miss creates the cell: \ell=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/appendix.tex	0.5	creates the cell: \ell=0, p=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+figures/e1_f1.tex	sha256:b03b1c6d600441fb	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
+figures/e2_amplitude.tex	sha256:cf3f0a9de65dadcd	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
+figures/e2_fpr.tex	sha256:1111a31af764a1d1	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
+figures/e3_flicker.tex	sha256:df8c1280ee71a155	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
+figures/overview.tex	sha256:4a73a2a95845cbb0	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)

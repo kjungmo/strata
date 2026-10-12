@@ -2,13 +2,15 @@
 // Per-observation integrate latency, window-close (endWindow) cell-update
 // throughput, and a rough memory footprint (bytes/cell * live cells), for grid2d
 // vs voxel3d at three map sizes. Deterministic hit streams from eval::kSeed; each
-// configuration is run kRepeats times on a fresh map and the median time is
-// reported with the minimum and maximum.
+// configuration is run once as a discarded warm-up and then kRepeats times on a
+// fresh map; the median time is reported with the minimum and maximum, and every
+// repeat's time is written to an optional second file.
 //
-// Per-cell footprint (x86-64/libstdc++, from core_math.md): CellEvidence 24 B plus
+// Per-cell footprint (x86-64/libstdc++): CellEvidence 24 B plus
 // ~32 B unordered_map node = 56 B/cell with periodicity disabled (this config).
 #include <algorithm>
 #include <chrono>
+#include <fstream>
 #include <iostream>
 #include <random>
 #include <string>
@@ -125,13 +127,18 @@ double median(std::vector<double> v) {
 
 }  // namespace
 
-// Usage: e4_throughput [output.csv]   (default results/e4_throughput.csv)
+// Usage: e4_throughput [output.csv [per_repeat.csv]]   (default results/e4_throughput.csv)
 // The wall-clock columns differ on every run and machine; the cell counts and byte
 // estimates do not. run_all.sh therefore writes a local file and compares its
 // deterministic columns with the committed reference (check_e4_local.py).
 int main(int argc, char** argv) {
   const std::string out = argc > 1 ? argv[1] : "results/e4_throughput.csv";
   eval::Csv csv(out);
+  std::ofstream raw;
+  if (argc > 2) {
+    raw.open(argv[2]);
+    raw << "backend,extent,repeat,us_per_integrate,us_per_endwindow,final_cells\n";
+  }
   csv.header(
       "backend,size_label,extent,hits_per_window,windows,us_per_integrate,"
       "hits_per_sec,us_per_endwindow,cell_updates_per_sec,final_cells,"
@@ -148,9 +155,13 @@ int main(int argc, char** argv) {
       const bool grid = std::string(backend) == "grid2d";
       std::vector<double> ti, tt;
       Run first;
+      (void)(grid ? runGrid(ext) : runVoxel(ext));   // warm-up, discarded
       for (int rep = 0; rep < kRepeats; ++rep) {
         const Run r = grid ? runGrid(ext) : runVoxel(ext);
         if (rep == 0) first = r;
+        if (raw.is_open())
+          raw << backend << "," << ext << "," << rep << "," << r.integrate_s * 1e6 / kWindows << ","
+              << r.endwindow_s * 1e6 / kWindows << "," << r.final_cells << "\n";
         // The stream is seeded, so every repeat must build the same map.
         if (r.final_cells != first.final_cells || r.sum_cells != first.sum_cells) deterministic = false;
         ti.push_back(r.integrate_s);

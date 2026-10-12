@@ -8,6 +8,9 @@ authors:
     email: kangjmo91@gmail.com
     affiliation: Independent Researcher
     orcid: "https://orcid.org/0009-0002-0394-1861"
+# version and date-released describe the first software release (commit a82f935),
+# whose periodicity test the paper reports as defective and corrects. The paper
+# describes the code of commit 312b09c; cite the paper (preferred-citation) for it.
 version: 0.1.0
 date-released: 2026-07-03
 license: Apache-2.0

@@ -1,0 +1,16 @@
+== strata/scripts/check_saved_map.py on the pair
+OK: saved_map/strata_2d.yaml: the image is the one this YAML was saved with: saved_map/strata_2d.pgm 400 x 400, 160015 bytes, sha256 97e081439e8b6331dbec5cd55d7fd4cb25b2c6c1c84614d72671451735f2de53; resolution 0.05, origin [-10, -10, 0]
+exit 0
+== jazzy_map_check.py
+ROS_DISTRO=jazzy; YAML keys: ['free_thresh', 'image', 'mode', 'negate', 'occupied_thresh', 'origin', 'resolution', 'strata_image_bytes', 'strata_image_sha256']; extra keys: ['strata_image_bytes', 'strata_image_sha256']
+nav2_map_server 1.3.11
+PASS: /strata_saved_map_check/map_server/change_state available: True
+PASS: map_server configure: True
+PASS: map_server activate: True
+PASS: /strata_saved_map_check/map received: True
+PASS: served 400x400, resolution 0.05000000074505806, origin (-10.0, -10.0) vs PGM 400x400, YAML resolution 0.05 (as float32 0.05000000074505806), origin [-10, -10] (origin max diff 0, need <= 1e-12; resolution equal as float32)
+PASS: cell by cell over 160000 cells, served values {-1: 136473, 0: 23160, 100: 367}: 0 mismatches against the PGM (need 0)
+PASS: map_server log ERROR lines: none
+PASS: map_server log lines naming the extra keys: none
+PASS: map_server loads the strata-saved pair, 0 cell mismatches
+exit 0

@@ -606,8 +606,9 @@ a string whatever its digits. SHA-256 is implemented in
 `strata/include/strata/sha256.hpp` (no new dependency). `nav2_map_server`
 (yaml-cpp) ignores unknown keys, which the round-trip scenario confirms on
 every CI run, and it does **not** check them. CI verifies this on Humble only:
-it has no Jazzy job (one manual load in Jazzy's `nav2_map_server` 1.3.11
-succeeded, outside CI). A
+it has no Jazzy job. One manual load of a saved pair in Jazzy's
+`nav2_map_server` 1.3.11 succeeded (160000 cells, 0 mismatches); the script, the
+pair and the recorded output are in `paper/deploy_checks/jazzy_map_server/`. A
 deployer must run the check
 before trusting a saved pair after an unclean shutdown or a failed `save_map`.
 The checker is `strata/scripts/check_saved_map.py`, installed to `lib/strata`:
@@ -663,19 +664,17 @@ has no pair to mismatch.
 
 **Core only (no ROS):**
 ```bash
-cmake -S /home/cona/kangj/strata/strata_core -B /home/cona/kangj/strata/build/core -DSTRATA_CORE_BUILD_TESTS=ON
-cmake --build /home/cona/kangj/strata/build/core -j
-( cd /home/cona/kangj/strata/build/core && ctest --output-on-failure )
+cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
+cmake --build build/core -j
+( cd build/core && ctest --output-on-failure )     # the 56 engine gtests
 ```
 
-**Full ROS 2 build & test (Humble via micromamba; clean env to avoid distro leak):**
+**Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
 ```bash
-env -u ROS_DISTRO -u ROS_VERSION -u ROS_PACKAGE_PATH \
-  /home/cona/.local/bin/micromamba run -n ros2_humble bash -c '
-    cd /home/cona/kangj/strata_ws &&
-    colcon build --symlink-install &&
-    colcon test --packages-select strata_core strata &&
-    colcon test-result --verbose'
+colcon build --symlink-install
+source install/setup.bash
+colcon test --packages-select strata      # the 64 node gtests (the engine gtests run in the step above)
+colcon test-result --verbose
 ```
 
 **Run (a pose source — e.g. prism_loc — must already publish `map → sensor` TF):**
@@ -724,6 +723,3 @@ ros2 service call /strata/save_map std_srvs/srv/Trigger   # persist static map
   (lineage for static-map distillation).
 - **Occupancy log-odds** — Thrun/Burgard/Fox, *Probabilistic Robotics* ch. 9
   (occupancy grid mapping, inverse sensor model, log-odds accumulation).
-
-Research note (137-source survey, the design's grounding):
-`~/kangj/general_vault/Work/ROS2 & AMR Research/평생 매핑 모듈 리서치 자료 (선택형 2D·3D LiDAR, 137선).md`.

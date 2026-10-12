@@ -2,7 +2,7 @@
 \usepackage[authoryear,sort&compress,round]{natbib}
 \bibliographystyle{abbrvnat}
 \usepackage{float}
-\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc,patterns}
 \usepgfplotslibrary{groupplots,colormaps}
 \pgfplotsset{discard if not/.style 2 args={y filter/.append code={%
   \edef\kjtempa{\thisrow{#1}}\edef\kjtempb{#2}\ifx\kjtempa\kjtempb\else\def\pgfmathresult{nan}\fi}},
@@ -17,6 +17,7 @@
 \newcommand{\lmiss}{l_{\mathrm{miss}}}
 \newcommand{\amin}{a_{\min}}
 \newcommand{\Nmin}{N_{\min}}
+\input{tables/e4_text}
 \title{\sname: One Geometry-Free Persistence-and-Periodicity Engine for Selectable 2D/3D Lifelong LiDAR Mapping}
 \correspondingauthor{kangjmo91@gmail.com}
 \paperurl{https://github.com/kjungmo/strata}

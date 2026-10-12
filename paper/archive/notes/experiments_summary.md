@@ -7,8 +7,7 @@ constant `kSeed = 12345` (recorded in each CSV's `#seed` row). Only E4 reads the
 wall clock (for timing); its absolute microsecond figures are machine-dependent,
 but the cross-backend/size ratios and the cell counts are deterministic.
 
-**Reproduction (from the worktree root
-`/home/cona/kangj/strata/.claude/worktrees/paper`):**
+**Reproduction (from the repository root):**
 ```
 bash paper/experiments/run_all.sh
 ```
