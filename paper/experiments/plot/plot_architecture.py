@@ -1,7 +1,7 @@
 """
 Figure: strata / strata_core architecture block diagram.
 
-Source: paper/notes/system.md, section 7 "ASCII architecture diagram spec"
+Source: paper/archive/notes/system.md, section 7 "ASCII architecture diagram spec"
 (and the figure-caption guidance immediately below it). This is a clean
 matplotlib block diagram (no screenshot) rendering that spec: two horizontal
 bands split by the MapBackend interface, a shared LayeredMap box feeding two

@@ -10,7 +10,7 @@ transient layers, at full 6-DoF.**
 [![CI](https://github.com/kjungmo/strata/actions/workflows/ci.yml/badge.svg)](https://github.com/kjungmo/strata/actions/workflows/ci.yml)
 [![License](https://img.shields.io/github/license/kjungmo/strata?color=blue)](LICENSE)
 ![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-22314E?logo=ros&logoColor=white)
-[![Paper (PDF)](https://img.shields.io/badge/paper-PDF-b31b1b?logo=adobeacrobatreader&logoColor=white)](paper/latex/main.pdf)
+[![Paper (PDF)](https://img.shields.io/badge/paper-PDF-b31b1b?logo=adobeacrobatreader&logoColor=white)](paper/strata_paper.pdf)
 [![Sponsor](https://img.shields.io/github/sponsors/kjungmo?logo=githubsponsors&color=ea4aaa)](https://github.com/sponsors/kjungmo)
 
 [Overview](#overview) · [Paper](#-paper) · [Install](#-prerequisites) ·
@@ -35,9 +35,14 @@ fade. Sensor poses are full 6-DoF.
 > corrupts the map; there is no correction here.
 
 ## 📢 News
-- **2026-07** — **v0.1.0 public release**: the `strata_core` engine + both
-  backends, the paper (EN/KR + typeset PDF), and the seeded E1–E4 reproduction
-  harness are all public.
+- **2026-10** — Paper and repository audited for submission: the manuscript
+  (`paper/arxiv_ref`, PDF `paper/strata_paper.pdf`) describes the code of commit
+  `312b09c`. Since the first release the periodicity test was corrected (centred
+  amplitude, calibrated significance, level spent over repeated read-outs) and
+  the node gained time-based windows, input diagnostics and a verified map save.
+  The package version string is still `0.1.0`.
+- **2026-07** — **v0.1.0 public release** (commit `a82f935`): the `strata_core`
+  engine + both backends, the paper and the seeded reproduction harness.
 
 ## Overview
 
@@ -100,22 +105,24 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 
 ## 📄 Paper
 
-> **STRATA: One Geometry-Free Persistence-and-Periodicity Engine Driving
-> Selectable 2D/3D Lifelong LiDAR Mapping in ROS 2**
-> · [Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
-> · [PDF](paper/latex/main.pdf)
+> **STRATA: One Geometry-Free Persistence-and-Periodicity Engine for
+> Selectable 2D/3D Lifelong LiDAR Mapping**
+> · [PDF](paper/strata_paper.pdf) · [LaTeX source](paper/arxiv_ref/)
+> · [long-form Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
 
-The architecture, persistence model, and the seeded E1–E4 characterization suite
-are documented in the paper. If you use `strata` in academic work, please cite:
+The manuscript is a preprint and has not been peer reviewed. It documents the
+architecture, the persistence and periodicity model, and the seeded synthetic
+characterization suite (calibration E0, experiments E1–E5), and it describes the
+code of commit `312b09c`. If you use `strata` in academic work, please cite:
 
 ```bibtex
 @misc{kang2026strata,
   author     = {Jungmo Kang},
   title      = {{STRATA}: One Geometry-Free Persistence-and-Periodicity Engine
-                Driving Selectable {2D/3D} Lifelong {LiDAR} Mapping in {ROS} 2},
+                for Selectable {2D/3D} Lifelong {LiDAR} Mapping},
   year       = {2026},
   howpublished = {GitHub: \url{https://github.com/kjungmo/strata}},
-  note       = {Open-source ROS 2 software release}
+  note       = {Preprint manuscript, not peer reviewed}
 }
 ```
 
@@ -139,32 +146,52 @@ cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 
 # 2. Full ROS 2 Humble build & test (workspace):
-#    place this repo at <ws>/src/strata, then:
+#    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
-colcon test --packages-select strata_core strata
-colcon test-result --verbose
+source install/setup.bash
+colcon test --packages-select strata      # the 64 node gtests; the 56 engine
+colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 
-# 3. Run — 2D occupancy-grid mapping:
+# 3. Run — 2D occupancy-grid mapping (add rviz:=false on a machine without a display):
 ros2 launch strata grid2d.launch.py
 #    3D voxel mapping:
 ros2 launch strata voxel3d.launch.py
-#    save the current static map (PGM+YAML for grid2d, PCD for voxel3d):
+#    save the current map (PGM+YAML for grid2d, static voxels as PCD for voxel3d):
 ros2 service call /strata/save_map std_srvs/srv/Trigger
+#    check a saved grid2d pair (default save_path /tmp/strata_2d):
+ros2 run strata check_saved_map.py /tmp/strata_2d.yaml
 ```
 
 A pose source must already be publishing TF from `global_frame` (default `map`)
 to the LiDAR's frame. Run `prism_loc` (or any localizer / odometry chain) first.
 
+**No robot at hand?** Feed the node the synthetic scene that CI uses (a wall, a
+periodic door and a moving object, with its own `/clock` and TF):
+
+```bash
+# terminal 1
+ros2 launch strata grid2d.launch.py rviz:=false use_sim_time:=true
+# terminal 2, from <ws>: prints one ok/FAIL line per check, calls ~/save_map, ends with PASS
+python3 src/strata/scripts/synthetic_e2e.py grid2d install/strata/share/strata/params/grid2d.yaml
+ros2 run strata check_saved_map.py /tmp/strata_2d.yaml      # OK: ... (exit 0)
+ros2 topic echo /diagnostics --once                         # the input-rate status
+# terminal 3, while the script of terminal 2 is still sending (about 75 s):
+python3 src/strata/scripts/rate_report.py --seconds 30
+```
+
+This sequence was run from a fresh clone on Humble (RoboStack, GCC 14.3) for the
+paper audit of 2026-10-12. Build and CI cover ROS 2 Humble only.
+
 ## 📊 Evaluation
 
 **Scope: this is a seeded synthetic characterization suite, not a field
 dataset.** Every number below comes from a deterministic `strata_core` harness
-seeded from the fixed constant `12345` — no real sensor, no robot motion, no
-field deployment enters any result. All magnitudes are single-seed point
-estimates with no cross-seed variance characterized, so the figures illustrate a
-mechanism rather than a distributional performance claim, and `strata` itself
-performs no SLAM.
+— no real sensor, no robot motion, no field deployment enters any result, and
+no external baseline is run. E1–E4 are single-seed point estimates (seed
+`12345`) with no cross-seed variance characterized, so they illustrate a
+mechanism rather than a distributional performance claim; E5 is multi-seed.
+`strata` itself performs no SLAM.
 
 <table>
 <tr>
@@ -192,21 +219,27 @@ suppresses the flicker.
 </tr>
 </table>
 
-E4 additionally measures a flat **56 B/cell** footprint and a **5.5–15.0×**
-per-`integrate()` cost gap between `voxel3d` and `grid2d`, and E2 detects
+E4 estimates a flat **56 B/cell** footprint (periodicity off) and finds
+`grid2d` cheaper per `integrate()` call than `voxel3d` at every tested extent
+(**4.9–27.6×** in the committed reference run; the ratio depends on the machine
+and its load, the **4.4–10.0×** live-cell gap does not), and E2 detects
 50%-duty periodic doors at true-positive rate **2/3** (from 25 windows on)
 with no false positive on Bernoulli clutter at any read-out length from 8 to
 100 windows. The periodicity test is noise-calibrated and spends its level over
 repeated read-outs: over 1024-window runs on held-out seeds (E5), at most
 **2 of 2000** Bernoulli clutter cells are ever labelled Periodic, against up to
-953 of 2000 with a constant level.
+953 of 2000 with a constant level. The test has known limits: its null is iid
+clutter, so slowly switching (temporally correlated) clutter is labelled
+Periodic at the shipped period (1908 of 2000 cells in E5); and under the E2
+parameters without decay the dominant labelling error is a false Static label
+on aperiodic cells (1221 of 2000).
 
-Full setup, all E1–E4 tables, and per-figure notes are in
-[`paper/strata_paper.md`](paper/strata_paper.md) §5. Reproduce end-to-end with
-[`paper/experiments/run_all.sh`](paper/experiments/run_all.sh); every headline
-number is CI-guarded by
+Full setup, all tables and the limitations are in the
+[paper](paper/strata_paper.pdf) §4–§5. Reproduce end-to-end with
+[`paper/experiments/run_all.sh`](paper/experiments/run_all.sh) (see
+[`paper/README.md`](paper/README.md)); every quoted number is checked in CI by
 [`paper/experiments/number_guard.py`](paper/experiments/number_guard.py)
-(checks against the committed CSVs in `paper/experiments/results/`).
+against the committed CSVs in `paper/experiments/results/`.
 
 The ROS path is checked separately on Humble in CI:
 [`scripts/synthetic_e2e.py`](scripts/synthetic_e2e.py) feeds each launched node a
@@ -265,7 +298,8 @@ before trusting a saved pair after an unclean shutdown or a failed `save_map`.
 `save_map` answers `success: false` with the path and the reason when a file
 cannot be written (for example a missing directory) or when `save_path` has no
 file name (empty or ending in `/`). That map_server loads the YAML with the two
-extra keys was verified on Humble only; no Jazzy job exists. CI checks this
+extra keys is verified in CI on Humble only; no Jazzy job exists (one manual
+load in Jazzy's `nav2_map_server` 1.3.11 succeeded, outside CI). CI checks this
 round trip on Humble on the synthetic scene (`synthetic_e2e.py --check-map-server`): it moves the
 saved pair to a fresh directory, loads the YAML there in `nav2_map_server`,
 brings it active, and requires the served map to have the published width and
@@ -422,16 +456,17 @@ See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame convent
 
 | Document | Contents |
 |---|---|
-| [`paper/strata_paper.md`](paper/strata_paper.md) | Full paper (EN) — engine, persistence/periodicity model, E1–E4 validation |
-| [`paper/strata_paper_KR.md`](paper/strata_paper_KR.md) | Korean translation of the paper |
-| [`paper/latex/main.pdf`](paper/latex/main.pdf) | Typeset PDF snapshot for reading and sharing |
+| [`paper/strata_paper.pdf`](paper/strata_paper.pdf) | The manuscript (built from [`paper/arxiv_ref/`](paper/arxiv_ref/), the LaTeX master) |
+| [`paper/strata_paper.md`](paper/strata_paper.md) | Long-form Markdown companion (EN): same numbers and claims, more implementation detail |
+| [`paper/strata_paper_KR.md`](paper/strata_paper_KR.md) | Korean translation of the companion |
+| [`paper/README.md`](paper/README.md) | What is where under `paper/`, the code pin, how to reproduce |
 | [`SPEC.md`](SPEC.md) | Design spec — algorithm, parameters, frames, module layout, test strategy |
-| [`paper/experiments/`](paper/experiments/) | Reproduction harness (E1–E4) + `run_all.sh` + `number_guard.py` |
+| [`paper/experiments/`](paper/experiments/) | Reproduction harness (E0 calibration, E1–E5) + `run_all.sh` + `number_guard.py` |
 | [`paper/figures/README.md`](paper/figures/README.md) | Figure design notes and CSV sources |
 
 ## 🗺️ Roadmap
 
-v0.1.0 ships one Bayesian-persistence engine (log-odds occupancy + Schmitt-trigger
+The current code ships one Bayesian-persistence engine (log-odds occupancy + Schmitt-trigger
 graduation to a static layer + FreMEn periodicity classification), full 6-DoF
 sensor poses, and two backends: a 2D occupancy grid and a 3D voxel map. Named
 next steps, drawn from `SPEC.md` §8 and the paper's future-work section:

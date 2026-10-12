@@ -6,6 +6,8 @@ authors:
   - family-names: Kang
     given-names: Jungmo
     email: kangjmo91@gmail.com
+    affiliation: Independent Researcher
+    orcid: "https://orcid.org/0009-0002-0394-1861"
 version: 0.1.0
 date-released: 2026-07-03
 license: Apache-2.0
@@ -14,17 +16,17 @@ url: "https://github.com/kjungmo/strata"
 keywords:
   - lifelong mapping
   - occupancy grids
-  - voxel mapping
+  - voxel hashing
   - persistence filtering
   - FreMEn periodicity
   - ROS 2
-  - open-source robotics software
 preferred-citation:
   type: generic
-  title: "STRATA: One Geometry-Free Persistence-and-Periodicity Engine Driving Selectable 2D/3D Lifelong LiDAR Mapping in ROS 2"
+  title: "STRATA: One Geometry-Free Persistence-and-Periodicity Engine for Selectable 2D/3D Lifelong LiDAR Mapping"
   authors:
     - family-names: Kang
       given-names: Jungmo
+      orcid: "https://orcid.org/0009-0002-0394-1861"
   year: 2026
   url: "https://github.com/kjungmo/strata"
-  notes: "Open-source ROS 2 software release"
+  notes: "Preprint manuscript in paper/arxiv_ref of the repository; not peer reviewed"

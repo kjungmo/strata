@@ -605,8 +605,9 @@ and follow the keys map_server reads. The hash is single-quoted so that it is
 a string whatever its digits. SHA-256 is implemented in
 `strata/include/strata/sha256.hpp` (no new dependency). `nav2_map_server`
 (yaml-cpp) ignores unknown keys, which the round-trip scenario confirms on
-every CI run, and it does **not** check them. This was verified on Humble only:
-CI has no Jazzy job, so Jazzy's map_server is untested with the extra keys. A
+every CI run, and it does **not** check them. CI verifies this on Humble only:
+it has no Jazzy job (one manual load in Jazzy's `nav2_map_server` 1.3.11
+succeeded, outside CI). A
 deployer must run the check
 before trusting a saved pair after an unclean shutdown or a failed `save_map`.
 The checker is `strata/scripts/check_saved_map.py`, installed to `lib/strata`:

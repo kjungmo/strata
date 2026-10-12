@@ -7,11 +7,10 @@ Source: paper/experiments/results/e4_throughput.csv
            bytes_per_cell,est_bytes
 
 Grouped bar chart, two panels: (a) per-integrate() latency in microseconds
-(log scale — grid2d vs voxel3d differ by up to ~11x), (b) endWindow()
+(log scale), (b) endWindow()
 cell-update throughput in updates/second, both grouped by backend at each
-grid/voxel extent. Absolute latencies are machine-dependent (see
-notes/experiments_summary.md); the cross-backend/size ratios are the
-reproducible quantity.
+grid/voxel extent. Latencies are the medians of the committed reference run and
+depend on the machine and its load, as do their ratios.
 """
 import os
 import sys

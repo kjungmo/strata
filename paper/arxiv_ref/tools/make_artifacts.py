@@ -376,10 +376,12 @@ with open(TAB / "fix.tex", "w") as f:
 # ---------------------------------------------------------------- E4
 e4 = rows("e4_throughput.csv")
 with open(DATA / "e4.dat", "w") as f:
-    f.write("backend extent us cells upd\n")
+    f.write("backend extent us cells upd usminus usplus\n")
     for r in e4:
-        f.write(f"{r['backend']} {r['extent']} {float(r['us_per_integrate']):.1f} {r['final_cells']} "
-                f"{float(r['cell_updates_per_sec'])/1e6:.3f}\n")
+        us = float(r["us_per_integrate"])
+        f.write(f"{r['backend']} {r['extent']} {us:.1f} {r['final_cells']} "
+                f"{float(r['cell_updates_per_sec'])/1e6:.3f} "
+                f"{us - float(r['us_per_integrate_min']):.1f} {float(r['us_per_integrate_max']) - us:.1f}\n")
 
 
 def mem(b):
@@ -401,17 +403,21 @@ with open(TAB / "e4.tex", "w") as f:
     f.write(HDR % "e4_throughput.csv")
     f.write("\\begin{table}[t]\n\\centering\n")
     f.write("\\caption{Cost of the shared engine under each backend (E4): 150 random hits per window, 20 windows, "
-            "resolution 1.0, periodicity off. Latency and throughput are single-machine wall-clock samples; "
-            "live-cell counts, ratios and memory (at %s~B per cell) are geometry-determined and reproducible. "
-            "Ratios are voxel3d over grid2d at equal extent; bold marks the cheaper backend.}\n" % e4[0]["bytes_per_cell"])
+            "resolution 1.0, periodicity off. Latency and throughput are the median of %s wall-clock runs of each "
+            "configuration on one host, with the fastest and slowest run in brackets; they depend on the machine and its load. "
+            "Live-cell counts, their ratios and memory (at %s~B per cell) follow from the seeded geometry and reproduce exactly. "
+            "Ratios are voxel3d over grid2d at equal extent; bold marks the cheaper backend.}\n"
+            % (e4[0]["repeats"], e4[0]["bytes_per_cell"]))
     f.write("\\label{tab:e4}\n\\small\n\\begin{tabular}{llrrrr}\n\\toprule\n")
-    f.write("Backend & Extent & $\\mu$s / \\texttt{integrate} $\\downarrow$ & Cell updates/s & Live cells & Memory \\\\\n\\midrule\n")
+    f.write("Backend & Extent & $\\mu$s / \\texttt{integrate} $\\downarrow$ [min, max] & Cell updates/s & Live cells & Memory \\\\\n\\midrule\n")
     for x in sorted({r["extent"] for r in e4}, key=int):
         g, v = by[("grid2d", x)], by[("voxel3d", x)]
         for r in (g, v):
             us = thou(f"{float(r['us_per_integrate']):.1f}")
             if r is g:
                 us = f"\\textbf{{{us}}}"
+            us += (" {\\scriptsize[" + thou(f"{float(r['us_per_integrate_min']):.0f}") + ", "
+                   + thou(f"{float(r['us_per_integrate_max']):.0f}") + "]}")
             f.write(f"{tt(r['backend'])} & ${x}^2$ & {us} & {sci(r['cell_updates_per_sec'])} & "
                     f"{thou(r['final_cells'])} & {mem(r['est_bytes'])} \\\\\n")
         cr = float(v["us_per_integrate"]) / float(g["us_per_integrate"])

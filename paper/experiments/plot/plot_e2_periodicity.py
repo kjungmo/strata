@@ -13,7 +13,7 @@ windows) for every probe cell, with the periodic_amplitude_min = 0.3
 classification threshold, the calibrated-test amplitude a*(n) = sqrt(2 r*/n)
 (delta = 0.1, H = 3, uniform phase coverage; see the paper, Proposition
 "calibrated false-alarm bound") and the period_windows = 8 amplitude-validity gate
-(both from notes/experiments_summary.md / core_math.md) drawn as reference
+(both from the manuscript, paper/arxiv_ref, section 3.4) drawn as reference
 lines.
 """
 import os

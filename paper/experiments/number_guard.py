@@ -391,7 +391,9 @@ def guard_arxiv():
     check("56 core gtest cases", ntests == 56, str(ntests))
     in_paper("56 tests quoted", "56 ")
     quoted = {int(n) for n in re.findall(r"(\d+)(?:~|\s)+(?:gtest cases|behaviou?r-level tests|unit tests)", text)}
-    check("every quoted test count is the current one", quoted <= {ntests}, str(sorted(quoted)))
+    nnode = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
+                for f in (HERE.parents[1] / "strata/test").glob("*.cpp"))
+    check("every quoted test count is a current one", quoted <= {ntests, nnode}, str(sorted(quoted)))
     # ---- E0 calibration and the calibrated test (Proposition prop:chernoff) ----
     e0 = rows("e0_calibration_choice.csv")
     sel = [r for r in e0 if r["selected"] == "1"]
@@ -493,6 +495,203 @@ def guard_arxiv():
 if len(TARGETS) > 1:
     target, text = TARGETS[1]
     guard_arxiv()
+
+
+# Code that the paper pins: the tree ids of strata_core/, strata/ and scripts/ at
+# commit 312b09c. A change to any of them must come with a new pin in the paper.
+PIN = "312b09c"
+PIN_TREES = {"strata_core": "401e7c7fced30ee44ed9888d397158492dc38eb2",
+             "strata": "83619563bcdc60da6f902c2c51718af76a52227c",
+             "scripts": "7183544d9386c903042b1a657346db7511583244"}
+# Core regression tests by the defect or rule they cover (the paper's 10 / 9 / 8).
+CENTRING_TESTS = ("AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT8", "AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT24",
+                  "ConstantCellUnderUnevenPhaseCoverageHasZeroAmplitude", "SquareWaveDetectedAtNonMultiplesOfPeriod",
+                  "AlwaysHitWallNeverPeriodicT8", "AlwaysHitWallNeverPeriodicShippedDefaultsT24",
+                  "RevisitLoopWall8of48StaysStatic", "GenuineDoorStillPeriodicE2Params",
+                  "PeriodicDemotionNeedsContradictingFreeEvidence", "GraduatedDoorIsDemotedOncePeriodic")
+SIGNIFICANCE_TESTS = ("ChernoffBoundIsAValidTailBound", "BernoulliNoiseRarelyPeriodicT8",
+                      "BernoulliNoiseRarelyPeriodicShippedT24", "UncalibratedAmplitudeAloneWouldFail",
+                      "SquareWaveDoorsStillDetected", "ConstantCellNeverPeriodicUnderAnySampling",
+                      "BelowPeriodGateNeverPeriodic", "BernoulliClutterRarelyPeriodicWithPruning",
+                      "CalibrationCanBeDisabledForLegacyAmplitudeRule")
+SPENDING_TESTS = ("LevelsAreZeroBelowGateAndSumToAlpha", "PerReadOutRuleIsNotTrajectoryValidButSpendingIs",
+                  "DoorsStillDetectedLater", "AmplitudeOnlyRuleUnaffected", "AlphaSpendingIsTheShippedRule",
+                  "GraduatedDoorIsDemotedOncePeriodicWithSpending",
+                  "NoisyWallRarelyEverDemotedByPeriodicPathWithSpending", "PrunedClutterRarelyEverPeriodicWithSpending")
+
+
+def git(*args):
+    import subprocess
+    try:
+        r = subprocess.run(["git", "-C", str(HERE), *args], capture_output=True, text=True)
+        return r.stdout.strip() if r.returncode == 0 else None
+    except OSError:
+        return None
+
+
+def guard_code(full):
+    """Facts about the pinned code, the node and the reproduction that both paper
+    copies state. full=True adds the checks of text that only the arXiv package has."""
+    import hashlib
+    import math
+    root = HERE.parents[1]
+
+    # ---- the pin ----
+    in_paper("pin commit quoted", PIN)
+    if git("rev-parse", "--is-inside-work-tree") == "true":
+        for d, want in PIN_TREES.items():
+            got = git("rev-parse", f"HEAD:{d}")
+            check(f"{d}/ is the tree of {PIN}", got == want, f"HEAD:{d} is {got}")
+        check("working tree: pinned directories unmodified",
+              git("status", "--porcelain", "--", *PIN_TREES) == "", "uncommitted changes under a pinned directory")
+    else:
+        passes.append(f"[{target}] pin trees not checked (not a git checkout)")
+
+    # ---- tests ----
+    def cases(p):
+        return re.findall(r"^TEST(?:_F)?\(\s*\w+\s*,\s*(\w+)\s*\)", p.read_text(), re.M)
+    core = [n for f in sorted((root / "strata_core/test").glob("*.cpp")) for n in cases(f)]
+    for label, group, word in (("centring", CENTRING_TESTS, "ten"), ("significance", SIGNIFICANCE_TESTS, "nine"),
+                               ("spending", SPENDING_TESTS, "eight")):
+        words = {10: "ten", 9: "nine", 8: "eight"}
+        check(f"{len(group)} {label} regression tests exist in strata_core/test",
+              all(core.count(n) == 1 for n in group) and words[len(group)] == word,
+              str([n for n in group if core.count(n) != 1]))
+    check("the three regression groups do not overlap",
+          len(set(CENTRING_TESTS) | set(SIGNIFICANCE_TESTS) | set(SPENDING_TESTS)) == 27)
+    for w in ("ten regression tests", "nine for", "eight for the spent level"):
+        in_paper(f"regression count quoted: {w!r}", w, w.replace("ten", "Ten"))
+    node = {f.stem: len(cases(f)) for f in sorted((root / "strata/test").glob("*.cpp"))}
+    check("64 node gtest cases", sum(node.values()) == 64, str(node))
+    in_paper("64 node gtest cases quoted", "64 gtest cases")
+    for stem in ("test_window_clock", "test_tf_wait", "test_input_status", "test_rate_monitor", "test_map_writer"):
+        m = re.search(stem.replace("_", r"\\?_") + r"\}?`? \((\d+) cases\)", text)
+        check(f"{stem} case count quoted is {node[stem]}", bool(m) and int(m.group(1)) == node[stem],
+              m.group(1) if m else "not quoted")
+
+    # ---- node constants behind Table tab:node ----
+    hpp = (root / "strata/include/strata/mapping_node.hpp").read_text()
+    cpp = (root / "strata/src/mapping_node.cpp").read_text()
+    tfw = (root / "strata/include/strata/tf_wait.hpp").read_text()
+    wck = (root / "strata/include/strata/window_clock.hpp").read_text()
+    ist = (root / "strata/include/strata/input_status.hpp").read_text()
+    rmo = (root / "strata/include/strata/rate_monitor.hpp").read_text()
+    mwr = (root / "strata/include/strata/map_writer.hpp").read_text()
+    for label, tok, src in (
+            ("TF wait 0.1 s of ROS time", "kTfWaitS = 0.1;", hpp), ("TF wait cap 1 s", "kTfWaitCapS = 1.0;", hpp),
+            ("clock frozen after 1 s", "kClockFrozenS = 1.0;", hpp), ("clock stall WARN after 3 s", "kClockStallS = 3.0;", hpp),
+            ("16 sensor frames", "kMaxSensors = 16;", hpp), ("frame forgotten after 10 closes", "kIdleWindowsToForget = 10;", hpp),
+            ("step grace 20 ms", "step_grace_s{0.02}", tfw), ("re-anchor half a window back", "newest_ns_ - period_ns_ / 2", wck),
+            ("re-anchor 10^6 windows ahead", "kMaxGapWindows = 1000000;", wck),
+            ("TF failure named after 1 s", "kTfNoteAfterS = 1.0;", ist),
+            ("no-window-closing WARN: 10 periods and 2 s", "since_close > 10.0 * window_period_s_ && since_close > 2.0", cpp),
+            ("zero stamp dropped with time windows", 'if (window_mode_ == "time") return false;', cpp),
+            ("diagnostics: wall timer, 1 s", "create_wall_timer(std::chrono::seconds(1)", cpp),
+            ("20th-percentile interval", "v.size() / 5;", rmo),
+            ("PGM shades 205 / 0 / 100 / 254", "return 205;", mwr), ("PGM static 0", "if (v >= 100) return 0;", mwr),
+            ("PGM periodic/transient 100", "if (v >= 50) return 100;", mwr), ("PGM free 254", "return 254;", mwr),
+            ("map thresholds 0.65 / 0.196", "occupied_thresh: 0.65\\nfree_thresh: 0.196", mwr),
+            ("checksum keys", "strata_image_sha256", mwr),
+            ("backend string not validated", "} else {  // voxel3d", cpp),
+            ("MapBackend::closeWindows", "virtual void closeWindows(int k) = 0;",
+             (root / "strata_core/include/strata_core/map_backend.hpp").read_text())):
+        check(f"code: {label}", tok in src)
+    check("MapBackend has five pure virtual methods",
+          (root / "strata_core/include/strata_core/map_backend.hpp").read_text().count(") = 0;")
+          + (root / "strata_core/include/strata_core/map_backend.hpp").read_text().count(") const = 0;") == 5)
+    in_paper("five MapBackend methods quoted", "five methods")
+
+    # ---- shipped YAML files against the code defaults and the parameter table ----
+    def yaml_params(name):
+        out = {}
+        for line in (root / "strata/params" / name).read_text().splitlines():
+            m = re.match(r"\s{4}(\w+):\s*([^#]*?)\s*(#.*)?$", line)
+            if m:
+                out[m.group(1)] = m.group(2).strip('"')
+        return out
+    y2, y3 = yaml_params("grid2d.yaml"), yaml_params("voxel3d.yaml")
+    engine = ("layer_interval", "l_hit", "l_miss", "l_min", "l_max", "survival_decay", "graduate_prob", "demote_prob",
+              "min_observations", "prune_prob", "enable_periodicity", "periodic_amplitude_min", "periodic_false_alarm",
+              "periodic_alpha_spending", "period_windows", "n_harmonics")
+    lm = (root / "strata_core/include/strata_core/layered_map.hpp").read_text()
+    pm = (root / "strata_core/include/strata_core/periodicity.hpp").read_text()
+    for k in engine:
+        check(f"YAML files agree on {k}", y2[k] == y3[k], f"{y2[k]} vs {y3[k]}")
+        m = re.search(r"\b%s\{([^}]*)\}" % k, lm + pm)
+        check(f"struct default of {k} equals the YAML value", bool(m) and float(m.group(1).replace("true", "1").replace("false", "0"))
+              == float(y2[k].replace("true", "1").replace("false", "0")), f"{m.group(1) if m else None} vs {y2[k]}")
+        m = re.search(r'"%s",\s*([-\w.]+)\)' % k, cpp)
+        check(f"node default of {k} equals the YAML value", bool(m) and float(m.group(1).replace("true", "1").replace("false", "0"))
+              == float(y2[k].replace("true", "1").replace("false", "0")), f"{m.group(1) if m else None} vs {y2[k]}")
+    for k in ("window_mode", "window_period_s", "expected_scan_rate_hz", "rate_warn_drop_fraction", "input_timeout_s",
+              "startup_timeout_s", "publish_period"):
+        check(f"YAML files agree on node parameter {k}", y2[k] == y3[k])
+    check("shipped window_mode time, code default scans",
+          y2["window_mode"] == "time" and 'declare_parameter<std::string>("window_mode", "scans")' in cpp)
+    check("node parameter values quoted in the paper are the YAML ones",
+          (y2["window_period_s"], y2["expected_scan_rate_hz"], y2["rate_warn_drop_fraction"], y2["input_timeout_s"],
+           y2["startup_timeout_s"], y2["grid_width"], y2["grid_height"], y2["grid_resolution"], y2["grid_origin_x"],
+           y3["voxel_size"], y2["publish_period"]) == ("1.0", "0.0", "0.05", "5.0", "30.0", "400", "400", "0.05", "-10.0", "0.2", "1.0"))
+    cells = int(y2["grid_width"]) * int(y2["grid_height"])
+    in_paper("cells of the shipped grid quoted", f"{cells:,}")
+    if full:
+        app = (ARXIV / "sections" / "appendix.tex").read_text()
+        rows_ = dict(re.findall(r"^\\code\{([^}]*)\} & [^&]* & ([^&]*) & ", app, re.M))
+        rows_ = {k.replace("\\_", "_"): v.strip().replace("$", "") for k, v in rows_.items()}
+        for k in engine:
+            if k in ("l_min", "l_max"):
+                continue
+            check(f"parameter table default of {k}", k in rows_ and float(rows_[k].replace("true", "1").replace("false", "0"))
+                  == float(y2[k].replace("true", "1").replace("false", "0")), f"{rows_.get(k)} vs {y2[k]}")
+        check("parameter table: clamp bounds", "$-5.0$, $5.0$" in app and (y2["l_min"], y2["l_max"]) == ("-5.0", "5.0"))
+
+    # ---- E4 reference run, its environment, and the archived single run ----
+    e4 = rows("e4_throughput.csv")
+    check("E4 repeats 15 in every row", {r["repeats"] for r in e4} == {"15"})
+    in_paper("E4 15 runs quoted", "15 times", "15 runs")
+    spread = max(float(r["us_per_integrate_max"]) / float(r["us_per_integrate_min"]) for r in e4)
+    in_paper(f"E4 slowest/fastest repeat {spread:.1f}", f"up to {spread:.1f} times")
+    env = dict(line.split(": ", 1) for line in (RESULTS / "e4_environment.txt").read_text().splitlines())
+    check("E4 environment: strata_core is the pinned tree", env["strata_core_tree"] == PIN_TREES["strata_core"])
+    src4 = (HERE / "src/e4_throughput.cpp").read_bytes()
+    blob = hashlib.sha1(b"blob %d\0" % len(src4) + src4).hexdigest()
+    check("E4 environment: recorded with the committed harness source", env["harness_e4_blob"] == blob,
+          f"{env['harness_e4_blob']} vs {blob}")
+    check("E4 environment: Release, -O3", env["build_type"] == "Release" and "-O3" in env["cxx_flags_release"])
+    in_paper("E4 host CPU quoted", env["cpu"].replace(" with Radeon Graphics", ""))
+    gcc4 = re.search(r"(\d+\.\d+\.\d+)\)$", env["compiler"]).group(1)
+    in_paper("E4 compiler quoted", f"GCC {gcc4}")
+    in_paper("E4 load average quoted", f"load average {float(env['load_average_at_end'].split()[0]):.1f} on {env['logical_cpus']} logical CPUs")
+    old = {(r["backend"], r["extent"]): float(r["us_per_integrate"]) for r in rows("pre_repeats_2026-07-03/e4_throughput.csv")}
+    oldr = [f"{old[('voxel3d', x)] / old[('grid2d', x)]:.1f}" for x in ("100", "250", "500")]
+    check("archived single-run E4 ratios 15.0 / 10.8 / 5.5", oldr == ["15.0", "10.8", "5.5"], str(oldr))
+    for q in oldr:
+        in_paper(f"archived E4 ratio {q} quoted", q)
+    cur = {(r["backend"], r["extent"]): float(r["us_per_integrate"]) for r in e4}
+    curr = [cur[("voxel3d", x)] / cur[("grid2d", x)] for x in ("100", "250", "500")]
+    check("E4: grid2d cheaper at every extent in both runs; gap smallest at the largest extent in both",
+          min(curr) > 1 and min(float(q) for q in oldr) > 1 and curr[2] == min(curr) and float(oldr[2]) == min(map(float, oldr)))
+    oldc = {(r["backend"], r["extent"]): r["final_cells"] for r in rows("pre_repeats_2026-07-03/e4_throughput.csv")}
+    check("E4 cell counts unchanged since the archived run", all(oldc[(r["backend"], r["extent"])] == r["final_cells"] for r in e4))
+
+    # ---- byte-for-byte reproduction log ----
+    log = [l for l in (HERE / "reproduction_log.txt").read_text().splitlines() if l.startswith("REPRODUCED")]
+    vers = set()
+    for l in log:
+        check("reproduction log line: pinned strata_core tree", f"strata_core tree {PIN_TREES['strata_core']}" in l, l[:80])
+        m = re.search(r"\| [^|]*?(\d+\.\d+\.\d+)\s*\|", l)
+        vers.add(m.group(1) if m else "?")
+        rt = git("rev-parse", "HEAD:paper/experiments/results")
+        if rt:
+            check("reproduction log line: the committed results tree", f"results tree {rt}" in l, l[-70:])
+    check("reproduction log: two compilers", len(vers) == 2 and "?" not in vers, str(vers))
+    for v in sorted(vers):
+        in_paper(f"reproduction compiler GCC {v} quoted", f"GCC {v}")
+
+
+for target, text in TARGETS:
+    text = " ".join(text.split())   # the Markdown copy wraps lines inside phrases
+    guard_code(full=(target == "arxiv_ref"))
 
 
 print(f"PASS {len(passes)}")
