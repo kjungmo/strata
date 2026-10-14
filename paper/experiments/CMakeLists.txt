@@ -17,3 +17,7 @@ foreach(exp e0_calibration e1_static_quality e2_periodicity e3_sensitivity e4_th
   target_link_libraries(${exp} PRIVATE strata_core)
   target_include_directories(${exp} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 endforeach()
+
+# Phase 1 real-data probe and its tests (needs no data to build; run with reproduce_p1.sh).
+enable_testing()
+add_subdirectory(realdata)
