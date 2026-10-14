@@ -15,6 +15,8 @@ class Voxel3DBackend : public MapBackend {
   CellId voxelId(const Eigen::Vector3d& p) const;
   Eigen::Vector3d voxelCenter(CellId id) const;
   const LayeredMap& layered() const { return layered_; }
+  // Forwards to LayeredMap::setWindowObserver (read-only window observer).
+  void setWindowObserver(WindowObserver* observer) { layered_.setWindowObserver(observer); }
  private:
   double voxel_size_;
   LayeredMap layered_;

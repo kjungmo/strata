@@ -1,10 +1,34 @@
 #include "strata_core/layered_map.hpp"
 #include <algorithm>
 #include <cmath>
+#ifdef STRATA_TEST_NOOP_OBSERVER
+#include <cstdio>
+#endif
 namespace strata_core {
 
+#ifdef STRATA_TEST_NOOP_OBSERVER
+// Test-only build switch (off by default, never set by a normal build): every map starts
+// with a counting observer that does nothing else. The experiment harness is rebuilt with
+// it to show that its seeded CSV outputs stay byte-identical with an observer set; the
+// count printed at exit shows that the observer really ran.
+namespace {
+struct CountingNoopObserver : WindowObserver {
+  unsigned long long calls{0};
+  void onTouchedCell(int, CellId, bool, bool) override { ++calls; }
+  ~CountingNoopObserver() override {
+    std::fprintf(stderr, "strata_core test no-op observer: %llu touched-cell reports\n", calls);
+  }
+};
+CountingNoopObserver g_noop_observer;
+}  // namespace
+#endif
+
 LayeredMap::LayeredMap(LayeredMapParams params)
-  : params_(params), periodicity_(params.periodicity) {}
+  : params_(params), periodicity_(params.periodicity) {
+#ifdef STRATA_TEST_NOOP_OBSERVER
+  observer_ = &g_noop_observer;
+#endif
+}
 
 double LayeredMap::sigmoid(double x) { return 1.0 / (1.0 + std::exp(-x)); }
 
@@ -28,12 +52,14 @@ void LayeredMap::closeWindows(int k) {
 
 void LayeredMap::endWindow() {
   ++window_count_;
+  WindowObserver* const observer = observer_;
   for (auto it = cells_.begin(); it != cells_.end();) {
     CellEvidence& e = it->second;
     const bool touched = (e.window_hits > 0 || e.window_misses > 0);
     const bool occ = e.window_hits > 0;
     const bool freed = (!occ && e.window_misses > 0);
     if (touched) {
+      if (observer) observer->onTouchedCell(window_count_, it->first, occ, freed);
       if (occ) e.log_odds += params_.l_hit;
       else if (freed) e.log_odds += params_.l_miss;
       e.log_odds *= params_.survival_decay;

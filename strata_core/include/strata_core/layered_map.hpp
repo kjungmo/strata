@@ -35,9 +35,27 @@ struct CellEvidence {
   int window_misses{0};
   bool graduated{false};
 };
+// Read-only observer of window closes. At every endWindow(), before any evidence update,
+// the map calls onTouchedCell once for every cell that the closing window touched, with
+// the outcome exactly as the state machine scores it: hit is true if the window saw at
+// least one hit on the cell; miss is true if it saw misses and no hit (a hit wins over
+// a miss in the same window), so exactly one of the two is true. Untouched cells are not
+// reported. window_index is windowCount() of the closing window (1 for the first).
+// closeWindows(k) reports its first window only; the k - 1 empty windows touch nothing.
+// The call order over cells is the iteration order of the internal hash map and carries
+// no meaning. The observer must not call mutating functions of the map and must outlive
+// its registration. It has no effect on the map: with no observer set the only cost is
+// one pointer read per endWindow().
+class WindowObserver {
+ public:
+  virtual ~WindowObserver() = default;
+  virtual void onTouchedCell(int window_index, CellId id, bool hit, bool miss) = 0;
+};
 class LayeredMap {
  public:
   explicit LayeredMap(LayeredMapParams params);
+  // Non-owning; nullptr removes the observer. See WindowObserver.
+  void setWindowObserver(WindowObserver* observer) { observer_ = observer; }
   void observeHit(CellId id);
   void observeMiss(CellId id);
   bool tick();
@@ -64,6 +82,7 @@ class LayeredMap {
   LayeredMapParams params_;
   std::unordered_map<CellId, CellEvidence> cells_;
   PeriodicityModel periodicity_;
+  WindowObserver* observer_{nullptr};
   int integration_count_{0};
   int window_count_{0};   // 2^31 windows is 68 years at 1 s windows, 13.6 years at 0.2 s
 };

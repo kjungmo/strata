@@ -21,6 +21,8 @@ class Grid2DBackend : public MapBackend {
   GridMap toOccupancyGrid() const;
   bool observedFree(int gx, int gy) const;
   const LayeredMap& layered() const { return layered_; }
+  // Forwards to LayeredMap::setWindowObserver (read-only window observer).
+  void setWindowObserver(WindowObserver* observer) { layered_.setWindowObserver(observer); }
   const GridMeta& meta() const { return meta_; }
  private:
   void raycastClear(int gx0, int gy0, int gx1, int gy1);
