@@ -310,6 +310,11 @@ class GapRows(unittest.TestCase):
         prim = [r for r in tables["gap"] if r[5] == 5][0]
         qs, qc = float(prim[8]), float(prim[9])
         self.assertEqual((float(prim[-2]), float(prim[-1])), ab.round_pair(qs, qc))
+        # below the rule the rounded pair is n/a
+        tables_small = {"gap": [], "band": []}
+        ab.gap_rows({"dataset": "x", "res": "0.2", "W": 10}, "today", "p", gc, gs, True, tables_small)
+        small = [r for r in tables_small["gap"] if r[5] == 5][0]
+        self.assertEqual((small[-2], small[-1]), ("n/a", "n/a"))
         self.assertEqual(prim[19], "yes")
         # a gap of exactly 0.15 (0.25 - 0.10) counts as reaching the rule
         gs2, gc2 = grp([0.25] * 40, n=8), grp([0.10] * 40, n=10)

@@ -100,11 +100,12 @@ def gap_rows(cond, miss, pname, gs, gc, joint, tables):
         ci_iid = a1.bootstrap_gap(rs_, gs.tile[ms_], rc_, gc.tile[mc_], joint=joint)["iid"]
         ci = bootstrap_quantiles(rs_, gs.tile[ms_], rc_, gc.tile[mc_], joint)
         m0, m1 = round_pair(qs, qc)
+        pair_txt = ("%.2f" % m0, "%.2f" % m1) if gap >= GAP_RULE else ("n/a", "n/a")      # a rounded pair is only defined when the gap reaches 0.15
         tables["gap"].append(row + [len(rs_), len(rc_), a1.fmt(qs, 4), a1.fmt(qc, 4), a1.fmt(gap, 4),
                                     a1.fmt(ci_iid[0], 4), a1.fmt(ci_iid[1], 4), a1.fmt(ci["gap"][0], 4), a1.fmt(ci["gap"][1], 4),
                                     a1.fmt(ci["qs"][0], 4), a1.fmt(ci["qs"][1], 4), a1.fmt(ci["qc"][0], 4), a1.fmt(ci["qc"][1], 4),
                                     "yes" if gap >= GAP_RULE else "no", a1.fmt(a1.auc(rs_, rc_), 4),
-                                    "%.2f" % m0, "%.2f" % m1])
+                                    pair_txt[0], pair_txt[1]])
     for b in a1.band_stats(gs, gc, a1.N_MIN_PRIMARY):
         tables["band"].append([cond["dataset"], cond["res"], cond["W"], pname + "|" + miss, a1.N_MIN_PRIMARY, b["band"],
                                b.get("s_cells", 0), a1.fmt(b.get("s_switch_ratio")), a1.fmt(b.get("s_lag1_mean")),

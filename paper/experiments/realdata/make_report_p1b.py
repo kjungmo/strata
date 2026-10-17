@@ -191,8 +191,12 @@ def main(argv=None):
     # ---- Option C
     P("## 6. Option C evidence (matched hit rate, lag-1 autocorrelation)")
     P("")
-    P(table([r for r in load(os.path.join(rd, "p1b_matched_band.csv"))], ["dataset", "res_m", "W", "pair", "band", "n_structure", "structure_lag1_mean",
-                                                                          "n_clutter", "clutter_lag1_mean", "auc_lag1_structure_over_clutter"]))
+    P("Shipped conditions only (all conditions are in `p1b_matched_band.csv`). AUC above 0.5: structure cells have the longer runs. The pre-registered reading (PREREG_P1.md section 7.4): support for Option C if the AUC is >= 0.65 or <= 0.35 in a band with >= 100 cells in each group.")
+    P("")
+    primary = [("lil", "0.05", "15", "structure@static_0_vs_clutter@dynamics_0|-"), ("keble02", "0.2", "10", "structure_vs_clutter|today"),
+               ("keble02", "0.2", "10", "structure_vs_clutter|refined"), ("kth00", "0.2", "10", "structure_vs_moving|today")]
+    bands = [r for r in load(os.path.join(rd, "p1b_matched_band.csv")) if (r["dataset"], r["res_m"], r["W"], r["pair"]) in primary]
+    P(table(bands, ["dataset", "res_m", "W", "pair", "band", "n_structure", "structure_lag1_mean", "n_clutter", "clutter_lag1_mean", "auc_lag1_structure_over_clutter"]))
     # ---- freeze
     P("## 7. Freeze")
     P("")
