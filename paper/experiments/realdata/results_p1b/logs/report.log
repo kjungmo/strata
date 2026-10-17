@@ -1,0 +1,4 @@
+STEP report
+START 2026-10-18T08:09:56+09:00 host=DESKTOP-KCD7BRS load=5.17 3.98 3.97 cores=12
+CMD python3 -I <REALDATA_DIR>/make_report_p1b.py --results-dir <RESULTS_DIR> --prereg-dir <REALDATA_DIR> --out <RESULTS_DIR>/P1B_REPORT.md
+END 2026-10-18T08:09:56+09:00 rc=0 load=5.17 3.98 3.97

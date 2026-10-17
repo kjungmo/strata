@@ -98,18 +98,34 @@ def main(argv=None):
     P("## 1. Chronology")
     P("")
     repo = os.path.abspath(os.path.join(a.prereg_dir, "..", ".."))
-    for label, pat in (("stat record of the test-split files (before)", "stat record of every test-split file before phase 1b"),
-                       ("Amendment 2 (PREREG_P1B.md)", "amendment 2 (phase 1b)"),
-                       ("phase 1b code and tests", "phase 1b code (gates")):
-        line = git(["log", "--all", "--format=%h %cI %s", "--grep", pat, "-1"], repo)
-        P("- %s: %s" % (label, line if line else "not found"))
-    st = first_last(os.path.join(rd, "logs"))
-    if st:
-        P("- first step log of phase 1b: `%s` started %s" % (st[0][1], st[0][0]))
-        P("- last step log start: `%s` %s" % (st[-1][1], st[-1][0]))
+    log = git(["log", "--reverse", "--format=%h %cI %s", "2db4f2c^..HEAD", "--", "paper/experiments/realdata"], repo)
+    P("Commits of the branch since the stat record (oldest first):")
     P("")
-    P("Every step log in `results_p1b/logs/` carries START, END, host, load and the command. The commits above precede the first START line.")
+    for line in log.splitlines():
+        P("- " + line)
     P("")
+    steps = []
+    logdir = os.path.join(rd, "logs")
+    for fn in sorted(os.listdir(logdir)) if os.path.isdir(logdir) else []:
+        if not fn.endswith(".log") or fn.startswith("build_"):
+            continue
+        st = en = rc = ""
+        with open(os.path.join(logdir, fn)) as f:
+            for line in f:
+                if line.startswith("START "):
+                    st = line.split()[1]
+                elif line.startswith("END "):
+                    parts = line.split()
+                    en = parts[1]
+                    rc = parts[2].replace("rc=", "") if len(parts) > 2 else ""
+        steps.append({"step": fn[:-4], "start": st, "end": en, "rc": rc})
+    steps.sort(key=lambda r: r["start"])
+    P("Step logs (`results_p1b/logs/`, sorted by start; each carries host, load and the command):")
+    P("")
+    P(table(steps, ["step", "start", "end", "rc"]))
+    if steps:
+        P("The first measurement step (`%s`) started %s, after the commits of the stat record, Amendment 2 and the code." % (steps[0]["step"], steps[0]["start"]))
+        P("")
     # ---- gates
     P("## 2. Gates G1 and G2 on all calibration sequences")
     P("")

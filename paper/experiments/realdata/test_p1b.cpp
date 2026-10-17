@@ -865,3 +865,129 @@ TEST(Cli, FailuresAreReportedNotHidden) {
   EXPECT_NE(sh(exe + " gate2d --cache " + d + "/nofile.bin --meta " + d + "/g.meta 2>/dev/null"), 0);
   EXPECT_NE(sh(exe + " gate2d --cache " + d + "/nofile.bin --laser sideways --meta " + d + "/g.meta 2>/dev/null"), 0);
 }
+
+// ------------------------------------------------ boundary tests added after the first mutation pass ----
+
+TEST(G1, VerdictBoundariesAreInclusive) {
+  ShapedResult r;
+  r.accepted = 500;
+  r.thickness_m.assign(1000, 0.10);                            // median and p90 are exactly 0.10
+  EXPECT_TRUE(verdictG1(r, 0.10, 0.10, 500).pass);             // exactly at all three limits: pass
+  EXPECT_FALSE(verdictG1(r, 0.0999, 0.10, 500).pass);          // median above its limit
+  EXPECT_FALSE(verdictG1(r, 0.10, 0.0999, 500).pass);          // p90 above its limit
+  EXPECT_FALSE(verdictG1(r, 0.10, 0.10, 501).pass);            // one patch too few
+  r.accepted = 499;
+  EXPECT_FALSE(verdictG1(r, 0.10, 0.10, 500).pass);
+}
+
+TEST(G1, AStripThatIsAPlaneOnlyInTheNameIsRejected) {
+  // a vertical strip 1.2 m wide and 12 m long: flat and vertical, extent along the second axis 1.2 m, but line-like (l2 / l1 < 0.5)
+  std::mt19937_64 rng(8); std::normal_distribution<double> g(0, 0.02); std::uniform_real_distribution<double> u(0, 1);
+  std::vector<float> strip, square;
+  for (int i = 0; i < 60000; ++i) {
+    strip.push_back(float(3.0 + g(rng))); strip.push_back(float(12 * u(rng))); strip.push_back(float(1.2 * u(rng)));
+    square.push_back(float(3.0 + g(rng))); square.push_back(float(6 * u(rng))); square.push_back(float(6 * u(rng)));
+  }
+  ShapeParams sp; sp.three_d = true; sp.radius_m = 2.0; sp.seeds = 2000;
+  EXPECT_EQ(shapedThickness(strip, sp).accepted, 0u);
+  EXPECT_GT(shapedThickness(square, sp).accepted, 500u);        // the same noise on a square plane is accepted
+}
+
+TEST(G2, VerdictBoundariesAreInclusive) {
+  ConsistencyResult r;
+  r.queries = 3; r.query_points = 10; r.matched = 5;
+  r.d_m.assign(5, 0.05);                                       // median and p90 exactly 0.05
+  EXPECT_TRUE(verdictG2(r, 0.05, 0.05, 0.5).pass);             // matched share exactly 0.5 and both limits met with equality
+  EXPECT_FALSE(verdictG2(r, 0.05, 0.05, 0.5001).pass);
+  EXPECT_FALSE(verdictG2(r, 0.0499, 0.05, 0.5).pass);
+  EXPECT_FALSE(verdictG2(r, 0.05, 0.0499, 0.5).pass);
+  r.queries = 0;
+  EXPECT_FALSE(verdictG2(r, 0.05, 0.05, 0.5).pass);            // no query, no evidence
+}
+
+TEST(G2, LagRangeAndCapAreInclusive) {
+  ConsistencyParams cp; cp.three_d = false; cp.query_every = 1000; cp.lag_lo = 15; cp.lag_hi = 60;
+  // the query step is index 0 when query_every is large
+  auto at0 = [&](int ref_step, double dx) {
+    std::vector<std::vector<float>> s(120);
+    s[0] = {0.0f, 0.0f, 0.0f};
+    s[ref_step] = {float(dx), 0.0f, 0.0f};
+    return s;
+  };
+  EXPECT_EQ(poseConsistency(at0(15, 0.01), cp).matched, 1u);    // lag exactly lag_lo is used
+  EXPECT_EQ(poseConsistency(at0(14, 0.01), cp).queries, 0u);    // lag below lag_lo: no reference
+  EXPECT_EQ(poseConsistency(at0(60, 0.01), cp).matched, 1u);    // lag exactly lag_hi is used
+  EXPECT_EQ(poseConsistency(at0(61, 0.01), cp).queries, 0u);    // lag above lag_hi: no reference
+  EXPECT_EQ(poseConsistency(at0(30, 0.5), cp).matched, 1u);     // distance exactly the cap: matched
+  EXPECT_EQ(poseConsistency(at0(30, 0.5001), cp).matched, 0u);  // beyond the cap: unmatched
+  // backwards: a query at step 40 and a reference 15 steps earlier
+  std::vector<std::vector<float>> s(120);
+  s[40] = {0.0f, 0.0f, 0.0f}; s[25] = {0.01f, 0.0f, 0.0f};
+  cp.query_every = 40;
+  const ConsistencyResult back = poseConsistency(s, cp);
+  EXPECT_EQ(back.matched, 1u);
+}
+
+TEST(SpiresLabels, ThresholdsAreInclusive) {
+  const double res = 0.2;
+  VoxIndex vi; vi.res = res;
+  VoxTable tls(64), cols(64), hits(64);
+  auto addTls = [&](const Eigen::Vector3d& p, int n, float minz) {
+    auto& s = tls.upsert(vi.id(p)); s.count += n; s.minz = minz;
+    auto& c = cols.upsert(columnKey(p.x(), p.y())); if (c.count == 0 || minz < c.minz) c.minz = minz; c.count += n;
+  };
+  addTls({0.1, 0.1, 1.0}, 3, 1.0f);       // exactly 3 points: occupied
+  addTls({3.1, 0.1, 1.0}, 2, 1.0f);       // 2 points: present, not occupied
+  addTls({6.1, 0.1, 1.0}, 1, 1.0f);       // 1 point: present
+  addTls({9.1, 0.1, 0.8}, 5, 0.8f);       // column minimum 0.75 below, see the second voxel of this column
+  addTls({9.1, 0.1, 0.55}, 5, 0.55f);     // lowest voxel of the column
+  hits.upsert(vi.id({6.1, 0.1, 1.0})).count = 1;          // a hit inside a voxel with one TLS point: TLS-present, not clutter
+  SpiresLabelParams lp; lp.res = res; lp.ground_height_m = 0.25;
+  SpiresLabelCounts c;
+  LabelMap lab = buildSpiresLabels(tls, cols, hits, lp, &c);
+  EXPECT_EQ(lab.count(vi.id({0.1, 0.1, 1.0})), 1u);       // 3 points are enough
+  EXPECT_EQ(lab.count(vi.id({3.1, 0.1, 1.0})), 0u);
+  EXPECT_EQ(lab.count(vi.id({6.1, 0.1, 1.0})), 0u);       // not structure and not clutter
+  EXPECT_EQ(c.hit_voxels_tls_present, 1u);
+  // ground rule: minz - column minimum <= ground_height; the column at x = 9.1 has minimum 0.55
+  EXPECT_EQ(lab.at(vi.id({9.1, 0.1, 0.55})), kStaticGround);       // difference 0
+  EXPECT_EQ(lab.at(vi.id({9.1, 0.1, 0.8})), kStaticGround);        // difference exactly 0.25: ground (inclusive)
+  lp.ground_height_m = 0.2499;
+  LabelMap lab2 = buildSpiresLabels(tls, cols, hits, lp, nullptr);
+  EXPECT_EQ(lab2.at(vi.id({9.1, 0.1, 0.8})), kStaticStructure);    // just above: structure
+}
+
+TEST(SpiresLabels, QuotaEqualToTheCountKeepsEverything) {
+  const double res = 0.2;
+  VoxIndex vi; vi.res = res;
+  VoxTable tls(64), cols(64), hits(64);
+  for (int cx = 0; cx < 10; ++cx) for (int cy = 0; cy < 80; ++cy) { auto& c0 = cols.upsert(columnKey(cx + 0.5, cy + 0.5)); c0.count = 1; c0.minz = 0; }
+  for (int i = 0; i < 800; ++i) { auto& s = tls.upsert(vi.pack(i % 50, i / 50, 20)); s.count = 5; s.minz = 5.0f; }
+  SpiresLabelParams lp; lp.res = res; lp.quota = 800;
+  SpiresLabelCounts c;
+  buildSpiresLabels(tls, cols, hits, lp, &c);
+  EXPECT_EQ(c.structure_all, 800u);
+  EXPECT_EQ(c.structure, 800u);
+  EXPECT_DOUBLE_EQ(c.keep_structure, 1.0);
+}
+
+TEST(SpiresOffset, TieBandIsInclusiveAndTheScoreThresholdToo) {
+  std::vector<OffsetScore3> v;
+  for (int i = -2; i <= 2; ++i) { OffsetScore3 s; s.dt = i * 0.01; s.score = 0.5; v.push_back(s); }
+  v[4].score = 1.0;                                       // dt = +0.02 is the best
+  v[2].score = 0.995;                                     // dt = 0 exactly at 0.995 times the best: inside the band
+  EXPECT_EQ(selectSpiresOffset(v), 2);
+  // the TLS voxel threshold: voxels with exactly min_points points count
+  PoseTrack3 gt;
+  for (int i = 0; i <= 40; ++i) { Pose3 p; p.t = {0.0, 0.0, 0.0}; gt.add(100.0 + i * 0.25, p); }       // a sensor that does not move
+  SpiresExtrinsic ex; SpiresConvertOptions co;
+  VoxIndex vi; vi.res = 0.05;
+  VoxTable tls(64);
+  const Eigen::Vector3d W(5.02, 0.02, 0.02);
+  tls.upsert(vi.id(W)).count = 2;
+  const Eigen::Vector3d l = ex.q.conjugate() * (W - ex.t);
+  std::vector<SpiresPcd> scans; scans.push_back(parsePcdBuffer(spiresPcdBytes({{l.x(), l.y(), l.z(), 101.0}}), "s"));
+  std::vector<double> times = {101.0};
+  EXPECT_EQ(scoreSpiresOffset(scans, times, gt, ex, co, 0.0, tls, 2, 1).score, 1.0);     // count == min_points: a hit
+  EXPECT_EQ(scoreSpiresOffset(scans, times, gt, ex, co, 0.0, tls, 3, 1).score, 0.0);     // count < min_points: no hit
+}

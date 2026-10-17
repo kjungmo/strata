@@ -23,7 +23,8 @@ class Rounding(unittest.TestCase):
         self.assertEqual(ab.round_pair(0.6499, 0.15), (0.15, 0.60))          # just below: next multiple down
         self.assertEqual(ab.round_pair(0.5770, 0.0697), (0.10, 0.55))
         self.assertEqual(ab.round_pair(0.5, 0.0), (0.05, 0.50))              # lower bound of m0
-        self.assertEqual(ab.round_pair(0.99, 0.2), (0.20, 0.95))             # upper bound of m1
+        self.assertEqual(ab.round_pair(0.99, 0.2), (0.20, 0.95))
+        self.assertEqual(ab.round_pair(1.0, 0.2), (0.20, 0.95))              # upper bound of m1: floor(1.0) would be 1.0
 
     def test_float_noise_does_not_move_a_grid_value(self):
         for k in range(1, 19):
@@ -79,6 +80,14 @@ class Derived(unittest.TestCase):
         self.assertAlmostEqual(R[n], r, places=12)
         self.assertAlmostEqual(U[n], u, places=12)
         self.assertAlmostEqual(G[n] + R[n] + U[n], 1.0, places=12)
+
+    def test_rejection_happens_exactly_at_window_t(self):
+        # (0.5, 0.9): three misses give l = 3 * ln(0.2) = -4.83 <= B, so at T = 3 the all-miss history is rejected at window 3
+        m = 0.2
+        G, R, U = dd.outcome_probabilities(0.5, 0.9, m, 3, T=3)
+        self.assertAlmostEqual(R[3], (1 - m) ** 3, places=12)
+        G, R, U = dd.outcome_probabilities(0.5, 0.9, m, 3, T=4)
+        self.assertEqual(R[3], 0.0)
 
     def test_reject_only_after_t_and_n_max_rule(self):
         # with T large no rejection can happen in the first T windows
@@ -156,6 +165,10 @@ class Freeze(unittest.TestCase):
         self.assertTrue(any("lil_static_0 fails" in r and "G1" in r for r in d["reasons"]))
         self.assertIn("conditional", d)
         self.assertNotIn("m0", d)                                 # a failed gate freezes nothing
+        g_map = self.gates_ok()
+        g_map[0] = gate("lil_mapping", ok2=False)
+        self.assertEqual(fp.decide_2d(self.rows2d(), g_map)["status"], "NOT FROZEN")          # the reference sequence must pass too
+        self.assertEqual(fp.decide_2d(self.rows2d(0.15, 0.4, 0.25), self.gates_ok())["status"], "FROZEN")   # gap exactly 0.15 passes
         d2 = fp.decide_2d(self.rows2d(0.10, 0.4, 0.3), self.gates_ok())
         self.assertNotIn("conditional", d2)                       # a gap below 0.15 gives no conditional values either
         self.assertEqual(d2["status"], "NOT FROZEN")
@@ -182,6 +195,8 @@ class Freeze(unittest.TestCase):
         self.assertEqual(f["branch"], "F")
         self.assertEqual((f["m0"], f["m1"]), (two["m0"], two["m1"]))
         self.assertIn("not calibrated for 3D", f["flag"])
+        rb = fp.decide_3d(self.rows3d(0.10, 0.15), self.gates_ok(), GOOD_OFFSET, {}, EQUIV_OK, two)
+        self.assertEqual(rb["branch"], "R")                                       # refined gap exactly 0.15 passes
         # exactly at the threshold counts as passing (>= 0.15)
         e = fp.decide_3d(self.rows3d(0.15, 0.0), self.gates_ok(), GOOD_OFFSET, {}, EQUIV_OK, two)
         self.assertEqual(e["branch"], "T")
@@ -270,7 +285,7 @@ class Report(unittest.TestCase):
                 text = f.read()
             self.assertIn("## 2. Gates G1 and G2", text)
             self.assertIn("0.20", text)
-            self.assertIn("first step log of phase 1b: `x.log` started 2026-10-18T07:30:00+09:00", text)
+            self.assertIn("The first measurement step (`x`) started 2026-10-18T07:30:00+09:00", text)
 
 
 class GapRows(unittest.TestCase):
@@ -296,6 +311,13 @@ class GapRows(unittest.TestCase):
         qs, qc = float(prim[8]), float(prim[9])
         self.assertEqual((float(prim[-2]), float(prim[-1])), ab.round_pair(qs, qc))
         self.assertEqual(prim[19], "yes")
+        # a gap of exactly 0.15 (0.25 - 0.10) counts as reaching the rule
+        gs2, gc2 = grp([0.25] * 40, n=8), grp([0.10] * 40, n=10)
+        tables3 = {"gap": [], "band": []}
+        ab.gap_rows({"dataset": "x", "res": "0.2", "W": 10}, "today", "p", gs2, gc2, True, tables3)
+        prim3 = [r for r in tables3["gap"] if r[5] == 5][0]
+        self.assertEqual(float(prim3[10]), 0.15)
+        self.assertEqual(prim3[19], "yes")
         # an empty group gives n/a rows of the right width
         tables2 = {"gap": [], "band": []}
         ab.gap_rows({"dataset": "x", "res": "0.2", "W": 10}, "today", "p", None, gc, True, tables2)
