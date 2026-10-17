@@ -58,7 +58,9 @@ CPP = [
     ("p1b_io.hpp", "if (!area.contains(v[0], v[1])) { ++t.points_discarded; continue; }", "if (area.contains(v[0], v[1])) { ++t.points_discarded; continue; }", "area filter inverted"),
     ("p1b_io.hpp", "if (s.count == 0 || v[2] < s.minz) s.minz = v[2];\n        if (s.count < 0xFFFFFFFFu) ++s.count;\n      }\n      auto& c", "if (s.count == 0 || v[2] > s.minz) s.minz = v[2];\n        if (s.count < 0xFFFFFFFFu) ++s.count;\n      }\n      auto& c", "TLS lowest z"),
     ("p1b_io.hpp", "if (e.method == 0) {\n      if (e.csize != e.usize)", "if (e.method == 1) {\n      if (e.csize != e.usize)", "zip stored method"),
-    ("p1b_io.hpp", "if (buf.size() != need)", "if (buf.size() < need)", "PCD size must match the header exactly"),
+    ("p1b_io.hpp", "if (buf.size() < need) fail(name, \"truncated: \"", "if (buf.size() <= need) fail(name, \"truncated: \"", "PCD size: exact size accepted"),
+    ("p1b_io.hpp", "if (buf.size() - need > 65536) fail(", "if (buf.size() - need > 6553600) fail(", "PCD zero tail: length limit"),
+    ("p1b_io.hpp", "if (buf[i] != 0) fail(name, \"non-zero byte after the last record", "if (false) fail(name, \"non-zero byte after the last record", "PCD zero tail: content check"),
 ]
 
 PY = [
