@@ -363,3 +363,10 @@ among candidates with `S <= 1.005 * S_min`, take the first anchor in the order `
 within that anchor the smaller `|dt|`. Nothing else in section 11.1 changes. The report prints the beam-0 time
 offset of the selected candidate (`dt` for `start` and `single`, `dt - (n - 1) * time_increment` for `end`), so the
 result reads the same under either anchor.
+
+## 12. Amendment 2 (2026-10-18)
+
+Phase 1b is pre-registered in `PREREG_P1B.md` (rounding definition, W = 15 condition, gates G1 and G2 replacing the
+wall-thickness gate of section 5, the move of Spires Keble 02 to the CALIBRATION split, the refined-miss branch, the
+mechanical 3D rule, Option C disposition, the engine floor rule). Section 7 item 4 (support for Option C) is
+read as stated in `PREREG_P1B.md` section 8. Sections 0 to 11 above stay as committed.
