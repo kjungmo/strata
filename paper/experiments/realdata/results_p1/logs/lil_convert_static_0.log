@@ -1,0 +1,4 @@
+STEP lil_convert_static_0
+START 2026-10-18T03:54:47+09:00 host=DESKTOP-KCD7BRS load=7.86 4.14 3.84 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-convert --bag /home/cona/datasets/strata/lilocbench/bags/static_0.bag --gt /home/cona/datasets/strata/lilocbench/gt_x/static_0/gt_poses.txt --deskew 1 --out /home/cona/datasets/strata/p1/lil/cache_static_0.bin --meta /home/cona/datasets/strata/p1/lil/cache_static_0.meta
+END 2026-10-18T03:55:25+09:00 rc=0 load=12.58 5.74 4.39

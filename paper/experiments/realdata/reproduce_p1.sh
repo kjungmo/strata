@@ -4,7 +4,9 @@
 #
 # usage: reproduce_p1.sh STAGE...      STAGE: build check labels gates convert kth lil analyze report all
 #   env: DATA_ROOT (default ~/datasets/strata)   BUILD_DIR (default /tmp/strata_p1_build)
-#        RESULTS_DIR (default <this dir>/results_p1)    P1_ONLY (optional: "kth" or "lil" for the kth/lil stages)
+#        RESULTS_DIR (default <this dir>/results_p1)
+#        KTH_RES_LIST / LIL_RES_LIST (default all resolutions, e.g. KTH_RES_LIST="0.2")
+#        MEM_LIMIT_KB (address-space limit per step, default 5000000: a step that needs more fails instead of starving other jobs)
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DATA="${DATA_ROOT:-$HOME/datasets/strata}"
@@ -14,8 +16,8 @@ OUT="$DATA/p1"                               # bulky outputs: label files, frame
 PROBE="$BUILD/realdata/hitrate_probe"
 mkdir -p "$RES/logs" "$RES/meta" "$OUT/kth00" "$OUT/lil"
 
-KTH_RES=(0.2 0.1)
-LIL_RES=(0.05 0.10)
+KTH_RES=(${KTH_RES_LIST:-0.2 0.1})
+LIL_RES=(${LIL_RES_LIST:-0.05 0.10})
 WINDOWS=(10 2)
 LIL_SEQS=(mapping static_0 dynamics_0)
 EGO_RADIUS=3.01
@@ -27,7 +29,7 @@ step() {   # step NAME cmd...   : logs start, end, load, return code; stops the 
   local log="$RES/logs/$name.log"
   { echo "STEP $name"; echo "START $(stamp) host=$(hostname) load=$(cut -d' ' -f1-3 /proc/loadavg) cores=$(nproc)";
     echo "CMD $*"; } > "$log"
-  nice -n 19 "$@" >> "$log" 2>&1
+  ( ulimit -v "${MEM_LIMIT_KB:-5000000}"; exec nice -n 19 "$@" ) >> "$log" 2>&1
   local rc=$?
   { echo "END $(stamp) rc=$rc load=$(cut -d' ' -f1-3 /proc/loadavg)"; } >> "$log"
   if [ $rc -ne 0 ]; then echo "step $name FAILED rc=$rc (see $log)"; exit $rc; fi

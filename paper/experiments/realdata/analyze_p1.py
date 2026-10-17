@@ -474,12 +474,12 @@ def run_all(data_dir, out_dir, figures=True):
                      ("ground_vs_moving", "static_ground", "moving", groups, groups, None)]
             analyse_condition(cond, groups, touched, N_MIN_SENSITIVITY, pairs, True, out_dir, tables)
     # ---- LILocBench
-    for res in ("0.05", "0.1"):
+    for res, res_file in (("0.05", "0.05"), ("0.1", "0.10")):   # label, file-name token (reproduce_p1.sh writes r0.10)
         for W in (10, 2):
             gr = {}
             tc = {}
             for seq in ("mapping", "static_0", "dynamics_0"):
-                f = os.path.join(data_dir, "lil", "cells_%s_r%s_W%d.csv" % (seq, res, W))
+                f = os.path.join(data_dir, "lil", "cells_%s_r%s_W%d.csv" % (seq, res_file, W))
                 if not os.path.exists(f):
                     inventory.append(["lil_" + seq, res, W, "missing"])
                     continue

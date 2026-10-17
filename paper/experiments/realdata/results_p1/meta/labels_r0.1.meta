@@ -1,0 +1,15 @@
+resolution_m=0.1
+ground_height_m=0.3
+column_m=1
+gt_points=17362230
+gt_dynamic_points=95983
+gt_nonfinite_dropped=0
+ego_radius_m=3.01
+frame_origins=141
+gt_dynamic_points_ego=47798
+cells_ego_excluded=9337
+cells_moving=15682
+cells_static_ground=626867
+cells_static_structure=978274
+seconds=10.58124385
+peak_rss_kb=413144

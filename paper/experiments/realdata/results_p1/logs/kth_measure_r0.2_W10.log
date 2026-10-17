@@ -1,0 +1,4 @@
+STEP kth_measure_r0.2_W10
+START 2026-10-18T04:00:07+09:00 host=DESKTOP-KCD7BRS load=15.05 13.98 8.46 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe kth-measure --dir /home/cona/datasets/strata/kth/00 --labels /home/cona/datasets/strata/p1/kth00/labels_r0.2.bin --res 0.2 --window 10 --out /home/cona/datasets/strata/p1/kth00/cells_r0.2_W10.csv --meta /home/cona/datasets/strata/p1/kth00/cells_r0.2_W10.meta
+END 2026-10-18T04:02:55+09:00 rc=0 load=12.86 13.03 8.99

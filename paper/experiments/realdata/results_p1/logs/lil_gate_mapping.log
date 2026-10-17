@@ -1,0 +1,4 @@
+STEP lil_gate_mapping
+START 2026-10-18T03:56:11+09:00 host=DESKTOP-KCD7BRS load=17.38 7.92 5.19 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-gate --cache /home/cona/datasets/strata/p1/lil/cache_mapping.bin --res 0.05 --stride 5 --meta /home/cona/datasets/strata/p1/lil/gate_mapping.meta
+END 2026-10-18T03:59:03+09:00 rc=0 load=20.72 14.32 8.18

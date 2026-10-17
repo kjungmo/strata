@@ -1,0 +1,15 @@
+hits_total=14452414
+stride=5
+thickness_points_used=2890483
+seeds=20000
+used=19356
+thickness_m_p10=0.1962476861
+thickness_cells_p10=3.924953722
+thickness_m_p25=0.2363497854
+thickness_cells_p25=4.726995708
+thickness_m_p50=0.3500011416
+thickness_cells_p50=7.000022833
+thickness_m_p75=0.4476819274
+thickness_cells_p75=8.953638549
+thickness_m_p90=0.5649376618
+thickness_cells_p90=11.29875324

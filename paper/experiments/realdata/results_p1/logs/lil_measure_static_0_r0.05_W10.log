@@ -1,0 +1,4 @@
+STEP lil_measure_static_0_r0.05_W10
+START 2026-10-18T04:27:47+09:00 host=DESKTOP-KCD7BRS load=4.50 5.19 7.20 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-measure --cache /home/cona/datasets/strata/p1/lil/cache_static_0.bin --labels /home/cona/datasets/strata/p1/lil/ref_r0.05.bin --res 0.05 --window 10 --out /home/cona/datasets/strata/p1/lil/cells_static_0_r0.05_W10.csv --meta /home/cona/datasets/strata/p1/lil/cells_static_0_r0.05_W10.meta
+END 2026-10-18T04:28:28+09:00 rc=0 load=6.17 5.53 7.22
