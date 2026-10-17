@@ -1,0 +1,6 @@
+sequence,class,g1_accepted,g1_p50_m,g1_p90_m,g1_limit_p50_m,g1_limit_p90_m,g1_pass,g2_queries,g2_matched_share,g2_p50_m,g2_p90_m,g2_limit_p50_m,g2_limit_p90_m,g2_pass,gates_pass,old_gate_p50_m,old_gate_p90_m
+lil_mapping,2D,590,0.1930,0.2506,0.1,0.2,FAIL,1217,0.9999,0.0012,0.0048,0.05,0.1,PASS,FAIL,0.3454,0.5730
+lil_static_0,2D,391,0.1705,0.2545,0.1,0.2,FAIL,898,0.9997,0.0013,0.0060,0.05,0.1,PASS,FAIL,0.2966,0.5090
+lil_dynamics_0,2D,470,0.1832,0.2285,0.1,0.2,FAIL,239,0.9993,0.0021,0.0276,0.05,0.1,PASS,FAIL,0.4027,0.7312
+kitti00,3D,41,0.3720,0.4713,0.2,0.4,FAIL,15,0.9666,0.0387,0.1113,0.1,0.2,PASS,FAIL,0.4137,0.7807
+keble02,3D,2251,0.3212,0.4627,0.2,0.4,FAIL,301,0.9995,0.0174,0.0415,0.1,0.2,PASS,FAIL,n/a,n/a

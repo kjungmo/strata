@@ -117,8 +117,26 @@ def main(argv=None):
                     "g2_matched_share", "g2_p50_m", "g2_p90_m", "g2_limit_p50_m", "g2_limit_p90_m", "g2_pass", "gates_pass", "old_gate_p50_m", "old_gate_p90_m"],
             ["sequence", "class", "G1 patches", "G1 median m", "G1 p90 m", "limit", "limit", "G1", "G2 queries", "matched", "G2 median m", "G2 p90 m", "limit", "limit", "G2", "both",
              "old gate median m", "old gate p90 m"]))
+    P("Status by the rule of `PREREG_P1B.md` section 3.3 (a sequence that fails G1 or G2 is excluded from headline tables and reported as EXCLUDED):")
+    P("")
+    status = {}
+    for g in gates:
+        ok = g.get("gates_pass") == "PASS"
+        why = []
+        if g.get("g1_pass") != "PASS":
+            why.append("G1 (%s patches, median %s m, p90 %s m)" % (g.get("g1_accepted"), g.get("g1_p50_m"), g.get("g1_p90_m")))
+        if g.get("g2_pass") != "PASS":
+            why.append("G2 (matched %s, median %s m, p90 %s m)" % (g.get("g2_matched_share"), g.get("g2_p50_m"), g.get("g2_p90_m")))
+        status[g["sequence"]] = ok
+        P("- `%s`: **%s**%s" % (g["sequence"], "INCLUDED" if ok else "EXCLUDED", "" if ok else " by " + " and ".join(why)))
+    P("")
+    if not any(status.values()):
+        P("No calibration sequence passes both gates, so no table below is a headline table. All tables are printed for the record and marked EXCLUDED.")
+        P("")
+    def tag(*seqs):
+        return "" if seqs and all(status.get(x, False) for x in seqs) else " (EXCLUDED)"
     # ---- W = 15
-    P("## 3. LILocBench, W = 15 steps (1.0 s)")
+    P("## 3. LILocBench, W = 15 steps (1.0 s)%s" % tag("lil_mapping", "lil_static_0", "lil_dynamics_0"))
     P("")
     P("Primary row: resolution 0.05 m, `structure@static_0_vs_clutter@dynamics_0`, N_min = 5. Intervals: block bootstrap (tiles of 10 m, 2000 replicates, seed 20261014).")
     P("")
@@ -128,7 +146,7 @@ def main(argv=None):
     P(table([r for r in gap if r["dataset"] == "lil" and r["res_m"] == "0.05" and r["pair"].startswith("structure@static_0_vs_clutter@dynamics_0")],
             ["N_min", "n_structure", "n_clutter", "q_s_p10", "q_c_p90", "gap", "gap_ci95_block_lo", "gap_ci95_block_hi", "m0_rounded", "m1_rounded"]))
     # ---- Keble
-    P("## 4. Spires Keble 02")
+    P("## 4. Spires Keble 02%s" % tag("keble02"))
     P("")
     P("### 4.1 TLS area, offset, conversion, labels")
     P("")
@@ -146,7 +164,7 @@ def main(argv=None):
                                                          "structure_miss_windows", "miss_windows_with_such_event", "share_windows",
                                                          "structure_touched_windows_today", "structure_touched_windows_refined", "share_touched_windows_removed"]))
     # ---- KITTI
-    P("## 5. KITTI 00, refined miss (secondary check; equivalence of the lean probe)")
+    P("## 5. KITTI 00, refined miss (secondary check; equivalence of the lean probe)%s" % tag("kitti00"))
     P("")
     eq = os.path.join(rd, "equivalence_kth.txt")
     if os.path.exists(eq):
@@ -175,6 +193,56 @@ def main(argv=None):
                 P("  - reason: %s" % r)
         P("")
         P("Full text: `PREREG.md`.")
+    P("")
+    # ---- exploratory
+    ex = os.path.join(rd, "exploratory")
+    P("## 8. Exploratory and post hoc (these runs set nothing)")
+    P("")
+    rows = []
+    if os.path.isdir(ex):
+        for fn in sorted(os.listdir(ex)):
+            if fn.startswith("gate2d_") and fn.endswith(".meta"):
+                m = meta(os.path.join(ex, fn))
+                rows.append({"run": fn[:-5], "steps": m.get("steps"), "G1 patches": m.get("g1_accepted"), "G1 median m": "%.4f" % float(m["g1_thickness_m_p50"]),
+                             "G1 p90 m": "%.4f" % float(m["g1_thickness_m_p90"]), "G2 median m": "%.4f" % float(m["g2_d_m_p50"])})
+        m = meta(os.path.join(ex, "gate_spires_structure_filter.meta"))
+        if m:
+            rows.append({"run": "keble02, returns inside TLS structure voxels only", "steps": m.get("steps"), "G1 patches": m.get("g1_accepted"),
+                         "G1 median m": "%.4f" % float(m["g1_thickness_m_p50"]), "G1 p90 m": "%.4f" % float(m["g1_thickness_m_p90"]), "G2 median m": "%.4f" % float(m["g2_d_m_p50"])})
+    P("G1 on slices and on single lasers (same code and thresholds as the gate; limits 0.10 m / 0.20 m in 2D, 0.20 m / 0.40 m in 3D):")
+    P("")
+    P(table(rows, ["run", "steps", "G1 patches", "G1 median m", "G1 p90 m", "G2 median m"]))
+    kc = os.path.join(ex, "keble_clutter_r0.2_W10_today.txt")
+    if os.path.exists(kc):
+        P("Who are the Keble 02 clutter cells with a high hit rate (`explore_keble_clutter.py`)?")
+        P("")
+        with open(kc) as f:
+            P("```\n" + f.read().rstrip() + "\n```")
+        P("")
+    # ---- replay
+    P("## 9. Replay of the derived test over the calibration run sequences")
+    P("")
+    rp = os.path.join(rd, "replay", "replay_p1b_out.txt")
+    if os.path.exists(rp):
+        with open(rp) as f:
+            P("```\n" + f.read().rstrip() + "\n```")
+    P("")
+    P("Shares are over cells of the calibration sequences. `[W ...]` is the Wilson 95 % interval (cells treated as independent), `[B ...]` the block bootstrap over 10 m tiles. Neither is a held-out estimate.")
+    P("")
+    ar = os.path.join(rd, "advice_replay", "run.log")
+    P("## 10. The advisor's replay scripts, re-run")
+    P("")
+    if os.path.exists(ar):
+        with open(ar) as f:
+            P("```\n" + f.read().rstrip() + "\n```")
+    P("")
+    cm = os.path.join(rd, "test_split_stat_compare.md")
+    P("## 11. Test-split access record")
+    P("")
+    if os.path.exists(cm):
+        with open(cm) as f:
+            txt = f.read()
+        P(txt)
     P("")
     out = "\n".join(L)
     with open(a.out, "w") as f:
