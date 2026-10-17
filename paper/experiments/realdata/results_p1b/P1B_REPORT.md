@@ -33,7 +33,7 @@ Step logs (`results_p1b/logs/`, sorted by start; each carries host, load and the
 | spires_measure_r0.1 | 2026-10-18T07:43:51+09:00 | 2026-10-18T07:52:34+09:00 | 0 |
 | analyze | 2026-10-18T08:13:14+09:00 | 2026-10-18T08:29:13+09:00 | 0 |
 | freeze | 2026-10-18T08:29:43+09:00 | 2026-10-18T08:29:43+09:00 | 0 |
-| report | 2026-10-18T08:29:43+09:00 |  |  |
+| report | 2026-10-18T08:32:50+09:00 |  |  |
 
 The first measurement step (`gate2d_mapping`) started 2026-10-18T07:23:03+09:00, after the commits of the stat record, Amendment 2 and the code.
 
@@ -199,10 +199,12 @@ G1 on slices and on single lasers (same code and thresholds as the gate; limits 
 | gate2d_mapping_both_steps900 | 903 | 1018 | 0.2023 | 0.2530 | 0.0011 |
 | gate2d_mapping_front_steps0 | 12180 | 1046 | 0.1761 | 0.2587 | 0.0014 |
 | gate2d_mapping_rear_steps0 | 12180 | 559 | 0.1812 | 0.2302 | 0.0015 |
+| gate2d_mapping_runA_dt0 | 12180 | 398 | 0.2314 | 0.2652 | 0.0016 |
 | gate2d_static_0_both_steps300 | 302 | 3169 | 0.1318 | 0.2367 | 0.0014 |
 | gate2d_static_0_both_steps900 | 902 | 4277 | 0.1477 | 0.2646 | 0.0013 |
 | gate2d_static_0_front_steps0 | 8982 | 836 | 0.1963 | 0.2664 | 0.0016 |
 | gate2d_static_0_rear_steps0 | 8982 | 432 | 0.1814 | 0.2460 | 0.0017 |
+| gate2d_static_0_runA_dt0 | 8982 | 69 | 0.2284 | 0.2605 | 0.0017 |
 | keble02, returns inside TLS structure voxels only | 3005 | 5063 | 0.3002 | 0.4538 | 0.0174 |
 
 Who are the Keble 02 clutter cells with a high hit rate (`explore_keble_clutter.py`)?

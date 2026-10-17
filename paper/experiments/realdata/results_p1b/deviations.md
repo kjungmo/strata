@@ -39,8 +39,8 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
    (0.06 %) had no pose and were dropped one by one.
 10. **The advisory replay scripts ran once at 07:30:55** from a tree where they were not yet committed (commit d2e2579 followed at 07:30:59); their output is identical
     to the advisor's. They are re-run on the final commit (see the report).
-11. **Exploratory, post hoc, sets nothing:** `explore_gate2d.sh` (G1 on 300 and 900 steps, on the front and the rear laser alone) and `gate-spires --labels`
-    (G1 on returns inside TLS structure voxels). They were run after the gate verdicts were known, to help the lead decide. The pre-registered verdicts do not change.
+11. **Exploratory, post hoc, sets nothing:** `explore_gate2d.sh` (G1 on 300 and 900 steps, on the front and the rear laser alone), G1 and G2 on the run A caches (offset 0 instead of -0.13 s; static_0: 69 patches, median 0.228 m; the run B cache gives 391 patches, 0.171 m), and `gate-spires --labels`
+    (G1 on returns inside TLS structure voxels), `explore_keble_clutter.py`. They were run after the gate verdicts were known, to help the lead decide. The pre-registered verdicts do not change.
 
 ### Added during and after the measurements
 
