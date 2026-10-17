@@ -41,3 +41,23 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
     to the advisor's. They are re-run on the final commit (see the report).
 11. **Exploratory, post hoc, sets nothing:** `explore_gate2d.sh` (G1 on 300 and 900 steps, on the front and the rear laser alone) and `gate-spires --labels`
     (G1 on returns inside TLS structure voxels). They were run after the gate verdicts were known, to help the lead decide. The pre-registered verdicts do not change.
+
+### Added during and after the measurements
+
+12. **A script was edited while it ran.** `reproduce_p1b.sh` got the stages `statafter analyze freeze report replay` while the `measure` stage was running (07:40 to 07:52).
+    Bash reads a script as it executes it, so the shell stopped with a syntax error after `spires_measure_r0.1` had returned rc=0 (`/tmp` log: `unexpected EOF`).
+    Both measure steps had finished and written their cell tables and meta files; the rest of the stage only copies the meta files, which were then copied by hand
+    (the `cp` loop of the script). No number is affected.
+13. **The stat record "before" was written by an earlier version of `stat_test_split.sh`** (one file; `split_before_stat.sh` then moved the Boreas lines into
+    `test_split_stat_before_boreas.tsv`; the lines are unchanged). The final version writes the two files directly and was used for the "after" record.
+14. **The analysis was run twice.** The first full run (commit c86a93a) printed the rounded pair `m0`, `m1` also for rows whose gap is below 0.15, where the pair is meaningless.
+    The second run prints `n/a` there. All other columns are identical (checked by `cmp` after removing the last two columns).
+15. **Mutation evidence in two passes.** Pass 1 (`mutation_record_pass1.md`): 68 mutants, 43 killed, 25 survived; the survivors were verdict boundaries (G1, G2), the label thresholds,
+    the offset tie band, the rounding bound of `m1`, and three branches of the freeze rule. Boundary tests were added (`VerdictBoundariesAreInclusive`, `LagRangeAndCapAreInclusive`,
+    `ThresholdsAreInclusive`, `QuotaEqualToTheCountKeepsEverything`, `TieBandIsInclusiveAndTheScoreThresholdToo`, a strip that is not a plane, and the Python tests for exact 0.15 gaps), then pass 2
+    ran on the final tests (`mutation_record.md`). Two survivors are equivalent in practice and are marked as such in the record.
+16. **Equivalence of the lean probe** was shown on KITTI 00 at both resolutions and both windows (`equivalence_kth.txt`, 4 of 4 byte-identical). The refined miss
+    exists only in the lean probe, and its tables for KITTI 00 are secondary checks.
+17. **Gate verdicts and the freeze.** All five calibration sequences fail G1; none fails G2. By the rule of `PREREG_P1B.md` section 3.3 the 2D pair is not frozen. By section 6 the
+    3D pair is branch F, and the fallback (the 2D pair) does not exist, so 3D is not frozen either. The measured gaps would give branch F in any case for 3D (the gap is below 0.15 under both
+    miss definitions). `PREREG.md` states this and prints the conditional 2D values as "NOT A FREEZE".

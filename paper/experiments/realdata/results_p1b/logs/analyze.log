@@ -1,4 +1,4 @@
 STEP analyze
-START 2026-10-18T07:52:44+09:00 host=DESKTOP-KCD7BRS load=3.85 4.63 5.06 cores=12
+START 2026-10-18T08:13:14+09:00 host=DESKTOP-KCD7BRS load=1.70 2.59 3.40 cores=12
 CMD python3 -I <REALDATA_DIR>/analyze_p1b.py --data-dir <OUT_DIR> --old-meta-dir <REALDATA_DIR>/results_p1/meta --meta-dir <RESULTS_DIR>/meta --out-dir <RESULTS_DIR>
-END 2026-10-18T08:08:24+09:00 rc=0 load=5.05 3.41 3.80
+END 2026-10-18T08:29:13+09:00 rc=0 load=3.32 3.22 3.37
