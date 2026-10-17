@@ -33,7 +33,7 @@ Step logs (`results_p1b/logs/`, sorted by start; each carries host, load and the
 | spires_measure_r0.1 | 2026-10-18T07:43:51+09:00 | 2026-10-18T07:52:34+09:00 | 0 |
 | analyze | 2026-10-18T08:13:14+09:00 | 2026-10-18T08:29:13+09:00 | 0 |
 | freeze | 2026-10-18T08:29:43+09:00 | 2026-10-18T08:29:43+09:00 | 0 |
-| report | 2026-10-18T08:32:50+09:00 |  |  |
+| report | 2026-10-18T08:48:07+09:00 |  |  |
 
 The first measurement step (`gate2d_mapping`) started 2026-10-18T07:23:03+09:00, after the commits of the stat record, Amendment 2 and the code.
 
@@ -272,7 +272,7 @@ END 2026-10-18T08:09:21+09:00
 
 Before: # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:04:10,727860999+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative; # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:04:10,727860999+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
 
-After: # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:53:21,592333058+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative; # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:53:21,592333058+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
+After: # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T08:47:42,813986102+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative; # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T08:47:42,813986102+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
 
 Files in the before record: 6644. Files in the after record: 6644.
 
@@ -288,3 +288,8 @@ Files the amendment allowed to be read: `spires/keble/sequences/2024-03-12-keble
 
 No file outside the amendment's list changed in size, mtime or ctime. **No incident.**
 
+
+## 12. Tests and mutation evidence
+
+- mutation pass 1: Mutants: 68, killed: 43, survived: 25, other: 0. (`mutation_record_pass1.md`)
+- mutation pass 2 (final tests): Mutants: 68, killed: 65, survived: 3, other: 0. All three survivors are equivalent in practice (see the table). Pass 2 ran on a copy of the tree at commit 93a3088 (08:12:29). Later commits changed only `analyze_p1b.py` (the rounded pair is `n/a` below the gap rule, with a test) and `make_report_p1b.py`. (`mutation_record.md`)

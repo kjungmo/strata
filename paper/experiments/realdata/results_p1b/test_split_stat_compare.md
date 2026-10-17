@@ -2,7 +2,7 @@
 
 Before: # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:04:10,727860999+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative; # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:04:10,727860999+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
 
-After: # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:53:21,592333058+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative; # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T07:53:21,592333058+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
+After: # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T08:47:42,813986102+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative; # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime; # host=DESKTOP-KCD7BRS recorded=2026-10-18T08:47:42,813986102+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
 
 Files in the before record: 6644. Files in the after record: 6644.
 

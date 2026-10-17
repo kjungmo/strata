@@ -1,5 +1,5 @@
 # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime
-# host=DESKTOP-KCD7BRS recorded=2026-10-18T07:53:21,592333058+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
+# host=DESKTOP-KCD7BRS recorded=2026-10-18T08:47:42,813986102+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
 kth/05.zip	864031928	2025-12-29 22:37:56.000000000 +0900	2026-10-14 08:57:03.971381500 +0900	2026-10-14 08:57:03.979469400 +0900
 kth/05/gt_cloud.pcd	639189266	2023-05-11 00:54:37.000000000 +0900	2026-10-14 08:57:35.058360600 +0900	2026-10-14 08:57:35.068741500 +0900
 kth/05/pcd/002350.pcd	2007056	2023-04-05 05:45:31.000000000 +0900	2026-10-14 08:57:35.119653700 +0900	2026-10-14 08:57:35.126203100 +0900

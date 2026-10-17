@@ -264,6 +264,15 @@ def main(argv=None):
             txt = f.read()
         P(txt)
     P("")
+    P("## 12. Tests and mutation evidence")
+    P("")
+    for fn, title in (("mutation_record_pass1.md", "pass 1"), ("mutation_record.md", "pass 2 (final tests)")):
+        mp = os.path.join(rd, fn)
+        if os.path.exists(mp):
+            with open(mp) as f:
+                lines = [l for l in f.read().splitlines() if l.startswith("Mutants:")]
+            P("- mutation %s: %s (`%s`)" % (title, lines[0] if lines else "n/a", fn))
+    P("")
     out = "\n".join(L)
     with open(a.out, "w") as f:
         f.write(out)
