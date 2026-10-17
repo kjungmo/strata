@@ -352,3 +352,14 @@ Run A (original definitions, dt = 0, `start`) and run B (amended time base, clas
 appear in `P1_REPORT.md`, with the same analysis code. Run A numbers must not be used to set `m1`. Everything not
 named in this section (labels of the LILocBench reference, windows, resolutions, percentiles, bootstrap, seeds,
 tile size, the escalation rule, section 7) is unchanged.
+
+### 11.7 Amendment 1a (2026-10-18, before any run B number exists): selection tie-break
+
+While writing the code for section 11.1 the author saw that the anchors `start` and `end` describe the same
+family of timings: `start` with offset `dt` equals `end` with offset `dt + (n - 1) * time_increment`, so
+the two curves of the score nearly coincide, and the rule "smallest `|dt|` first" could pick `end` with a small `dt`
+instead of `start` with a larger one for no physical reason. The tie-break of section 11.1 is therefore changed:
+among candidates with `S <= 1.005 * S_min`, take the first anchor in the order `start`, `end`, `single`, and
+within that anchor the smaller `|dt|`. Nothing else in section 11.1 changes. The report prints the beam-0 time
+offset of the selected candidate (`dt` for `start` and `single`, `dt - (n - 1) * time_increment` for `end`), so the
+result reads the same under either anchor.
