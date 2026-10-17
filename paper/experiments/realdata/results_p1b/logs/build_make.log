@@ -1,0 +1,8 @@
+STEP build_make
+START 2026-10-18T07:22:55+09:00 host=DESKTOP-KCD7BRS load=1.68 2.35 2.91 cores=12
+CMD cmake --build <BUILD_DIR> -j4 --target hitrate_probe p1b_probe
+[ 75%] Built target strata_core
+[100%] Built target hitrate_probe
+[ 75%] Built target strata_core
+[100%] Built target p1b_probe
+END 2026-10-18T07:22:55+09:00 rc=0 load=1.68 2.35 2.91

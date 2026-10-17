@@ -1,0 +1,3 @@
+STEP equiv_kth_r0.2
+START 2026-10-18T07:29:23+09:00 host=DESKTOP-KCD7BRS load=4.10 5.23 4.14 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe kth-measure3 --dir <DATA_ROOT>/kth/00 --labels <DATA_ROOT>/p1/kth00/labels_r0.2.bin --res 0.2 --windows 10,2 --out-prefix <OUT_DIR>/kth_r0.2

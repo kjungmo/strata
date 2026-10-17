@@ -110,10 +110,21 @@ int cmdGate2d(const std::map<std::string, std::string>& a) {
   CacheReader cache(need(a, "cache"));
   std::vector<float> pts; std::size_t k = 0;
   const int stride = std::stoi(opt(a, "stride", "5"));
+  // Exploratory options (not part of the pre-registered gate; the defaults are the pre-registered gate):
+  //   --max-steps N   only the first N steps of the sequence       --laser front|rear|both   (frames of a step in order: front, rear)
+  const std::size_t max_steps = std::stoul(opt(a, "max-steps", "0"));
+  const std::string laser = opt(a, "laser", "both");
+  if (laser != "both" && laser != "front" && laser != "rear") fail("arguments", "--laser must be both, front or rear");
   std::vector<std::vector<float>> steps;
   ConsistencyParams cp; cp.three_d = false; cp.query_every = 10; cp.lag_lo = 15; cp.lag_hi = 60; cp.ref_stride = 1; cp.query_stride = 1;
   Frame fr;
+  bool have_group = false; std::uint32_t cur_group = 0, first_group = 0; int idx_in_group = 0;
   while (cache.next(fr)) {
+    if (!have_group) first_group = fr.group;
+    if (!have_group || fr.group != cur_group) { have_group = true; cur_group = fr.group; idx_in_group = 0; } else ++idx_in_group;
+    if (max_steps > 0 && fr.group - first_group >= max_steps) break;
+    if (laser == "front" && idx_in_group != 0) continue;
+    if (laser == "rear" && idx_in_group != 1) continue;
     for (std::size_t i = 0; i < fr.size(); ++i)
       if (k++ % stride == 0) pts.insert(pts.end(), fr.xyz.begin() + 3 * i, fr.xyz.begin() + 3 * i + 3);
     addFrameToSteps(steps, fr, cp.ref_stride);
@@ -125,6 +136,7 @@ int cmdGate2d(const std::map<std::string, std::string>& a) {
   const GateVerdictG2 v2 = verdictG2(g2, kThr2d.d50, kThr2d.d90);
   Meta m(need(a, "meta"));
   m.put("kind", "gate2d"); m.put("hits_total", k); m.put("g1_points_used", pts.size() / 3); m.put("steps", steps.size());
+  m.put("exploratory_max_steps", max_steps); m.put("exploratory_laser", laser);
   putGate(m, g1, v1, g2, v2, kThr2d, sp, cp);
   m.put("seconds", nowSeconds() - t0); m.put("peak_rss_kb", peakRssKb());
   return 0;

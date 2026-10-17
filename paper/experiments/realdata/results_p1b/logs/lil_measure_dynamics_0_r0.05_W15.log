@@ -1,0 +1,4 @@
+STEP lil_measure_dynamics_0_r0.05_W15
+START 2026-10-18T07:28:01+09:00 host=DESKTOP-KCD7BRS load=7.77 6.02 4.26 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-measure --cache <DATA_ROOT>/p1/lil/cache_dynamics_0.bin --labels <DATA_ROOT>/p1/lil/ref_r0.05.bin --res 0.05 --window 15 --out <OUT_DIR>/lil_cells_dynamics_0_r0.05_W15.csv --meta <OUT_DIR>/lil_cells_dynamics_0_r0.05_W15.meta
+END 2026-10-18T07:28:06+09:00 rc=0 load=7.31 5.95 4.25

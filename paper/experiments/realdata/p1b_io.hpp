@@ -309,7 +309,7 @@ inline SpiresPcd parsePcdBuffer(const std::vector<std::uint8_t>& buf, const std:
     if (p->type != 'F' || p->size != 4 || p->count != 1) fail(name, "x, y, z must be 4-byte floats");
   if (ft && (ft->type != 'F' || ft->size != 8 || ft->count != 1)) ft = nullptr;      // present but not a double: treated as absent
   const std::size_t need = h.data_offset + h.points * h.record_bytes;
-  if (buf.size() < need) fail(name, "truncated: " + std::to_string(buf.size()) + " bytes, header needs " + std::to_string(need));
+  if (buf.size() != need) fail(name, "size " + std::to_string(buf.size()) + " bytes, header says " + std::to_string(need) + " (record layout not understood)");
   SpiresPcd out;
   out.points = h.points;
   out.xyz.reserve(h.points * 3);
@@ -528,7 +528,7 @@ inline TlsTables readTlsArea(const std::string& path, const DiscUnion& area, con
   f.seekg(0, std::ios::end);
   const std::size_t file_size = static_cast<std::size_t>(f.tellg());
   const std::size_t need = h.data_offset + h.points * h.record_bytes;
-  if (file_size < need) fail(path, "truncated: " + std::to_string(file_size) + " bytes, header needs " + std::to_string(need));
+  if (file_size != need) fail(path, "size " + std::to_string(file_size) + " bytes, header says " + std::to_string(need) + " (record layout not understood)");
   f.seekg(static_cast<std::streamoff>(h.data_offset), std::ios::beg);
   TlsTables t;
   t.resolutions = resolutions;

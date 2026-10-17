@@ -1,0 +1,4 @@
+STEP lil_measure_mapping_r0.05_W15
+START 2026-10-18T07:27:11+09:00 host=DESKTOP-KCD7BRS load=11.88 6.19 4.22 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-measure --cache <DATA_ROOT>/p1/lil/cache_mapping.bin --labels <DATA_ROOT>/p1/lil/ref_r0.05.bin --res 0.05 --window 15 --out <OUT_DIR>/lil_cells_mapping_r0.05_W15.csv --meta <OUT_DIR>/lil_cells_mapping_r0.05_W15.meta
+END 2026-10-18T07:27:40+09:00 rc=0 load=9.66 6.23 4.29

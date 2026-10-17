@@ -1,0 +1,4 @@
+STEP gate2d_dynamics_0
+START 2026-10-18T07:26:20+09:00 host=DESKTOP-KCD7BRS load=10.43 4.98 3.74 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe gate2d --cache <DATA_ROOT>/p1/lil/cache_dynamics_0.bin --meta <OUT_DIR>/gate2d_dynamics_0.meta
+END 2026-10-18T07:27:11+09:00 rc=0 load=11.88 6.19 4.22

@@ -173,6 +173,8 @@ TEST(SpiresPcd, ParsesTimestampAndDropsNonFinite) {
   SpiresPcd n = parsePcdBuffer(nb, "y");
   EXPECT_TRUE(n.ts.empty());
   EXPECT_EQ(n.xyz.size(), 3u);
+  auto longer = b; longer.push_back(0);
+  EXPECT_THROW(parsePcdBuffer(longer, "z2"), std::runtime_error);      // more bytes than the header says: layout not understood
   b.resize(b.size() - 5);
   EXPECT_THROW(parsePcdBuffer(b, "z"), std::runtime_error);
 }
