@@ -854,6 +854,8 @@ TEST(Class, OfIntensityTakesTheLowerSixteenBitsAndGroupsMatchThePrereg) {
   EXPECT_EQ(classOfIntensity(static_cast<float>((0xD0u << 16) | 10u)), 10);        // instance 0xD0, class 10 (car)
   EXPECT_EQ(classOfIntensity(static_cast<float>((0x1F8u << 16) | 10u)), 10);
   EXPECT_EQ(classOfIntensity(static_cast<float>((4u << 16) | 254u)), 254);
+  EXPECT_EQ(classOfIntensity(259.0f), 259);                                            // above 255: a one byte mask would give 3
+  EXPECT_EQ(classOfIntensity(static_cast<float>((4u << 16) | 259u)), 259);
   EXPECT_EQ(classOfIntensity(0.0f), 0);
   EXPECT_THROW(classOfIntensity(-1.0f), std::runtime_error);
   EXPECT_THROW(classOfIntensity(std::nanf("")), std::runtime_error);
@@ -1044,6 +1046,12 @@ TEST(Cli, LilConvertAppliesAnchorOffsetAndBothPairSkewBounds) {
   ASSERT_EQ(rows.size(), 1u + 33u);
   EXPECT_EQ(rows[0], "anchor,dt_s,c_front,c_rear,score,dropped_share,hits");
   EXPECT_NE(readAll(root + "/off.meta").find("candidates=33"), std::string::npos);
+  // The stride selects every second scan pair: 2 of the 3 pairs, so the hit count of a candidate drops from 18 to 12.
+  auto hits_of = [&](const std::string& csv) { const std::string r = readLines(csv).at(1); return r.substr(r.rfind(',') + 1); };
+  EXPECT_EQ(hits_of(root + "/off.csv"), "18");
+  const int rc_off2 = std::system((exe + " lil-offset --bag " + root + "/a.bag --gt " + root + "/gt.txt --stride 2 --half-range 0.05 --step 0.01 --out " +
+                         root + "/off2.csv --meta " + root + "/off2.meta > /dev/null 2>&1").c_str()); (void)rc_off2;
+  EXPECT_EQ(hits_of(root + "/off2.csv"), "12");
 }
 
 TEST(Cli, RejectsBadArgumentsAndMissingFiles) {

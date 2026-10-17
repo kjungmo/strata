@@ -77,6 +77,9 @@ stage_check() {
     echo "ego_radius_m=$EGO_RADIUS"; echo "ground_height_m=$GROUND_H"
     echo "kth_resolutions=${KTH_RES[*]}"; echo "lil_resolutions=${LIL_RES[*]}"; echo "windows=${WINDOWS[*]}"
     echo "lil_timebase=$TIMEBASE"; echo "lil_subdir=${LIL_SUBDIR:-lil}"
+    if [ "$TIMEBASE" = "selected" ] && [ -f "$LILD/offset_mapping.meta" ]; then
+      echo "lil_anchor=$(metaval "$LILD/offset_mapping.meta" selected_anchor)"; echo "lil_time_offset_s=$(metaval "$LILD/offset_mapping.meta" selected_dt_s)"
+    else echo "lil_anchor=start"; echo "lil_time_offset_s=0"; fi
   } > "$RES/run_manifest.txt"
 }
 
@@ -111,7 +114,6 @@ stage_convert() {
     [ "$(metaval "$m" valid)" = "1" ] || { echo "the offset search on mapping is not valid: $(metaval "$m" reason)"; exit 3; }
     anchor="$(metaval "$m" selected_anchor)"; dt="$(metaval "$m" selected_dt_s)"
   elif [ "$TIMEBASE" != "run_a" ]; then echo "unknown LIL_TIMEBASE $TIMEBASE"; exit 2; fi
-  echo "lil_anchor=$anchor" >> "$RES/run_manifest.txt"; echo "lil_time_offset_s=$dt" >> "$RES/run_manifest.txt"
   for s in "${LIL_SEQS[@]}"; do
     step "lil_convert_$s" "$PROBE" lil-convert --bag "$DATA/lilocbench/bags/$s.bag" --gt "$DATA/lilocbench/gt_x/$s/gt_poses.txt" \
       --deskew 1 --anchor "$anchor" --time-offset "$dt" --out "$LILD/cache_$s.bin" --meta "$LILD/cache_$s.meta"
