@@ -18,7 +18,7 @@ import numpy as np
 
 # ------------------------------------------------------------------ constants (PREREG_P1.md section 6)
 N_MIN_PRIMARY = 5
-N_MIN_SENSITIVITY = (3, 5, 10)
+N_MIN_SENSITIVITY = (2, 3, 5, 7, 10)      # PREREG_P1.md section 11.3 (was 3, 5, 10)
 PERCENTILES = (1, 5, 10, 25, 50, 75, 90, 95, 99)
 HIST_BIN = 0.05
 TILE_M = 10.0
@@ -153,9 +153,11 @@ class Group:
         return len(self.N)
 
 
-def read_cells(path, res, classify, n_min_keep):
-    """Streams a cells CSV. classify(label, H, N) -> group name or None. Cells with N < n_min_keep
-    are counted (touched) but their runs are not parsed. Returns (groups, touched_counts)."""
+def read_cells(path, res, classify, n_min_keep, survival=None):
+    """Streams a cells CSV. classify(label, H, N) -> group name, a tuple of group names (a cell may belong
+    to several nested groups), or None. Cells with N < n_min_keep are counted (touched) but their runs are
+    not parsed. Returns (groups, touched_counts). If survival is a dict it receives, per group, the lists
+    (N, H) of every cell of the group, kept or not (PREREG_P1.md section 11.3)."""
     groups = {}
     touched = {}
     with open(path) as f:
@@ -173,23 +175,30 @@ def read_cells(path, res, classify, n_min_keep):
             g = classify(lab, h, n)
             if g is None:
                 continue
-            touched.setdefault(g, []).append(n)
+            names = (g,) if isinstance(g, str) else tuple(g)
+            for nm in names:
+                touched.setdefault(nm, []).append(n)
+                if survival is not None:
+                    sv = survival.setdefault(nm, ([], []))
+                    sv[0].append(n)
+                    sv[1].append(h)
             if n < n_min_keep:
                 continue
             runs = parse_runs(p[9])
             nn = sum(l for _, l in runs)
             if nn != n or sum(l for s, l in runs if s) != h:
                 raise ValueError("%s:%d: runs %r disagree with N=%d H=%d" % (path, ln, p[9], n, h))
-            grp = groups.setdefault(g, Group())
             tile = (int(math.floor(ix * res / TILE_M)), int(math.floor(iy * res / TILE_M)))
-            grp.add(n, h, div, last - first + 1, tile, runs)
             k = len(runs)
-            for i, (s, l) in enumerate(runs):
-                d_all = grp.all_hit if s else grp.all_miss
-                d_all[l] = d_all.get(l, 0) + 1
-                if 0 < i < k - 1:
-                    d_in = grp.interior_hit if s else grp.interior_miss
-                    d_in[l] = d_in.get(l, 0) + 1
+            for nm in names:
+                grp = groups.setdefault(nm, Group())
+                grp.add(n, h, div, last - first + 1, tile, runs)
+                for i, (s, l) in enumerate(runs):
+                    d_all = grp.all_hit if s else grp.all_miss
+                    d_all[l] = d_all.get(l, 0) + 1
+                    if 0 < i < k - 1:
+                        d_in = grp.interior_hit if s else grp.interior_miss
+                        d_in[l] = d_in.get(l, 0) + 1
     for g in groups.values():
         g.freeze()
     return groups, {k: np.asarray(v, dtype=np.int64) for k, v in touched.items()}
@@ -324,8 +333,19 @@ def band_stats(g_s, g_c, n_min):
 
 
 # ------------------------------------------------------------------ conditions
+KTH_STRUCT_GROUPS = {1: "struct_other", 2: "struct_solid", 3: "struct_vehicle", 4: "struct_vegetation"}
+
+
 def kth_classify(lab, h, n):
-    return {1: "moving", 2: "static_ground", 3: "static_structure"}.get(lab)
+    """Label byte = base | (class group << 4) (PREREG_P1.md section 11.2). Group codes 1 to 4 are
+    other, solid, vehicle, vegetation; group 0 means the labels were built without classes. A
+    structure cell belongs to static_structure and, if it has a class group, to that group too."""
+    base, grp = lab & 15, lab >> 4
+    if base == 3:
+        if lab >= 16:
+            return ("static_structure", KTH_STRUCT_GROUPS[grp])
+        return "static_structure"
+    return {1: "moving", 2: "static_ground"}.get(base)
 
 
 def lil_classify(lab, h, n):
@@ -426,6 +446,26 @@ def analyse_condition(cond, groups, touched, n_mins, pairs, joint, out_dir, tabl
                                    fmt(b["auc_lag1_structure_over_clutter"])])
 
 
+def survivorship_rows(cond, survival, n_min=N_MIN_PRIMARY):
+    """Who survives the N_min filter: share of cells dropped by N < n_min and the mean per-cell hit rate of
+    the dropped and of the kept cells (PREREG_P1.md section 11.3). survival: group -> (N list, H list)."""
+    rows = []
+    for gname in sorted(survival):
+        n = np.asarray(survival[gname][0], dtype=np.float64)
+        h = np.asarray(survival[gname][1], dtype=np.float64)
+        keep = n >= n_min
+        rate = h / n
+        drop = ~keep
+        rows.append([cond["dataset"], cond["res"], cond["W"], cond["source"], gname, len(n), int(keep.sum()), int(drop.sum()),
+                     fmt(float(drop.mean()), 4) if len(n) else "n/a",
+                     fmt(float(rate[drop].mean()), 4) if drop.any() else "n/a",
+                     fmt(float(rate[keep].mean()), 4) if keep.any() else "n/a",
+                     fmt(float(rate.mean()), 4) if len(n) else "n/a",
+                     fmt(float(np.median(n[drop])), 1) if drop.any() else "n/a",
+                     fmt(float(np.median(n[keep])), 1) if keep.any() else "n/a"])
+    return rows
+
+
 HEAD_PCT = ["dataset", "res_m", "W", "source", "group", "N_min", "cells_touched_any", "cells_eligible", "mean"] + ["p%d" % q for q in PERCENTILES]
 HEAD_GAP = ["dataset", "res_m", "W", "pair", "N_min", "n_structure", "n_clutter", "q_s_p10", "q_c_p90", "gap",
             "gap_ci95_iid_lo", "gap_ci95_iid_hi", "gap_ci95_block_lo", "gap_ci95_block_hi", "gap_ge_0.15", "auc_rate"]
@@ -435,22 +475,25 @@ HEAD_RUNS = ["dataset", "res_m", "W", "source", "group", "N_min", "cells", "mixe
              "miss_run_interior_p90", "miss_runs_interior_n", "hit_run_all_mean", "miss_run_all_mean"]
 HEAD_TOUCH = ["dataset", "res_m", "W", "source", "group", "cells", "N_p10", "N_p50", "N_p90", "N_p99", "N_max"] + ["frac_N_ge_%d" % k for k in WINDOW_COUNTS]
 HEAD_DIV = ["dataset", "res_m", "W", "source", "group", "cells", "div_p10", "div_p50", "div_p90", "frac_div_ge_2", "frac_div_ge_3", "frac_div_ge_5", "median_span_over_N"]
+HEAD_SURV = ["dataset", "res_m", "W", "source", "group", "cells_N_ge_1", "cells_N_ge_5", "cells_dropped_N_lt_5", "share_dropped",
+             "mean_rate_dropped", "mean_rate_kept", "mean_rate_all", "median_N_dropped", "median_N_kept"]
 HEAD_BAND = ["dataset", "res_m", "W", "pair", "N_min", "band", "n_structure", "structure_switch_ratio", "structure_lag1_mean",
              "n_clutter", "clutter_switch_ratio", "clutter_lag1_mean", "auc_lag1_structure_over_clutter"]
 
 
-def run_all(data_dir, out_dir, figures=True):
-    tables = {k: [] for k in ("pct", "gap", "runs", "touch", "div", "band", "hist")}
+def run_all(data_dir, out_dir, figures=True, kth=True):
+    tables = {k: [] for k in ("pct", "gap", "runs", "touch", "div", "band", "hist", "surv")}
     inventory = []
     # ---- KTH
-    for res in ("0.2", "0.1"):
+    for res in (("0.2", "0.1") if kth else ()):
         for W in (10, 2):
             f = os.path.join(data_dir, "kth00", "cells_r%s_W%d.csv" % (res, W))
             if not os.path.exists(f):
                 inventory.append(["kth00", res, W, "missing"])
                 continue
             cond = {"dataset": "kth00", "res": res, "W": W, "source": "kitti00", "key": "kth00_r%s_W%d" % (res, W)}
-            groups, touched = read_cells(f, float(res), kth_classify, min(N_MIN_SENSITIVITY))
+            survival = {}
+            groups, touched = read_cells(f, float(res), kth_classify, min(N_MIN_SENSITIVITY), survival)
             # derived group: all static cells (ground + structure); both contribute through the same table
             sa = Group()
             for nm in ("static_ground", "static_structure"):
@@ -472,7 +515,11 @@ def run_all(data_dir, out_dir, figures=True):
             pairs = [("structure_vs_moving", "static_structure", "moving", groups, groups, None),
                      ("static_all_vs_moving", "static_all", "moving", groups, groups, None),
                      ("ground_vs_moving", "static_ground", "moving", groups, groups, None)]
+            for cg in ("struct_solid", "struct_vehicle", "struct_vegetation", "struct_other"):     # section 11.2, added after the measurement
+                if cg in groups:
+                    pairs.append((cg[len("struct_"):] + "_vs_moving", cg, "moving", groups, groups, None))
             analyse_condition(cond, groups, touched, N_MIN_SENSITIVITY, pairs, True, out_dir, tables)
+            tables["surv"].extend(survivorship_rows(cond, survival))
     # ---- LILocBench
     for res, res_file in (("0.05", "0.05"), ("0.1", "0.10")):   # label, file-name token (reproduce_p1.sh writes r0.10)
         for W in (10, 2):
@@ -483,12 +530,14 @@ def run_all(data_dir, out_dir, figures=True):
                 if not os.path.exists(f):
                     inventory.append(["lil_" + seq, res, W, "missing"])
                     continue
-                groups, touched = read_cells(f, float(res), lil_classify, min(N_MIN_SENSITIVITY))
+                survival = {}
+                groups, touched = read_cells(f, float(res), lil_classify, min(N_MIN_SENSITIVITY), survival)
                 gr[seq], tc[seq] = groups, touched
                 meta = read_meta(f.replace(".csv", ".meta"))
                 inventory.append(["lil_" + seq, res, W, "ok", meta.get("windows_closed"), meta.get("seconds"), meta.get("peak_rss_kb")])
                 cond = {"dataset": "lil", "res": res, "W": W, "source": seq, "key": "lil_%s_r%s_W%d" % (seq, res, W)}
                 analyse_condition(cond, groups, touched, N_MIN_SENSITIVITY, [], False, out_dir, tables)
+                tables["surv"].extend(survivorship_rows(cond, survival))
             if "static_0" in gr and "dynamics_0" in gr:
                 cond = {"dataset": "lil", "res": res, "W": W, "source": "static_0+dynamics_0", "key": "lil_r%s_W%d" % (res, W)}
                 pairs = [("structure@static_0_vs_clutter@dynamics_0", "structure", "hit_in_free", gr["static_0"], gr["dynamics_0"], None),
@@ -503,6 +552,7 @@ def run_all(data_dir, out_dir, figures=True):
     write_csv(os.path.join(out_dir, "p1_touched_windows.csv"), HEAD_TOUCH, tables["touch"])
     write_csv(os.path.join(out_dir, "p1_diversity.csv"), HEAD_DIV, tables["div"])
     write_csv(os.path.join(out_dir, "p1_matched_band.csv"), HEAD_BAND, tables["band"])
+    write_csv(os.path.join(out_dir, "p1_survivorship.csv"), HEAD_SURV, tables["surv"])
     nb = int(round(1 / HIST_BIN))
     write_csv(os.path.join(out_dir, "p1_hist.csv"),
               ["dataset", "res_m", "W", "source", "group", "N_min"] + ["bin_%.2f" % (i * HIST_BIN) for i in range(nb)],
@@ -546,8 +596,9 @@ def main(argv=None):
     ap.add_argument("--data-dir", required=True)
     ap.add_argument("--out-dir", required=True)
     ap.add_argument("--no-figures", action="store_true")
+    ap.add_argument("--skip-kth", action="store_true", help="LILocBench tables only (run A is re-analysed this way)")
     a = ap.parse_args(argv)
-    run_all(a.data_dir, a.out_dir, figures=not a.no_figures)
+    run_all(a.data_dir, a.out_dir, figures=not a.no_figures, kth=not a.skip_kth)
     return 0
 
 

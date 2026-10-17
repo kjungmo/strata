@@ -5,6 +5,7 @@
 //   kth-labels   GT cloud -> cell labels (moving / static ground / static structure)
 //   kth-gate     pose sanity and wall thickness of a KTH sequence
 //   kth-measure  frames + labels -> per-cell records
+//   lil-offset   LILocBench bag + GT poses -> scan-to-GT time offset search (PREREG_P1.md section 11.1)
 //   lil-convert  LILocBench bag + GT poses -> frame cache
 //   lil-gate     wall thickness of a frame cache
 //   lil-reference  frame cache -> reference occupancy labels
@@ -159,6 +160,32 @@ void writeThicknessMeta(Meta& m, const ThicknessResult& r, double res, const std
 
 // ----------------------------------------------------------------------- KTH ------
 
+struct ClassCheck { std::size_t gt_dynamic_not_moving_class{0}, moving_class_not_gt_dynamic{0}, frames{0}; };
+
+// Semantic class of every GT point, read from the intensity of the frame PCDs (PREREG_P1.md
+// section 11.2). The frames must concatenate to the GT cloud point for point: any xyz that differs,
+// or a different total, is an error.
+std::vector<std::uint16_t> readFrameClasses(const std::string& dir, const PcdCloud& gt, ClassCheck& chk) {
+  std::vector<std::uint16_t> cls(gt.intensity.size(), 0);
+  std::size_t idx = 0;
+  for (const std::string& n : listPcd(dir + "/pcd")) {
+    const PcdCloud c = readPcd(dir + "/pcd/" + n, true);
+    ++chk.frames;
+    if (c.intensity.size() * 3 != c.xyz.size()) fail(n, "no intensity");
+    for (std::size_t i = 0; i < c.intensity.size(); ++i, ++idx) {
+      if (idx >= cls.size()) fail(n, "frames hold more points than the GT cloud");
+      if (std::memcmp(&c.xyz[3 * i], &gt.xyz[3 * idx], 12) != 0) fail(n, "point " + std::to_string(i) + " differs from GT point " + std::to_string(idx));
+      const int k = classOfIntensity(c.intensity[i]);
+      cls[idx] = static_cast<std::uint16_t>(k);
+      const bool moving_class = k >= 252 && k <= 259, gt_dyn = gt.intensity[idx] == 1.0f;
+      if (gt_dyn && !moving_class) ++chk.gt_dynamic_not_moving_class;
+      if (!gt_dyn && moving_class) ++chk.moving_class_not_gt_dynamic;
+    }
+  }
+  if (idx != cls.size()) fail(dir, "frames hold " + std::to_string(idx) + " points, the GT cloud " + std::to_string(cls.size()));
+  return cls;
+}
+
 int cmdKthLabels(const std::map<std::string, std::string>& a) {
   const double t0 = nowSeconds();
   PcdCloud gt = readPcd(need(a, "gt"), true);
@@ -176,9 +203,20 @@ int cmdKthLabels(const std::map<std::string, std::string>& a) {
     }
   }
   KthLabelCounts c;
-  const LabelMap labels = buildKthLabels(gt.xyz, gt.intensity, p, &c, &origins);
+  const bool with_classes = std::stoi(opt(a, "classes", "0")) != 0;
+  ClassCheck chk;
+  std::vector<std::uint16_t> classes;
+  if (with_classes) classes = readFrameClasses(need(a, "dir"), gt, chk);
+  const LabelMap labels = buildKthLabels(gt.xyz, gt.intensity, p, &c, &origins, with_classes ? &classes : nullptr);
   writeLabels(need(a, "out"), 3, labels);
   Meta m(need(a, "meta"));
+  if (with_classes) {
+    m.put("class_groups", 1); m.put("class_frames", chk.frames);
+    m.put("class_gt_dynamic_not_moving_class", chk.gt_dynamic_not_moving_class);
+    m.put("class_moving_class_not_gt_dynamic", chk.moving_class_not_gt_dynamic);
+    m.put("cells_structure_solid", c.structure_solid); m.put("cells_structure_vehicle", c.structure_vehicle);
+    m.put("cells_structure_vegetation", c.structure_vegetation); m.put("cells_structure_other", c.structure_other);
+  }
   m.put("resolution_m", p.resolution); m.put("ground_height_m", p.ground_height_m); m.put("column_m", p.column_m);
   m.put("gt_points", c.gt_points); m.put("gt_dynamic_points", c.gt_dynamic);
   m.put("gt_nonfinite_dropped", gt.dropped_nonfinite);
@@ -250,25 +288,91 @@ int cmdKthMeasure(const std::map<std::string, std::string>& a) {
 
 std::string stripSlash(const std::string& s) { return (!s.empty() && s[0] == '/') ? s.substr(1) : s; }
 
-int cmdLilConvert(const std::map<std::string, std::string>& a) {
-  const double t0 = nowSeconds();
-  const std::string front_topic = opt(a, "front", "/laser_scan_front/scan"), rear_topic = opt(a, "rear", "/laser_scan_rear/scan");
-  const PoseTrack gt = readTumTrack(need(a, "gt"));
+Anchor parseAnchor(const std::string& s) {
+  if (s == "start") return Anchor::Start;
+  if (s == "end") return Anchor::End;
+  if (s == "single") return Anchor::Single;
+  fail("arguments", "--anchor must be start, end or single, got '" + s + "'");
+}
+const char* anchorName(Anchor a) { return a == Anchor::Start ? "start" : a == Anchor::End ? "end" : "single"; }
+
+struct LilBag {
   std::vector<ScanRecord> front, rear;
   std::vector<Se2> front_ext, rear_ext;     // every /tf sample, to check that the extrinsics are constant
+};
+
+LilBag loadLilBag(const std::map<std::string, std::string>& a) {
+  const std::string front_topic = opt(a, "front", "/laser_scan_front/scan"), rear_topic = opt(a, "rear", "/laser_scan_rear/scan");
+  LilBag b;
   readBag(need(a, "bag"), [&](const BagMessage& m) {
     if (m.topic == front_topic || m.topic == rear_topic) {
       ScanRecord r; r.msg = decodeLaserScan(m.data, m.size); r.stamp = r.msg.stamp();
-      (m.topic == front_topic ? front : rear).push_back(std::move(r));
+      (m.topic == front_topic ? b.front : b.rear).push_back(std::move(r));
     } else if (m.topic == "/tf") {
       for (const TfEdge& e : decodeTfMessage(m.data, m.size)) {
-        if (stripSlash(e.parent) == "base_link" && stripSlash(e.child) == "scan_front_link") front_ext.push_back(se2FromTf(e));
-        if (stripSlash(e.parent) == "base_link" && stripSlash(e.child) == "scan_rear_link") rear_ext.push_back(se2FromTf(e));
+        if (stripSlash(e.parent) == "base_link" && stripSlash(e.child) == "scan_front_link") b.front_ext.push_back(se2FromTf(e));
+        if (stripSlash(e.parent) == "base_link" && stripSlash(e.child) == "scan_rear_link") b.rear_ext.push_back(se2FromTf(e));
       }
     }
   });
-  if (front.empty() || rear.empty()) fail(need(a, "bag"), "no scans on the front or rear topic");
-  if (front_ext.empty() || rear_ext.empty()) fail(need(a, "bag"), "no /tf base_link -> scan_front_link / scan_rear_link");
+  if (b.front.empty() || b.rear.empty()) fail(need(a, "bag"), "no scans on the front or rear topic");
+  if (b.front_ext.empty() || b.rear_ext.empty()) fail(need(a, "bag"), "no /tf base_link -> scan_front_link / scan_rear_link");
+  return b;
+}
+
+// Scan-to-GT time offset search (PREREG_P1.md section 11.1) on one sequence: writes the score of every
+// candidate to a CSV and the selection to a meta file. Exit code 3 if the procedure fails its validity rule.
+int cmdLilOffset(const std::map<std::string, std::string>& a) {
+  const double t0 = nowSeconds();
+  const PoseTrack gt = readTumTrack(need(a, "gt"));
+  LilBag bag = loadLilBag(a);
+  const std::size_t stride = std::stoul(opt(a, "stride", "10"));
+  if (stride < 1) fail("arguments", "--stride must be at least 1");
+  const double half = std::stod(opt(a, "half-range", "0.30")), step = std::stod(opt(a, "step", "0.01"));
+  const int nk = static_cast<int>(std::lround(half / step));
+  std::vector<OffsetScore> all;
+  std::ofstream csv(need(a, "out"));
+  if (!csv) fail(need(a, "out"), "cannot write");
+  csv.precision(10);
+  csv << "anchor,dt_s,c_front,c_rear,score,dropped_share,hits\n";
+  for (Anchor an : {Anchor::Start, Anchor::End, Anchor::Single})
+    for (int k = -nk; k <= nk; ++k) {
+      const double dt = k * step;
+      const OffsetScore s = scoreOffset(gt, bag.front_ext[0], bag.rear_ext[0], bag.front, bag.rear, an, dt, stride);
+      all.push_back(s);
+      csv << anchorName(an) << "," << dt << "," << s.c_front << "," << s.c_rear << "," << s.score() << "," << s.dropped_share << "," << s.hits << "\n";
+    }
+  const OffsetChoice ch = selectOffset(all, half);
+  Meta m(need(a, "meta"));
+  m.put("stride", stride); m.put("candidates", all.size()); m.put("lowest_score", ch.lowest_score);
+  m.put("selected_anchor", anchorName(ch.best.anchor)); m.put("selected_dt_s", ch.best.dt);
+  m.put("selected_score", ch.best.score()); m.put("selected_dropped_share", ch.best.dropped_share);
+  {
+    const double ti_s = bag.front[0].msg.time_increment; const std::size_t n_b = bag.front[0].msg.ranges.size();
+    m.put("selected_beam0_offset_s", ch.best.anchor == Anchor::End ? ch.best.dt - (n_b - 1) * ti_s : ch.best.dt);
+  }
+  m.put("valid", ch.ok ? 1 : 0); m.put("reason", ch.ok ? "ok" : ch.reason);
+  // Per-laser optimum for the selected anchor (diagnostic only).
+  double bf = 1e30, br = 1e30, dtf = 0, dtr = 0;
+  for (const auto& s : all) {
+    if (s.anchor != ch.best.anchor) continue;
+    if (s.c_front < bf || (s.c_front == bf && std::fabs(s.dt) < std::fabs(dtf))) { bf = s.c_front; dtf = s.dt; }
+    if (s.c_rear < br || (s.c_rear == br && std::fabs(s.dt) < std::fabs(dtr))) { br = s.c_rear; dtr = s.dt; }
+  }
+  m.put("front_only_best_dt_s", dtf); m.put("rear_only_best_dt_s", dtr);
+  m.put("front_rear_optima_agree_within_0.02s", std::fabs(dtf - dtr) <= 0.02 + 1e-9 ? 1 : 0);
+  m.put("scan_time_s", bag.front[0].msg.scan_time); m.put("time_increment_s", bag.front[0].msg.time_increment);
+  m.put("beams_per_scan", bag.front[0].msg.ranges.size());
+  m.put("seconds", nowSeconds() - t0); m.put("peak_rss_kb", peakRssKb());
+  return ch.ok ? 0 : 3;
+}
+
+int cmdLilConvert(const std::map<std::string, std::string>& a) {
+  const double t0 = nowSeconds();
+  const PoseTrack gt = readTumTrack(need(a, "gt"));
+  LilBag bag = loadLilBag(a);
+  std::vector<ScanRecord>& front = bag.front; std::vector<ScanRecord>& rear = bag.rear;
+  std::vector<Se2>& front_ext = bag.front_ext; std::vector<Se2>& rear_ext = bag.rear_ext;
   auto spread = [](const std::vector<Se2>& v) {
     double d = 0;
     for (const Se2& e : v) d = std::max({d, std::hypot(e.x - v[0].x, e.y - v[0].y), std::fabs(Se2::wrap(e.yaw - v[0].yaw))});
@@ -277,6 +381,8 @@ int cmdLilConvert(const std::map<std::string, std::string>& a) {
   ConvertReport rep;
   rep.counts_match = front.size() == rear.size();
   ConvertOptions co; co.deskew = std::stoi(need(a, "deskew")) != 0;
+  co.anchor = parseAnchor(opt(a, "anchor", "start"));
+  co.time_offset_s = std::stod(opt(a, "time-offset", "0"));
   const std::size_t n = std::min(front.size(), rear.size());
   std::vector<Frame> frames; frames.reserve(2 * n);
   double prev = 0, min_x = 1e30, max_x = -1e30, min_y = 1e30, max_y = -1e30;
@@ -284,6 +390,7 @@ int cmdLilConvert(const std::map<std::string, std::string>& a) {
     const double skew = std::fabs(front[k].stamp - rear[k].stamp);
     rep.max_pair_skew_s = std::max(rep.max_pair_skew_s, skew);
     if (skew > co.max_pair_skew_s) rep.pair_skew_ok = false;
+    if (skew > co.max_pair_skew_alt_s) rep.pair_skew_ok_alt = false;
     if (k > 0) rep.max_scan_gap_s = std::max(rep.max_scan_gap_s, front[k].stamp - prev);
     prev = front[k].stamp;
     const std::size_t before = frames.size();
@@ -298,12 +405,14 @@ int cmdLilConvert(const std::map<std::string, std::string>& a) {
   writeCache(need(a, "out"), 2, frames);
   Meta m(need(a, "meta"));
   m.put("deskew", co.deskew ? 1 : 0);
+  m.put("anchor", anchorName(co.anchor)); m.put("time_offset_s", co.time_offset_s);
   m.put("scans_front", front.size()); m.put("scans_rear", rear.size()); m.put("counts_match", rep.counts_match ? 1 : 0);
   m.put("steps", rep.steps); m.put("frames_written", frames.size());
   m.put("scans_dropped_no_pose", rep.scans_dropped_no_pose);
   m.put("beams_total", rep.beams_total); m.put("beams_used", rep.beams_used);
   m.put("beams_no_return_or_out_of_range", rep.beams_invalid); m.put("beams_dropped_no_pose", rep.beams_no_pose);
   m.put("max_front_rear_stamp_skew_s", rep.max_pair_skew_s); m.put("pair_skew_ok", rep.pair_skew_ok ? 1 : 0);
+  m.put("pair_skew_bound_s", co.max_pair_skew_s); m.put("pair_skew_ok_at_0.03", rep.pair_skew_ok_alt ? 1 : 0);
   m.put("max_front_scan_gap_s", rep.max_scan_gap_s);
   m.put("tf_samples_front", front_ext.size()); m.put("tf_samples_rear", rear_ext.size());
   m.put("tf_front_spread", spread(front_ext)); m.put("tf_rear_spread", spread(rear_ext));
@@ -404,7 +513,7 @@ int cmdLilMeasure(const std::map<std::string, std::string>& a) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc < 2) { std::cerr << "usage: hitrate_probe <kth-labels|kth-gate|kth-measure|lil-convert|lil-gate|lil-reference|lil-measure> --key value ...\n"; return 2; }
+  if (argc < 2) { std::cerr << "usage: hitrate_probe <kth-labels|kth-gate|kth-measure|lil-offset|lil-convert|lil-gate|lil-reference|lil-measure> --key value ...\n"; return 2; }
   try {
     const std::string cmd = argv[1];
     const auto a = parseArgs(argc, argv, 2);
@@ -413,6 +522,7 @@ int main(int argc, char** argv) {
     if (cmd == "kth-measure") return cmdKthMeasure(a);
     if (cmd == "lil-convert") return cmdLilConvert(a);
     if (cmd == "lil-gate") return cmdLilGate(a);
+    if (cmd == "lil-offset") return cmdLilOffset(a);
     if (cmd == "lil-reference") return cmdLilReference(a);
     if (cmd == "lil-measure") return cmdLilMeasure(a);
     std::cerr << "unknown subcommand " << cmd << "\n"; return 2;

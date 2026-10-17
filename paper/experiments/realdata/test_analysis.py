@@ -266,5 +266,115 @@ class EndToEnd(unittest.TestCase):
             self.assertEqual(st[5], "40"); self.assertEqual(st[10], "9")      # cells, N_max
 
 
+def seq_of(h, n):
+    return [1] * h + [0] * (n - h)
+
+
+class ClassGroupsAndSurvival(unittest.TestCase):
+    def test_kth_classify_decodes_group_bits(self):
+        self.assertEqual(A.kth_classify(1, 0, 10), "moving")
+        self.assertEqual(A.kth_classify(2, 0, 10), "static_ground")
+        self.assertEqual(A.kth_classify(3, 0, 10), "static_structure")                 # built without classes
+        self.assertEqual(A.kth_classify(3 | (1 << 4), 0, 10), ("static_structure", "struct_other"))
+        self.assertEqual(A.kth_classify(3 | (2 << 4), 0, 10), ("static_structure", "struct_solid"))
+        self.assertEqual(A.kth_classify(3 | (3 << 4), 0, 10), ("static_structure", "struct_vehicle"))
+        self.assertEqual(A.kth_classify(3 | (4 << 4), 0, 10), ("static_structure", "struct_vegetation"))
+        self.assertEqual(A.kth_classify(4, 0, 10), None)                               # ego: no group
+        self.assertEqual(A.kth_classify(9, 0, 10), None)
+
+    def test_read_cells_puts_a_cell_in_nested_groups_and_fills_survival(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "c.csv")
+            write_cells(p, [(3 | (2 << 4), 0, 0, seq_of(4, 6), 1),       # solid, N=6
+                            (3 | (3 << 4), 1, 0, seq_of(1, 3), 1),       # vehicle, N=3 (below N_min 5, above keep 2)
+                            (3 | (3 << 4), 2, 0, seq_of(1, 1), 1),       # vehicle, N=1
+                            (1, 3, 0, seq_of(2, 6), 1)])                 # moving
+            sv = {}
+            g, t = A.read_cells(p, 0.2, A.kth_classify, 2, sv)
+            self.assertEqual(sorted(g), ["moving", "static_structure", "struct_solid", "struct_vehicle"])
+            self.assertEqual(list(g["static_structure"].N), [6, 3])                  # N = 1 is below n_min_keep
+            self.assertEqual(list(g["struct_vehicle"].N), [3])
+            self.assertEqual(list(t["static_structure"]), [6, 3, 1])
+            self.assertEqual(sv["static_structure"], ([6, 3, 1], [4, 1, 1]))
+            self.assertEqual(sv["struct_solid"], ([6], [4]))
+
+    def test_survivorship_rows(self):
+        cond = {"dataset": "x", "res": "0.2", "W": 10, "source": "s"}
+        sv = {"g": ([2, 4, 5, 10], [2, 2, 1, 7])}                  # dropped: rates 1.0 and 0.5; kept: 0.2 and 0.7
+        row = dict(zip(A.HEAD_SURV, A.survivorship_rows(cond, sv)[0]))
+        self.assertEqual(row["cells_N_ge_1"], 4); self.assertEqual(row["cells_N_ge_5"], 2); self.assertEqual(row["cells_dropped_N_lt_5"], 2)
+        self.assertEqual(row["share_dropped"], "0.5000")
+        self.assertEqual(row["mean_rate_dropped"], "0.7500"); self.assertEqual(row["mean_rate_kept"], "0.4500")
+        self.assertEqual(row["mean_rate_all"], "0.6000")
+        self.assertEqual(row["median_N_dropped"], "3.0"); self.assertEqual(row["median_N_kept"], "7.5")
+
+
+def gap_row(out, pair, n_min, dataset="kth00", res="0.2", w="10"):
+    lines = open(os.path.join(out, "p1_gap.csv")).read().splitlines()
+    head = lines[0].split(",")
+    rows = [dict(zip(head, r.split(","))) for r in lines[1:]]
+    sel = [r for r in rows if r["dataset"] == dataset and r["res_m"] == res and r["W"] == w and r["pair"] == pair and r["N_min"] == str(n_min)]
+    assert len(sel) == 1, (pair, n_min, len(sel))
+    return sel[0]
+
+
+class KnownPercentilesEndToEnd(unittest.TestCase):
+    """Fixtures with spread-out rates, so that the 10th and 90th percentile differ from the 20th and 80th."""
+
+    def test_kth_q_s_q_c_and_class_groups(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "kth00"))
+            rows = []
+            for i in range(112):                                   # structure: rates 0.3 .. 1.0, 14 cells each
+                grp = 2 if i < 56 else 3                           # solid for the first half, vehicle for the second
+                rows.append((3 | (grp << 4), i, 0, seq_of(3 + i % 8, 10), 1))
+            for i in range(112):                                   # moving: rates 0.0 .. 0.7, 14 cells each
+                rows.append((1, i, 400, seq_of(i % 8, 10), 1))
+            for i in range(20):                                    # structure cells with N = 3: dropped at N_min 5
+                rows.append((3 | (2 << 4), 200 + i, 0, seq_of(3, 3), 1))
+            write_cells(os.path.join(d, "kth00", "cells_r0.2_W10.csv"), rows)
+            with open(os.path.join(d, "kth00", "cells_r0.2_W10.meta"), "w") as f:
+                f.write("windows_closed=10\nseconds=1\npeak_rss_kb=1\n")
+            out = os.path.join(d, "out")
+            A.run_all(d, out, figures=False)
+            r = gap_row(out, "structure_vs_moving", 5)
+            self.assertEqual(r["n_structure"], "112"); self.assertEqual(r["n_clutter"], "112")
+            self.assertEqual(r["q_s_p10"], "0.3000")                # 10th percentile: sorted position 11.1 of 0..111, value 0.3
+            self.assertEqual(r["q_c_p90"], "0.7000")                # 90th percentile: position 99.9, value 0.7 (the 80th would give 0.6)
+            self.assertEqual(r["gap"], "-0.4000"); self.assertEqual(r["gap_ge_0.15"], "no")
+            solid = gap_row(out, "solid_vs_moving", 5)
+            self.assertEqual(solid["n_structure"], "56"); self.assertEqual(solid["q_s_p10"], "0.3000"); self.assertEqual(solid["q_c_p90"], "0.7000")
+            veh = gap_row(out, "vehicle_vs_moving", 5)
+            self.assertEqual(veh["n_structure"], "56")
+            lines = open(os.path.join(out, "p1_survivorship.csv")).read().splitlines()
+            head = lines[0].split(",")
+            st = [dict(zip(head, l.split(","))) for l in lines[1:] if l.split(",")[4] == "static_structure"][0]
+            self.assertEqual(st["cells_N_ge_1"], "132"); self.assertEqual(st["cells_dropped_N_lt_5"], "20")
+            self.assertEqual(st["mean_rate_dropped"], "1.0000")
+            self.assertEqual(st["mean_rate_kept"], "0.6500")
+            gaps = open(os.path.join(out, "p1_gap.csv")).read().splitlines()[1:]
+            self.assertEqual({g.split(",")[4] for g in gaps}, {"2", "3", "5", "7", "10"})
+
+    def test_lil_q_s_q_c_with_clutter_from_dynamics(self):
+        with tempfile.TemporaryDirectory() as d:
+            os.makedirs(os.path.join(d, "lil"))
+            st = [(1, i, 0, seq_of(3 + i % 8, 10), 1) for i in range(112)] + [(2, 300 + i, 0, seq_of(0, 10), 1) for i in range(30)]
+            dy = [(1, i, 0, seq_of(3 + i % 8, 10), 1) for i in range(112)] + [(2, 300 + i, 0, seq_of(1 + i % 8, 10), 1) for i in range(112)]
+            for seq, rows in (("static_0", st), ("dynamics_0", dy)):
+                base = os.path.join(d, "lil", "cells_%s_r0.05_W10" % seq)
+                write_cells(base + ".csv", rows)
+                with open(base + ".meta", "w") as f:
+                    f.write("windows_closed=10\nseconds=1\npeak_rss_kb=1\n")
+            out = os.path.join(d, "out")
+            A.run_all(d, out, figures=False)
+            r = gap_row(out, "structure@static_0_vs_clutter@dynamics_0", 5, dataset="lil", res="0.05")
+            self.assertEqual(r["n_structure"], "112"); self.assertEqual(r["n_clutter"], "112")
+            self.assertEqual(r["q_s_p10"], "0.3000")
+            self.assertEqual(r["q_c_p90"], "0.8000")                # 0.1 .. 0.8, 14 cells each: 90th percentile 0.8 (the 80th would give 0.7)
+            self.assertEqual(r["gap"], "-0.5000")
+            r2 = gap_row(out, "structure@static_0_vs_hit_in_free@static_0", 5, dataset="lil", res="0.05")
+            self.assertEqual(r2["n_structure"], "n/a")              # static_0 free cells were never hit: there is no clutter group
+
+
 if __name__ == "__main__":
     unittest.main()

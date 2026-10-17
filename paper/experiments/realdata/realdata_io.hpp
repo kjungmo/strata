@@ -501,10 +501,20 @@ struct ScanRecord {
   LaserScanMsg msg;
 };
 
+// How the time of beam i of a scan is derived from the header stamp (PREREG_P1.md section 11.1).
+//   Start : stamp + dt + i * time_increment                  (the stamp marks beam 0)
+//   End   : stamp + dt - (n - 1 - i) * time_increment        (the stamp marks the last beam)
+//   Single: stamp + dt for every beam                         (no per-beam time)
+// Start with dt = 0 is the rule of run A. Start and End differ only by (n - 1) * time_increment.
+enum class Anchor { Start, End, Single };
+
 struct ConvertOptions {
-  bool deskew{true};            // pose per beam at stamp + i * time_increment; false: one pose at stamp
+  bool deskew{true};            // false is the same as Anchor::Single
+  Anchor anchor{Anchor::Start};
+  double time_offset_s{0.0};    // dt: added to every beam time
   double max_gt_gap_s{0.2};     // largest GT hole bridged by interpolation
-  double max_pair_skew_s{0.03}; // front and rear stamps of one step must agree to this
+  double max_pair_skew_s{0.05}; // front and rear stamps of one step must agree to this (PREREG_P1 section 5)
+  double max_pair_skew_alt_s{0.03};  // the bound the code of run A used; kept as a second flag
   double max_range_m{1e9};      // hits beyond this are dropped (the adapter keeps everything up to range_max)
 };
 
@@ -515,11 +525,56 @@ struct ConvertReport {
   std::size_t beams_used{0};
   std::size_t beams_invalid{0};         // not finite, below range_min or above range_max (no-return)
   std::size_t beams_no_pose{0};
+  std::size_t beams_in_dropped_scans{0};
   double max_pair_skew_s{0.0};
   double max_scan_gap_s{0.0};
   bool counts_match{true};
-  bool pair_skew_ok{true};
+  bool pair_skew_ok{true};              // against max_pair_skew_s
+  bool pair_skew_ok_alt{true};          // against max_pair_skew_alt_s
 };
+
+// Time of beam i (0-based) of a scan with n beams, stamp s and time increment ti.
+inline double beamTime(const ConvertOptions& opt, double stamp, std::size_t i, std::size_t n, double ti) {
+  const Anchor a = opt.deskew ? opt.anchor : Anchor::Single;
+  switch (a) {
+    case Anchor::Start: return stamp + opt.time_offset_s + static_cast<double>(i) * ti;
+    case Anchor::End: return stamp + opt.time_offset_s - static_cast<double>(n - 1 - i) * ti;
+    default: return stamp + opt.time_offset_s;
+  }
+}
+
+// Places one scan in the map frame. Returns false (scan dropped, counted) if the pose at the time of
+// beam 0 is unavailable. The frame origin is the laser pose at that time.
+inline bool convertScan(const PoseTrack& gt, const Se2& base_to_laser, const ScanRecord& scan, std::uint32_t group,
+                        const ConvertOptions& opt, Frame& fr, ConvertReport& rep) {
+  const LaserScanMsg& m = scan.msg;
+  const std::size_t n = m.ranges.size();
+  const double ti = static_cast<double>(m.time_increment);
+  Se2 base0;
+  if (n == 0 || !gt.at(beamTime(opt, scan.stamp, 0, n, ti), base0, opt.max_gt_gap_s)) {
+    ++rep.scans_dropped_no_pose; rep.beams_total += n; rep.beams_in_dropped_scans += n; return false;
+  }
+  const bool per_beam = opt.deskew && opt.anchor != Anchor::Single;
+  fr = Frame(); fr.group = group;
+  const Se2 laser0 = base0 * base_to_laser;
+  fr.origin = Eigen::Vector3d(laser0.x, laser0.y, 0.0);
+  fr.xyz.reserve(n * 3);
+  for (std::size_t i = 0; i < n; ++i) {
+    ++rep.beams_total;
+    const float r = m.ranges[i];
+    if (!std::isfinite(r) || r < m.range_min || r > m.range_max || r > opt.max_range_m) { ++rep.beams_invalid; continue; }
+    Se2 base = base0;
+    if (per_beam && i > 0 && !gt.at(beamTime(opt, scan.stamp, i, n, ti), base, opt.max_gt_gap_s)) {
+      ++rep.beams_no_pose; continue;
+    }
+    const double a = m.angle_min + i * static_cast<double>(m.angle_increment);
+    const Eigen::Vector2d p = (base * base_to_laser).apply(r * std::cos(a), r * std::sin(a));
+    const float v[3] = {static_cast<float>(p.x()), static_cast<float>(p.y()), 0.0f};
+    fr.xyz.insert(fr.xyz.end(), v, v + 3);
+    ++rep.beams_used;
+  }
+  return true;
+}
 
 inline bool convertScanPair(const PoseTrack& gt, const Se2& base_to_front, const Se2& base_to_rear,
                             const ScanRecord& front, const ScanRecord& rear, std::uint32_t group,
@@ -528,27 +583,8 @@ inline bool convertScanPair(const PoseTrack& gt, const Se2& base_to_front, const
   const ScanRecord* scans[2] = {&front, &rear};
   const Se2* ext[2] = {&base_to_front, &base_to_rear};
   for (int s = 0; s < 2; ++s) {
-    const LaserScanMsg& m = scans[s]->msg;
-    Se2 base0;
-    if (!gt.at(scans[s]->stamp, base0, opt.max_gt_gap_s)) { ++rep.scans_dropped_no_pose; rep.beams_total += m.ranges.size(); continue; }
-    Frame fr; fr.group = group;
-    const Se2 laser0 = base0 * (*ext[s]);
-    fr.origin = Eigen::Vector3d(laser0.x, laser0.y, 0.0);
-    fr.xyz.reserve(m.ranges.size() * 3);
-    for (std::size_t i = 0; i < m.ranges.size(); ++i) {
-      ++rep.beams_total;
-      const float r = m.ranges[i];
-      if (!std::isfinite(r) || r < m.range_min || r > m.range_max || r > opt.max_range_m) { ++rep.beams_invalid; continue; }
-      Se2 base = base0;
-      if (opt.deskew && i > 0 && !gt.at(scans[s]->stamp + i * static_cast<double>(m.time_increment), base, opt.max_gt_gap_s)) {
-        ++rep.beams_no_pose; continue;
-      }
-      const double a = m.angle_min + i * static_cast<double>(m.angle_increment);
-      const Eigen::Vector2d p = (base * (*ext[s])).apply(r * std::cos(a), r * std::sin(a));
-      const float v[3] = {static_cast<float>(p.x()), static_cast<float>(p.y()), 0.0f};
-      fr.xyz.insert(fr.xyz.end(), v, v + 3);
-      ++rep.beams_used;
-    }
+    Frame fr;
+    if (!convertScan(gt, *ext[s], *scans[s], group, opt, fr, rep)) continue;
     out.push_back(std::move(fr));
     any = true;
   }

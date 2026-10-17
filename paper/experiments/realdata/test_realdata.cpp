@@ -651,6 +651,218 @@ TEST(Percentile, KnownValues) {
   EXPECT_TRUE(std::isnan(percentile({}, 50)));
 }
 
+// ------------------------------------------------ time base, classes, offset search ------
+
+TEST(Convert, AnchorsAndOffsetsPlaceBeamsAtTheStatedTimes) {
+  PoseTrack gt;
+  for (int i = 0; i <= 100; ++i) gt.add(i * 0.1, Se2{i * 0.1, 0, 0});      // 1 m/s along +x
+  ScanRecord s; s.stamp = 5.0;
+  s.msg.angle_min = 0.0f; s.msg.angle_increment = 0.0f; s.msg.time_increment = 0.1f;
+  s.msg.range_min = 0.05f; s.msg.range_max = 30.0f; s.msg.ranges = {3.0f, 3.0f, 3.0f};
+  auto run = [&](Anchor an, double dt, bool deskew, Frame& fr) {
+    ConvertOptions o; o.anchor = an; o.time_offset_s = dt; o.deskew = deskew;
+    ConvertReport rep;
+    return convertScan(gt, Se2{}, s, 0, o, fr, rep);
+  };
+  Frame f;
+  ASSERT_TRUE(run(Anchor::Start, 0.0, true, f));                 // run A: beam i at 5 + 0.1 i
+  EXPECT_NEAR(f.xyz[0], 8.0, 1e-4); EXPECT_NEAR(f.xyz[3], 8.1, 1e-4); EXPECT_NEAR(f.xyz[6], 8.2, 1e-4);
+  EXPECT_NEAR(f.origin.x(), 5.0, 1e-9);
+  ASSERT_TRUE(run(Anchor::Start, -0.5, true, f));                // pose 0.5 s earlier
+  EXPECT_NEAR(f.xyz[0], 7.5, 1e-4); EXPECT_NEAR(f.xyz[6], 7.7, 1e-4); EXPECT_NEAR(f.origin.x(), 4.5, 1e-9);
+  ASSERT_TRUE(run(Anchor::End, 0.0, true, f));                   // the stamp marks the last beam: beam i at 5 - 0.1 (2 - i)
+  EXPECT_NEAR(f.xyz[0], 7.8, 1e-4); EXPECT_NEAR(f.xyz[3], 7.9, 1e-4); EXPECT_NEAR(f.xyz[6], 8.0, 1e-4);
+  EXPECT_NEAR(f.origin.x(), 4.8, 1e-6);
+  ASSERT_TRUE(run(Anchor::Single, 1.0, true, f));                // one pose at 6 s for every beam
+  EXPECT_NEAR(f.xyz[0], 9.0, 1e-4); EXPECT_NEAR(f.xyz[6], 9.0, 1e-4);
+  ASSERT_TRUE(run(Anchor::Start, 1.0, false, f));                // deskew off is single, whatever the anchor
+  EXPECT_NEAR(f.xyz[3], 9.0, 1e-4);
+  ConvertOptions o; o.anchor = Anchor::Start; o.time_offset_s = 100.0;   // outside the track: scan dropped and counted
+  ConvertReport rep;
+  EXPECT_FALSE(convertScan(gt, Se2{}, s, 0, o, f, rep));
+  EXPECT_EQ(rep.scans_dropped_no_pose, 1u); EXPECT_EQ(rep.beams_in_dropped_scans, 3u);
+}
+
+TEST(Offset, CellsHoldingFraction) {
+  std::vector<std::uint64_t> keys;
+  for (int i = 0; i < 5; ++i) keys.push_back(10);
+  for (int i = 0; i < 3; ++i) keys.push_back(20);
+  keys.push_back(30); keys.push_back(40);                        // counts 5 3 1 1, total 10
+  EXPECT_EQ(cellsHoldingFraction(keys, 0.5), 1u);
+  EXPECT_EQ(cellsHoldingFraction(keys, 0.8), 2u);                // 8 of 10 is enough
+  EXPECT_EQ(cellsHoldingFraction(keys, 0.81), 3u);
+  EXPECT_EQ(cellsHoldingFraction(keys, 0.9), 3u);
+  EXPECT_EQ(cellsHoldingFraction(keys, 1.0), 4u);
+  EXPECT_EQ(cellsHoldingFraction({}, 0.9), 0u);
+  EXPECT_NE(cellKey2d(0.01, 0.01, 0.05), cellKey2d(0.06, 0.01, 0.05));
+  EXPECT_EQ(cellKey2d(0.01, 0.01, 0.05), cellKey2d(0.04, 0.04, 0.05));
+  EXPECT_NE(cellKey2d(-0.01, 0.01, 0.05), cellKey2d(0.01, 0.01, 0.05));    // floor, not truncation
+}
+
+TEST(Offset, SelectionRuleTieBreakEdgeAndDroppedBeams) {
+  auto mk = [](Anchor a, double dt, double score, double dropped = 0.0) {
+    OffsetScore s; s.anchor = a; s.dt = dt; s.c_front = static_cast<std::size_t>(score); s.dropped_share = dropped; return s;
+  };
+  // Start -0.1 and End 0.0 and Single 0.05 are within 0.5 % of the lowest score 997: Start wins on the anchor order.
+  OffsetChoice c = selectOffset({mk(Anchor::End, 0.0, 1000), mk(Anchor::Start, -0.1, 1000), mk(Anchor::Single, 0.05, 997)});
+  ASSERT_TRUE(c.ok);
+  EXPECT_EQ(c.best.anchor, Anchor::Start); EXPECT_DOUBLE_EQ(c.best.dt, -0.1);
+  EXPECT_DOUBLE_EQ(c.lowest_score, 997.0);
+  // Same anchor: the smaller |dt| wins among near ties; a score 1.5 % above the lowest is not a near tie.
+  c = selectOffset({mk(Anchor::Start, 0.2, 1000), mk(Anchor::Start, -0.1, 1002), mk(Anchor::Start, 0.0, 1015), mk(Anchor::Start, 0.15, 1000)});
+  ASSERT_TRUE(c.ok); EXPECT_DOUBLE_EQ(c.best.dt, -0.1);
+  c = selectOffset({mk(Anchor::Start, 0.0, 1010), mk(Anchor::Start, 0.1, 1000)});        // 1 % above: not a tie
+  EXPECT_DOUBLE_EQ(c.best.dt, 0.1);
+  // The optimum on the edge of the grid is a failure, and so are too many beams without a pose.
+  c = selectOffset({mk(Anchor::Start, -0.30, 900), mk(Anchor::Start, 0.0, 1000)}, 0.30);
+  EXPECT_FALSE(c.ok); EXPECT_FALSE(c.reason.empty());
+  c = selectOffset({mk(Anchor::Start, 0.0, 900, 0.0101)});
+  EXPECT_FALSE(c.ok);
+  c = selectOffset({mk(Anchor::Start, 0.0, 900, 0.01)});
+  EXPECT_TRUE(c.ok);
+  EXPECT_FALSE(selectOffset({}).ok);
+}
+
+namespace {
+// A 16 m x 10 m room, robot driving back and forth along x, two lasers (front looks +x, rear -x).
+double raycastRoom(double ox, double oy, double ang) {
+  const double dx = std::cos(ang), dy = std::sin(ang);
+  double best = 1e30;
+  if (dx > 1e-12) best = std::min(best, (8.0 - ox) / dx);
+  if (dx < -1e-12) best = std::min(best, (-8.0 - ox) / dx);
+  if (dy > 1e-12) best = std::min(best, (5.0 - oy) / dy);
+  if (dy < -1e-12) best = std::min(best, (-5.0 - oy) / dy);
+  return best;
+}
+double roomX(double t) { return 3.0 * std::sin(0.5 * t); }
+
+struct RoomData { PoseTrack gt; std::vector<ScanRecord> front, rear; Se2 ef{0.3, 0, 0}, er{-0.3, 0, M_PI}; };
+
+// The GT clock and the scan clock differ: beam i is measured at `true_time(stamp, i, n)` on the GT clock.
+RoomData makeRoom(const std::function<double(double, std::size_t, std::size_t)>& true_time) {
+  RoomData d;
+  for (int i = -200; i <= 4400; ++i) d.gt.add(i * 0.005, Se2{roomX(i * 0.005), 0, 0});
+  const std::size_t n = 181;
+  for (int k = 0; k < 190; ++k) {
+    for (int laser = 0; laser < 2; ++laser) {
+      ScanRecord s; s.stamp = 1.0 + 0.1 * k;
+      s.msg.angle_min = static_cast<float>(-M_PI); s.msg.angle_increment = static_cast<float>(2 * M_PI / 180.0);
+      s.msg.time_increment = 0.0005f; s.msg.range_min = 0.05f; s.msg.range_max = 40.0f;
+      const Se2& ext = laser == 0 ? d.ef : d.er;
+      for (std::size_t i = 0; i < n; ++i) {
+        const Se2 laser_pose = Se2{roomX(true_time(s.stamp, i, n)), 0, 0} * ext;
+        s.msg.ranges.push_back(static_cast<float>(raycastRoom(laser_pose.x, laser_pose.y, laser_pose.yaw + s.msg.angle_min + i * static_cast<double>(s.msg.angle_increment))));
+      }
+      (laser == 0 ? d.front : d.rear).push_back(std::move(s));
+    }
+  }
+  return d;
+}
+
+OffsetChoice searchRoom(const RoomData& d, std::initializer_list<Anchor> anchors, std::vector<OffsetScore>* keep = nullptr, int half_steps = 30) {
+  std::vector<OffsetScore> all;
+  for (Anchor a : anchors)
+    for (int k = -half_steps; k <= half_steps; ++k) all.push_back(scoreOffset(d.gt, d.ef, d.er, d.front, d.rear, a, k * 0.01, 1));
+  if (keep) *keep = all;
+  return selectOffset(all);
+}
+}  // namespace
+
+TEST(Offset, RecoversAKnownStartOffsetAndPrefersDeskewOverSinglePose) {
+  const RoomData d = makeRoom([](double s, std::size_t i, std::size_t) { return s - 0.08 + i * 0.0005; });   // start-type, dt* = -0.08
+  std::vector<OffsetScore> all;
+  const OffsetChoice c = searchRoom(d, {Anchor::Start, Anchor::Single}, &all);
+  ASSERT_TRUE(c.ok) << c.reason;
+  EXPECT_EQ(c.best.anchor, Anchor::Start);
+  EXPECT_NEAR(c.best.dt, -0.08, 0.015);
+  double best_single = 1e30, at_zero = 0;
+  for (const auto& s : all) {
+    if (s.anchor == Anchor::Single) best_single = std::min(best_single, s.score());
+    if (s.anchor == Anchor::Start && std::fabs(s.dt) < 1e-9) at_zero = s.score();
+  }
+  EXPECT_LT(c.best.score(), best_single);                       // per-beam time matters when the scan takes 0.09 s
+  EXPECT_LT(c.best.score(), at_zero);                           // the dt = 0 of run A is worse than the optimum
+}
+
+TEST(Offset, EndTypeTimingIsRecoveredAsTheEquivalentStartOffset) {
+  // The stamp marks the last beam and the GT clock lags by 0.03 s: beam i at s + 0.03 - (n - 1 - i) ti. That is
+  // the start offset 0.03 - 180 * 0.0005 = -0.06, which the tie-break reports under the anchor Start.
+  const RoomData d = makeRoom([](double s, std::size_t i, std::size_t n) { return s + 0.03 - (n - 1 - i) * 0.0005; });
+  const OffsetChoice c = searchRoom(d, {Anchor::Start, Anchor::End, Anchor::Single});
+  ASSERT_TRUE(c.ok) << c.reason;
+  EXPECT_EQ(c.best.anchor, Anchor::Start);
+  EXPECT_NEAR(c.best.dt, -0.06, 0.015);
+}
+
+TEST(Offset, EdgeOptimumFailsTheSearch) {
+  // True offset -0.08 s, searched on a grid of +-0.05 s: the lowest score is on the edge of the grid. With the
+  // 0.5 % tie band a flat score curve could still pick an interior near-tie (a property of the rule, PREREG
+  // section 11.1), so the edge rule is checked with the band switched off.
+  const RoomData d = makeRoom([](double s, std::size_t i, std::size_t) { return s - 0.08 + i * 0.0005; });
+  std::vector<OffsetScore> all;
+  searchRoom(d, {Anchor::Start}, &all, 5);
+  const OffsetScore* lowest = &all[0];
+  for (const auto& s : all) if (s.score() < lowest->score()) lowest = &s;
+  EXPECT_NEAR(lowest->dt, -0.05, 1e-9);
+  const OffsetChoice c = selectOffset(all, 0.05, 0.0);
+  EXPECT_FALSE(c.ok);
+  EXPECT_NE(c.reason.find("edge"), std::string::npos);
+}
+
+TEST(KthLabels, ClassGroupsByMajorityClassWithTieToTheSmallerCode) {
+  strata_core::LayeredMapParams lp;
+  strata_core::Voxel3DBackend vox(0.2, lp);
+  std::vector<float> xyz, in; std::vector<std::uint16_t> cls;
+  auto add = [&](float x, float y, float z, float lab, int c) { xyz.insert(xyz.end(), {x, y, z}); in.push_back(lab); cls.push_back(static_cast<std::uint16_t>(c)); };
+  for (int i = 0; i < 10; ++i) for (int j = 0; j < 10; ++j) add(20.1f + 0.2f * i, 20.1f + 0.2f * j, 0.0f, 0, 40);   // ground far away
+  add(0.1f, 0.1f, 0.0f, 0, 40);                                  // column minimum at the cells below
+  add(0.1f, 0.1f, 1.0f, 0, 80);                                  // pole: solid
+  add(2.1f, 0.1f, 0.0f, 0, 40);
+  add(2.1f, 0.1f, 1.0f, 0, 10); add(2.1f, 0.1f, 1.02f, 0, 10);   // car: vehicle
+  add(4.1f, 0.1f, 0.0f, 0, 40);
+  add(4.1f, 0.1f, 1.0f, 0, 70); add(4.1f, 0.1f, 1.02f, 0, 70); add(4.1f, 0.1f, 1.04f, 0, 50);   // majority vegetation over one building point
+  add(6.1f, 0.1f, 0.0f, 0, 40);
+  add(6.1f, 0.1f, 1.0f, 0, 70); add(6.1f, 0.1f, 1.02f, 0, 50);    // tie 70 against 50: smaller code, building: solid
+  add(8.1f, 0.1f, 0.0f, 0, 40);
+  add(8.1f, 0.1f, 1.0f, 0, 0);                                    // unlabelled: other
+  add(10.1f, 0.1f, 0.0f, 0, 40);
+  add(10.1f, 0.1f, 1.0f, 1, 253);                                 // a mover: moving, no group
+  add(12.1f, 0.1f, 0.0f, 0, 40);
+  add(12.1f, 0.1f, 1.0f, 0, 72);                                  // terrain class above the ground band: other
+  KthLabelParams p; p.resolution = 0.2;
+  KthLabelCounts c;
+  const LabelMap lab = buildKthLabels(xyz, in, p, &c, nullptr, &cls);
+  auto L = [&](float x, float y, float z) { return lab.at(vox.voxelId(Eigen::Vector3d(x, y, z))); };
+  EXPECT_EQ(L(0.1f, 0.1f, 1.0f), kStaticStructure | (kGroupSolid << 4));
+  EXPECT_EQ(L(2.1f, 0.1f, 1.0f), kStaticStructure | (kGroupVehicle << 4));
+  EXPECT_EQ(L(4.1f, 0.1f, 1.0f), kStaticStructure | (kGroupVegetation << 4));
+  EXPECT_EQ(L(6.1f, 0.1f, 1.0f), kStaticStructure | (kGroupSolid << 4));
+  EXPECT_EQ(L(8.1f, 0.1f, 1.0f), kStaticStructure | (kGroupOther << 4));
+  EXPECT_EQ(L(10.1f, 0.1f, 1.0f), kMoving);
+  EXPECT_EQ(L(12.1f, 0.1f, 1.0f), kStaticStructure | (kGroupOther << 4));
+  EXPECT_EQ(L(0.1f, 0.1f, 0.0f), kStaticGround);
+  EXPECT_EQ(labelBase(L(2.1f, 0.1f, 1.0f)), kStaticStructure); EXPECT_EQ(labelGroup(L(2.1f, 0.1f, 1.0f)), kGroupVehicle);
+  EXPECT_EQ(c.structure, 6u); EXPECT_EQ(c.structure_solid, 2u); EXPECT_EQ(c.structure_vehicle, 1u);
+  EXPECT_EQ(c.structure_vegetation, 1u); EXPECT_EQ(c.structure_other, 2u);
+  EXPECT_EQ(c.structure_solid + c.structure_vehicle + c.structure_vegetation + c.structure_other, c.structure);
+  cls.pop_back();                                                 // size mismatch is an error
+  EXPECT_THROW(buildKthLabels(xyz, in, p, nullptr, nullptr, &cls), std::runtime_error);
+}
+
+TEST(Class, OfIntensityTakesTheLowerSixteenBitsAndGroupsMatchThePrereg) {
+  EXPECT_EQ(classOfIntensity(40.0f), 40);
+  EXPECT_EQ(classOfIntensity(static_cast<float>((0xD0u << 16) | 10u)), 10);        // instance 0xD0, class 10 (car)
+  EXPECT_EQ(classOfIntensity(static_cast<float>((0x1F8u << 16) | 10u)), 10);
+  EXPECT_EQ(classOfIntensity(static_cast<float>((4u << 16) | 254u)), 254);
+  EXPECT_EQ(classOfIntensity(0.0f), 0);
+  EXPECT_THROW(classOfIntensity(-1.0f), std::runtime_error);
+  EXPECT_THROW(classOfIntensity(std::nanf("")), std::runtime_error);
+  for (int c : {50, 51, 52, 80, 71}) EXPECT_EQ(groupOfClass(c), kGroupSolid) << c;
+  for (int c : {10, 11, 13, 15, 16, 18, 20}) EXPECT_EQ(groupOfClass(c), kGroupVehicle) << c;
+  EXPECT_EQ(groupOfClass(70), kGroupVegetation);
+  for (int c : {0, 1, 40, 44, 48, 49, 60, 72, 81, 99, 252, 259}) EXPECT_EQ(groupOfClass(c), kGroupOther) << c;
+}
+
 // ------------------------------------------------------------- the command line tool ----
 
 #ifdef HITRATE_PROBE_EXE
@@ -700,6 +912,138 @@ TEST(Cli, KthLabelsAndMeasureEndToEndOnSyntheticFrames) {
   EXPECT_NE(all.find("windows_closed=4"), std::string::npos) << all;
   EXPECT_NE(all.find("observer_inconsistent=0"), std::string::npos) << all;
   EXPECT_NE(all.find("window_origin_missing=0"), std::string::npos) << all;
+}
+
+namespace {
+std::vector<std::string> readLines(const std::string& p) {
+  std::ifstream f(p); std::string line; std::vector<std::string> rows;
+  while (std::getline(f, line)) rows.push_back(line);
+  return rows;
+}
+std::string readAll(const std::string& p) { std::string s; for (const auto& l : readLines(p)) s += l + "\n"; return s; }
+}  // namespace
+
+TEST(Cli, ViewpointDiversityFollowsTheWindowOriginsOfEachWindow) {
+  // The sensor moves 2 m along +x between frames; a wall point far ahead is hit in every window (W = 1).
+  // The cell is touched from four origins at least 1 m apart, so div = 4. If the window origin were
+  // registered under the wrong window index, the count would differ.
+  const std::string root = path("div_seq");
+  mkdir(root.c_str(), 0755); mkdir((root + "/pcd").c_str(), 0755);
+  for (int f = 0; f < 4; ++f) {
+    const double vp[7] = {2.0 * f, 0, 0, 1, 0, 0, 0};
+    char nm[32]; std::snprintf(nm, sizeof nm, "/pcd/%06d.pcd", 200 + f);
+    writePcd(root + nm, {20.1f, 0.0f, 0.0f}, nullptr, vp);
+  }
+  const std::vector<float> gt_in = {0.0f};
+  writePcd(root + "/gt_cloud.pcd", {20.1f, 0.0f, 0.0f}, &gt_in, nullptr);
+  const std::string exe = HITRATE_PROBE_EXE;
+  ASSERT_EQ(std::system((exe + " kth-labels --gt " + root + "/gt_cloud.pcd --res 0.2 --out " + root + "/l.bin --meta " + root + "/l.meta").c_str()), 0);
+  ASSERT_EQ(std::system((exe + " kth-measure --dir " + root + " --labels " + root + "/l.bin --res 0.2 --window 1 --out " + root + "/c.csv --meta " + root + "/c.meta").c_str()), 0);
+  const auto rows = readLines(root + "/c.csv");
+  ASSERT_EQ(rows.size(), 2u);
+  EXPECT_EQ(rows[1], "2,100,0,0,4,4,1,4,4,h4");                  // label, ix, iy, iz, N, H, first, last, div = 4, runs
+  EXPECT_NE(readAll(root + "/c.meta").find("window_origin_missing=0"), std::string::npos);
+  // Window length 2: two windows, origins of the first steps of each (0 m and 4 m): div = 2.
+  ASSERT_EQ(std::system((exe + " kth-measure --dir " + root + " --labels " + root + "/l.bin --res 0.2 --window 2 --out " + root + "/c2.csv --meta " + root + "/c2.meta").c_str()), 0);
+  EXPECT_EQ(readLines(root + "/c2.csv").at(1), "2,100,0,0,2,2,1,2,2,h2");
+}
+
+TEST(Cli, KthLabelsWithClassesReadsTheFrameIntensityAndChecksTheConcatenation) {
+  const std::string root = path("cls_seq");
+  mkdir(root.c_str(), 0755); mkdir((root + "/pcd").c_str(), 0755);
+  // Two frames. Frame 0: ground (class 40), a building point (class 50 with instance bits) above it, a car point.
+  // Frame 1: ground, a vegetation point, a mover (class 253) point.
+  struct P { float x, y, z, in; };
+  const float k_building = static_cast<float>((7u << 16) | 50u), k_car = static_cast<float>((0xD0u << 16) | 10u);
+  const std::vector<std::vector<P>> frames = {
+      {{1.1f, 0.1f, 0.0f, 40.0f}, {1.1f, 0.1f, 1.0f, k_building}, {3.1f, 0.1f, 0.0f, 40.0f}, {3.1f, 0.1f, 1.0f, k_car}},
+      {{5.1f, 0.1f, 0.0f, 40.0f}, {5.1f, 0.1f, 1.0f, 70.0f}, {7.1f, 0.1f, 0.0f, 40.0f}, {7.1f, 0.1f, 1.0f, 253.0f}}};
+  std::vector<float> gt_xyz, gt_in;
+  for (std::size_t f = 0; f < frames.size(); ++f) {
+    std::vector<float> xyz, in;
+    for (const P& p : frames[f]) {
+      xyz.insert(xyz.end(), {p.x, p.y, p.z}); in.push_back(p.in);
+      gt_xyz.insert(gt_xyz.end(), {p.x, p.y, p.z}); gt_in.push_back(p.in == 253.0f ? 1.0f : 0.0f);
+    }
+    const double vp[7] = {0, 0, 0, 1, 0, 0, 0};
+    char nm[32]; std::snprintf(nm, sizeof nm, "/pcd/%06d.pcd", 300 + static_cast<int>(f));
+    writePcd(root + nm, xyz, &in, vp);
+  }
+  writePcd(root + "/gt_cloud.pcd", gt_xyz, &gt_in, nullptr);
+  const std::string exe = HITRATE_PROBE_EXE;
+  ASSERT_EQ(std::system((exe + " kth-labels --gt " + root + "/gt_cloud.pcd --dir " + root + " --classes 1 --res 0.2 --out " + root + "/l.bin --meta " + root + "/l.meta").c_str()), 0);
+  strata_core::LayeredMapParams lp; strata_core::Voxel3DBackend vox(0.2, lp);
+  const LabelMap lab = readLabels(root + "/l.bin");
+  auto L = [&](float x, float y, float z) { return lab.at(vox.voxelId(Eigen::Vector3d(x, y, z))); };
+  EXPECT_EQ(L(1.1f, 0.1f, 1.0f), kStaticStructure | (kGroupSolid << 4));
+  EXPECT_EQ(L(3.1f, 0.1f, 1.0f), kStaticStructure | (kGroupVehicle << 4));
+  EXPECT_EQ(L(5.1f, 0.1f, 1.0f), kStaticStructure | (kGroupVegetation << 4));
+  EXPECT_EQ(L(7.1f, 0.1f, 1.0f), kMoving);
+  EXPECT_EQ(L(1.1f, 0.1f, 0.0f), kStaticGround);
+  const std::string meta = readAll(root + "/l.meta");
+  EXPECT_NE(meta.find("class_groups=1"), std::string::npos) << meta;
+  EXPECT_NE(meta.find("cells_structure_solid=1"), std::string::npos) << meta;
+  EXPECT_NE(meta.find("class_gt_dynamic_not_moving_class=0"), std::string::npos) << meta;
+  EXPECT_NE(meta.find("class_moving_class_not_gt_dynamic=0"), std::string::npos) << meta;
+  // Without --classes the label bytes carry no group bits.
+  ASSERT_EQ(std::system((exe + " kth-labels --gt " + root + "/gt_cloud.pcd --res 0.2 --out " + root + "/l0.bin --meta " + root + "/l0.meta").c_str()), 0);
+  EXPECT_EQ(readLabels(root + "/l0.bin").at(vox.voxelId(Eigen::Vector3d(1.1, 0.1, 1.0))), kStaticStructure);
+  // A frame point that differs from the GT cloud makes the run fail.
+  std::vector<float> bad_xyz = gt_xyz; bad_xyz[0] += 0.001f;
+  writePcd(root + "/gt_bad.pcd", bad_xyz, &gt_in, nullptr);
+  EXPECT_NE(std::system((exe + " kth-labels --gt " + root + "/gt_bad.pcd --dir " + root + " --classes 1 --res 0.2 --out " + root + "/lb.bin --meta " + root + "/lb.meta 2>/dev/null").c_str()), 0);
+  // Fewer GT points than frame points also fails.
+  const std::vector<float> short_in(gt_in.begin(), gt_in.end() - 1);
+  writePcd(root + "/gt_short.pcd", std::vector<float>(gt_xyz.begin(), gt_xyz.end() - 3), &short_in, nullptr);
+  EXPECT_NE(std::system((exe + " kth-labels --gt " + root + "/gt_short.pcd --dir " + root + " --classes 1 --res 0.2 --out " + root + "/ls.bin --meta " + root + "/ls.meta 2>/dev/null").c_str()), 0);
+}
+
+TEST(Cli, LilConvertAppliesAnchorOffsetAndBothPairSkewBounds) {
+  const std::string root = path("lil_seq");
+  mkdir(root.c_str(), 0755);
+  // Robot at x = t along +x. Front laser at the base origin, rear laser rotated by pi. Each scan has 3 beams at
+  // angles -1, -0.5, 0 rad with range 3 and time increment 0.001 s. Rear stamps lag the front by 0.04 s.
+  std::string chunk = connRecord(0, "/laser_scan_front/scan", "sensor_msgs/LaserScan") + connRecord(1, "/laser_scan_rear/scan", "sensor_msgs/LaserScan") +
+                      connRecord(2, "/tf", "tf2_msgs/TFMessage");
+  chunk += msgRecord(2, 4, 0, tfBytes("base_link", "scan_front_link", 0.0, 0.0, 0.0, 1.0));
+  chunk += msgRecord(2, 4, 0, tfBytes("base_link", "scan_rear_link", 0.0, 0.0, 1.0, 0.0));
+  for (int k = 0; k < 3; ++k) {
+    chunk += msgRecord(0, 5 + k, 0, laserBytes(5 + k, 0, {3.0f, 3.0f, 3.0f}, 0.001f));
+    chunk += msgRecord(1, 5 + k, 40000000, laserBytes(5 + k, 40000000, {3.0f, 3.0f, 3.0f}, 0.001f));
+  }
+  writeFile(path("lil_seq/a.bag"), makeBag(chunk));
+  {
+    std::ofstream g(root + "/gt.txt");
+    for (int i = 0; i <= 200; ++i) g << i * 0.1 << " " << i * 0.1 << " 0 0 0 0 0 1\n";
+  }
+  const std::string exe = HITRATE_PROBE_EXE;
+  const std::string base = exe + " lil-convert --bag " + root + "/a.bag --gt " + root + "/gt.txt --deskew 1 ";
+  ASSERT_EQ(std::system((base + "--out " + root + "/c0.bin --meta " + root + "/c0.meta").c_str()), 0);
+  ASSERT_EQ(std::system((base + "--anchor start --time-offset 0.1 --out " + root + "/c1.bin --meta " + root + "/c1.meta").c_str()), 0);
+  ASSERT_EQ(std::system((base + "--anchor end --time-offset 0 --out " + root + "/c2.bin --meta " + root + "/c2.meta").c_str()), 0);
+  EXPECT_NE(std::system((base + "--anchor sideways --out " + root + "/c3.bin --meta " + root + "/c3.meta 2>/dev/null").c_str()), 0);
+  const std::vector<Frame> f0 = readCache(root + "/c0.bin"), f1 = readCache(root + "/c1.bin"), f2 = readCache(root + "/c2.bin");
+  ASSERT_EQ(f0.size(), 6u);                                        // 3 steps x 2 lasers
+  // Front scan 0 at stamp 5, beam 2 at angle 0, range 3: x = pose(5.002) + 3 = 8.002 for run A (start, 0).
+  EXPECT_NEAR(f0[0].xyz[6], 8.002, 1e-3); EXPECT_NEAR(f0[0].origin.x(), 5.0, 1e-9);
+  EXPECT_NEAR(f1[0].xyz[6], 8.102, 1e-3); EXPECT_NEAR(f1[0].origin.x(), 5.1, 1e-9);     // offset +0.1 s
+  EXPECT_NEAR(f2[0].xyz[6], 8.0, 1e-3); EXPECT_NEAR(f2[0].origin.x(), 4.998, 1e-9);      // end anchor: beam 2 is at the stamp
+  const std::string m0 = readAll(root + "/c0.meta"), m1 = readAll(root + "/c1.meta");
+  EXPECT_NE(m0.find("anchor=start"), std::string::npos); EXPECT_NE(m0.find("time_offset_s=0\n"), std::string::npos);
+  EXPECT_NE(m1.find("time_offset_s=0.1"), std::string::npos);
+  EXPECT_NE(readAll(root + "/c2.meta").find("anchor=end"), std::string::npos);
+  // The skew of every pair is 0.04 s: inside the preregistered 0.05 s, outside the 0.03 s that run A used.
+  EXPECT_NE(m0.find("max_front_rear_stamp_skew_s=0.04"), std::string::npos) << m0;
+  EXPECT_NE(m0.find("pair_skew_ok=1\n"), std::string::npos) << m0;
+  EXPECT_NE(m0.find("pair_skew_bound_s=0.05"), std::string::npos) << m0;
+  EXPECT_NE(m0.find("pair_skew_ok_at_0.03=0\n"), std::string::npos) << m0;
+  // lil-offset runs on the same files and writes one row per candidate (3 anchors x 11 offsets).
+  const int rc_off = std::system((exe + " lil-offset --bag " + root + "/a.bag --gt " + root + "/gt.txt --stride 1 --half-range 0.05 --step 0.01 --out " +
+                         root + "/off.csv --meta " + root + "/off.meta > /dev/null 2>&1").c_str()); (void)rc_off;
+  const auto rows = readLines(root + "/off.csv");
+  ASSERT_EQ(rows.size(), 1u + 33u);
+  EXPECT_EQ(rows[0], "anchor,dt_s,c_front,c_rear,score,dropped_share,hits");
+  EXPECT_NE(readAll(root + "/off.meta").find("candidates=33"), std::string::npos);
 }
 
 TEST(Cli, RejectsBadArgumentsAndMissingFiles) {

@@ -92,7 +92,30 @@ struct KthLabelParams {
 struct KthLabelCounts {
   std::size_t moving{0}, ground{0}, structure{0}, ego{0};
   std::size_t gt_points{0}, gt_dynamic{0}, gt_dynamic_ego{0};
+  // Class groups of the structure voxels (PREREG_P1.md section 11.2), only with classes.
+  std::size_t structure_other{0}, structure_solid{0}, structure_vehicle{0}, structure_vegetation{0};
 };
+
+// Semantic class of a KTH frame point: the intensity field holds the SemanticKITTI label as a
+// number; the class is its lower 16 bits (PREREG_P1.md section 11.2).
+inline int classOfIntensity(float v) {
+  if (!std::isfinite(v) || v < 0.0f || v >= 4294967296.0f) fail("class", "intensity " + std::to_string(v) + " is not a label");
+  return static_cast<int>(static_cast<std::uint32_t>(v) & 0xFFFFu);
+}
+
+// Group of a static structure voxel by its majority class. The group is carried in the upper
+// bits of the label byte: label = base | (group << 4).
+enum KthStructGroup : std::uint8_t { kGroupOther = 1, kGroupSolid = 2, kGroupVehicle = 3, kGroupVegetation = 4 };   // 0 = built without classes
+inline KthStructGroup groupOfClass(int c) {
+  switch (c) {
+    case 50: case 51: case 52: case 80: case 71: return kGroupSolid;                     // building fence other-structure pole trunk
+    case 10: case 11: case 13: case 15: case 16: case 18: case 20: return kGroupVehicle; // static vehicles (parked)
+    case 70: return kGroupVegetation;
+    default: return kGroupOther;
+  }
+}
+inline std::uint8_t labelBase(std::uint8_t label) { return label & 0x0F; }
+inline std::uint8_t labelGroup(std::uint8_t label) { return label >> 4; }
 
 // Cell level labels from the GT cloud (intensity 1 = dynamic, 0 = static). A voxel with at
 // least one dynamic GT point is moving. A voxel whose GT points are all static is static;
@@ -100,11 +123,13 @@ struct KthLabelCounts {
 // its horizontal column (any label), else structure. Intensity other than 0 or 1 throws.
 inline LabelMap buildKthLabels(const std::vector<float>& xyz, const std::vector<float>& intensity,
                                const KthLabelParams& prm, KthLabelCounts* counts = nullptr,
-                               const std::vector<Eigen::Vector3d>* origins = nullptr) {
+                               const std::vector<Eigen::Vector3d>* origins = nullptr,
+                               const std::vector<std::uint16_t>* classes = nullptr) {
   if (xyz.size() != intensity.size() * 3) fail("labels", "xyz and intensity sizes differ");
+  if (classes && classes->size() != intensity.size()) fail("labels", "classes and intensity sizes differ");
   strata_core::LayeredMapParams lp;
   strata_core::Voxel3DBackend vox(prm.resolution, lp);   // only for voxelId, the engine's own indexing
-  struct Agg { bool dyn{false}, ego{false}; float min_z{1e30f}; };
+  struct Agg { bool dyn{false}, ego{false}; float min_z{1e30f}; std::vector<std::pair<std::uint16_t, std::uint32_t>> cls; };
   if (prm.ego_radius_m > 0.0 && !origins) fail("labels", "ego_radius_m > 0 needs the frame origins");
   std::unordered_map<CellId, Agg> agg;
   std::unordered_map<std::int64_t, float> col_min;
@@ -126,6 +151,11 @@ inline LabelMap buildKthLabels(const std::vector<float>& xyz, const std::vector<
       if (ego) { a.ego = true; ++c.gt_dynamic_ego; } else a.dyn = true;
     }
     a.min_z = std::min(a.min_z, xyz[3 * i + 2]);
+    if (classes) {
+      bool found = false;
+      for (auto& kv : a.cls) if (kv.first == (*classes)[i]) { ++kv.second; found = true; break; }
+      if (!found) a.cls.emplace_back((*classes)[i], 1u);
+    }
     auto it = col_min.find(colKey(p.x(), p.y()));
     if (it == col_min.end()) col_min.emplace(colKey(p.x(), p.y()), xyz[3 * i + 2]);
     else it->second = std::min(it->second, xyz[3 * i + 2]);
@@ -142,7 +172,19 @@ inline LabelMap buildKthLabels(const std::vector<float>& xyz, const std::vector<
     // edge; the column minimum then comes from the column of the centre. Documented in the prereg.
     const float cmin = (it == col_min.end()) ? kv.second.min_z : it->second;
     if (kv.second.min_z - cmin <= static_cast<float>(prm.ground_height_m)) { out[kv.first] = kStaticGround; ++c.ground; }
-    else { out[kv.first] = kStaticStructure; ++c.structure; }
+    else {
+      std::uint8_t lab = kStaticStructure; ++c.structure;
+      if (classes) {
+        std::uint16_t best = 0; std::uint32_t best_n = 0;           // majority class, ties: smaller code
+        for (const auto& cn : kv.second.cls)
+          if (cn.second > best_n || (cn.second == best_n && cn.first < best)) { best = cn.first; best_n = cn.second; }
+        const KthStructGroup g = groupOfClass(best);
+        lab = static_cast<std::uint8_t>(kStaticStructure | (g << 4));
+        (g == kGroupSolid ? c.structure_solid : g == kGroupVehicle ? c.structure_vehicle :
+         g == kGroupVegetation ? c.structure_vegetation : c.structure_other)++;
+      }
+      out[kv.first] = lab;
+    }
   }
   if (counts) *counts = c;
   return out;
@@ -366,6 +408,97 @@ inline double percentile(std::vector<double> v, double q) {
   const std::size_t lo = static_cast<std::size_t>(std::floor(pos));
   const std::size_t hi = std::min(lo + 1, v.size() - 1);
   return v[lo] + (pos - lo) * (v[hi] - v[lo]);
+}
+
+// ------------------------------------------------ scan-to-GT time offset (section 11.1) ----
+
+// Smallest number of distinct cells that together hold at least `frac` of the keys. keys is
+// consumed (sorted). 0 for an empty input.
+inline std::size_t cellsHoldingFraction(std::vector<std::uint64_t> keys, double frac) {
+  if (keys.empty()) return 0;
+  std::sort(keys.begin(), keys.end());
+  std::vector<std::uint32_t> counts;
+  for (std::size_t i = 0; i < keys.size();) {
+    std::size_t j = i;
+    while (j < keys.size() && keys[j] == keys[i]) ++j;
+    counts.push_back(static_cast<std::uint32_t>(j - i));
+    i = j;
+  }
+  std::sort(counts.begin(), counts.end(), std::greater<std::uint32_t>());
+  const double need = frac * static_cast<double>(keys.size());
+  double acc = 0.0; std::size_t cells = 0;
+  for (std::uint32_t c : counts) { acc += c; ++cells; if (acc >= need) break; }
+  return cells;
+}
+
+inline std::uint64_t cellKey2d(double x, double y, double res) {
+  const std::int64_t ix = static_cast<std::int64_t>(std::floor(x / res)) + (1LL << 31);
+  const std::int64_t iy = static_cast<std::int64_t>(std::floor(y / res)) + (1LL << 31);
+  return (static_cast<std::uint64_t>(ix) << 32) | static_cast<std::uint64_t>(iy & 0xFFFFFFFFLL);
+}
+
+struct OffsetScore {
+  Anchor anchor{Anchor::Start};
+  double dt{0.0};
+  std::size_t c_front{0}, c_rear{0};
+  double dropped_share{0.0};      // (beams without a pose, including those of dropped scans) / all beams
+  std::size_t hits{0};
+  double score() const { return static_cast<double>(c_front + c_rear); }
+};
+
+// Score of one candidate (anchor, dt) on every `stride`-th front/rear pair: the number of 0.05 m
+// cells (res) that hold 90 % of the hits of each laser, summed over the two lasers. Lower is sharper.
+inline OffsetScore scoreOffset(const PoseTrack& gt, const Se2& base_to_front, const Se2& base_to_rear,
+                               const std::vector<ScanRecord>& front, const std::vector<ScanRecord>& rear,
+                               Anchor anchor, double dt, std::size_t stride, double res = 0.05, double frac = 0.9,
+                               double max_gt_gap_s = 0.2) {
+  ConvertOptions o; o.deskew = true; o.anchor = anchor; o.time_offset_s = dt; o.max_gt_gap_s = max_gt_gap_s;
+  ConvertReport rep;
+  std::vector<std::uint64_t> kf, kr;
+  Frame fr;
+  const std::size_t n = std::min(front.size(), rear.size());
+  for (std::size_t k = 0; k < n; k += stride) {
+    if (convertScan(gt, base_to_front, front[k], 0, o, fr, rep))
+      for (std::size_t i = 0; i < fr.size(); ++i) kf.push_back(cellKey2d(fr.xyz[3 * i], fr.xyz[3 * i + 1], res));
+    if (convertScan(gt, base_to_rear, rear[k], 0, o, fr, rep))
+      for (std::size_t i = 0; i < fr.size(); ++i) kr.push_back(cellKey2d(fr.xyz[3 * i], fr.xyz[3 * i + 1], res));
+  }
+  OffsetScore s; s.anchor = anchor; s.dt = dt;
+  s.hits = kf.size() + kr.size();
+  s.c_front = cellsHoldingFraction(std::move(kf), frac);
+  s.c_rear = cellsHoldingFraction(std::move(kr), frac);
+  s.dropped_share = rep.beams_total ? static_cast<double>(rep.beams_no_pose + rep.beams_in_dropped_scans) / rep.beams_total : 1.0;
+  return s;
+}
+
+struct OffsetChoice {
+  bool ok{false};
+  std::string reason;
+  OffsetScore best;               // the selected candidate
+  double lowest_score{0.0};
+};
+
+// Selection rule of PREREG_P1.md section 11.1: among candidates within 0.5 % of the lowest score
+// take the first anchor in the order Start, End, Single, then the smaller |dt|. The search fails if
+// the selected dt lies on the edge of the grid (|dt| >= edge_s) or lacks a pose for more than 1 % of the beams.
+inline OffsetChoice selectOffset(const std::vector<OffsetScore>& all, double edge_s = 0.30, double tie_band = 0.005) {
+  OffsetChoice ch;
+  if (all.empty()) { ch.reason = "no candidates"; return ch; }
+  double lo = all.front().score();
+  for (const auto& s : all) lo = std::min(lo, s.score());
+  ch.lowest_score = lo;
+  const OffsetScore* pick = nullptr;
+  auto rank = [](Anchor a) { return a == Anchor::Start ? 0 : a == Anchor::End ? 1 : 2; };
+  for (const auto& s : all) {
+    if (s.score() > (1.0 + tie_band) * lo) continue;
+    if (!pick || rank(s.anchor) < rank(pick->anchor) ||
+        (rank(s.anchor) == rank(pick->anchor) && std::fabs(s.dt) < std::fabs(pick->dt))) pick = &s;
+  }
+  ch.best = *pick;
+  if (std::fabs(pick->dt) >= edge_s - 1e-9) { ch.reason = "the selected offset lies on the edge of the grid"; return ch; }
+  if (pick->dropped_share > 0.01) { ch.reason = "more than 1 % of the beams lack a pose at the selected offset"; return ch; }
+  ch.ok = true;
+  return ch;
 }
 
 }  // namespace realdata
