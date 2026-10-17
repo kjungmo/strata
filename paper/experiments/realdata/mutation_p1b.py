@@ -95,6 +95,7 @@ PY = [
 EQUIVALENT = {
     "graduation boundary": "differs only if l equals A to within 1e-9 by floating point coincidence; the tolerance EPS is there to absorb that",
     "n_max boundary": "differs only if the undecided probability equals 0.03 exactly",
+    "thinning quota boundary": "at n == quota the kept fraction quota / n is 1 either way",
 }
 
 
