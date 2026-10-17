@@ -49,7 +49,7 @@ struct PcdCloud {
   std::size_t dropped_nonfinite{0};
 };
 
-inline PcdHeader readPcdHeader(std::ifstream& f, const std::string& path) {
+inline PcdHeader readPcdHeader(std::istream& f, const std::string& path) {
   PcdHeader h;
   std::string line;
   std::size_t consumed = 0;

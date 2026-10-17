@@ -4,8 +4,18 @@ add_executable(hitrate_probe hitrate_probe.cpp)
 target_link_libraries(hitrate_probe PRIVATE strata_core)
 target_include_directories(hitrate_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 
+# Phase 1b tools (PREREG_P1B.md): gates, Spires readers, labels, the lean voxel probe.
+find_package(ZLIB REQUIRED)
+add_executable(p1b_probe p1b_probe.cpp)
+target_link_libraries(p1b_probe PRIVATE strata_core ZLIB::ZLIB)
+target_include_directories(p1b_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+
 find_package(GTest QUIET)
 if(GTest_FOUND)
+  add_executable(test_p1b test_p1b.cpp)
+  target_link_libraries(test_p1b PRIVATE strata_core ZLIB::ZLIB GTest::gtest GTest::gtest_main)
+  target_include_directories(test_p1b PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+  add_test(NAME test_p1b COMMAND test_p1b)
   add_executable(test_realdata test_realdata.cpp)
   target_link_libraries(test_realdata PRIVATE strata_core GTest::gtest GTest::gtest_main)
   target_include_directories(test_realdata PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
