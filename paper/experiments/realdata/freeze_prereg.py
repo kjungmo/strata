@@ -96,6 +96,8 @@ def decide_2d(gap_rows, gates):
     if reasons:
         out["status"] = "NOT FROZEN"
         out["reasons"] = reasons
+        if r is not None and not math.isnan(num(r["gap"])) and num(r["gap"]) >= GAP_RULE:
+            out["conditional"] = freeze_values(*pair_from_row(r))      # what the rounding rule gives; NOT a freeze
         return out
     m0, m1 = pair_from_row(r)
     out.update(status="FROZEN", reasons=[])
@@ -138,6 +140,14 @@ def decide_3d(gap_rows, gates, offset_meta, convert_meta, equivalence_text, two_
         out["source_row"] = refined
     else:
         out.update(branch="F", miss_definition="today")
+        if gt >= GAP_RULE:
+            out["conditional_branch"] = "T"
+            out["conditional"] = freeze_values(*pair_from_row(today))
+            out["conditional_miss_definition"] = "today"
+        elif gr >= GAP_RULE:
+            out["conditional_branch"] = "R"
+            out["conditional"] = freeze_values(*pair_from_row(refined))
+            out["conditional_miss_definition"] = "refined"
         why = [c for c, p, _ in checks if not p]
         if valid:
             why.append("gap today %s and gap refined %s are both below 0.15" % (today["gap"] if today else "n/a", refined["gap"] if refined else "n/a"))
@@ -205,6 +215,15 @@ def render(two_d, three_d, commit, inputs):
             L.append("")
         if d.get("flag"):
             L.append("Flag: %s." % d["flag"])
+            L.append("")
+        if d.get("conditional"):
+            c = d["conditional"]
+            L.append("Conditional values, **NOT A FREEZE**: what the rounding rule gives from the measured gap if the failed gate or check were waived%s. They are printed so that the lead can decide; no engine default may take them from here." %
+                     ((", branch %s, miss definition %s" % (d.get("conditional_branch"), d.get("conditional_miss_definition"))) if d.get("conditional_branch") else ""))
+            L.append("")
+            L.append("| m0 | m1 | alpha = beta | A = -B | l_hit | l_miss | ceiling | n_max | windows for an always-hit cell | m* |")
+            L.append("|---|---|---|---|---|---|---|---|---|---|")
+            L.append("| %.2f | %.2f | %.2f | %.4f | %.4f | %.4f | %.4f | %d | %d | %.4f |" % (c["m0"], c["m1"], c["alpha"], c["A"], c["l_hit"], c["l_miss"], c["ceiling"], c["n_max_undecided"], c["latency_all_hit"], c["mstar"]))
             L.append("")
         if "m0" in d:
             src = d.get("source_row") or d.get("gap_row")

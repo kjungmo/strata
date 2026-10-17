@@ -3,7 +3,7 @@
 # time, niced. Needs the data under DATA_ROOT and the phase 1 outputs under DATA_ROOT/p1 (run B).
 #
 # usage: reproduce_p1b.sh STAGE...
-#   STAGE: build  check  gates2d  gatekth  lil15  equiv  kthref  tls  offset  convert  gatespires  labels  measure  analyze  freeze  all
+#   STAGE: build  check  gates2d  gatekth  lil15  equiv  tls  offset  convert  gatespires  labels  measure  statafter  analyze  freeze  report  replay
 #   env: DATA_ROOT (default ~/datasets/strata)  BUILD_DIR (default /tmp/strata_p1b_build)
 #        RESULTS_DIR (default <this dir>/results_p1b)  OUT_DIR (default /mnt/d/wsl/strata/p1b: bulky outputs, never in the repository)
 #        MEM_LIMIT_KB (address space per step, default 6000000)
@@ -147,14 +147,35 @@ stage_measure() {
   done
 }
 
-stage_all() { echo "run the stages one by one: all is not defined (the order depends on gate and offset verdicts)"; exit 2; }
+stage_statafter() {   # stat record of the test-split files after the work, and its comparison with the record before
+  bash "$HERE/stat_test_split.sh" "$RES/test_split_stat_after.tsv"
+  python3 -I "$HERE/compare_stat.py" --before "$RES/test_split_stat_before.tsv" "$RES/test_split_stat_before_boreas.tsv" \
+    --after "$RES/test_split_stat_after.tsv" "$RES/test_split_stat_after_boreas.tsv" --out "$RES/test_split_stat_compare.md"
+}
+
+stage_analyze() {
+  step analyze python3 -I "$HERE/analyze_p1b.py" --data-dir "$OUT" --old-meta-dir "$HERE/results_p1/meta" --meta-dir "$RES/meta" --out-dir "$RES"
+}
+
+stage_freeze() {
+  step freeze python3 -I "$HERE/freeze_prereg.py" --results-dir "$RES" --out-dir "$HERE" --commit "$(git -C "$HERE" rev-parse --short HEAD)"
+}
+
+stage_report() {
+  step report python3 -I "$HERE/make_report_p1b.py" --results-dir "$RES" --prereg-dir "$HERE" --out "$RES/P1B_REPORT.md"
+}
+
+stage_replay() {
+  ADVICE_DIR="${ADVICE_DIR:-}" RESULTS_DIR="$RES" bash "$HERE/advice_replay/run_advice_replay.sh"
+}
 
 if [ $# -eq 0 ]; then echo "usage: $0 STAGE..."; exit 2; fi
 for st in "$@"; do
   case "$st" in
     build) stage_build;; check) stage_check;; gates2d) stage_gates2d;; gatekth) stage_gatekth;; lil15) stage_lil15;;
     equiv|kthref) stage_equiv;; tls) stage_tls;; offset) stage_offset;; convert) stage_convert;; gatespires) stage_gatespires;;
-    labels) stage_labels;; measure) stage_measure;; all) stage_all;;
+    labels) stage_labels;; measure) stage_measure;; statafter) stage_statafter;; analyze) stage_analyze;; freeze) stage_freeze;;
+    report) stage_report;; replay) stage_replay;;
     *) echo "unknown stage $st"; exit 2;;
   esac
 done

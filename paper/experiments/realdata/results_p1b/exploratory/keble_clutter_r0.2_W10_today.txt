@@ -1,0 +1,11 @@
+clutter cells with N >= 5: 15864; hit-rate quantiles 10/25/50/75/90: [0.067 0.2   0.6   0.857 1.   ]
+rate >= 0.9: 3386 cells; distance to the nearest TLS-present voxel in voxels (0.20 m each): 2:0.445 3:0.235 4:0.107 5:0.069 6:0.041 7:0.043 8:0.021 9:0.040; height (m) p5/p50/p95 [-5.   0.   3.6]; viewpoint diversity median 5.0; N median 7.0
+rate < 0.5: 6430 cells; distance to the nearest TLS-present voxel in voxels (0.20 m each): 2:0.319 3:0.186 4:0.156 5:0.109 6:0.076 7:0.048 8:0.034 9:0.071; height (m) p5/p50/p95 [-5.  -1.4  3.4]; viewpoint diversity median 7.0; N median 9.0
+structure cells with N >= 5: 195641, q_s (10th percentile) = 0.4667
+buffer k voxels (0.20 m) | clutter cells N>=5 | q_c (90th percentile) | implied gap q_s - q_c
+  k=2 (0.4 m) |  15864 | 1.0000 | -0.5333
+  k=3 (0.6 m) |  10010 | 1.0000 | -0.5333
+  k=4 (0.8 m) |   6716 | 1.0000 | -0.5333
+  k=5 (1.0 m) |   4542 | 1.0000 | -0.5333
+  k=6 (1.2 m) |   3087 | 1.0000 | -0.5333
+  k=7 (1.4 m) |   2057 | 1.0000 | -0.5333

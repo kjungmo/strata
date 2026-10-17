@@ -1,0 +1,23 @@
+# check against the advisor's numbers: pure rule, W = 10, (0.15, 0.65), run B tables
+replay: rule=pure (m0,m1)=(0.15,0.65) alpha=beta=0.01 l_hit=1.4663 l_miss=-0.8873 A=4.5951 ceiling=7.5278 n_max=- T=24 window=10 res=0.05
+structure = ref_occupied on static_0, clutter = ref_free with H >= 1 on dynamics_0 (calibration data)
+  structure static_0 (all N>=1)      cells= 11027  S 0.8681 [W 0.8617, 0.8743] [B 0.8490, 0.8909] | R 0.0664 [W 0.0619, 0.0712] [B 0.0346, 0.0891] | U 0.0655 [W 0.0610, 0.0702] [B 0.0561, 0.0852] | windows-to-S p50=4 p90=7
+  clutter dynamics_0 (all N>=1)      cells= 24099  S 0.0253 [W 0.0234, 0.0273] [B 0.0191, 0.0464] | R 0.9588 [W 0.9562, 0.9612] [B 0.8837, 0.9685] | U 0.0159 [W 0.0144, 0.0176] [B 0.0107, 0.0639] | windows-to-S p50=5 p90=13
+  clutter with r <= m0               cells= 21849  S 0.0065 [W 0.0055, 0.0076] [B 0.0003, 0.0084] | R 0.9929 [W 0.9917, 0.9939] [B 0.9902, 0.9981] | U 0.0007 [W 0.0004, 0.0011] [B 0.0003, 0.0033] | windows-to-S p50=5 p90=8
+  clutter with r > m0                cells=  2250  S 0.2080 [W 0.1917, 0.2253] [B 0.1511, 0.2748] | R 0.6280 [W 0.6078, 0.6477] [B 0.4754, 0.6965] | U 0.1640 [W 0.1493, 0.1799] [B 0.1178, 0.3189] | windows-to-S p50=5 p90=13
+
+# engine rule (section 8), W = 10, (0.15, 0.65), n_max 64 as in the memo
+replay: rule=engine (m0,m1)=(0.15,0.65) alpha=beta=0.01 l_hit=1.4663 l_miss=-0.8873 A=4.5951 ceiling=7.5278 n_max=64 T=24 window=10 res=0.05
+structure = ref_occupied on static_0, clutter = ref_free with H >= 1 on dynamics_0 (calibration data)
+  structure static_0 (all N>=1)      cells= 11027  S 0.9044 [W 0.8988, 0.9098] [B 0.8910, 0.9166] | R 0.0242 [W 0.0215, 0.0273] [B 0.0078, 0.0353] | U 0.0714 [W 0.0667, 0.0763] [B 0.0612, 0.0910] | I 0.0000 [W 0.0000, 0.0003] [B 0.0000, 0.0000] | windows-to-S p50=4 p90=8
+  clutter dynamics_0 (all N>=1)      cells= 24099  S 0.0279 [W 0.0259, 0.0300] [B 0.0207, 0.0490] | R 0.9166 [W 0.9130, 0.9200] [B 0.7326, 0.9482] | U 0.0556 [W 0.0527, 0.0585] [B 0.0272, 0.2275] | I 0.0000 [W 0.0000, 0.0002] [B 0.0000, 0.0000] | windows-to-S p50=5 p90=16
+  clutter with r <= m0               cells= 21849  S 0.0065 [W 0.0056, 0.0077] [B 0.0003, 0.0084] | R 0.9609 [W 0.9582, 0.9634] [B 0.8691, 0.9811] | U 0.0326 [W 0.0303, 0.0350] [B 0.0127, 0.1080] | I 0.0000 [W 0.0000, 0.0002] [B 0.0000, 0.0000] | windows-to-S p50=5 p90=8
+  clutter with r > m0                cells=  2250  S 0.2351 [W 0.2180, 0.2531] [B 0.1609, 0.2894] | R 0.4862 [W 0.4656, 0.5069] [B 0.2103, 0.6186] | U 0.2787 [W 0.2605, 0.2976] [B 0.1626, 0.5724] | I 0.0000 [W 0.0000, 0.0017] [B 0.0000, 0.0000] | windows-to-S p50=7 p90=18
+
+# CONDITIONAL pair (NOT frozen), W = 15, engine rule, n_max from derive_defaults
+replay: rule=engine (m0,m1)=(0.20,0.70) alpha=beta=0.01 l_hit=1.2528 l_miss=-0.9808 A=4.5951 ceiling=7.1006 n_max=80 T=24 window=15 res=0.05
+structure = ref_occupied on static_0, clutter = ref_free with H >= 1 on dynamics_0 (calibration data)
+  structure static_0 (all N>=1)      cells= 11027  S 0.8956 [W 0.8898, 0.9012] [B 0.8735, 0.9085] | R 0.0141 [W 0.0121, 0.0165] [B 0.0042, 0.0263] | U 0.0902 [W 0.0850, 0.0957] [B 0.0782, 0.1165] | I 0.0000 [W 0.0000, 0.0003] [B 0.0000, 0.0000] | windows-to-S p50=4 p90=10
+  clutter dynamics_0 (all N>=1)      cells= 24096  S 0.0206 [W 0.0189, 0.0225] [B 0.0164, 0.0342] | R 0.9083 [W 0.9046, 0.9119] [B 0.7268, 0.9428] | U 0.0711 [W 0.0679, 0.0744] [B 0.0370, 0.2508] | I 0.0000 [W 0.0000, 0.0002] [B 0.0000, 0.0000] | windows-to-S p50=6 p90=17
+  clutter with r <= m0               cells= 22273  S 0.0040 [W 0.0033, 0.0050] [B 0.0001, 0.0055] | R 0.9458 [W 0.9428, 0.9487] [B 0.8411, 0.9748] | U 0.0502 [W 0.0474, 0.0531] [B 0.0231, 0.1409] | I 0.0000 [W 0.0000, 0.0002] [B 0.0000, 0.0000] | windows-to-S p50=4 p90=11
+  clutter with r > m0                cells=  1823  S 0.2227 [W 0.2042, 0.2424] [B 0.1475, 0.2902] | R 0.4504 [W 0.4276, 0.4733] [B 0.2137, 0.5535] | U 0.3269 [W 0.3058, 0.3488] [B 0.2169, 0.6118] | I 0.0000 [W -0.0000, 0.0021] [B 0.0000, 0.0000] | windows-to-S p50=6 p90=18

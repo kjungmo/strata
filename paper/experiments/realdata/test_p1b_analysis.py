@@ -154,7 +154,10 @@ class Freeze(unittest.TestCase):
         d = fp.decide_2d(self.rows2d(), g)
         self.assertEqual(d["status"], "NOT FROZEN")
         self.assertTrue(any("lil_static_0 fails" in r and "G1" in r for r in d["reasons"]))
+        self.assertIn("conditional", d)
+        self.assertNotIn("m0", d)                                 # a failed gate freezes nothing
         d2 = fp.decide_2d(self.rows2d(0.10, 0.4, 0.3), self.gates_ok())
+        self.assertNotIn("conditional", d2)                       # a gap below 0.15 gives no conditional values either
         self.assertEqual(d2["status"], "NOT FROZEN")
         self.assertTrue(any("gap" in r for r in d2["reasons"]))
         d3 = fp.decide_2d([], self.gates_ok())
@@ -194,9 +197,25 @@ class Freeze(unittest.TestCase):
             f = fp.decide_3d(self.rows3d(0.4, 0.5), gates, off, {}, eq, two)
             self.assertEqual(f["branch"], "F")
             self.assertTrue(f["reasons"])
+        f = fp.decide_3d(self.rows3d(0.4, 0.5), bad_gates, GOOD_OFFSET, {}, EQUIV_OK, two)
+        self.assertEqual(f["conditional_branch"], "T")                 # the gap alone would have given branch T
+        self.assertIn("conditional", f)
+        f2 = fp.decide_3d(self.rows3d(0.1, 0.5), bad_gates, GOOD_OFFSET, {}, EQUIV_OK, two)
+        self.assertEqual(f2["conditional_branch"], "R")
+        f3 = fp.decide_3d(self.rows3d(0.1, 0.1), bad_gates, GOOD_OFFSET, {}, EQUIV_OK, two)
+        self.assertNotIn("conditional", f3)
         not_frozen_2d = fp.decide_2d([], self.gates_ok())
         g = fp.decide_3d(self.rows3d(0.1, 0.1), self.gates_ok(), GOOD_OFFSET, {}, EQUIV_OK, not_frozen_2d)
         self.assertEqual(g["status"], "NOT FROZEN")
+
+    def test_render_of_a_failed_gate_prints_conditional_values_as_not_a_freeze(self):
+        gates = [gate("lil_mapping", ok1=False), gate("lil_static_0"), gate("lil_dynamics_0"), gate("keble02", ok1=False)]
+        two = fp.decide_2d(self.rows2d(0.5583, 0.6957, 0.1417), gates)
+        three = fp.decide_3d(self.rows3d(0.2, 0.3), gates, GOOD_OFFSET, {}, EQUIV_OK, two)
+        text = fp.render(two, three, "abc", {})
+        self.assertIn("NOT FROZEN", text)
+        self.assertIn("NOT A FREEZE", text)
+        self.assertNotIn("| m0 | 0.15 |", text)               # the quantity table of a freeze is absent
 
     def test_render_and_main(self):
         with tempfile.TemporaryDirectory() as d:

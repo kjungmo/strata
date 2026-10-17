@@ -176,10 +176,20 @@ int cmdGateSpires(const std::map<std::string, std::string>& a) {
   std::vector<std::vector<float>> steps;
   std::vector<float> pts; std::size_t k = 0;
   const int stride = std::stoi(opt(a, "stride", "50"));
+  // Exploratory option (not part of the pre-registered gate): --labels L --res R keeps for G1 only the returns that fall into
+  // a voxel labelled structure (non-ground TLS structure) of the label file L. The pre-registered gate uses every return.
+  const bool has_filter = a.count("labels") > 0;
+  LabelMap flab; VoxIndex fvi;
+  if (has_filter) { flab = readLabels(need(a, "labels")); fvi.res = std::stod(need(a, "res")); }
   Frame fr;
   while (cache.next(fr)) {
-    for (std::size_t i = 0; i < fr.size(); ++i)
+    for (std::size_t i = 0; i < fr.size(); ++i) {
+      if (has_filter) {
+        auto it = flab.find(fvi.id(Eigen::Vector3d(fr.xyz[3 * i], fr.xyz[3 * i + 1], fr.xyz[3 * i + 2])));
+        if (it == flab.end() || labelBase(it->second) != kStaticStructure) continue;
+      }
       if (k++ % stride == 0) pts.insert(pts.end(), fr.xyz.begin() + 3 * i, fr.xyz.begin() + 3 * i + 3);
+    }
     addFrameToSteps(steps, fr, cp.ref_stride);
   }
   ShapeParams sp; sp.three_d = true; sp.radius_m = 2.0;
@@ -188,6 +198,7 @@ int cmdGateSpires(const std::map<std::string, std::string>& a) {
   const ConsistencyResult g2 = poseConsistency(steps, cp);
   const GateVerdictG2 v2 = verdictG2(g2, kThr3d.d50, kThr3d.d90);
   Meta m(need(a, "meta"));
+  m.put("exploratory_label_filter", has_filter ? "structure voxels of the TLS labels" : "none");
   m.put("kind", "gate-spires"); m.put("returns_total", k); m.put("g1_points_used", pts.size() / 3); m.put("steps", steps.size());
   putGate(m, g1, v1, g2, v2, kThr3d, sp, cp);
   m.put("seconds", nowSeconds() - t0); m.put("peak_rss_kb", peakRssKb());
