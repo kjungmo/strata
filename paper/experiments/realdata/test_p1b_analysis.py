@@ -228,6 +228,32 @@ class Freeze(unittest.TestCase):
             self.assertTrue(os.path.exists(os.path.join(d, "PREREG.json")))
 
 
+class Report(unittest.TestCase):
+    def test_report_smoke(self):
+        import make_report_p1b as mr
+        with tempfile.TemporaryDirectory() as d:
+            rd = os.path.join(d, "res")
+            os.makedirs(os.path.join(rd, "meta"))
+            os.makedirs(os.path.join(rd, "logs"))
+            rows = [gap_row("lil", "0.05", 15, "-", "structure@static_0_vs_clutter@dynamics_0", 0.5, 0.7, 0.2)]
+            for r in rows:
+                r.update({"m0_rounded": "0.20", "m1_rounded": "0.70", "gap_ge_0.15": "yes"})
+            with open(os.path.join(rd, "p1b_gap.csv"), "w") as f:
+                keys = list(rows[0].keys())
+                f.write(",".join(keys) + "\n")
+                for r in rows:
+                    f.write(",".join(r[k] for k in keys) + "\n")
+            with open(os.path.join(rd, "logs", "x.log"), "w") as f:
+                f.write("STEP x\nSTART 2026-10-18T07:30:00+09:00 host=h load=1 cores=2\n")
+            out = os.path.join(d, "R.md")
+            self.assertEqual(mr.main(["--results-dir", rd, "--prereg-dir", d, "--out", out]), 0)
+            with open(out) as f:
+                text = f.read()
+            self.assertIn("## 2. Gates G1 and G2", text)
+            self.assertIn("0.20", text)
+            self.assertIn("first step log of phase 1b: `x.log` started 2026-10-18T07:30:00+09:00", text)
+
+
 class GapRows(unittest.TestCase):
     def test_gap_rows_have_all_columns_and_the_rounded_pair(self):
         rng = np.random.RandomState(1)

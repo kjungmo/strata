@@ -1,0 +1,68 @@
+=== Derived parameters (rounding: m1 = floor(q_s), m0 = ceil(q_c) to 0.05) ===
+LIL 0.05 W10   q_s=0.6957 q_c=0.1417 -> (m0,m1)=(0.15,0.65) alpha=beta=0.01: l_hit=1.466 l_miss=-0.887 A=4.595 B=-4.595 m*=0.377 latency(all-hit)=4 E[N|m*]=16.2  OC@m0=0.010 OC@m1=0.990 OC@0.3=0.209 OC@0.5=0.881 E[N|m1]=7.0 E[N|m0]=8.4
+LIL 0.05 W10   q_s=0.6957 q_c=0.1417 -> (m0,m1)=(0.15,0.65) alpha=beta=0.05: l_hit=1.466 l_miss=-0.887 A=2.944 B=-2.944 m*=0.377 latency(all-hit)=3 E[N|m*]=6.7  OC@m0=0.050 OC@m1=0.950 OC@0.3=0.299 OC@0.5=0.783 E[N|m1]=4.1 E[N|m0]=5.0
+LIL 0.05 W2    q_s=0.5770 q_c=0.0697 -> (m0,m1)=(0.10,0.55) alpha=beta=0.01: l_hit=1.705 l_miss=-0.693 A=4.595 B=-4.595 m*=0.289 latency(all-hit)=3 E[N|m*]=17.9  OC@m0=0.010 OC@m1=0.990 OC@0.3=0.550 OC@0.5=0.976 E[N|m1]=7.2 E[N|m0]=9.9
+LIL 0.05 W2    q_s=0.5770 q_c=0.0697 -> (m0,m1)=(0.10,0.55) alpha=beta=0.05: l_hit=1.705 l_miss=-0.693 A=2.944 B=-2.944 m*=0.289 latency(all-hit)=2 E[N|m*]=7.3  OC@m0=0.050 OC@m1=0.950 OC@0.3=0.532 OC@0.5=0.914 E[N|m1]=4.2 E[N|m0]=5.8
+LIL 0.10 W10   q_s=0.7008 q_c=0.2034 -> (m0,m1)=(0.25,0.70) alpha=beta=0.01: l_hit=1.030 l_miss=-0.916 A=4.595 B=-4.595 m*=0.471 latency(all-hit)=5 E[N|m*]=22.4  OC@m0=0.010 OC@m1=0.990 OC@0.3=0.031 OC@0.5=0.634 E[N|m1]=10.1 E[N|m0]=10.5
+LIL 0.10 W10   q_s=0.7008 q_c=0.2034 -> (m0,m1)=(0.25,0.70) alpha=beta=0.05: l_hit=1.030 l_miss=-0.916 A=2.944 B=-2.944 m*=0.471 latency(all-hit)=3 E[N|m*]=9.2  OC@m0=0.050 OC@m1=0.950 OC@0.3=0.100 OC@0.5=0.587 E[N|m1]=5.9 E[N|m0]=6.2
+LIL 0.10 W2    q_s=0.5975 q_c=0.1185 -> (m0,m1)=(0.15,0.55) alpha=beta=0.01: l_hit=1.299 l_miss=-0.636 A=4.595 B=-4.595 m*=0.329 latency(all-hit)=4 E[N|m*]=25.6  OC@m0=0.010 OC@m1=0.990 OC@0.3=0.348 OC@0.5=0.972 E[N|m1]=10.5 E[N|m0]=13.0
+LIL 0.10 W2    q_s=0.5975 q_c=0.1185 -> (m0,m1)=(0.15,0.55) alpha=beta=0.05: l_hit=1.299 l_miss=-0.636 A=2.944 B=-2.944 m*=0.329 latency(all-hit)=3 E[N|m*]=10.5  OC@m0=0.050 OC@m1=0.950 OC@0.3=0.401 OC@0.5=0.906 E[N|m1]=6.2 E[N|m0]=7.7
+contrast (anti-conservative rounding) (0.10,0.70) a=b=0.01: l_hit=1.946 l_miss=-1.099 latency=3 m*=0.361 E[N|m*]=9.9
+placeholder (0.30,0.60) a=b=0.01: l_hit=0.693 l_miss=-0.560 latency=7 m*=0.447 E[N|m*]=54.4
+
+=== Empirical replay on LILocBench 0.05 m (structure = ref_occupied on static_0; clutter = ref_free with H>=1 on dynamics_0) ===
+W=10 check: q_s(p10,N>=5)=0.6957 (n=10274)  q_c(p90,N>=5)=0.1417 (n=23932)
+ (m0,m1,a=b)=(0.15,0.65,0.01): structure(N>=5) share r<m1=0.0743 (indifference+below), r<=m0=0.0048 | clutter(N>=5) share r>m0=0.0870, r>=m1=0.0070
+  structure static_0 (all N>=1)      cells= 11027  S=0.8681 R=0.0664 U=0.0655 | open-ended ever>=A 0.9255 | cells with N>=4: 10454 of which S=0.9157 U=0.0143 | windows-to-S p50=4 p90=7.0
+  clutter dynamics_0 (all N>=1)      cells= 24099  S=0.0253 R=0.9588 U=0.0159 | open-ended ever>=A 0.0591 | cells with N>=4: 23965 of which S=0.0254 U=0.0104 | windows-to-S p50=5 p90=13.0
+ (m0,m1,a=b)=(0.15,0.65,0.05): structure(N>=5) share r<m1=0.0743 (indifference+below), r<=m0=0.0048 | clutter(N>=5) share r>m0=0.0870, r>=m1=0.0070
+  structure static_0 (all N>=1)      cells= 11027  S=0.8653 R=0.0918 U=0.0429 | open-ended ever>=A 0.9473 | cells with N>=3: 10662 of which S=0.8950 U=0.0101 | windows-to-S p50=3.0 p90=4.0
+  clutter dynamics_0 (all N>=1)      cells= 24099  S=0.0315 R=0.9583 U=0.0103 | open-ended ever>=A 0.1381 | cells with N>=3: 23989 of which S=0.0316 U=0.0058 | windows-to-S p50=4.0 p90=7.0
+  structure, placeholder (0.3,0.6,.01) cells= 11027  S=0.8297 R=0.0421 U=0.1282 | open-ended ever>=A 0.8625 | cells with N>=7: 9928 of which S=0.9215 U=0.0317 | windows-to-S p50=7 p90=14.0
+  clutter,   placeholder (0.3,0.6,.01) cells= 24099  S=0.0112 R=0.9639 U=0.0249 | open-ended ever>=A 0.0158 | cells with N>=7: 23835 of which S=0.0113 U=0.0141 | windows-to-S p50=9.0 p90=25.0
+W=2 check: q_s(p10,N>=5)=0.5770 (n=10656)  q_c(p90,N>=5)=0.0697 (n=24006)
+ (m0,m1,a=b)=(0.10,0.55,0.01): structure(N>=5) share r<m1=0.0853 (indifference+below), r<=m0=0.0078 | clutter(N>=5) share r>m0=0.0606, r>=m1=0.0065
+  structure static_0 (all N>=1)      cells= 11027  S=0.8343 R=0.1346 U=0.0311 | open-ended ever>=A 0.9596 | cells with N>=3: 10813 of which S=0.8508 U=0.0119 | windows-to-S p50=3.0 p90=7.0
+  clutter dynamics_0 (all N>=1)      cells= 24119  S=0.0260 R=0.9666 U=0.0073 | open-ended ever>=A 0.3044 | cells with N>=3: 24043 of which S=0.0261 U=0.0042 | windows-to-S p50=3.0 p90=13.0
+ (m0,m1,a=b)=(0.10,0.55,0.05): structure(N>=5) share r<m1=0.0853 (indifference+below), r<=m0=0.0078 | clutter(N>=5) share r>m0=0.0606, r>=m1=0.0065
+  structure static_0 (all N>=1)      cells= 11027  S=0.8282 R=0.1525 U=0.0192 | open-ended ever>=A 0.9717 | cells with N>=2: 10910 of which S=0.8371 U=0.0087 | windows-to-S p50=2 p90=5.0
+  clutter dynamics_0 (all N>=1)      cells= 24119  S=0.0299 R=0.9658 U=0.0043 | open-ended ever>=A 0.4660 | cells with N>=2: 24083 of which S=0.0299 U=0.0028 | windows-to-S p50=2 p90=8
+
+=== In-sample KITTI 00 replay (3D, single pass; structure = static_structure incl. class groups, moving = label 1) ===
+W=10: structure cells=283511 (solid 79360), moving cells=5901
+ (m0,m1,a=b)=(0.15,0.65,0.01) latency=4
+  static_structure                   cells=283511  S=0.1963 R=0.0759 U=0.7277 | open-ended ever>=A 0.1966 | cells with N>=4: 145520 of which S=0.3825 U=0.4696 | windows-to-S p50=4.0 p90=7.0
+  struct_solid                       cells= 79360  S=0.2251 R=0.0837 U=0.6912 | open-ended ever>=A 0.2259 | cells with N>=4: 39464 of which S=0.4527 U=0.3790 | windows-to-S p50=4 p90=8.0
+  moving                             cells=  5901  S=0.0508 R=0.9041 U=0.0451 | open-ended ever>=A 0.0508 | cells with N>=4: 5872 of which S=0.0511 U=0.0404 | windows-to-S p50=5.0 p90=8.0
+ (m0,m1,a=b)=(0.30,0.60,0.01) latency=7
+  static_structure                   cells=283511  S=0.0569 R=0.0245 U=0.9187 | open-ended ever>=A 0.0569 | cells with N>=7: 76471 of which S=0.2108 U=0.6985 | windows-to-S p50=7 p90=9.0
+  struct_solid                       cells= 79360  S=0.0676 R=0.0265 U=0.9058 | open-ended ever>=A 0.0676 | cells with N>=7: 22682 of which S=0.2366 U=0.6706 | windows-to-S p50=7 p90=9.0
+  moving                             cells=  5901  S=0.0254 R=0.7031 U=0.2715 | open-ended ever>=A 0.0254 | cells with N>=7: 5790 of which S=0.0259 U=0.2575 | windows-to-S p50=7.0 p90=9.0
+ (m0,m1,a=b)=(0.15,0.65,0.05) latency=3
+  static_structure                   cells=283511  S=0.2771 R=0.1478 U=0.5751 | open-ended ever>=A 0.2880 | cells with N>=3: 175137 of which S=0.4485 U=0.3122 | windows-to-S p50=3.0 p90=6.0
+  struct_solid                       cells= 79360  S=0.3104 R=0.1529 U=0.5367 | open-ended ever>=A 0.3365 | cells with N>=3: 48033 of which S=0.5128 U=0.2345 | windows-to-S p50=3.0 p90=6.0
+  moving                             cells=  5901  S=0.0532 R=0.9290 U=0.0178 | open-ended ever>=A 0.0625 | cells with N>=3: 5900 of which S=0.0532 U=0.0176 | windows-to-S p50=4.0 p90=7.0
+W=2: structure cells=283511 (solid 79360), moving cells=5901
+ (m0,m1,a=b)=(0.15,0.65,0.01) latency=4
+  static_structure                   cells=283511  S=0.2739 R=0.2890 U=0.4371 | open-ended ever>=A 0.3321 | cells with N>=4: 206840 of which S=0.3755 U=0.2284 | windows-to-S p50=4.0 p90=10.0
+  struct_solid                       cells= 79360  S=0.3455 R=0.2774 U=0.3771 | open-ended ever>=A 0.4443 | cells with N>=4: 59218 of which S=0.4630 U=0.1652 | windows-to-S p50=4.0 p90=10.0
+  moving                             cells=  5901  S=0.0198 R=0.9783 U=0.0019 | open-ended ever>=A 0.0590 | cells with N>=4: 5900 of which S=0.0198 U=0.0017 | windows-to-S p50=13 p90=29.0
+ (m0,m1,a=b)=(0.30,0.60,0.01) latency=7
+  static_structure                   cells=283511  S=0.1617 R=0.2475 U=0.5908 | open-ended ever>=A 0.1790 | cells with N>=7: 165246 of which S=0.2774 U=0.2980 | windows-to-S p50=9.0 p90=20.0
+  struct_solid                       cells= 79360  S=0.2160 R=0.2365 U=0.5476 | open-ended ever>=A 0.2551 | cells with N>=7: 47200 of which S=0.3631 U=0.2393 | windows-to-S p50=7.0 p90=20.0
+  moving                             cells=  5901  S=0.0186 R=0.9749 U=0.0064 | open-ended ever>=A 0.0208 | cells with N>=7: 5894 of which S=0.0187 U=0.0053 | windows-to-S p50=22.0 p90=34.0
+ (m0,m1,a=b)=(0.15,0.65,0.05) latency=3
+  static_structure                   cells=283511  S=0.3212 R=0.3426 U=0.3361 | open-ended ever>=A 0.4167 | cells with N>=3: 226414 of which S=0.4022 U=0.1687 | windows-to-S p50=3.0 p90=7.0
+  struct_solid                       cells= 79360  S=0.3944 R=0.3252 U=0.2804 | open-ended ever>=A 0.5402 | cells with N>=3: 64770 of which S=0.4832 U=0.1183 | windows-to-S p50=3.0 p90=7.0
+  moving                             cells=  5901  S=0.0132 R=0.9864 U=0.0003 | open-ended ever>=A 0.0681 | cells with N>=3: 5901 of which S=0.0132 U=0.0003 | windows-to-S p50=7.0 p90=22.0
+
+=== Monte Carlo: P(still undecided after n windows) at m = m* (iid), for truncation n_max ===
+ (0.15,0.65,0.01) m*=0.377 E[N]=16.2: n=8:0.702  n=16:0.423  n=24:0.273  n=32:0.171  n=48:0.065  n=64:0.024  n=96:0.003  n=128:0.001
+ (0.15,0.65,0.05) m*=0.377 E[N]=6.7: n=8:0.428  n=16:0.138  n=24:0.045  n=32:0.014  n=48:0.002  n=64:0.001  n=96:0.000  n=128:0.000
+ (0.10,0.55,0.01) m*=0.289 E[N]=17.9: n=8:0.791  n=16:0.518  n=24:0.295  n=32:0.199  n=48:0.084  n=64:0.033  n=96:0.005  n=128:0.001
+
+=== Monte Carlo: false-Static at rate m0 with iid vs two-state Markov windows (lag-1 rho), open-ended, 200 windows ===
+ rho=0.00 (m0,m1,a)=(0.15,0.65,0.01): P(ever >= A within 200 windows | rate m0) = 0.0100  (alpha=0.01)
+ rho=0.23 (m0,m1,a)=(0.15,0.65,0.01): P(ever >= A within 200 windows | rate m0) = 0.1338  (alpha=0.01)
+ rho=0.35 (m0,m1,a)=(0.15,0.65,0.01): P(ever >= A within 200 windows | rate m0) = 0.2892  (alpha=0.01)
+ rho=0.50 (m0,m1,a)=(0.15,0.65,0.01): P(ever >= A within 200 windows | rate m0) = 0.5449  (alpha=0.01)

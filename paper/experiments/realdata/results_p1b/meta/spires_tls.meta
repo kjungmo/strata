@@ -1,0 +1,12 @@
+area_radius_m=30
+track_positions=7638
+tls_points_read=64603395
+tls_points_kept=53718421
+tls_points_discarded_outside_area=10884974
+tls_points_nonfinite=0
+tls_voxels_r0.200000=616887
+tls_voxels_r0.100000=2321019
+tls_voxels_r0.050000=8209425
+tls_columns=8444
+seconds=30.88374939
+peak_rss_kb=502976

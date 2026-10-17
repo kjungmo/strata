@@ -1,0 +1,5 @@
+# lean probe (today's miss) against the real engine cell tables of run B, KITTI 00
+r=0.2 W=10 IDENTICAL sha256_lean=1b7b6ab9399db42d sha256_engine=1b7b6ab9399db42d
+r=0.2 W=2 IDENTICAL sha256_lean=666ca94acb4e1805 sha256_engine=666ca94acb4e1805
+r=0.1 W=10 IDENTICAL sha256_lean=419176829338bfc7 sha256_engine=419176829338bfc7
+r=0.1 W=2 IDENTICAL sha256_lean=4b5b7eaf223ba884 sha256_engine=4b5b7eaf223ba884

@@ -1,0 +1,5 @@
+STEP spires_offset
+START 2026-10-18T07:33:58+09:00 host=DESKTOP-KCD7BRS load=3.67 4.42 4.07 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe spires-offset --zip <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-02/raw/lidar-clouds.zip --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-02/processed/trajectory/gt-tum.txt --tls-dir <OUT_DIR> --csv <OUT_DIR>/spires_offset.csv --meta <OUT_DIR>/spires_offset.meta
+p1b_probe: lidar-clouds/1710255656.973875000.pcd: size 2884864 bytes, header says 2881008 (record layout not understood)
+END 2026-10-18T07:34:04+09:00 rc=1 load=3.70 4.41 4.06

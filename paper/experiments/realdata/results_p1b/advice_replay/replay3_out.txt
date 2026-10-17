@@ -1,0 +1,12 @@
+a=b=0.01 T= 8 floor=B always         clutter false-Static 0.0265 | structure S 0.8802 R 0.0519 U 0.0679 | lat p50 4 p90 7
+a=b=0.01 T= 8 floor=2B before gate   clutter false-Static 0.0256 | structure S 0.8739 R 0.0583 U 0.0677 | lat p50 4 p90 7
+a=b=0.01 T= 8 no floor before gate   clutter false-Static 0.0256 | structure S 0.8739 R 0.0583 U 0.0677 | lat p50 4 p90 7
+a=b=0.01 T=24 floor=B always         clutter false-Static 0.0346 | structure S 0.9146 R 0.0131 U 0.0723 | lat p50 4 p90 10
+a=b=0.01 T=24 floor=2B before gate   clutter false-Static 0.0286 | structure S 0.9076 R 0.0207 U 0.0717 | lat p50 4 p90 8
+a=b=0.01 T=24 no floor before gate   clutter false-Static 0.0279 | structure S 0.9044 R 0.0242 U 0.0714 | lat p50 4 p90 8
+a=b=0.05 T= 8 floor=B always         clutter false-Static 0.0364 | structure S 0.8994 R 0.0534 U 0.0472 | lat p50 3 p90 6
+a=b=0.05 T= 8 floor=2B before gate   clutter false-Static 0.0337 | structure S 0.8899 R 0.0628 U 0.0472 | lat p50 3 p90 6
+a=b=0.05 T= 8 no floor before gate   clutter false-Static 0.0337 | structure S 0.8899 R 0.0628 U 0.0472 | lat p50 3 p90 6
+a=b=0.05 T=24 floor=B always         clutter false-Static 0.0644 | structure S 0.9378 R 0.0111 U 0.0511 | lat p50 3 p90 7
+a=b=0.05 T=24 floor=2B before gate   clutter false-Static 0.0412 | structure S 0.9303 R 0.0180 U 0.0518 | lat p50 3 p90 7
+a=b=0.05 T=24 no floor before gate   clutter false-Static 0.0374 | structure S 0.9248 R 0.0237 U 0.0515 | lat p50 3 p90 7

@@ -160,6 +160,27 @@ TEST(ScanTime, ParsesNames) {
 
 // ------------------------------------------------------------------------ PCD ---------
 
+TEST(SpiresPcd, ReadsTheRealRecordLayoutWithPaddingFields) {
+  // FIELDS x y z _ intensity _ timestamp ring _ ; SIZE 4 4 4 1 4 1 8 2 1 ; COUNT 1 1 1 4 1 4 1 1 14 : 48 bytes per record
+  std::string h = "# .PCD v0.7\nVERSION 0.7\nFIELDS x y z _ intensity _ timestamp ring _\nSIZE 4 4 4 1 4 1 8 2 1\nTYPE F F F U F U F U U\n"
+                  "COUNT 1 1 1 4 1 4 1 1 14\nWIDTH 2\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0\nPOINTS 2\nDATA binary\n";
+  std::vector<std::uint8_t> b(h.begin(), h.end());
+  for (int i = 0; i < 2; ++i) {
+    std::vector<std::uint8_t> r(48, 0);
+    const float xyz[3] = {1.0f + i, 2.0f, 3.0f}; std::memcpy(r.data(), xyz, 12);
+    const float inten = 9.0f; std::memcpy(r.data() + 16, &inten, 4);
+    const double ts = 1710255656.5 + i; std::memcpy(r.data() + 24, &ts, 8);
+    const std::uint16_t ring = 5; std::memcpy(r.data() + 32, &ring, 2);
+    b.insert(b.end(), r.begin(), r.end());
+  }
+  b.insert(b.end(), 3856, 0);
+  SpiresPcd s = parsePcdBuffer(b, "real");
+  ASSERT_EQ(s.xyz.size(), 6u);
+  EXPECT_FLOAT_EQ(s.xyz[3], 2.0f);
+  ASSERT_EQ(s.ts.size(), 2u);
+  EXPECT_DOUBLE_EQ(s.ts[1], 1710255657.5);
+}
+
 TEST(SpiresPcd, ParsesTimestampAndDropsNonFinite) {
   auto b = spiresPcdBytes({{1, 2, 3, 100.25}, {std::nan(""), 0, 0, 1}, {4, 5, 6, 100.5}});
   SpiresPcd s = parsePcdBuffer(b, "x");
@@ -173,8 +194,12 @@ TEST(SpiresPcd, ParsesTimestampAndDropsNonFinite) {
   SpiresPcd n = parsePcdBuffer(nb, "y");
   EXPECT_TRUE(n.ts.empty());
   EXPECT_EQ(n.xyz.size(), 3u);
-  auto longer = b; longer.push_back(0);
-  EXPECT_THROW(parsePcdBuffer(longer, "z2"), std::runtime_error);      // more bytes than the header says: layout not understood
+  auto padded = b; padded.insert(padded.end(), 3856, 0);
+  EXPECT_EQ(parsePcdBuffer(padded, "z1").xyz.size(), 6u);                 // a block of zero bytes after the last record is accepted
+  auto junk = b; junk.push_back(7);
+  EXPECT_THROW(parsePcdBuffer(junk, "z2"), std::runtime_error);        // other bytes after the records: layout not understood
+  auto longtail = b; longtail.insert(longtail.end(), 70000, 0);
+  EXPECT_THROW(parsePcdBuffer(longtail, "z3"), std::runtime_error);    // an implausibly long tail
   b.resize(b.size() - 5);
   EXPECT_THROW(parsePcdBuffer(b, "z"), std::runtime_error);
 }

@@ -1,0 +1,5 @@
+STEP spires_tls
+START 2026-10-18T07:33:10+09:00 host=DESKTOP-KCD7BRS load=4.41 4.65 4.12 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe spires-tls --pcd <DATA_ROOT>/spires/keble/ground_truth_map/keble-college/merged-cloud-1cm.pcd --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-02/processed/trajectory/gt-tum.txt --radius 30 --out-dir <OUT_DIR> --meta <OUT_DIR>/spires_tls.meta
+2026-10-18T07:33:10+0900 reading the TLS map, keeping points within 30.000000 m of the Keble 02 track
+END 2026-10-18T07:33:41+09:00 rc=0 load=4.12 4.56 4.10

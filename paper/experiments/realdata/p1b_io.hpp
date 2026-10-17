@@ -309,7 +309,12 @@ inline SpiresPcd parsePcdBuffer(const std::vector<std::uint8_t>& buf, const std:
     if (p->type != 'F' || p->size != 4 || p->count != 1) fail(name, "x, y, z must be 4-byte floats");
   if (ft && (ft->type != 'F' || ft->size != 8 || ft->count != 1)) ft = nullptr;      // present but not a double: treated as absent
   const std::size_t need = h.data_offset + h.points * h.record_bytes;
-  if (buf.size() != need) fail(name, "size " + std::to_string(buf.size()) + " bytes, header says " + std::to_string(need) + " (record layout not understood)");
+  if (buf.size() < need) fail(name, "truncated: " + std::to_string(buf.size()) + " bytes, header needs " + std::to_string(need));
+  // The Spires scans end with a block of zero bytes after the last record (3856 bytes in the scans inspected). Anything else after
+  // the records, or a long tail, means the record layout is not understood.
+  if (buf.size() - need > 65536) fail(name, "size " + std::to_string(buf.size()) + " bytes, header says " + std::to_string(need) + " (record layout not understood)");
+  for (std::size_t i = need; i < buf.size(); ++i)
+    if (buf[i] != 0) fail(name, "non-zero byte after the last record (record layout not understood)");
   SpiresPcd out;
   out.points = h.points;
   out.xyz.reserve(h.points * 3);
