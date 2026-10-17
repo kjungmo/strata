@@ -1,6 +1,6 @@
 # PREREG: frozen STRATA v2 evidence defaults (phase 1b)
 
-Written by `freeze_prereg.py` from the committed result tables of `results_p1b/` (commit `c86a93a`, 2026-10-18T08:08:48+0900). Not edited by hand.
+Written by `freeze_prereg.py` from the committed result tables of `results_p1b/` (commit `081e595`, 2026-10-18T08:29:43+0900). Not edited by hand.
 The rule is `PREREG_P1B.md` sections 1, 6, 7 and 8; the definitions are those of `PREREG_P1.md` with Amendments 1 and 2.
 `m0 = ceil_0.05(q_c)`, `m1 = floor_0.05(q_s)`, `alpha = beta = 0.01`; `l_hit = ln(m1/m0)`, `l_miss = ln((1-m1)/(1-m0))`, `A = -B = ln(99)`,
 ceiling `A + 2 l_hit`; engine floor rule: no lower clamp before `n >= 24` touched windows, reject at `l <= B` once `n >= 24`.
@@ -53,5 +53,5 @@ Reasons:
 - `results_p1b/equivalence_kth.txt` 4f9ca982ec5ce059ca0d0ca526e46bc43fd1d61142034ee7ca1483993536f244
 - `results_p1b/meta/spires_convert.meta` 3ded56ffd20af464a7a4e3e82e25cab0269915b36a55a8fb3840de4315e9dba2
 - `results_p1b/meta/spires_offset.meta` 0122e802af31f900b9494481fbe8e3bf54b46480d11df98c2b556520f5811139
-- `results_p1b/p1b_gap.csv` 0ce4647907c0f38fac07bd6c31939cec3c0e0e8f04921f8c917da8a3d1aced3a
+- `results_p1b/p1b_gap.csv` fad74c8545f6cb39da5a34be7fbec4c6d12949dbd46d34a62da6ab042f8200ba
 - `results_p1b/p1b_gates.csv` e211c2f70f6076ce09504a0dedb708aab9b57a70f1a8b722657ef26c5cf87d3b
