@@ -54,3 +54,26 @@ staged under this directory.
     bash paper/experiments/realdata/reproduce_p1.sh all
 
 Run A again (needs its caches under `p1/lil_run_a_dt0`): `LIL_TIMEBASE=run_a LIL_SUBDIR=lil_run_a_dt0 RESULTS_DIR=<dir> bash reproduce_p1.sh convert gates lil analyze`.
+
+## Phase 1b (Amendment 2): gates, W = 15, Keble 02, the freeze
+
+Read `PREREG_P1B.md` (definitions, committed before any phase 1b measurement), then `results_p1b/P1B_REPORT.md` (generated) and
+`PREREG.md` (the mechanical freeze, generated). The phase 1b code is separate from the phase 1 code, which is unchanged except that
+`readPcdHeader` takes a `std::istream` (no behaviour change).
+
+| File | Role |
+|---|---|
+| `p1b_io.hpp` | zip reader, PCD from memory, SE(3) track, Spires scan conversion with deskew, TLS area reader, voxel tables, streaming frame cache |
+| `p1b_core.hpp` | G1 (shape-filtered wall thickness), G2 (pose consistency), Keble 02 labels, time offset score, the lean voxel probe (today's and the refined miss in one pass) |
+| `p1b_probe.cpp` | command line: `gate2d gate-kth gate-spires spires-tls spires-offset spires-convert spires-labels spires-measure kth-measure3` |
+| `reproduce_p1b.sh` | runs the stages in order, logs START, END, host and load of every step |
+| `analyze_p1b.py`, `derive_defaults.py`, `freeze_prereg.py`, `make_report_p1b.py` | tables with block-bootstrap intervals, derived SPRT numbers, the freeze rule, the report |
+| `replay_p1b.py`, `advice_replay/` | replay of the SPRT over the calibration run sequences; the advisor's three scripts (unchanged but the data path) and the check that they reproduce the advisor's output |
+| `mutation_p1b.py`, `test_p1b.cpp`, `test_p1b_analysis.py` | tests and mutation evidence |
+| `explore_gate2d.sh` | EXPLORATORY and post hoc: G1 on slices and single lasers; sets nothing |
+| `results_p1b/` | stat records of the test-split files before and after, logs, metas, tables, report |
+
+    bash reproduce_p1b.sh check build gates2d gatekth lil15 equiv tls offset convert gatespires labels measure
+    python3 -I analyze_p1b.py --data-dir /mnt/d/wsl/strata/p1b --old-meta-dir results_p1/meta --meta-dir results_p1b/meta --out-dir results_p1b
+    python3 -I freeze_prereg.py --results-dir results_p1b --out-dir . --commit <hash>
+    python3 -I make_report_p1b.py --results-dir results_p1b --prereg-dir . --out results_p1b/P1B_REPORT.md

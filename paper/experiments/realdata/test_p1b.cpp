@@ -4,7 +4,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <map>
 #include <random>
+#include <sstream>
 #include "p1b_core.hpp"
 #include "strata_core/voxel3d_backend.hpp"
 
@@ -716,4 +718,150 @@ TEST(SpiresOffset, ScoreRecoversATimeOffsetOfTheRightSign) {
   for (int iy = -100; iy <= 100; ++iy) for (int iz = -20; iz <= 20; ++iz) t01.upsert(v1.pack(80, iy, iz)).count = 5;
   EXPECT_GT(alignmentShare(scans, times, gt, ex, co, -0.07, t01, 1), 0.99);
   EXPECT_LT(alignmentShare(scans, times, gt, ex, co, 0.15, t01, 1), 0.01);
+}
+
+// ------------------------------------------------------------ command line, end to end ----
+
+namespace {
+// A small synthetic sequence in the layout of the real one: a zip of PCD scans (48-byte records with padding fields, a zero tail),
+// a TUM track, a binary TLS map with fields Intensity rgb x y z. The sensor moves along +x at 2 m/s; a wall at x = 20 and the ground at
+// z = -1.5 are in the TLS map; a small cylinder at (10, 2) is not, and it is seen only in windows 0 and 3 (scans 0..9 and 30..39).
+struct SyntheticSequence {
+  std::string zip, gt, tls, dir;
+  int scans{60};
+  double stamp_late{0.06};
+};
+
+std::string pcdScanBytes(const std::vector<std::array<double, 4>>& pts /* lidar x y z, timestamp */) {
+  std::string h = "# .PCD v0.7 - Point Cloud Data file format\nVERSION 0.7\nFIELDS x y z _ intensity _ timestamp ring _\nSIZE 4 4 4 1 4 1 8 2 1\n"
+                  "TYPE F F F U F U F U U\nCOUNT 1 1 1 4 1 4 1 1 14\nWIDTH " + std::to_string(pts.size()) + "\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0\nPOINTS " +
+                  std::to_string(pts.size()) + "\nDATA binary\n";
+  std::string out = h;
+  for (const auto& p : pts) {
+    std::string r(48, '\0');
+    const float xyz[3] = {float(p[0]), float(p[1]), float(p[2])};
+    std::memcpy(&r[0], xyz, 12);
+    const float inten = 50.0f; std::memcpy(&r[16], &inten, 4);
+    std::memcpy(&r[24], &p[3], 8);
+    const std::uint16_t ring = 1; std::memcpy(&r[32], &ring, 2);
+    out += r;
+  }
+  out += std::string(3856, '\0');
+  return out;
+}
+
+SyntheticSequence makeSequence(const std::string& tag) {
+  SyntheticSequence s;
+  s.dir = tmpPath(tag);
+  EXPECT_EQ(system(("mkdir -p " + s.dir).c_str()), 0);
+  s.zip = s.dir + "/scans.zip"; s.gt = s.dir + "/gt.txt"; s.tls = s.dir + "/tls.pcd";
+  const double T0 = 1710255656.0, speed = 2.0;
+  SpiresExtrinsic ex;
+  std::mt19937_64 rng(77);
+  std::uniform_real_distribution<double> u(0, 1);
+  std::vector<std::pair<std::string, std::string>> members;
+  for (int k = 0; k < s.scans; ++k) {
+    const double tk = T0 + 0.1 * k;
+    std::vector<std::array<double, 4>> pts;
+    auto add = [&](const Eigen::Vector3d& W, double t_true) {
+      const Eigen::Vector3d base(speed * (t_true - T0), 0, 0);
+      const Eigen::Vector3d pl = ex.q.conjugate() * (W - base - ex.t);
+      pts.push_back({pl.x(), pl.y(), pl.z(), t_true + s.stamp_late});
+    };
+    for (int i = 0; i < 3000; ++i) {
+      const double t = tk + 0.1 * i / 3000.0;
+      const int kind = i % 3;
+      if (kind == 0) add({20.0 + 0.004 * u(rng), -5 + 10 * u(rng), -1.0 + 3.5 * u(rng)}, t);
+      else if (kind == 1) add({speed * (t - T0) + 2 + 12 * u(rng), -5 + 10 * u(rng), -1.5 + 0.004 * u(rng)}, t);
+      else if ((k / 10) % 3 == 0) { const double a = 6.2832 * u(rng); add({10 + 0.3 * std::cos(a), 2 + 0.3 * std::sin(a), -1.5 + u(rng)}, t); }
+    }
+    char name[64]; std::snprintf(name, sizeof name, "lidar-clouds/%.9f.pcd", tk);
+    members.emplace_back(name, pcdScanBytes(pts));
+  }
+  writeZip(s.zip, members, true);
+  { std::ofstream o(s.gt); o.precision(12);
+    for (double t = T0 - 0.5; t <= T0 + 0.1 * s.scans + 0.6; t += 0.04) o << std::fixed << t << " " << speed * (t - T0) << " 0 0 0 0 0 1\n"; }
+  { std::ofstream o(s.tls, std::ios::binary);
+    std::vector<std::array<float, 5>> pts;
+    for (int iy = 0; iy < 1200; ++iy) for (int iz = 0; iz < 400; ++iz) pts.push_back({1, 0, 20.0f + 0.003f * float((iy + iz) % 3), -6.0f + 0.01f * iy, -1.0f + 0.01f * iz});
+    for (int ix = 0; ix < 1200; ++ix) for (int iy = 0; iy < 600; ++iy) pts.push_back({1, 0, 0.02f * ix, -6.0f + 0.02f * iy, -1.5f + 0.001f * float((ix + iy) % 3)});
+    o << "VERSION 0.7\nFIELDS Intensity rgb x y z\nSIZE 4 4 4 4 4\nTYPE F U F F F\nCOUNT 1 1 1 1 1\nWIDTH " << pts.size() << "\nHEIGHT 1\nPOINTS "
+      << pts.size() << "\nDATA binary\n";
+    for (const auto& p : pts) o.write(reinterpret_cast<const char*>(p.data()), 20); }
+  return s;
+}
+
+std::map<std::string, std::string> readMetaFile(const std::string& path) {
+  std::map<std::string, std::string> m; std::ifstream f(path); std::string line;
+  while (std::getline(f, line)) { auto e = line.find('='); if (e != std::string::npos) m[line.substr(0, e)] = line.substr(e + 1); }
+  return m;
+}
+int sh(const std::string& cmd) { return system(cmd.c_str()); }
+}  // namespace
+
+TEST(Cli, SpiresPipelineOnASyntheticSequence) {
+  const SyntheticSequence s = makeSequence("cli_seq");
+  const std::string exe = P1B_PROBE_EXE, d = s.dir;
+  ASSERT_EQ(sh(exe + " spires-tls --pcd " + s.tls + " --gt " + s.gt + " --radius 30 --out-dir " + d + " --meta " + d + "/tls.meta 2>/dev/null"), 0);
+  auto tls = readMetaFile(d + "/tls.meta");
+  EXPECT_EQ(tls["tls_points_read"], "1200000");
+  EXPECT_EQ(std::stoul(tls["tls_points_kept"]) + std::stoul(tls["tls_points_discarded_outside_area"]), 1200000ul);
+  EXPECT_GT(std::stoul(tls["tls_points_kept"]), 0ul);
+  // the offset search: the stamps are 0.06 s late, so the right correction is -0.06 s
+  ASSERT_EQ(sh(exe + " spires-offset --zip " + s.zip + " --gt " + s.gt + " --tls-dir " + d + " --stride 4 --csv " + d + "/off.csv --meta " + d + "/off.meta 2>/dev/null"), 0);
+  auto off = readMetaFile(d + "/off.meta");
+  EXPECT_EQ(off["valid"], "1"); EXPECT_EQ(off["alignment_ok"], "1");
+  const double dt = std::stod(off["selected_dt_s"]);
+  EXPECT_LT(dt, -0.01);                 // the plateau of the score (voxel and face neighbours) is [-0.085, -0.0125] s; the rule takes its smallest |dt|
+  EXPECT_GT(dt, -0.09);
+  EXPECT_GT(std::stod(off["selected_score"]), std::stod(off["score_at_dt0"]));
+  ASSERT_EQ(sh(exe + " spires-convert --zip " + s.zip + " --gt " + s.gt + " --dt " + off["selected_dt_s"] + " --out " + d + "/cache.bin --meta " + d + "/conv.meta 2>/dev/null"), 0);
+  auto conv = readMetaFile(d + "/conv.meta");
+  EXPECT_EQ(conv["scans_in_zip"], "60"); EXPECT_EQ(conv["scans_written"], "60");
+  EXPECT_EQ(conv["scans_scan_time_fallback"], "0");
+  ASSERT_EQ(sh(exe + " spires-labels --tls-dir " + d + " --cache " + d + "/cache.bin --res 0.2 --out " + d + "/lab.bin --meta " + d + "/lab.meta 2>/dev/null"), 0);
+  auto lab = readMetaFile(d + "/lab.meta");
+  EXPECT_GT(std::stoul(lab["structure_kept"]), 100ul);
+  EXPECT_GT(std::stoul(lab["ground_kept"]), 100ul);
+  EXPECT_GT(std::stoul(lab["clutter_kept"]), 5ul);
+  ASSERT_EQ(sh(exe + " spires-measure --cache " + d + "/cache.bin --labels " + d + "/lab.bin --res 0.2 --windows 10,20 --out-prefix " + d + "/m 2>/dev/null"), 0);
+  EXPECT_EQ(readMetaFile(d + "/m_W10_today.meta")["windows_closed"], "6");
+  EXPECT_EQ(readMetaFile(d + "/m_W20_refined.meta")["windows_closed"], "3");
+  // cell tables: structure (label 3) is hit in almost every window, clutter (label 1) only in the windows that contain the cylinder
+  auto meanRate = [&](const std::string& csv, int label, int nmin, int* cells) {
+    std::ifstream f(csv); std::string line; std::getline(f, line);
+    double sum = 0; int n = 0;
+    while (std::getline(f, line)) {
+      std::stringstream ss(line); std::string tok; std::vector<std::string> v;
+      while (std::getline(ss, tok, ',')) v.push_back(tok);
+      if (std::stoi(v[0]) != label) continue;
+      const int N = std::stoi(v[4]), H = std::stoi(v[5]);
+      if (N < nmin) continue;
+      sum += double(H) / N; ++n;
+    }
+    *cells = n; return n ? sum / n : -1.0;
+  };
+  int ns = 0, nc = 0;
+  const double rs = meanRate(d + "/m_W10_today.csv", 3, 5, &ns), rc = meanRate(d + "/m_W10_today.csv", 1, 3, &nc);
+  EXPECT_GT(ns, 50);
+  EXPECT_GT(nc, 3);
+  EXPECT_GT(rs, 0.85);
+  EXPECT_LT(rc, 0.7);
+  EXPECT_LT(rc, rs);
+  int nr = 0;
+  meanRate(d + "/m_W10_refined.csv", 3, 5, &nr);
+  EXPECT_GT(nr, 0);
+  // the gate step runs on the cache without error and writes its verdicts
+  ASSERT_EQ(sh(exe + " gate-spires --cache " + d + "/cache.bin --stride 5 --meta " + d + "/gate.meta 2>/dev/null"), 0);
+  auto gate = readMetaFile(d + "/gate.meta");
+  EXPECT_TRUE(gate.count("g1_pass") && gate.count("g2_pass") && gate.count("gates_pass"));
+}
+
+TEST(Cli, FailuresAreReportedNotHidden) {
+  const std::string exe = P1B_PROBE_EXE, d = tmpPath("cli_fail");
+  ASSERT_EQ(sh("mkdir -p " + d), 0);
+  EXPECT_NE(sh(exe + " spires-convert --zip " + d + "/missing.zip --gt " + d + "/missing.txt --dt 0 --out " + d + "/c.bin --meta " + d + "/c.meta 2>/dev/null"), 0);
+  EXPECT_NE(sh(exe + " nonsense 2>/dev/null"), 0);
+  EXPECT_NE(sh(exe + " gate2d --cache " + d + "/nofile.bin --meta " + d + "/g.meta 2>/dev/null"), 0);
+  EXPECT_NE(sh(exe + " gate2d --cache " + d + "/nofile.bin --laser sideways --meta " + d + "/g.meta 2>/dev/null"), 0);
 }

@@ -1,0 +1,10 @@
+STEP spires_convert
+START 2026-10-18T07:37:38+09:00 host=DESKTOP-KCD7BRS load=11.84 8.38 5.69 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe spires-convert --zip <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-02/raw/lidar-clouds.zip --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-02/processed/trajectory/gt-tum.txt --dt 0 --out <OUT_DIR>/cache_keble02.bin --meta <OUT_DIR>/spires_convert.meta
+2026-10-18T07:37:46+0900 converted 500 of 3007 scans
+2026-10-18T07:37:55+0900 converted 1000 of 3007 scans
+2026-10-18T07:38:03+0900 converted 1500 of 3007 scans
+2026-10-18T07:38:14+0900 converted 2000 of 3007 scans
+2026-10-18T07:38:24+0900 converted 2500 of 3007 scans
+2026-10-18T07:38:33+0900 converted 3000 of 3007 scans
+END 2026-10-18T07:38:33+09:00 rc=0 load=7.29 7.67 5.60
