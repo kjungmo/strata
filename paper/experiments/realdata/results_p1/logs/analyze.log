@@ -1,4 +1,4 @@
 STEP analyze
-START 2026-10-18T04:36:57+09:00 host=DESKTOP-KCD7BRS load=7.27 6.83 7.14 cores=12
-CMD python3 -I /home/cona/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/analyze_p1.py --data-dir /home/cona/datasets/strata/p1 --out-dir /home/cona/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p1
-END 2026-10-18T04:40:51+09:00 rc=0 load=5.31 5.90 6.68
+START 2026-10-18T06:11:59+09:00 host=DESKTOP-KCD7BRS load=1.76 2.33 3.40 cores=12
+CMD python3 -I <REALDATA_DIR>/analyze_p1.py --data-dir <DATA_ROOT>/p1 --out-dir <RESULTS_DIR>
+END 2026-10-18T06:17:40+09:00 rc=0 load=2.60 2.22 2.97

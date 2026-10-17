@@ -1,0 +1,13 @@
+set -e
+T=<SCRATCH>
+P=$T/b_rd/realdata/hitrate_probe
+D=<DATA_ROOT>
+O=$D/p1/lil
+mkdir -p $O
+for s in mapping static_0 dynamics_0; do
+  echo "convert $s start $(date -Is) load $(cat /proc/loadavg)"
+  nice -n 19 $P lil-convert --bag $D/lilocbench/bags/$s.bag --gt $D/lilocbench/gt_x/$s/gt_poses.txt --deskew 1 --out $O/cache_$s.bin --meta $O/cache_$s.meta
+  echo "convert $s end $(date -Is)"
+  grep -E "^(steps|frames_written|scans_dropped|beams_|hits_bbox|tf_|counts_match|pair_skew|gt_max|max_|seconds|peak)" $O/cache_$s.meta | tr '\n' ' '
+  echo
+done

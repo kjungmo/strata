@@ -1,4 +1,4 @@
 STEP kth_gate
-START 2026-10-18T03:55:39+09:00 host=DESKTOP-KCD7BRS load=14.52 6.49 4.65 cores=12
-CMD /tmp/strata_p1_build/realdata/hitrate_probe kth-gate --dir /home/cona/datasets/strata/kth/00 --gt /home/cona/datasets/strata/kth/00/gt_cloud.pcd --res 0.2 --meta /home/cona/datasets/strata/p1/kth00/gate.meta
-END 2026-10-18T03:56:11+09:00 rc=0 load=17.38 7.92 5.19
+START 2026-10-18T05:50:36+09:00 host=DESKTOP-KCD7BRS load=2.78 3.39 5.65 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe kth-gate --dir <DATA_ROOT>/kth/00 --gt <DATA_ROOT>/kth/00/gt_cloud.pcd --res 0.2 --meta <DATA_ROOT>/p1/kth00/gate.meta
+END 2026-10-18T05:50:44+09:00 rc=0 load=2.58 3.33 5.61

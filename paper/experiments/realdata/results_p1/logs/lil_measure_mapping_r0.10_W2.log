@@ -1,4 +1,4 @@
 STEP lil_measure_mapping_r0.10_W2
-START 2026-10-18T04:30:51+09:00 host=DESKTOP-KCD7BRS load=6.10 5.63 7.00 cores=12
-CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-measure --cache /home/cona/datasets/strata/p1/lil/cache_mapping.bin --labels /home/cona/datasets/strata/p1/lil/ref_r0.10.bin --res 0.10 --window 2 --out /home/cona/datasets/strata/p1/lil/cells_mapping_r0.10_W2.csv --meta /home/cona/datasets/strata/p1/lil/cells_mapping_r0.10_W2.meta
-END 2026-10-18T04:31:13+09:00 rc=0 load=6.20 5.68 6.99
+START 2026-10-18T05:55:56+09:00 host=DESKTOP-KCD7BRS load=3.35 2.57 4.57 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-measure --cache <DATA_ROOT>/p1/lil/cache_mapping.bin --labels <DATA_ROOT>/p1/lil/ref_r0.10.bin --res 0.10 --window 2 --out <DATA_ROOT>/p1/lil/cells_mapping_r0.10_W2.csv --meta <DATA_ROOT>/p1/lil/cells_mapping_r0.10_W2.meta
+END 2026-10-18T05:56:15+09:00 rc=0 load=3.81 2.73 4.58

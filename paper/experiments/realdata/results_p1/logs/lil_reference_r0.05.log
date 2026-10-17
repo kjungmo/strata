@@ -1,4 +1,4 @@
 STEP lil_reference_r0.05
-START 2026-10-18T04:24:23+09:00 host=DESKTOP-KCD7BRS load=4.09 6.55 8.07 cores=12
-CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-reference --cache /home/cona/datasets/strata/p1/lil/cache_mapping.bin --res 0.05 --min-touches 10 --occ 0.5 --free 0.05 --margin 2 --out /home/cona/datasets/strata/p1/lil/ref_r0.05.bin --meta /home/cona/datasets/strata/p1/lil/ref_r0.05.meta
-END 2026-10-18T04:25:44+09:00 rc=0 load=3.19 5.66 7.62
+START 2026-10-18T05:51:30+09:00 host=DESKTOP-KCD7BRS load=1.84 3.03 5.40 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-reference --cache <DATA_ROOT>/p1/lil/cache_mapping.bin --res 0.05 --min-touches 10 --occ 0.5 --free 0.05 --margin 2 --out <DATA_ROOT>/p1/lil/ref_r0.05.bin --meta <DATA_ROOT>/p1/lil/ref_r0.05.meta
+END 2026-10-18T05:52:18+09:00 rc=0 load=1.92 2.87 5.22

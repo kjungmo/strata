@@ -1,0 +1,14 @@
+STEP build_configure
+START 2026-10-14T09:36:39+09:00 host=DESKTOP-KCD7BRS load=1.49 4.09 4.27 cores=12
+CMD cmake -S <REALDATA_DIR>/.. -B /tmp/strata_p1_build -DCMAKE_BUILD_TYPE=Release
+-- The CXX compiler identification is GNU 9.4.0
+-- Check for working CXX compiler: /usr/bin/c++
+-- Check for working CXX compiler: /usr/bin/c++ -- works
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /tmp/strata_p1_build
+END 2026-10-14T09:36:40+09:00 rc=0 load=1.49 4.09 4.27

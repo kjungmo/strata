@@ -1,0 +1,4 @@
+STEP kth_gate
+START 2026-10-14T09:37:55+09:00 host=DESKTOP-KCD7BRS load=7.67 5.31 4.67 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe kth-gate --dir <DATA_ROOT>/kth/00 --gt <DATA_ROOT>/kth/00/gt_cloud.pcd --res 0.2 --meta <DATA_ROOT>/p1/kth00/gate.meta
+END 2026-10-14T09:38:04+09:00 rc=0 load=7.74 5.40 4.71

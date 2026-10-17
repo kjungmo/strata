@@ -1,4 +1,4 @@
 STEP report
-START 2026-10-18T04:40:51+09:00 host=DESKTOP-KCD7BRS load=5.31 5.90 6.68 cores=12
-CMD python3 -I /home/cona/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/make_report.py --results-dir /home/cona/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p1 --out /home/cona/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p1/P1_REPORT.md
-END 2026-10-18T04:40:51+09:00 rc=0 load=5.31 5.90 6.68
+START 2026-10-18T06:43:22+09:00 host=DESKTOP-KCD7BRS load=1.61 1.79 2.11 cores=12
+CMD python3 -I <REALDATA_DIR>/make_report.py --results-dir <RESULTS_DIR> --out <RESULTS_DIR>/P1_REPORT.md
+END 2026-10-18T06:43:22+09:00 rc=0 load=1.61 1.79 2.11

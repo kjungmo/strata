@@ -1,0 +1,4 @@
+STEP lil_offset_mapping
+START 2026-10-18T05:48:25+09:00 host=DESKTOP-KCD7BRS load=2.50 3.68 6.07 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-offset --bag <DATA_ROOT>/lilocbench/bags/mapping.bag --gt <DATA_ROOT>/lilocbench/gt_x/mapping/gt_poses.txt --stride 10 --out <DATA_ROOT>/p1/lil/offset_mapping.csv --meta <DATA_ROOT>/p1/lil/offset_mapping.meta
+END 2026-10-18T05:48:57+09:00 rc=0 load=2.31 3.53 5.95

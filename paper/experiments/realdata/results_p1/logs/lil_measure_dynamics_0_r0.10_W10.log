@@ -1,4 +1,4 @@
 STEP lil_measure_dynamics_0_r0.10_W10
-START 2026-10-18T04:31:52+09:00 host=DESKTOP-KCD7BRS load=7.97 6.22 7.12 cores=12
-CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-measure --cache /home/cona/datasets/strata/p1/lil/cache_dynamics_0.bin --labels /home/cona/datasets/strata/p1/lil/ref_r0.10.bin --res 0.10 --window 10 --out /home/cona/datasets/strata/p1/lil/cells_dynamics_0_r0.10_W10.csv --meta /home/cona/datasets/strata/p1/lil/cells_dynamics_0_r0.10_W10.meta
-END 2026-10-18T04:31:55+09:00 rc=0 load=7.97 6.25 7.13
+START 2026-10-18T05:56:43+09:00 host=DESKTOP-KCD7BRS load=4.12 2.90 4.58 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-measure --cache <DATA_ROOT>/p1/lil/cache_dynamics_0.bin --labels <DATA_ROOT>/p1/lil/ref_r0.10.bin --res 0.10 --window 10 --out <DATA_ROOT>/p1/lil/cells_dynamics_0_r0.10_W10.csv --meta <DATA_ROOT>/p1/lil/cells_dynamics_0_r0.10_W10.meta
+END 2026-10-18T05:56:46+09:00 rc=0 load=4.12 2.90 4.58
