@@ -174,7 +174,7 @@ def main():
     L.append("## LILocBench time base (Amendment 1, section 11.1)\n")
     if om:
         L.append("Search on `mapping` only: anchor in {start, end, single}, offset -0.30 to +0.30 s in 0.01 s steps, every tenth scan pair, "
-                 "score = cells holding 90 %% of the hits of each laser (0.05 m cells), front plus rear; lower is sharper. "
+                 "score = cells holding 90 % of the hits of each laser (0.05 m cells), front plus rear; lower is sharper. "
                  "Selection rule and validity rule: section 11.1 and 11.7 of the pre-registration.\n")
         rows = [["selected anchor", om.get("selected_anchor")], ["selected offset dt (s)", om.get("selected_dt_s")],
                 ["time of beam 0 relative to the header stamp (s)", om.get("selected_beam0_offset_s")],
@@ -195,9 +195,10 @@ def main():
             if m:
                 rows.append([s, m.get("selected_anchor"), m.get("selected_dt_s"), m.get("valid"),
                              score_at(cs, om.get("selected_anchor"), float(om.get("selected_dt_s", "0"))),
-                             score_at(cs, "start", 0.0), m.get("lowest_score"), m.get("front_only_best_dt_s"), m.get("rear_only_best_dt_s")])
+                             score_at(cs, "start", 0.0), m.get("lowest_score"), m.get("front_only_best_dt_s"), m.get("rear_only_best_dt_s"),
+                             m.get("front_rear_optima_agree_within_0.02s")])
         L.append(md_table(["sequence", "own optimum: anchor", "own optimum: dt (s)", "own search valid", "score at the selected candidate",
-                           "score at (start, 0)", "lowest score", "front-only optimum dt", "rear-only optimum dt"], rows))
+                           "score at (start, 0)", "lowest score", "front-only optimum dt", "rear-only optimum dt", "front and rear optima agree within 0.02 s"], rows))
         L.append("Score curve on `mapping` (copied from `meta/lil_offset_mapping.csv`; offsets in 0.02 s steps):\n")
         L.append(md_table(["dt (s)", "start", "end", "single"], curve_rows(os.path.join(R, "meta", "lil_offset_mapping.csv"))))
     else:
@@ -283,9 +284,12 @@ def main():
              "gap_ci95_block_lo", "gap_ci95_block_hi", "gap_ge_0.15", "auc_rate"]
     L.append("## Headline: q_s, q_c and gap at N_min = 5 (run B)\n")
     L.append("KITTI: `static_structure` against `moving`. LILocBench: `structure` on `static_0` against `hit_in_free` on `dynamics_0`. "
-             "The block interval (10 m ground tiles) is the one to read. The point estimates here and in the tables below were recomputed "
-             "by an independent reviewer and agree; the reviewer's bootstrap intervals differ in the last digits because they use another "
-             "random number stream.\n")
+             "The block interval (10 m ground tiles) is the one to read. An independent reviewer recomputed the KITTI point estimates "
+             "(without class groups) and the run A LILocBench point estimates from the cell tables, and they agreed; the reviewer's "
+             "bootstrap intervals differ in the last digits because they use another random number stream. The run B LILocBench numbers "
+             "and the class groups were produced after that review and have not been recomputed by a reviewer; the author recomputed `q_s` and "
+             "`q_c` of LILocBench 0.05 m W10, of KITTI 0.2 m W10 and of its solid group with a separate short script, and they agree "
+             "to four digits.\n")
     L.append(md_table(gcols, cols_of(gap, gcols, lambda d: d["N_min"] == "5" and d["pair"] in HEADLINE.values())) if gap else "_missing_\n")
     L.append("### Class groups of the KITTI structure (against `moving`, N_min = 5; added after the measurement)\n")
     L.append(md_table(gcols, cols_of(gap, gcols, lambda d: d["N_min"] == "5" and d["dataset"] == "kth00" and d["pair"] in CLASS_PAIRS)) if gap else "_missing_\n")
