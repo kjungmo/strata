@@ -1,0 +1,73 @@
+{
+ "grid2d": {
+  "backend": "grid2d",
+  "condition": "LILocBench, resolution 0.05 m, W = 15 steps (1.0 s at 15 Hz), N_min = 5, structure@static_0 against hit_in_free@dynamics_0",
+  "conditional": {
+   "A": 4.59511985013459,
+   "B": -4.59511985013459,
+   "EN": {
+    "m0": 8.431241943980893,
+    "m1": 7.7283868965648415,
+    "mstar": 17.184281129426246
+   },
+   "alpha": 0.01,
+   "beta": 0.01,
+   "ceiling": 7.100645787125325,
+   "l_hit": 1.2527629684953678,
+   "l_miss": -0.9808292530117261,
+   "latency_all_hit": 4,
+   "m0": 0.2,
+   "m1": 0.7,
+   "mstar": 0.4391263739045086,
+   "n_max_undecided": 80,
+   "oc": {
+    "0.20": 0.010000000000000009,
+    "0.30": 0.07944124365553462,
+    "0.50": 0.7333939367802316,
+    "0.70": 0.99
+   },
+   "undecided_at_n_max": 0.014975807756304834
+  },
+  "miss_definition": "today (pass-through: a beam without a return adds no observation)",
+  "reasons": [
+   "lil_mapping fails: G1 FAIL (accepted 590, median 0.1930 m, p90 0.2506 m; limits 0.1, 0.2)",
+   "lil_static_0 fails: G1 FAIL (accepted 391, median 0.1705 m, p90 0.2545 m; limits 0.1, 0.2)",
+   "lil_dynamics_0 fails: G1 FAIL (accepted 470, median 0.1832 m, p90 0.2285 m; limits 0.1, 0.2)"
+  ],
+  "status": "NOT FROZEN"
+ },
+ "voxel3d": {
+  "backend": "voxel3d",
+  "branch": "F",
+  "checks": [
+   {
+    "check": "G1 and G2 on Keble 02",
+    "detail": "G1 FAIL (accepted 2251, median 0.3212 m, p90 0.4627 m), G2 PASS (matched 0.9995, median 0.0174 m, p90 0.0415 m)",
+    "pass": false
+   },
+   {
+    "check": "time offset search valid",
+    "detail": "valid=1 reason=ok selected_dt_s=0",
+    "pass": true
+   },
+   {
+    "check": "alignment check (share >= 0.5)",
+    "detail": "alignment_share=0.9921536283",
+    "pass": true
+   },
+   {
+    "check": "lean probe equals the engine on KITTI 00 (4 of 4 tables byte-identical)",
+    "detail": "4 of 4 identical",
+    "pass": true
+   }
+  ],
+  "condition": "Spires Keble 02, resolution 0.2 m, W = 10 steps (1.0 s at 10 Hz), N_min = 5, structure (non-ground) against clutter",
+  "miss_definition": "today",
+  "reasons": [
+   "G1 and G2 on Keble 02",
+   "the gap is below 0.15 under both miss definitions (today -0.5333, refined -0.4643), whatever the checks say",
+   "the fallback is the 2D pair, and the 2D pair is not frozen"
+  ],
+  "status": "NOT FROZEN"
+ }
+}

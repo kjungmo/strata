@@ -149,8 +149,9 @@ def decide_3d(gap_rows, gates, offset_meta, convert_meta, equivalence_text, two_
             out["conditional"] = freeze_values(*pair_from_row(refined))
             out["conditional_miss_definition"] = "refined"
         why = [c for c, p, _ in checks if not p]
-        if valid:
-            why.append("gap today %s and gap refined %s are both below 0.15" % (today["gap"] if today else "n/a", refined["gap"] if refined else "n/a"))
+        if not (gt >= GAP_RULE) and not (gr >= GAP_RULE):
+            why.append("the gap is below 0.15 under both miss definitions (today %s, refined %s), whatever the checks say" %
+                       (today["gap"] if today else "n/a", refined["gap"] if refined else "n/a"))
         out["reasons"] = why
         if two_d.get("status") == "FROZEN":
             out["status"] = "FROZEN (fallback)"

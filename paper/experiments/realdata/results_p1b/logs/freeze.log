@@ -1,0 +1,4 @@
+STEP freeze
+START 2026-10-18T08:08:48+09:00 host=DESKTOP-KCD7BRS load=5.35 3.61 3.86 cores=12
+CMD python3 -I <REALDATA_DIR>/freeze_prereg.py --results-dir <RESULTS_DIR> --out-dir <REALDATA_DIR> --commit c86a93a
+END 2026-10-18T08:08:48+09:00 rc=0 load=5.35 3.61 3.86
