@@ -259,3 +259,96 @@ A change to any of them after the first measurement is a deviation and is listed
 
 Choosing `(m0, m1)`; implementing the SPRT or Option C; any TEST-split measurement; the
 alternative miss definition (identical to today's, section 1); Periodic on real data.
+
+## 11. Amendment 1 (2026-10-18): changes made after the first measurement and an independent review
+
+This section was written and committed BEFORE the re-run it describes. Sections 0 to 10 above stay
+as they were committed (commit `66bb076`); where they are wrong or are replaced, this section says so.
+The first measurement (2026-10-14, "run A") and its re-run on 2026-10-18 used the original definitions and are
+kept and reported next to the amended run ("run B"). What triggered the amendment: an independent review of the
+phase 1 deliverable. The review reported four facts that the author had not checked: the LILocBench time base,
+the semantic classes in the KITTI frames, the survivorship of low-N cells, and the pair-skew bound. The
+reviewer's exploratory numbers (a scan-to-GT offset near -0.10 s, a class split of the KITTI structure group,
+N_min survivorship) were known to the author before this text was written. They are not blind. The amendment
+fixes the procedures so that the re-run does not depend on the author's choices after the fact.
+
+### 11.1 LILocBench time base (replaces the pose timing in section 2 for run B)
+
+Problem. Run A takes each scan's pose at the header stamp and adds `i * time_increment` per beam. Whether the
+stamp marks the start or the end of the scan, and whether the GT clock agrees with the scan clock, was not
+checked. If either is wrong, hits are smeared along the path and the measured `q_s` mostly measures pose-timing
+error, not structure hit rate.
+
+Procedure (fixed here; used on the CALIBRATION sequence `mapping` only; implemented as `hitrate_probe lil-offset`):
+
+* Candidates: an anchor in `{start, end, single}` and an offset `dt` in `{-0.30, -0.29, ..., +0.30}` s (61 values).
+  * `start`: beam `i` of a scan with stamp `s` and `n` beams is placed with the GT pose at `s + dt + i * time_increment`.
+  * `end`: beam `i` is placed at `s + dt - (n - 1 - i) * time_increment` (the stamp marks the last beam).
+  * `single`: all beams use one pose at `s + dt` (no per-beam time).
+  * The laser origin used by the engine for ray marching is the pose at the time of beam 0 under the same rule.
+  * The pose interpolation, the 0.2 s hole rule, the extrinsics and the invalid-beam rule are those of section 2.
+* Score. Hits of one laser are placed in the map frame and counted per 0.05 m cell. `C_laser` = smallest number of
+  cells that together hold at least 90 % of that laser's hits (sort cell counts descending, accumulate). Score
+  `S = C_front + C_rear`. Lower is sharper. Only steps with index divisible by 10 are used (every tenth front and
+  rear pair), to keep the search cheap; the choice is fixed here.
+* Selection. `S_min` = the lowest score. Among candidates with `S <= 1.005 * S_min` take the one with the smallest
+  `|dt|`, then the anchor in the order `start`, `end`, `single`.
+* Validity. If the selected `dt` lies on the edge of the grid (`|dt| = 0.30`), or if more than 1 % of the beams of
+  the selected candidate lack a pose, the procedure has failed. It is then reported and run B is not made.
+* Diagnostics, reported and not used for selection: the same score for the front and the rear laser separately
+  (the two optima must agree within 0.02 s, else this is reported), and the score on `static_0` and `dynamics_0` at
+  the selected candidate and at `(start, 0)`.
+* The selected candidate is applied to all three sequences and to every LILocBench number of run B (reference
+  maps, cell tables, wall-thickness gate). Nothing else about the LILocBench pipeline changes.
+
+The offset is a property of the recording and not of the engine. A STRATA deployment on a live robot has no GT
+clock; this offset only removes a measurement error of the evaluation data.
+
+### 11.2 KITTI 00: semantic classes (replaces the sentence "These files carry no semantic classes" in section 3)
+
+That sentence was wrong. The `intensity` field of each KTH frame PCD holds the SemanticKITTI label as a number:
+the class is `uint32(intensity) & 0xFFFF` (class codes: 10 car, 11 bicycle, 13 bus, 15 motorcycle, 16 on-rails,
+18 truck, 20 other-vehicle, 40 road, 44 parking, 48 sidewalk, 49 other-ground, 50 building, 51 fence, 52 other-structure,
+60 lane-marking, 70 vegetation, 71 trunk, 72 terrain, 80 pole, 81 traffic-sign, 99 other-object, 252 to 259 moving
+classes, 0 unlabelled, 1 outlier). The frames concatenate to `gt_cloud.pcd` point for point (the probe checks that
+every xyz is identical and aborts if not), so each GT voxel gets a class.
+
+The class groups below are added after the measurement and after the reviewer reported a first exploratory split.
+They refine `static_structure`; they do not replace it, and the headline pair stays `static_structure` against `moving`.
+
+* Class of a voxel: the class that most points of the voxel have (ties: the smaller class code).
+* Groups of `static_structure` voxels by that class:
+  * `struct_solid` = `{50 building, 51 fence, 52 other-structure, 80 pole, 71 trunk}`
+  * `struct_vehicle` = `{10, 11, 13, 15, 16, 18, 20}` (static, so parked)
+  * `struct_vegetation` = `{70}`
+  * `struct_other` = every other class (unlabelled, traffic sign, other-object, ground classes above 0.30 m, ...)
+* Each group gets the same statistics as `static_structure` against `moving` (gap, intervals, touched windows).
+* Consistency check, reported: the number of GT points whose dynamic flag (`intensity` 1 in the GT cloud) disagrees
+  with "class 252 to 259" in the frames.
+
+### 11.3 N_min survivorship (extends section 4)
+
+The sensitivity set of `N_min` becomes `{2, 3, 5, 7, 10}` (it was `{3, 5, 10}`); the primary value stays 5.
+A new table lists, per condition and label group: cells with `N >= 1`, cells with `N >= 5`, the share dropped by
+`N < 5`, the mean per-cell hit rate of the dropped cells and of the kept cells. Reason: cells with few touched
+windows are not a random subset, so `q_s` can depend on `N_min` through who survives.
+
+### 11.4 LILocBench pose gate: the pair-skew bound (replaces one clause of section 5)
+
+Section 5 fixes the largest front/rear stamp difference of a pair at 0.05 s. The code of run A compared with 0.03 s
+and set a flag `pair_skew_ok` from it. For run B the code uses the pre-registered 0.05 s, and the meta file also
+carries the flag for 0.03 s. The report prints the pose verdict for both bounds.
+
+### 11.5 Wall-thickness gate
+
+No change to the rule. The report states that the present gate accepts a patch on its extent along the major
+axis and does not test linearity or planarity, so corners, furniture and vegetation also set the thickness; its
+failure says little about pose quality and its pass or fail cannot tell a smeared wall from a non-wall patch.
+A redesigned gate would be a new pre-registered item and is left to the lead.
+
+### 11.6 What is reported
+
+Run A (original definitions, dt = 0, `start`) and run B (amended time base, class groups, extended N_min) both
+appear in `P1_REPORT.md`, with the same analysis code. Run A numbers must not be used to set `m1`. Everything not
+named in this section (labels of the LILocBench reference, windows, resolutions, percentiles, bootstrap, seeds,
+tile size, the escalation rule, section 7) is unchanged.
