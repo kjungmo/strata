@@ -209,6 +209,15 @@ inline Pose3 readBoreasCalib(const std::string& path) {
   return p;
 }
 
+// The calibration file T_applanix_lidar.txt, read against lidar_poses.csv of a real session (results_p3/logs/validate_boreas_*.log):
+// the translation is the position of the lidar in the applanix frame (0, 0, +0.13), but the rotation block is the INVERSE of the
+// rotation of the lidar frame in the applanix frame (the file says +42.6 degrees about up, the heading of lidar_poses.csv is the
+// applanix heading minus 42.6 degrees). The pose of the lidar in the applanix frame is therefore {file rotation^-1, file translation}.
+// This holds for a calibration whose translation is a pure z offset (as here); the validator checks it on every session it reads.
+inline Pose3 lidarInApplanix(const Pose3& file) {
+  Pose3 p; p.q = file.q.inverse().normalized(); p.t = file.t; return p;
+}
+
 inline Pose3 compose(const Pose3& a, const Pose3& b) {      // a * b
   Pose3 o; o.q = (a.q * b.q).normalized(); o.t = a.t + a.q * b.t; return o;
 }
