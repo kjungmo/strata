@@ -537,3 +537,9 @@ Written and committed after the first failure of the evaluation and before any r
    This is a resource limit of the harness, not a setting of an arm. The limit is stated beside every Spires 0.1 m table.
 
 The same rule (1 and 2) applies to the KTH and Boreas stages. Their memory limits stay as written (KTH 9 GB; Boreas conversion and static exports 6 GB, section 14 and Amendment 1).
+
+## 22. Amendment 9 (2026-10-18, during the evaluation): Spires 0.1 m runs of an arm that failed at 0.1 m
+
+The run `spires_03_shipped_v0_1_r0.1_W10_p1` (Keble 03, 0.1 m, `W = 10`, Periodic veto on) failed twice with `std::bad_alloc`: at 6 GB (17 minutes) and at the 9 GB limit of Amendment 8 (about 20 minutes). Each failing 0.1 m run costs about 20 minutes. The host has 11.9 GB.
+Rule from now on: the first 0.1 m run of an arm and veto setting is Keble 03 `W = 10` (the loop order). If it fails, the later 0.1 m runs of that arm and veto setting (Keble 03 `W = 20`, Keble 04, Keble 05) are not started, because a longer window, a longer sequence and the same arm need at least the memory of the failed run. They are listed in `results_p3/not_run_steps.tsv` with this reason, and the Spires 0.1 m table says "not run" for them, not "failed".
+An arm that succeeds on Keble 03 `W = 10` runs everywhere as before. The 0.1 m runs with the veto off (the secondary pass) use the same rule. No limit is raised again.

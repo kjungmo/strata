@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "5.12 5.41 4.85 3/969 1315352",
+  "loadavg": "7.73 6.01 4.49 8/762 1367149",
   "meminfo": {
-   "MemAvailable": "9921532 kB",
+   "MemAvailable": "10018012 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31942012 kB"
+   "SwapFree": "31977032 kB"
   },
-  "time": "2026-10-18T16:41:13+0900",
+  "time": "2026-10-18T18:18:33+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "17.9 90688 python3",
-   "17.8 90748 python3",
-   "17.8 90848 python3",
-   "17.7 90816 python3",
-   "17.2 79192 python3"
+   " 100 19416 lever2",
+   " 100 20540 lever2",
+   "99.9 31268 lever",
+   "99.9 31428 lever",
+   "99.9 31416 lever"
   ]
  },
  "argv": [
@@ -25,26 +25,26 @@
   "-DCMAKE_BUILD_TYPE=Release"
  ],
  "before": {
-  "loadavg": "4.96 5.38 4.84 2/969 1315340",
+  "loadavg": "7.73 6.01 4.49 8/762 1367137",
   "meminfo": {
-   "MemAvailable": "9921312 kB",
+   "MemAvailable": "10022880 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31942012 kB"
+   "SwapFree": "31977032 kB"
   },
-  "time": "2026-10-18T16:41:13+0900",
+  "time": "2026-10-18T18:18:33+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "17.9 90680 python3",
-   "17.8 90732 python3",
-   "17.8 90828 python3",
-   "17.7 90800 python3",
-   "17.2 79192 python3"
+   "99.9 31268 lever",
+   "99.9 31428 lever",
+   "99.9 31416 lever",
+   "99.9 19416 lever2",
+   "99.8 20540 lever2"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "02462c3485d342114d136abe34ef58e804bc2c94",
-  "commit": "02462c3485d342114d136abe34ef58e804bc2c94",
+  "binary_commit": "f8cdc93e2f206976b22a2f3e9b2af753a683e471",
+  "commit": "f8cdc93e2f206976b22a2f3e9b2af753a683e471",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
@@ -57,6 +57,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 0.096,
+ "seconds": 0.111,
  "step": "build_configure"
 }

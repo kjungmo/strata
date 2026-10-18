@@ -245,6 +245,10 @@ stage_eval_spires() {
         for w in 10 20; do
           # Amendment 8: 0.1 m runs get the 9 GB address-space limit of the KTH exports (the first attempt at 6 GB ended in std::bad_alloc); a failed run is listed, not hidden
           local ml=6000000; [ "$r" = "0.1" ] && ml="${SPIRES_R01_MEM_LIMIT_KB:-9000000}"
+          # Amendment 9: once an arm has failed at 0.1 m (same veto setting), its later 0.1 m runs are not started and are listed in not_run_steps.tsv
+          if [ "$r" = "0.1" ] && grep -q "spires_.*_${arm}_r0.1_W[0-9]*_p${PER}	" "$RES/failed_steps.tsv" 2>/dev/null; then
+            printf '%s\t%s\tnot run: arm %s failed at 0.1 m with veto %s\n' "$(stamp)" "spires_${s}_${arm}_r${r}_W${w}_p$PER" "$arm" "$PER" >> "$RES/not_run_steps.tsv"; continue
+          fi
           MEM_LIMIT_KB=$ml try step "spires_${s}_${arm}_r${r}_W${w}_p$PER" -- "$P3" arm-eval --cache "$d/cache.bin" --labels "$d/labels_r$r.bin" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
             --format counts --out "$d/counts_${arm}_r${r}_W${w}_p$PER.csv" --meta "$d/counts_${arm}_r${r}_W${w}_p$PER.meta" && \
           try step "spires_eval_${s}_${arm}_r${r}_W${w}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' spires --counts '$d/counts_${arm}_r${r}_W${w}_p$PER.csv' --latency '$d/counts_${arm}_r${r}_W${w}_p$PER.csv.latency' > '$RES/spires_${s}_${arm}_r${r}_W${w}_p$PER.json'"
