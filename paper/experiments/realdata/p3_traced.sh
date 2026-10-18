@@ -6,9 +6,11 @@
 #   STEP                a short name; the trace goes to <RESULTS>/access/STEP.strace
 #   env P3_RESULTS_DIR  default <this dir>/results_p3
 #       P3_DATA_PATTERN  regular expression (grep -E) for paths that count as data (default: datasets/strata)
-#       P3_ALLOW_DIRTY   1 = run although the repository has uncommitted files (must be disclosed in the report)
+#       P3_ALLOW_DIRTY   1 = run although the experiment directory has uncommitted files (must be disclosed in the report)
 # The access log is <RESULTS>/access_log.tsv: time, step, commit, uncommitted files, path, number of open calls.
-# A command runs only from a clean committed tree (PREREG_P1B Amendment 4 item 2 and Amendment 5 item 4).
+# A command runs only from committed scripts: the experiment directory (this one, minus results_p3) must be clean. Other agents edit
+# strata_core in the same worktree; that cannot change a script, and binaries are built from a `git archive` copy of a commit by
+# reproduce_p3.sh (stage build), whose step log records the commit. So the check here covers this directory only.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RES="${P3_RESULTS_DIR:-$HERE/results_p3}"
@@ -16,9 +18,9 @@ PATTERN="${P3_DATA_PATTERN:-datasets/strata}"
 if [ $# -lt 2 ]; then echo "usage: p3_traced.sh STEP cmd [args...]" >&2; exit 2; fi
 step="$1"; shift
 mkdir -p "$RES/access"
-dirty="$(git -C "$HERE" status --porcelain -- ':(top)' ':(top,exclude)paper/experiments/realdata/results_p3' | wc -l)"
+dirty="$(git -C "$HERE" status --porcelain -- . ':(exclude)results_p3' | wc -l)"
 if [ "$dirty" != "0" ] && [ "${P3_ALLOW_DIRTY:-0}" != "1" ]; then
-  echo "refusing to run '$step': $dirty uncommitted file(s) outside results_p3 (commit first; P3_ALLOW_DIRTY=1 overrides and must be disclosed)" >&2
+  echo "refusing to run '$step': $dirty uncommitted file(s) in the experiment directory outside results_p3 (commit first; P3_ALLOW_DIRTY=1 overrides and must be disclosed)" >&2
   exit 3
 fi
 commit="$(git -C "$HERE" rev-parse HEAD)"
