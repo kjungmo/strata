@@ -318,3 +318,11 @@ time	step	commit	uncommitted_files	path	open_calls
 2026-10-18T15:30:00+09:00	review3_untraced_reads	5a0eccd5476f630d647c8e9103b9d3d3f1390bba	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-03/raw/lidar-clouds.zip	unrecorded (no strace; reviewer read)
 2026-10-18T15:30:00+09:00	review3_untraced_reads	5a0eccd5476f630d647c8e9103b9d3d3f1390bba	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-03/processed/trajectory/gt-tum.txt	unrecorded (no strace; reviewer read)
 2026-10-18T15:30:00+09:00	review3_untraced_reads	5a0eccd5476f630d647c8e9103b9d3d3f1390bba	0	/home/cona/datasets/strata/spires/keble/ground_truth_map/keble-college/merged-cloud-1cm.pcd	unrecorded (no strace; reviewer read)
+2026-10-18T16:28:29+09:00	lil_convert_lt_changes_dynamics_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/bags/lt_changes_dynamics_0.bag	1
+2026-10-18T16:28:29+09:00	lil_convert_lt_changes_dynamics_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/gt_x/lt_changes_dynamics_0/gt_poses.txt	1
+2026-10-18T16:28:41+09:00	lil_offset_lt_changes_dynamics_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/bags/lt_changes_dynamics_0.bag	1
+2026-10-18T16:28:41+09:00	lil_offset_lt_changes_dynamics_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/gt_x/lt_changes_dynamics_0/gt_poses.txt	1
+2026-10-18T16:32:31+09:00	lil_convert_lt_changes_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/bags/lt_changes_0.bag	1
+2026-10-18T16:32:31+09:00	lil_convert_lt_changes_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/gt_x/lt_changes_0/gt_poses.txt	1
+2026-10-18T16:32:40+09:00	lil_offset_lt_changes_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/bags/lt_changes_0.bag	1
+2026-10-18T16:32:40+09:00	lil_offset_lt_changes_0	724ecf40e15870f8ed1d459142da03ed212c7f4b	0	/home/cona/datasets/strata/lilocbench/gt_x/lt_changes_0/gt_poses.txt	1

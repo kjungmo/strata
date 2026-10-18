@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "1.47 2.30 3.20 2/866 1297557",
+  "loadavg": "5.38 3.61 3.55 6/843 1306008",
   "meminfo": {
-   "MemAvailable": "9677188 kB",
+   "MemAvailable": "10177364 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31940800 kB"
+   "SwapFree": "31941120 kB"
   },
-  "time": "2026-10-18T16:24:55+0900",
+  "time": "2026-10-18T16:27:28+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.3 460312 cc1plus",
-   "15.6 95432 python3",
-   "15.2 81184 python3",
-   " 8.3 85272 fusion_node_mai",
-   " 7.6 82284 fusion_node_mai"
+   " 104 13184 lever_final2",
+   " 104 13248 lever_final2",
+   " 104 13300 lever_final2",
+   " 104 13304 lever_final2",
+   "16.0 114024 python3"
   ]
  },
  "argv": [
@@ -25,26 +25,26 @@
   "-DCMAKE_BUILD_TYPE=Release"
  ],
  "before": {
-  "loadavg": "1.47 2.30 3.20 3/866 1297550",
+  "loadavg": "5.32 3.57 3.54 5/843 1306001",
   "meminfo": {
-   "MemAvailable": "9686156 kB",
+   "MemAvailable": "10180328 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31940800 kB"
+   "SwapFree": "31941120 kB"
   },
-  "time": "2026-10-18T16:24:55+0900",
+  "time": "2026-10-18T16:27:28+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 116 454844 cc1plus",
-   "15.7 95416 python3",
-   "15.2 81184 python3",
-   " 8.6 85272 fusion_node_mai",
-   " 7.7 82284 fusion_node_mai"
+   " 103 13184 lever_final2",
+   " 103 13248 lever_final2",
+   " 103 13300 lever_final2",
+   " 103 13304 lever_final2",
+   "16.0 114020 python3"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
-  "commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
+  "binary_commit": "724ecf40e15870f8ed1d459142da03ed212c7f4b",
+  "commit": "724ecf40e15870f8ed1d459142da03ed212c7f4b",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
@@ -57,6 +57,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 0.102,
+ "seconds": 0.098,
  "step": "build_configure"
 }
