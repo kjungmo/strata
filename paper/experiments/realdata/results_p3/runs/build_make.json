@@ -1,0 +1,62 @@
+{
+ "after": {
+  "loadavg": "3.71 4.32 5.19 3/845 859345",
+  "meminfo": {
+   "MemAvailable": "9254532 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31851696 kB"
+  },
+  "time": "2026-10-18T11:44:41+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 110 334976 cc1plus",
+   " 106 654152 cc1plus",
+   "35.0 74340 python3",
+   " 7.2 82416 fusion_node_mai",
+   " 6.6 570700 2.1.299"
+  ]
+ },
+ "argv": [
+  "cmake",
+  "--build",
+  "~/.cache/strata_p3_build/build",
+  "-j4",
+  "--target",
+  "p3_probe",
+  "hitrate_probe",
+  "p1b_probe",
+  "test_p3"
+ ],
+ "before": {
+  "loadavg": "3.60 4.41 5.27 3/856 858374",
+  "meminfo": {
+   "MemAvailable": "9307044 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31850752 kB"
+  },
+  "time": "2026-10-18T11:43:50+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "98.0 694780 cc1plus",
+   "90.5 255980 cc1plus",
+   "18.1 81480 python3",
+   " 6.6 598644 2.1.299",
+   " 4.5 82452 fusion_node_mai"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "b545319e62b428685551e0aa05d15b9967146071",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 32
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 50.778,
+ "step": "build_make"
+}

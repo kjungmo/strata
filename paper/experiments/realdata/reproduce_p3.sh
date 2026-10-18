@@ -47,6 +47,10 @@ step() {
   done
   shift
   local log="$RES/logs/$name.log"
+  # a repeated step keeps the earlier attempt (failures are reported, PREREG_P3.md section 4)
+  local ts; ts="$(date +%Y%m%dT%H%M%S)"
+  [ -f "$log" ] && mv "$log" "$RES/logs/$name.attempt-$ts.log"
+  [ -f "$RES/runs/$name.json" ] && mv "$RES/runs/$name.json" "$RES/runs/$name.attempt-$ts.json"
   { echo "STEP $name"; echo "START $(stamp) host=$(hostname) load=$(cut -d' ' -f1-3 /proc/loadavg) cores=$(nproc)"
     echo "COMMIT $(git -C "$HERE" rev-parse HEAD)"; echo "EXPERIMENT_DIR_UNCOMMITTED $(tree_dirty)"
     echo "BINARY_COMMIT $(cat "$BUILD/commit" 2>/dev/null || echo unknown)"

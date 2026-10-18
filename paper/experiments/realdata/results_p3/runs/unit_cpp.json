@@ -1,0 +1,54 @@
+{
+ "after": {
+  "loadavg": "2.95 3.59 5.00 3/798 785216",
+  "meminfo": {
+   "MemAvailable": "9609800 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31944568 kB"
+  },
+  "time": "2026-10-18T11:03:40+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 551132 cc1plus",
+   "99.7  5004 lever_new2",
+   " 6.5 632728 2.1.299",
+   " 3.2 193064 claude",
+   " 0.8 13536 x-terminal-emul"
+  ]
+ },
+ "argv": [
+  "~/.cache/strata_p3_build/build/realdata/test_p3"
+ ],
+ "before": {
+  "loadavg": "2.95 3.59 5.00 3/798 785155",
+  "meminfo": {
+   "MemAvailable": "9617020 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31944568 kB"
+  },
+  "time": "2026-10-18T11:03:40+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 100 544372 cc1plus",
+   "99.6  5004 lever_new2",
+   " 6.5 632736 2.1.299",
+   " 3.2 193064 claude",
+   " 0.8 13536 x-terminal-emul"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "4fda8f3ad06616f1b4ad344fd3a84e897b9bc6d1",
+  "uncommitted_in_experiment_dir": 5,
+  "uncommitted_in_repository": 10
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.109,
+ "step": "unit_cpp"
+}

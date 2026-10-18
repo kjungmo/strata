@@ -1,0 +1,56 @@
+{
+ "after": {
+  "loadavg": "4.92 6.36 6.09 4/825 850491",
+  "meminfo": {
+   "MemAvailable": "8680660 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31841620 kB"
+  },
+  "time": "2026-10-18T11:37:42+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 100 667320 cc1plus",
+   "96.5 997432 cc1plus",
+   " 6.6 553568 2.1.299",
+   " 3.3 44732 colcon",
+   " 3.2 178240 claude"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' kth --gt '~/datasets/strata/kth/00/gt_cloud.pcd' --map '/mnt/d/wsl/strata/p3/smoke_kth00/shipped_v0_1_all.pcd' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_kth00_shipped_v0_1_all.json'"
+ ],
+ "before": {
+  "loadavg": "5.08 6.44 6.12 3/839 850026",
+  "meminfo": {
+   "MemAvailable": "9732048 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31841564 kB"
+  },
+  "time": "2026-10-18T11:37:29+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "95.3 611176 cc1plus",
+   "22.6 78560 python3",
+   " 6.6 555296 2.1.299",
+   " 5.2 82292 fusion_node_mai",
+   " 3.2 190192 claude"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 27
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 12.94,
+ "step": "smoke_kth00_eval_shipped_v0_1_all"
+}

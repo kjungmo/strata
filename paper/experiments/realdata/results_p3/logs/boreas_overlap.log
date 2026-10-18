@@ -1,0 +1,21 @@
+STEP boreas_overlap
+START 2026-10-18T11:16:13+09:00 host=DESKTOP-KCD7BRS load=4.97 5.69 5.80 cores=12
+COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+CMD <BUILD_DIR>/build/realdata/p3_probe boreas-overlap --seqs <DATA_ROOT>/boreas/boreas-2020-11-26-13-58,<DATA_ROOT>/boreas/boreas-2021-04-08-12-44,<DATA_ROOT>/boreas/boreas-2021-06-17-17-52
+boreas-2020-11-26-13-58 frames=1736 pose_rows_in_slice=1736 frames_without_pose_row=0 origin_lat_deg=43.7821 origin_lon_deg=-79.4661
+boreas-2021-04-08-12-44 frames=1736 pose_rows_in_slice=1736 frames_without_pose_row=0 origin_lat_deg=43.7821 origin_lon_deg=-79.4662
+boreas-2021-06-17-17-52 frames=1736 pose_rows_in_slice=1736 frames_without_pose_row=0 origin_lat_deg=43.7822 origin_lon_deg=-79.4661
+tile_m=10 rule: pass if every ordered pair has share_near >= 0.8
+frame,a,b,tiles_a,tiles_b,share_a_in_b,share_b_in_a,share_a_near_b,share_b_near_a
+common,boreas-2020-11-26-13-58,boreas-2021-04-08-12-44,167,142,0.694611,0.816901,0.898204,1
+common,boreas-2020-11-26-13-58,boreas-2021-06-17-17-52,167,173,0.934132,0.901734,1,0.99422
+common,boreas-2021-04-08-12-44,boreas-2021-06-17-17-52,142,173,0.816901,0.67052,1,0.890173
+raw_local,boreas-2020-11-26-13-58,boreas-2021-04-08-12-44,167,144,0.838323,0.972222,0.898204,1
+raw_local,boreas-2020-11-26-13-58,boreas-2021-06-17-17-52,167,175,0.964072,0.92,1,0.994286
+raw_local,boreas-2021-04-08-12-44,boreas-2021-06-17-17-52,144,175,0.972222,0.8,1,0.885714
+VERDICT boreas tile overlap PASS (common frame; the raw_local rows show what the check would give without the common frame)
+step boreas_overlap rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/boreas_overlap.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/boreas_overlap.json rc=0
+END 2026-10-18T11:16:14+09:00 rc=0 load=4.97 5.69 5.80

@@ -1,0 +1,60 @@
+{
+ "after": {
+  "loadavg": "4.97 5.69 5.80 4/901 816058",
+  "meminfo": {
+   "MemAvailable": "9380928 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849960 kB"
+  },
+  "time": "2026-10-18T11:16:14+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 103 545236 cc1plus",
+   " 100 73980 test_closed_loo",
+   "26.3 70336 python3",
+   "24.6 73984 python3",
+   " 8.2 80772 fusion_node_mai"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "boreas_overlap",
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "boreas-overlap",
+  "--seqs",
+  "~/datasets/strata/boreas/boreas-2020-11-26-13-58,~/datasets/strata/boreas/boreas-2021-04-08-12-44,~/datasets/strata/boreas/boreas-2021-06-17-17-52"
+ ],
+ "before": {
+  "loadavg": "4.97 5.69 5.80 6/915 816029",
+  "meminfo": {
+   "MemAvailable": "9404464 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849960 kB"
+  },
+  "time": "2026-10-18T11:16:14+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.9 73980 test_closed_loo",
+   "97.6 520380 cc1plus",
+   "25.3 70304 python3",
+   "23.6 73948 python3",
+   " 8.0 80960 fusion_node_mai"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "774812177c00c9279717c552d1fc38a43d0bcf62",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 20
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.337,
+ "step": "boreas_overlap"
+}

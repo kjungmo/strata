@@ -1,0 +1,62 @@
+{
+ "after": {
+  "loadavg": "5.14 5.74 5.81 4/874 815564",
+  "meminfo": {
+   "MemAvailable": "9919096 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849952 kB"
+  },
+  "time": "2026-10-18T11:16:08+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 123  4752 strata_core_tes",
+   "99.9 73980 test_closed_loo",
+   "82.0 128540 cc1plus",
+   "73.0 69148 python3",
+   "66.0 72784 python3"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "validate_kth_05",
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "kth-validate",
+  "--dir",
+  "~/datasets/strata/kth/05",
+  "--n",
+  "10"
+ ],
+ "before": {
+  "loadavg": "5.14 5.74 5.81 6/848 815513",
+  "meminfo": {
+   "MemAvailable": "9961468 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849952 kB"
+  },
+  "time": "2026-10-18T11:16:08+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 100 73980 test_closed_loo",
+   " 6.6 651288 2.1.299",
+   " 3.2 184528 claude",
+   " 0.8 12648 x-terminal-emul",
+   " 0.4 56112 Xvfb"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "774812177c00c9279717c552d1fc38a43d0bcf62",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 19
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.46,
+ "step": "validate_kth_05"
+}

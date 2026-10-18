@@ -1,0 +1,71 @@
+{
+ "after": {
+  "loadavg": "6.18 6.79 6.21 4/893 849234",
+  "meminfo": {
+   "MemAvailable": "9501112 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31839228 kB"
+  },
+  "time": "2026-10-18T11:36:53+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 103 414168 cc1plus",
+   " 100 302368 cc1plus",
+   "99.5 66120 python",
+   "30.3 74540 python3",
+   "15.8 14588 parity_shim"
+  ]
+ },
+ "argv": [
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "kth-export",
+  "--dir",
+  "~/datasets/strata/kth/00",
+  "--arm",
+  "shipped_v0_1",
+  "--res",
+  "0.2",
+  "--window",
+  "10",
+  "--periodicity",
+  "1",
+  "--policies",
+  "static_only,not_rejected,all",
+  "--out-prefix",
+  "/mnt/d/wsl/strata/p3/smoke_kth00/shipped_v0_1",
+  "--meta",
+  "/mnt/d/wsl/strata/p3/smoke_kth00/shipped_v0_1.meta"
+ ],
+ "before": {
+  "loadavg": "7.31 6.88 6.10 10/941 844841",
+  "meminfo": {
+   "MemAvailable": "7214668 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31873764 kB"
+  },
+  "time": "2026-10-18T11:34:11+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 150 160668 cc1plus",
+   " 122 209960 cc1plus",
+   " 122 223892 cc1plus",
+   " 121 229376 cc1plus",
+   " 121 208732 cc1plus"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 27
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 161.849,
+ "step": "smoke_kth00_export_shipped_v0_1"
+}

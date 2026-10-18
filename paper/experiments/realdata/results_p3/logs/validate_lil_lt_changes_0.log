@@ -1,0 +1,23 @@
+STEP validate_lil_lt_changes_0
+START 2026-10-18T11:16:09+09:00 host=DESKTOP-KCD7BRS load=5.14 5.74 5.81 cores=12
+COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+CMD <BUILD_DIR>/build/realdata/p3_probe lil-validate --bag <DATA_ROOT>/lilocbench/bags/lt_changes_0.bag --gt <DATA_ROOT>/lilocbench/gt_x/lt_changes_0/gt_poses.txt --n 10
+gt_poses=8700 gt_span=[1.73341e+09,1.73341e+09] messages_read=120
+pair 0 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0169027 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=0
+pair 1 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0174308 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=0
+pair 2 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0169926 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pair 3 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.016434 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pair 4 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.017029 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pair 5 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0176432 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pair 6 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0165148 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pair 7 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0168109 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pair 8 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0172894 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pair 9 front_stamp=1.73341e+09 rear_stamp=1.73341e+09 skew_s=0.0166636 beams=811/811 angle_min=-2.35619 time_increment=6.17284e-05 frames_made=2
+pairs_with_a_scan_before_the_first_gt_pose=2
+extrinsics front=(0.304559,-0.00597687,0.0192081) rear=(-0.302722,-0.00162457,-3.13075) beams_used=12970 invalid=6 no_pose=0
+VERDICT lilocbench reader OK
+step validate_lil_lt_changes_0 rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/validate_lil_lt_changes_0.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/validate_lil_lt_changes_0.json rc=0
+END 2026-10-18T11:16:09+09:00 rc=0 load=5.14 5.74 5.81

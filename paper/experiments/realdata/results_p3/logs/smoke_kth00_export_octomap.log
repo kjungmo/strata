@@ -1,0 +1,8 @@
+STEP smoke_kth00_export_octomap
+START 2026-10-18T11:37:42+09:00 host=DESKTOP-KCD7BRS load=4.92 6.36 6.09 cores=12
+COMMIT 9848b41db22e7e4e9d51243878ab60aa13ec8387
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 9848b41db22e7e4e9d51243878ab60aa13ec8387
+CMD <BUILD_DIR>/build/realdata/p3_probe kth-export --dir <DATA_ROOT>/kth/00 --arm octomap --res 0.2 --window 10 --periodicity 1 --policies static_only,not_rejected,all --out-prefix <OUT_DIR>/smoke_kth00/octomap --meta <OUT_DIR>/smoke_kth00/octomap.meta
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_kth00_export_octomap.json rc=0
+END 2026-10-18T11:39:58+09:00 rc=0 load=3.97 5.43 5.78

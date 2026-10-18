@@ -1,0 +1,56 @@
+{
+ "after": {
+  "loadavg": "3.90 5.20 5.68 4/822 854259",
+  "meminfo": {
+   "MemAvailable": "7933128 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31847200 kB"
+  },
+  "time": "2026-10-18T11:40:43+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 111 314684 cc1plus",
+   " 100 1779060 cc1plus",
+   "97.0 301828 cc1plus",
+   " 6.6 577548 2.1.299",
+   " 3.2 183120 claude"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' kth --gt '~/datasets/strata/kth/00/gt_cloud.pcd' --map '/mnt/d/wsl/strata/p3/smoke_kth00/octomap_all.pcd' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_kth00_octomap_all.json'"
+ ],
+ "before": {
+  "loadavg": "3.88 5.24 5.70 4/822 854149",
+  "meminfo": {
+   "MemAvailable": "7985840 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31847148 kB"
+  },
+  "time": "2026-10-18T11:40:31+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 1697420 cc1plus",
+   " 101 329452 cc1plus",
+   "92.6 321536 cc1plus",
+   " 6.6 573904 2.1.299",
+   " 3.2 186360 claude"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 27
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 12.631,
+ "step": "smoke_kth00_eval_octomap_all"
+}

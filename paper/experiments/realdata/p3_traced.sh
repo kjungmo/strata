@@ -26,6 +26,7 @@ if [ "$dirty" != "0" ] && [ "${P3_ALLOW_DIRTY:-0}" != "1" ]; then
 fi
 commit="$(git -C "$HERE" rev-parse HEAD)"
 trace="$RES/access/$step.strace"
+[ -f "$trace" ] && mv "$trace" "$RES/access/$step.attempt-$(date +%Y%m%dT%H%M%S).strace"
 start="$(date -Is)"
 strace -f -e trace=openat,open -o "$trace" "$@"
 rc=$?
