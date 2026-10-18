@@ -1,0 +1,8 @@
+STEP smoke_lil_dyn0_shipped_v0_1
+START 2026-10-18T11:44:41+09:00 host=DESKTOP-KCD7BRS load=3.71 4.32 5.19 cores=12
+COMMIT b545319e62b428685551e0aa05d15b9967146071
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT b545319e62b428685551e0aa05d15b9967146071
+CMD <BUILD_DIR>/build/realdata/p3_probe arm-eval --cache <DATA_ROOT>/p1/lil/cache_dynamics_0.bin --labels <DATA_ROOT>/p1/lil/ref_r0.05.bin --arm shipped_v0_1 --res 0.05 --window 15 --periodicity 1 --out <OUT_DIR>/smoke_lil/dump_dynamics_0_shipped_v0_1.csv --meta <OUT_DIR>/smoke_lil/dump_dynamics_0_shipped_v0_1.meta
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_lil_dyn0_shipped_v0_1.json rc=0
+END 2026-10-18T11:44:50+09:00 rc=0 load=3.76 4.31 5.18

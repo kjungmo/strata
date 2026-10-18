@@ -1,6 +1,6 @@
 ## Deviations and notes, phase 3 harness
 
-No test evaluation has been run. Times are +09:00 on 2026-10-18. Nothing here changes an arm, a label rule, a window, a resolution or a metric of `PREREG_P3.md`.
+No test evaluation (`eval_*` stage) has been run. The only runs of an arm on test data are the Boreas feasibility probe on the first 10 frames of one session (order of events, item 7). Times are +09:00 on 2026-10-18. Nothing here changes an arm, a label rule, a window, a resolution or a metric of `PREREG_P3.md`; changes of the harness are in Amendment 3 (section 16 of `PREREG_P3.md`).
 
 ### Order of events
 
@@ -12,6 +12,16 @@ No test evaluation has been run. Times are +09:00 on 2026-10-18. Nothing here ch
 5. 11:16 to 11:50 smoke tests on CALIBRATION data (KITTI 00; `dynamics_0` with the run B cache and the `mapping` reference).
 6. 11:55:00 `PREREG_P3.md` committed (f208975). 11:55:07 stat record after (`test_split_stat_after*.tsv`): no file appeared, disappeared or changed in size, mtime or ctime (the heading of `test_split_stat_compare.md` says "phase 1b" and lists the
    phase 1b allowed reads: that is the wording of `compare_stat.py`, not a statement about phase 3; the reads of phase 3 are in section 10 of `PREREG_P3.md` and in `access_log.tsv`).
+7. **12:11 to 12:15 Boreas feasibility probe** (`p3_feas_boreas.sh`, commits 214891e and c671879, after the commit of `PREREG_P3.md` at 11:55). `boreas-convert` of the first 10 frames of `boreas-2020-11-26-13-58` at three range windows (`feas_boreas_convert`, `_r50`, `_r25`, `_r15` in `access_log.tsv`),
+   then `static-export` of the 10-frame caches with the engine: first the arms `shipped_v0_1` and `sprt` at 3 to 50 m, 0.2 m, Periodic veto on (12:11 and 12:12), then the `sprt` arm over range windows, voxel sizes and veto switch. The same 10 frames had been opened for the reader validation. No label, rate or metric was computed.
+   The terminal table was not saved and most per-configuration files were overwritten (the surviving files are in `feas/original/`). This corrects the sentence "No arm was run on a test sequence" that stood at the end of this file: two arms of the engine were run on 10 test frames.
+8. 12:16 Amendment 1 of `PREREG_P3.md` (Boreas configuration and measured cost); 12:19 Amendment 2 (how inputs and outputs are recorded).
+9. Engine commits after the first `PREREG_P3.md`: `f382498` (12:11, loop guards), `8ccf56a` (12:31, the window count restarts at demotion), `33ef9b8` (12:52, tests). See Amendment 3, item 16.4.
+10. **Review of the harness (Opus), six findings.** Resolution below. The review read the first GPS rows of the three Boreas sessions with its own code (text pose files, outside the harness trace); the traced gate reads the same files.
+11. 13:34 stat record of every test-split file (`review/review_stat_before*.tsv`); 13:34 commits 95b97d9 (findings 2 and 3) and a68266b (findings 1 and 4).
+12. 13:35:59 Boreas gate re-run on pose files (traced, `boreas_overlap`, binary a68266b): PASS in the file frame, ENU worst miss 0.0551 m for each session, altitude columns within centimetres. The log of the first (11:16) gate, which used the wrong frame, is kept as `logs/boreas_overlap.attempt-20261018T133559.log`; this 13:35:59 log is `logs/boreas_overlap.attempt-20261018T141925.log`; the gate ran a third time at 14:19:25 with the pinned-engine binary (item 14) and its log is `logs/boreas_overlap.log`. The three runs read the same pose files; the result is identical.
+13. 13:37 to 13:39 feasibility probe repeated on the same 10 frames, with its table and meta files kept (`feas/`; `feas_rerun_boreas_convert_r*` in `access_log.tsv`). 13:41 Amendment 3 committed (f925cd2), before any evaluation.
+14. 13:42 to 14:19 on the binary built from 38782a5: `check`, `unit`, `smoke_lil`, `smoke_kth`, `smoke_spires`, `boreas_gate` on the pinned engine (below).
 
 ### Defects found by the validations and smoke tests (each fixed in a commit, tests added)
 
@@ -42,5 +52,34 @@ convention; the MTD-Map-like arm is not built.
 
 ### Not done
 
-No arm was run on a test sequence. No TLS map was read in phase 3. `eval_*` stages are written and guarded; they were exercised only against fixtures (`test_p3_guard.sh`) and, for the paths they share with the smoke tests, on calibration data. The stages `eval_spires` and `eval_boreas` (spires-tls, spires-labels, boreas-convert, tile-ground,
-static-export on real data) have run on no real data; their commands were checked against the synthetic tests of the underlying subcommands only.
+No arm was run on a test sequence except in the Boreas feasibility probe (item 7). No TLS map was read in phase 3. `eval_*` stages are written and guarded; they were exercised only against fixtures (`test_p3_guard.sh`) and, for the paths they share with the smoke tests, on calibration data. The stages `eval_spires` and `eval_boreas` (spires-tls, spires-labels, boreas-convert, tile-ground,
+static-export on real data) have run on no real data except `boreas-convert` and `static-export` on the 10 probe frames and `arm-eval --format counts` on Keble 02 (calibration); their commands were checked against the synthetic tests of the underlying subcommands only.
+
+### Review findings (Opus) and how each was resolved
+
+| # | Finding | Resolution | Where |
+|---|---|---|---|
+| 1 | The Boreas common frame moved the 2021 sessions a second time (4.3 m and 0.94 m); the validator checked ENU on the reference session only. | Reproduced from the gate: first rows (-4.302, -0.149) and (-0.450, 0.821); worst ENU miss 0.055 m for all three sessions. Common frame = frame of the files; every session checked against the reference origin (limit 0.10 m) in the gate, the validator (`--ref` required) and the converter; no vertical offset (altitude columns agree to 0.04 m median, 0.13 m at the 90th percentile); tile ground kept as a diagnostic. Gate re-run before any Boreas run: PASS. | a68266b, 518af80; Amendment 3 item 16.1; `logs/boreas_overlap.log` |
+| 2 | Spires ground (label 2) was never reported. | `p3_eval.py spires` reports labels 3 and 2 as separate blocks with their own latency (default `--structure-labels 3,2`); tests. Committed before `eval_spires`. | 95b97d9; item 16.2 |
+| 3 | The Jaccard shared tiles came from the Static sets, not from the observed sets, and were pairwise. | `--observed` required; shared tiles = tiles every compared session observed (primary), tiles of the pair (secondary, `pairwise_tiles`); refuses a Static set outside its observed set; `reproduce_p3.sh` passes the `*_observed.ids` files; tests. | 95b97d9; item 16.3 |
+| 4 | The engine was not pinned. | Tree hash `87bee34e3d6e7861d45eef80ad5069ff54fd12da` in the amendment; `guard_eval` refuses another tree; step logs and run records carry the tree; engine changes after the first `PREREG_P3.md` disclosed; smoke tests and the Spires cost run repeated on the pinned engine (below). | a68266b; item 16.4 |
+| 5 | The access and deviation records of the Boreas probe were wrong or incomplete. | Order of events (items 7 to 14) and the "Not done" sentences corrected; the probe's table and meta files committed (`feas/`, `feas/original/`) after a repeat on the same 10 frames (cells and peak memory equal Amendment 1 in every row); the citation of a non-existent section 8.5 replaced by section 14. | 518af80, f925cd2; item 16.6 |
+| 6 | KTH evaluator matches the official rule (note). | The note is added beside the KTH table sentence (item 16.5). It is the reviewer's measurement; PCL is not installed here and the script is not in the repository, so the numbers are quoted, not reproduced. | item 16.5 |
+
+I did not disagree with a finding. One detail differs from the review text: the review asks to re-examine `tile-ground`; the altitude comparison needs no lidar content (pose files only), so the decision is made from the gate log and `tile-ground` stays as a diagnostic.
+
+### Repeated on the pinned engine (Amendment 3, item 16.4)
+
+Binary built from commit 38782a5 (`STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da` in every step log of these runs). The older figures above came from the engine before `8ccf56a`.
+
+* LILocBench `dynamics_0` against `mapping` (in-sample, not to be cited): false-Static on clutter `shipped_v0_1` 1,285 / 23,888 = 5.38 %, `octomap` 1,285 = 5.38 %, `symmetric` 683 = 2.86 %, `elite_like` 247 = 1.03 % (all four equal the earlier run); `sprt` **259** / 23,888 = 1.08 % (earlier: 257; the demotion restart moved two cells). Files: `smoke_lil_dynamics_0_*.json`.
+* KITTI 00, 0.2 m, `W = 10`, veto on: every figure equals the earlier run (`all` policy SA 100.000 DA 0.000; `shipped_v0_1` static_only SA 86.725 DA 98.235, not_rejected SA 99.992 DA 18.338; `octomap` SA 98.454 DA 97.812). These arms do not use the SPRT code.
+* Spires Keble 02 (calibration; `smoke_spires_*`), 0.2 m, `W = 10`: the counts table holds **195,641** eligible structure cells (label 3), **118,059** eligible ground cells (label 2) and **15,864** eligible clutter cells, equal to `PREREG.md` for labels 3 and 1. `shipped_v0_1` with the veto off: peak memory 261 MB (earlier 261 MB). `sprt` with the veto on: peak memory 1,529 MB (earlier 1.5 GB).
+  Seconds: 587 s and 928 s against 5.2 and 6.2 minutes before. The host was busy (load 6 to 12; mutation runs and builds of other work ran at the same time), so these seconds are not a timing result (R6) and are only a reason to plan about 15 minutes per `sprt` Spires run on a loaded host.
+  The new `spires` command printed both blocks on real counts: `sprt` ground false-reject 0.61 % (721 / 118,059), undecided 18.9 %, windows to first Static p50 8, p90 19; non-ground structure false-reject 0.79 % (1,543 / 195,641), undecided 16.6 %, p50 5, p90 15. In-sample (Keble 02 defined the calibration), not results.
+* Unit tests on the final harness: 43 C++ tests, 46 Python tests, the guard test; mutation record pass 3 (`mutation_record.md`).
+* Boreas gate at the same binary (14:19:25): PASS, numbers identical to item 12 (`logs/boreas_overlap.log`).
+
+### Test-split stat record, review work
+
+`review/review_stat_before*.tsv` (13:34:34) and `review/review_stat_after*.tsv` (taken after the last read) and their comparison `review/review_stat_compare.md`: no file appeared, disappeared or changed in size, mtime or ctime. As before, this shows only that no file was modified; the opens are in `access_log.tsv` (new rows: `boreas_overlap`, `feas_rerun_boreas_convert_r50`, `_r25`, `_r15`).

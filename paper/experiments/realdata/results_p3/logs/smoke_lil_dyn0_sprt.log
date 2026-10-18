@@ -1,8 +1,10 @@
 STEP smoke_lil_dyn0_sprt
-START 2026-10-18T11:45:20+09:00 host=DESKTOP-KCD7BRS load=3.60 4.21 5.12 cores=12
-COMMIT b545319e62b428685551e0aa05d15b9967146071
+START 2026-10-18T13:43:26+09:00 host=DESKTOP-KCD7BRS load=3.73 4.22 5.77 cores=12
+COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT b545319e62b428685551e0aa05d15b9967146071
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
 CMD <BUILD_DIR>/build/realdata/p3_probe arm-eval --cache <DATA_ROOT>/p1/lil/cache_dynamics_0.bin --labels <DATA_ROOT>/p1/lil/ref_r0.05.bin --arm sprt --res 0.05 --window 15 --periodicity 1 --out <OUT_DIR>/smoke_lil/dump_dynamics_0_sprt.csv --meta <OUT_DIR>/smoke_lil/dump_dynamics_0_sprt.meta
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_lil_dyn0_sprt.json rc=0
-END 2026-10-18T11:45:27+09:00 rc=0 load=3.64 4.21 5.11
+END 2026-10-18T13:43:33+09:00 rc=0 load=3.67 4.19 5.75

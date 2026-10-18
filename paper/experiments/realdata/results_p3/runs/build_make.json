@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "5.08 6.87 7.26 3/785 1041653",
+  "loadavg": "3.41 4.30 5.93 4/764 1050799",
   "meminfo": {
-   "MemAvailable": "9664592 kB",
+   "MemAvailable": "9371044 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31951840 kB"
+   "SwapFree": "31951932 kB"
   },
-  "time": "2026-10-18T13:35:54+0900",
+  "time": "2026-10-18T13:42:10+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 103 414072 cc1plus",
-   " 6.3 607008 2.1.299",
-   " 3.2 183820 claude",
-   " 0.8 13040 x-terminal-emul",
-   " 0.4 57168 Xvfb"
+   " 112 278584 cc1plus",
+   "87.3 302024 cc1plus",
+   " 6.3 606932 2.1.299",
+   " 3.1 187424 claude",
+   " 0.8 13040 x-terminal-emul"
   ]
  },
  "argv": [
@@ -28,26 +28,26 @@
   "test_p3"
  ],
  "before": {
-  "loadavg": "7.01 7.45 7.46 3/763 1040290",
+  "loadavg": "2.94 4.41 6.06 4/776 1049679",
   "meminfo": {
-   "MemAvailable": "9672652 kB",
+   "MemAvailable": "8752332 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31951840 kB"
+   "SwapFree": "31951924 kB"
   },
-  "time": "2026-10-18T13:35:03+0900",
+  "time": "2026-10-18T13:41:19+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 113 291508 cc1plus",
-   " 102 166168 cc1plus",
-   " 6.3 609580 2.1.299",
-   " 3.2 185236 claude",
+   " 107 706460 cc1plus",
+   "98.8 639844 cc1plus",
+   " 6.3 617868 2.1.299",
+   " 3.1 185468 claude",
    " 0.8 13040 x-terminal-emul"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "a68266b364d9f15985a915014c33a46a645909b0",
-  "commit": "a68266b364d9f15985a915014c33a46a645909b0",
+  "binary_commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
   "strata_core_tree_binary": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
   "strata_core_tree_head": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
   "uncommitted_in_experiment_dir": 1,
@@ -60,6 +60,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 51.145,
+ "seconds": 51.543,
  "step": "build_make"
 }

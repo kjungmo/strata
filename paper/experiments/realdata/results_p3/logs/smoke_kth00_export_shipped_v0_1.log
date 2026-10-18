@@ -1,8 +1,10 @@
 STEP smoke_kth00_export_shipped_v0_1
-START 2026-10-18T11:34:11+09:00 host=DESKTOP-KCD7BRS load=7.31 6.88 6.10 cores=12
-COMMIT 9848b41db22e7e4e9d51243878ab60aa13ec8387
+START 2026-10-18T13:44:30+09:00 host=DESKTOP-KCD7BRS load=3.91 4.17 5.65 cores=12
+COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT 9848b41db22e7e4e9d51243878ab60aa13ec8387
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
 CMD <BUILD_DIR>/build/realdata/p3_probe kth-export --dir <DATA_ROOT>/kth/00 --arm shipped_v0_1 --res 0.2 --window 10 --periodicity 1 --policies static_only,not_rejected,all --out-prefix <OUT_DIR>/smoke_kth00/shipped_v0_1 --meta <OUT_DIR>/smoke_kth00/shipped_v0_1.meta
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_kth00_export_shipped_v0_1.json rc=0
-END 2026-10-18T11:36:53+09:00 rc=0 load=6.18 6.79 6.21
+END 2026-10-18T13:46:47+09:00 rc=0 load=3.93 4.05 5.39

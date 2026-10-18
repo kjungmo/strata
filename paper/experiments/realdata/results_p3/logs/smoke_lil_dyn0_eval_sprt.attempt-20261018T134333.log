@@ -1,0 +1,8 @@
+STEP smoke_lil_dyn0_eval_sprt
+START 2026-10-18T11:45:27+09:00 host=DESKTOP-KCD7BRS load=3.64 4.21 5.11 cores=12
+COMMIT b545319e62b428685551e0aa05d15b9967146071
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT b545319e62b428685551e0aa05d15b9967146071
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' lil --dump '<OUT_DIR>/smoke_lil/dump_dynamics_0_sprt.csv' --res 0.05 > '<RESULTS_DIR>/smoke_lil_dynamics_0_sprt.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_lil_dyn0_eval_sprt.json rc=0
+END 2026-10-18T11:45:28+09:00 rc=0 load=3.64 4.21 5.11

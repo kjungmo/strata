@@ -1,8 +1,10 @@
 STEP smoke_lil_dyn0_eval_octomap
-START 2026-10-18T11:45:10+09:00 host=DESKTOP-KCD7BRS load=3.63 4.24 5.14 cores=12
-COMMIT b545319e62b428685551e0aa05d15b9967146071
+START 2026-10-18T13:43:17+09:00 host=DESKTOP-KCD7BRS load=3.69 4.22 5.79 cores=12
+COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT b545319e62b428685551e0aa05d15b9967146071
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
 CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' lil --dump '<OUT_DIR>/smoke_lil/dump_dynamics_0_octomap.csv' --res 0.05 > '<RESULTS_DIR>/smoke_lil_dynamics_0_octomap.json'
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_lil_dyn0_eval_octomap.json rc=0
-END 2026-10-18T11:45:11+09:00 rc=0 load=3.63 4.24 5.14
+END 2026-10-18T13:43:18+09:00 rc=0 load=3.69 4.22 5.79

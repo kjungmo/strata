@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "4.92 6.36 6.09 4/825 850491",
+  "loadavg": "12.27 7.81 6.59 4/773 1063209",
   "meminfo": {
-   "MemAvailable": "8680660 kB",
+   "MemAvailable": "10014812 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31841620 kB"
+   "SwapFree": "31951960 kB"
   },
-  "time": "2026-10-18T11:37:42+0900",
+  "time": "2026-10-18T13:50:02+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 100 667320 cc1plus",
-   "96.5 997432 cc1plus",
-   " 6.6 553568 2.1.299",
-   " 3.3 44732 colcon",
-   " 3.2 178240 claude"
+   "97.4 44420 exp_new",
+   "97.2 44420 exp_new",
+   "94.5 334844 cc1plus",
+   " 6.3 607752 2.1.299",
+   " 3.1 182108 claude"
   ]
  },
  "argv": [
@@ -22,27 +22,30 @@
   "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' kth --gt '~/datasets/strata/kth/00/gt_cloud.pcd' --map '/mnt/d/wsl/strata/p3/smoke_kth00/shipped_v0_1_all.pcd' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_kth00_shipped_v0_1_all.json'"
  ],
  "before": {
-  "loadavg": "5.08 6.44 6.12 3/839 850026",
+  "loadavg": "10.71 6.13 5.97 13/784 1062477",
   "meminfo": {
-   "MemAvailable": "9732048 kB",
+   "MemAvailable": "10031264 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31841564 kB"
+   "SwapFree": "31951960 kB"
   },
-  "time": "2026-10-18T11:37:29+0900",
+  "time": "2026-10-18T13:48:37+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "95.3 611176 cc1plus",
-   "22.6 78560 python3",
-   " 6.6 555296 2.1.299",
-   " 5.2 82292 fusion_node_mai",
-   " 3.2 190192 claude"
+   "97.8 25976 exp_new",
+   "97.8 25696 exp_new",
+   "97.7 25632 exp_new",
+   "97.6 25976 exp_new",
+   "97.6 26212 exp_new"
   ]
  },
  "cores": 12,
  "git": {
-  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
-  "uncommitted_in_experiment_dir": 4,
-  "uncommitted_in_repository": 27
+  "binary_commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "strata_core_tree_binary": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "strata_core_tree_head": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 85
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -51,6 +54,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 12.94,
+ "seconds": 84.05,
  "step": "smoke_kth00_eval_shipped_v0_1_all"
 }

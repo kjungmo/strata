@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "3.97 5.43 5.78 4/872 853547",
+  "loadavg": "3.49 5.93 6.05 1/764 1064847",
   "meminfo": {
-   "MemAvailable": "9882392 kB",
+   "MemAvailable": "10191988 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31847100 kB"
+   "SwapFree": "31951992 kB"
   },
-  "time": "2026-10-18T11:39:58+0900",
+  "time": "2026-10-18T13:52:13+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 117 328552 cc1plus",
-   "21.7 75640 python3",
-   " 6.6 586096 2.1.299",
-   " 5.0 82288 fusion_node_mai",
-   " 4.0 22492 tracker-store"
+   " 6.3 632568 2.1.299",
+   " 3.1 186172 claude",
+   " 0.8 12848 x-terminal-emul",
+   " 0.5 22632 tracker-store",
+   " 0.4 57168 Xvfb"
   ]
  },
  "argv": [
@@ -37,27 +37,30 @@
   "/mnt/d/wsl/strata/p3/smoke_kth00/octomap.meta"
  ],
  "before": {
-  "loadavg": "4.92 6.36 6.09 5/825 850510",
+  "loadavg": "12.27 7.81 6.59 4/773 1063241",
   "meminfo": {
-   "MemAvailable": "8682112 kB",
+   "MemAvailable": "10005416 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31841620 kB"
+   "SwapFree": "31951960 kB"
   },
-  "time": "2026-10-18T11:37:42+0900",
+  "time": "2026-10-18T13:50:02+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 101 668508 cc1plus",
-   "97.2 1004032 cc1plus",
-   " 6.6 553568 2.1.299",
-   " 3.3 44732 colcon",
-   " 3.2 178236 claude"
+   "97.4 44420 exp_new",
+   "97.3 44420 exp_new",
+   "95.7 334856 cc1plus",
+   " 6.3 607752 2.1.299",
+   " 3.1 182236 claude"
   ]
  },
  "cores": 12,
  "git": {
-  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
-  "uncommitted_in_experiment_dir": 4,
-  "uncommitted_in_repository": 27
+  "binary_commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "strata_core_tree_binary": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "strata_core_tree_head": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 89
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -66,6 +69,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 135.115,
+ "seconds": 130.149,
  "step": "smoke_kth00_export_octomap"
 }

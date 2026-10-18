@@ -1,10 +1,10 @@
 STEP boreas_overlap
-START 2026-10-18T13:35:59+09:00 host=DESKTOP-KCD7BRS load=5.47 6.93 7.28 cores=12
-COMMIT a68266b364d9f15985a915014c33a46a645909b0
+START 2026-10-18T14:19:25+09:00 host=DESKTOP-KCD7BRS load=6.82 10.56 9.86 cores=12
+COMMIT 5626dd0e8f6902d24fdbb2eca65301da168cc7dc
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT a68266b364d9f15985a915014c33a46a645909b0
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
 STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
-STRATA_CORE_TREE_PINNED 
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
 CMD <BUILD_DIR>/build/realdata/p3_probe boreas-overlap --seqs <DATA_ROOT>/boreas/boreas-2020-11-26-13-58,<DATA_ROOT>/boreas/boreas-2021-04-08-12-44,<DATA_ROOT>/boreas/boreas-2021-06-17-17-52
 boreas-2020-11-26-13-58 frames=1736 pose_rows_in_slice=1736 frames_without_pose_row=0 gps_rows_in_slice=36386 origin_lat_deg=43.7821 origin_lon_deg=-79.4661 first_row_east,north=(1.12727e-05,-1.21723e-05)
 enu_check,boreas-2020-11-26-13-58,rows=36386,worst_horizontal_diff_m=0.0550876,mean_dx_m=-0.0214951,mean_dy_m=0.0470807,first_row_geodetic_enu_at_reference=(0|0),limit_m=0.1,ok
@@ -24,4 +24,4 @@ altitude,boreas-2021-04-08-12-44,boreas-2021-06-17-17-52,1691,-0.00929033,-0.028
 VERDICT boreas shared frame and tile overlap PASS (enu agreement of every session: ok; tile overlap: ok)
 step boreas_overlap rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/boreas_overlap.strace
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/boreas_overlap.json rc=0
-END 2026-10-18T13:36:05+09:00 rc=0 load=5.16 6.81 7.24
+END 2026-10-18T14:19:31+09:00 rc=0 load=6.43 10.42 9.82

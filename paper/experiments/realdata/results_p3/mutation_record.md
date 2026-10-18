@@ -267,3 +267,72 @@ Mutants: 32, killed: 29, survived: 3, other: 0.
 | p3_probe.cpp | cli: pose agreement bound | killed |
 | p3_probe.cpp | cli: ENU agreement bound | killed |
 | p3_probe.cpp | cli: kth range sanity | killed |
+
+---
+
+## Pass 3 (review findings 1 to 4: Boreas shared frame, Spires ground, Jaccard tiles, engine pin)
+
+Mutants of the code added for the review findings (`mutation_p3.py`, the entries after `# ---- Boreas shared frame` and `# ---- review findings 2 and 3`) and the older mutants whose text matched the same filter. Two runs of the same runner on a copy of the sources.
+
+* **Run 1** (50 mutants, commit a68266b plus the Python mutants): 33 killed. 17 survived. Ten of the survivors were Python mutants of `p3_eval.py` that had been listed among the C++ mutants, so they ran against the C++ tests only (a list error, fixed in the next commit; they are re-run in run 2). The other seven were real survivors of the C++ tests.
+* **Tests added after run 1** (commit after 38782a5): a miss in north alone and a diagonal miss below the limit on each axis (`enu agreement: horizontal distance`), a partner in the negative neighbour cell (`altitude: neighbour cells`), the tile count of the overlap gate taken from `lidar_poses.csv` (`cli: overlap trajectory source`), and a session with no GPS row in the window (`cli: overlap frame check needs rows`).
+* **Run 2** (21 mutants: the seven C++ survivors and the Python mutants of `p3_eval.py` that touch the new code): 18 killed. Three survived and are equivalent, with the reason in the table.
+
+Result of pass 3: 50 distinct mutants, 47 killed, 3 equivalent survivors, none open.
+
+| file | mutant | final result (run) |
+|---|---|---|
+| p3_boreas.hpp | altitude: boundary at the radius | killed (run 1) |
+| p3_boreas.hpp | altitude: nearest row wins | killed (run 1) |
+| p3_boreas.hpp | altitude: neighbour cells | killed (run 2) |
+| p3_boreas.hpp | altitude: percentiles | killed (run 1) |
+| p3_boreas.hpp | altitude: radius | killed (run 1) |
+| p3_boreas.hpp | altitude: sign | killed (run 1) |
+| p3_boreas.hpp | common frame: rotation | killed (run 1) |
+| p3_boreas.hpp | common frame: z offset axis | killed (run 1) |
+| p3_boreas.hpp | common frame: z offset sign | killed (run 1) |
+| p3_boreas.hpp | csv: first-row east/north | killed (run 1) |
+| p3_boreas.hpp | csv: lat/lon per row | killed (run 1) |
+| p3_boreas.hpp | enu agreement: east difference | killed (run 1) |
+| p3_boreas.hpp | enu agreement: horizontal distance | killed (run 2) |
+| p3_boreas.hpp | enu agreement: limit value | killed (run 1) |
+| p3_boreas.hpp | enu agreement: means | killed (run 1) |
+| p3_boreas.hpp | enu agreement: north difference | killed (run 1) |
+| p3_boreas.hpp | enu agreement: reference origin needed | killed (run 1) |
+| p3_boreas.hpp | enu agreement: row count | killed (run 1) |
+| p3_boreas.hpp | enu agreement: rows without lat/lon skipped | killed (run 1) |
+| p3_boreas.hpp | enu agreement: worst is the maximum | killed (run 1) |
+| p3_eval.py | jaccard: Static inside observed | killed (run 2) |
+| p3_eval.py | jaccard: command line count | killed (run 2) |
+| p3_eval.py | jaccard: pairwise secondary uses observed sets | killed (run 2) |
+| p3_eval.py | jaccard: set count | killed (run 2) |
+| p3_eval.py | jaccard: tiles come from the observed sets | killed (run 2) |
+| p3_eval.py | jaccard: tiles observed by all sessions | killed (run 2) |
+| p3_eval.py | jaccard: union | killed (run 2) |
+| p3_eval.py | spires: eligibility in totals | killed (run 2) |
+| p3_eval.py | spires: eligible clutter | killed (run 2) |
+| p3_eval.py | spires: ground block by default | killed (run 2) |
+| p3_eval.py | spires: ground block on the command line | killed (run 2) |
+| p3_eval.py | spires: latency of unlisted labels | killed (run 2) |
+| p3_eval.py | spires: latency per label | killed (run 2) |
+| p3_eval.py | spires: rejected count | killed (run 2) |
+| p3_probe.cpp | cli: convert meta of the frame check | killed (run 1) |
+| p3_probe.cpp | cli: convert needs rows to check | SURVIVED (unreachable: `trackOf(gps)` already fails for fewer than two GPS rows in the window, and every row carries latitude and longitude when the origin is valid) (run 2) |
+| p3_probe.cpp | cli: convert refuses another frame | killed (run 1) |
+| p3_probe.cpp | cli: convert z offset | killed (run 1) |
+| p3_probe.cpp | cli: overlap frame check against the reference | killed (run 1) |
+| p3_probe.cpp | cli: overlap frame check needs rows | killed (run 2) |
+| p3_probe.cpp | cli: overlap frame check of every session | killed (run 1) |
+| p3_probe.cpp | cli: overlap needs both checks | killed (run 1) |
+| p3_probe.cpp | cli: overlap needs the frame check | killed (run 1) |
+| p3_probe.cpp | cli: overlap trajectory source | killed (run 2) |
+| p3_probe.cpp | cli: overlap verdict | killed (run 1) |
+| p3_probe.cpp | cli: validate compares the calibrated pose | killed (run 1) |
+| p3_probe.cpp | cli: validate converts in the file frame | SURVIVED (the validator prints only counts of the converted points; a vertical shift of 1 m changes none of them) (run 2) |
+| p3_probe.cpp | cli: validate frame check | killed (run 1) |
+| p3_probe.cpp | cli: validate frame check rows | SURVIVED (unreachable: a valid origin needs the latitude and longitude columns, so every GPS row of the window carries them and `ea.rows > 0` equals `gps.size() > 10 n`, which is checked just before) (run 2) |
+| p3_probe.cpp | cli: validate reference origin | killed (run 1) |
+
+**Engine-pin guard** (`test_p3_guard.sh`, shell, not covered by `mutation_p3.py`): eight manual mutants of `reproduce_p3.sh` (no pin check, tree check removed, tree check inverted, loose pin pattern, first pin line wins instead of the last, start record without the tree, step log without the tree, step log without the pin).
+Seven were killed by the first version of the test; `first pin wins` survived, a test with two pin lines (the later one is the pin) was added, and it is killed. Final: 8 of 8 killed.
+

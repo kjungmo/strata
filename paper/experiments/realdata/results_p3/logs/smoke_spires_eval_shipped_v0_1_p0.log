@@ -1,0 +1,10 @@
+STEP smoke_spires_eval_shipped_v0_1_p0
+START 2026-10-18T14:03:55+09:00 host=DESKTOP-KCD7BRS load=11.94 10.17 8.17 cores=12
+COMMIT bb93d84539eb88743f7b8ca2cd765154bc2df047
+EXPERIMENT_DIR_UNCOMMITTED 2
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' spires --counts '<OUT_DIR>/smoke_spires/counts_shipped_v0_1_p0.csv' --latency '<OUT_DIR>/smoke_spires/counts_shipped_v0_1_p0.csv.latency' > '<RESULTS_DIR>/smoke_spires_keble02_shipped_v0_1_p0.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_spires_eval_shipped_v0_1_p0.json rc=0
+END 2026-10-18T14:03:55+09:00 rc=0 load=11.94 10.17 8.17

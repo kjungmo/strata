@@ -1,0 +1,56 @@
+{
+ "after": {
+  "loadavg": "3.76 4.31 5.18 3/855 859612",
+  "meminfo": {
+   "MemAvailable": "9561292 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31851712 kB"
+  },
+  "time": "2026-10-18T11:44:52+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 107 321408 cc1plus",
+   "99.0 450444 cc1plus",
+   "22.1 75432 python3",
+   " 6.6 574492 2.1.299",
+   " 5.1 82468 fusion_node_mai"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' lil --dump '/mnt/d/wsl/strata/p3/smoke_lil/dump_dynamics_0_shipped_v0_1.csv' --res 0.05 > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_lil_dynamics_0_shipped_v0_1.json'"
+ ],
+ "before": {
+  "loadavg": "3.76 4.31 5.18 3/855 859606",
+  "meminfo": {
+   "MemAvailable": "9633396 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31851712 kB"
+  },
+  "time": "2026-10-18T11:44:50+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 101 271936 cc1plus",
+   "93.7 428764 cc1plus",
+   "22.2 75240 python3",
+   " 6.6 574344 2.1.299",
+   " 5.2 82468 fusion_node_mai"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "b545319e62b428685551e0aa05d15b9967146071",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 32
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 1.169,
+ "step": "smoke_lil_dyn0_eval_shipped_v0_1"
+}

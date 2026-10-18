@@ -1,0 +1,56 @@
+{
+ "after": {
+  "loadavg": "3.63 4.24 5.14 4/848 859907",
+  "meminfo": {
+   "MemAvailable": "9214532 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31851716 kB"
+  },
+  "time": "2026-10-18T11:45:11+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 334892 cc1plus",
+   "94.7 725884 cc1plus",
+   "19.1 77640 python3",
+   " 6.6 571876 2.1.299",
+   " 4.7 82468 fusion_node_mai"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' lil --dump '/mnt/d/wsl/strata/p3/smoke_lil/dump_dynamics_0_octomap.csv' --res 0.05 > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_lil_dynamics_0_octomap.json'"
+ ],
+ "before": {
+  "loadavg": "3.63 4.24 5.14 3/847 859900",
+  "meminfo": {
+   "MemAvailable": "9260264 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31851716 kB"
+  },
+  "time": "2026-10-18T11:45:10+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 130 331636 cc1plus",
+   "99.7 723808 cc1plus",
+   "19.6 77504 python3",
+   " 6.6 571608 2.1.299",
+   " 4.8 82468 fusion_node_mai"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "b545319e62b428685551e0aa05d15b9967146071",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 32
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 1.221,
+ "step": "smoke_lil_dyn0_eval_octomap"
+}

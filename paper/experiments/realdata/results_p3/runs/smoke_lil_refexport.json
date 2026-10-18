@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "3.71 4.32 5.19 4/846 859376",
+  "loadavg": "3.75 4.28 5.86 4/796 1052881",
   "meminfo": {
-   "MemAvailable": "9265284 kB",
+   "MemAvailable": "8664408 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31851696 kB"
+   "SwapFree": "31951932 kB"
   },
-  "time": "2026-10-18T11:44:41+0900",
+  "time": "2026-10-18T13:42:49+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "97.4 658396 cc1plus",
-   "92.8 335020 cc1plus",
-   "29.6 74356 python3",
-   " 6.6 570856 2.1.299",
-   " 6.1 82420 fusion_node_mai"
+   " 126 333224 cc1plus",
+   " 110 443980 cc1plus",
+   " 109 720764 cc1plus",
+   " 6.3 628716 2.1.299",
+   " 3.1 189984 claude"
   ]
  },
  "argv": [
@@ -27,27 +27,30 @@
   "/mnt/d/wsl/strata/p3/smoke_lil/ref_r0.05.csv"
  ],
  "before": {
-  "loadavg": "3.71 4.32 5.19 3/846 859371",
+  "loadavg": "3.75 4.28 5.86 4/796 1052874",
   "meminfo": {
-   "MemAvailable": "9267392 kB",
+   "MemAvailable": "8671664 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31851696 kB"
+   "SwapFree": "31951932 kB"
   },
-  "time": "2026-10-18T11:44:41+0900",
+  "time": "2026-10-18T13:42:49+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 112 334992 cc1plus",
-   " 106 655668 cc1plus",
-   "35.2 74344 python3",
-   " 7.4 82416 fusion_node_mai",
-   " 6.6 570876 2.1.299"
+   " 121 330716 cc1plus",
+   " 107 720764 cc1plus",
+   " 107 437512 cc1plus",
+   " 6.3 628744 2.1.299",
+   " 3.1 190060 claude"
   ]
  },
  "cores": 12,
  "git": {
-  "commit": "b545319e62b428685551e0aa05d15b9967146071",
-  "uncommitted_in_experiment_dir": 4,
-  "uncommitted_in_repository": 32
+  "binary_commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "strata_core_tree_binary": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "strata_core_tree_head": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 24
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -56,6 +59,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 0.109,
+ "seconds": 0.113,
  "step": "smoke_lil_refexport"
 }

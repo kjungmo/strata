@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "7.31 6.88 6.10 10/941 844822",
+  "loadavg": "3.91 4.17 5.65 4/773 1055653",
   "meminfo": {
-   "MemAvailable": "7245032 kB",
+   "MemAvailable": "9218148 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31873764 kB"
+   "SwapFree": "31951940 kB"
   },
-  "time": "2026-10-18T11:34:11+0900",
+  "time": "2026-10-18T13:44:30+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 141 151440 cc1plus",
-   " 117 204680 cc1plus",
-   " 117 220476 cc1plus",
-   " 117 201016 cc1plus",
-   " 117 213768 cc1plus"
+   "98.0 576500 cc1plus",
+   "97.0 342948 cc1plus",
+   " 6.3 614884 2.1.299",
+   " 3.1 187212 claude",
+   " 0.8 12848 x-terminal-emul"
   ]
  },
  "argv": [
@@ -25,27 +25,30 @@
   "~/datasets/strata/kth/00/gt_cloud.pcd"
  ],
  "before": {
-  "loadavg": "6.90 6.69 5.98 6/893 843827",
+  "loadavg": "3.67 4.19 5.75 4/780 1054498",
   "meminfo": {
-   "MemAvailable": "5856588 kB",
+   "MemAvailable": "8927308 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31873764 kB"
+   "SwapFree": "31951932 kB"
   },
-  "time": "2026-10-18T11:33:06+0900",
+  "time": "2026-10-18T13:43:34+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 115 308532 cc1plus",
-   " 105 621260 cc1plus",
-   " 100 1614808 cc1plus",
-   " 100 1715808 cc1plus",
-   "21.8 114052 python3"
+   " 102 355544 cc1plus",
+   "98.1 606144 cc1plus",
+   "89.5 241568 cc1plus",
+   " 6.3 614676 2.1.299",
+   " 4.0 22500 tracker-store"
   ]
  },
  "cores": 12,
  "git": {
-  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
-  "uncommitted_in_experiment_dir": 4,
-  "uncommitted_in_repository": 27
+  "binary_commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "strata_core_tree_binary": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "strata_core_tree_head": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 69
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -54,6 +57,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 65.221,
+ "seconds": 55.196,
  "step": "smoke_kth00_selfcheck"
 }
