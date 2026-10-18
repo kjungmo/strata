@@ -386,3 +386,65 @@ A further commit to `strata_core`, test-only or not, needs a new amendment of th
 ```text pin
 STRATA_CORE_TREE=d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
 ```
+
+## 17. Amendment 4 (2026-10-18, before any evaluation and before the re-run of `validate_boreas`, the gate and the feasibility probe): the Boreas rotation convention
+
+Written and committed before the re-run. It replaces the "Pose" bullet of section 8.1, finding 3 of section 11, and the evidence that section 8.1 and Amendment 3 give for the convention ("agreement on the first 10 frames: 0.0003 degrees"). It changes no arm, label, window, resolution or metric, and no other dataset.
+No evaluation stage has run (`results_p3/eval_start.txt` does not exist). No Boreas map or number computed with the old rotation was reported anywhere. The feasibility probe of section 14 used the old rotation and is repeated (item 17.4).
+
+### 17.1 Fault (Opus review, finding 1)
+
+`rotationOf` returned Rz(heading) Ry(pitch) Rx(roll). The post-processed angles of Boreas are the angles of the pyboreas `yawPitchRollToRot`, which builds the passive (transposed) matrices Rr Rp Ry. The rotation block that maps applanix coordinates to ENU is therefore (Rz(heading) Ry(pitch) Rx(roll))^T.
+`lidarPoseFromApplanix` had put R_f^-1 on the world side to reproduce `lidar_poses.csv`, while both files were parsed with the same wrong function. The "yaw shift on the world side" of section 11.3 was the symptom. With the true rotation, the lidar pose is the ordinary composition of `T_applanix_lidar.txt` as written.
+A frame would have been rotated by the wrong attitude (yaw error of twice the lidar yaw, doubled roll and pitch). The validator agreement of 0.0003 degrees could not show this, because both files went through the same parser.
+
+**Evidence.** The review recomputed it from pose files the gate had opened. I recomputed the first two lines for this amendment (step `r2_explore_pose`, the script `explore_boreas_pose.py` run from an identical copy outside the repository, trace `results_p3/access/r2_explore_pose.strace`; rows of the lidar slice plus or minus 0.5 s of `gps_post_process.csv`, speed above 3 m/s):
+
+| session | moving rows | velocity direction + heading: 10th / 50th / 90th percentile | correlation of d(heading)/dt with `angvel_z` |
+|---|---|---|---|
+| 2020-11-26 | 33,441 | 87.88 / 88.45 / 88.83 deg | -0.99991 |
+| 2021-04-08 | 30,009 | 87.69 / 88.42 / 88.82 deg | -0.99993 |
+| 2021-06-17 | 32,883 | 87.84 / 88.43 / 88.83 deg | -0.99992 |
+
+The velocity direction is atan2(vel_north, vel_east). The sum is constant at every heading, so heading grows clockwise and the applanix forward axis is +y. The velocity direction minus heading spreads over the whole circle.
+The review also measured the frames: the share of frame-9 points of 2020-11-26 within one 0.1 m voxel of frame 0 (2.26 m apart, `lidar_poses.csv` rows, no deskew) is 0.534 with the old rotation and 0.809 with the transposed one (0.864 against 0.95 at 0.3 m).
+I did not reproduce that measurement before the fix. Item 17.3 adds it as a check, and the repeated validation reports it.
+
+### 17.2 Rule (replaces section 8.1 "Pose")
+
+* `rotationOf(row)` = (Rz(heading) Ry(pitch) Rx(roll))^T.
+* `lidarPoseFromApplanix`: R_lidar = R_applanix R_f and t_lidar = t_applanix + R_applanix t_f, with the true rotation.
+* The post-processed GPS at 200 Hz is interpolated at the time of each point as before (deskew). Range window 3 m to 25 m, W = 10, 0.2 m, Periodic veto off (Amendment 1), common frame of Amendment 3. Nothing else of section 8.1 changes.
+* The overlap gate, the ENU check and the altitude check use positions only and are unaffected.
+
+### 17.3 New checks, limits fixed here before they run
+
+Pose only, in `boreas-overlap` (the gate), for every session, over the GPS rows of the slice plus or minus 1 s, rows with speed above 3 m/s:
+
+1. **The forward axis follows the velocity.** The azimuth of `rotationOf(row)` applied to (0, 1, 0), minus the azimuth of the velocity: the 10th and the 90th percentile each within 4 degrees of zero, and the median of each heading quadrant (quadrant of the forward azimuth, counted if it holds at least 200 moving rows) within 4 degrees. At least 500 moving rows. The expected offset from the table is about 1.5 degrees.
+2. **The gyro sign.** The correlation of d(forward azimuth)/dt (successive rows, at most 0.02 s apart) with `angvel_z` is at least +0.99.
+
+A failure of either check fails the gate. The gate log prints both per session.
+
+With lidar content, in `boreas-validate`, on the first and the tenth frame of 2020-11-26 (already opened; no deskew; 3 m to 50 m in the lidar frame; one pose per frame):
+
+3. **Frame consistency.** The share of the points of the tenth frame within one 0.1 m voxel (26 neighbours) of an occupied voxel of the first frame is at least **0.70**, and at least **0.92** at 0.3 m. The check runs for the pose of `lidar_poses.csv` and for the pose from GPS times calibration. The vehicle must have moved more than 1 m between the frames.
+4. **The test must discriminate.** The same share with the transposed rotation (the old reading, applied to the rows of `lidar_poses.csv`) must be at least 0.10 lower at 0.1 m. It is printed as `contrast_transposed_rotation`.
+5. The pose agreement with `lidar_poses.csv` (0.10 m, 0.5 degrees) stays. Both sides now use the true rotation.
+
+The limits come from the numbers of the review (0.809 and 0.95 with the true rotation, 0.534 and 0.864 with the old one). They leave margin below the first and above the second. They were not tuned on this code. If a check fails on the real frames, the failure is reported, and a new amendment is needed before the gate is called passed.
+
+Tests (`test_p3.cpp`; mutants in `mutation_p3.py` with notes beginning `a4`):
+
+* the rotation against the pyboreas matrices written out;
+* the forward axis, the gyro sign, the quadrant rule and a missing velocity column on synthetic drives;
+* the frame consistency on a synthetic room seen from two poses, with the true and the transposed rotation;
+* the probe commands on synthetic sessions whose forward axis points the wrong way, whose gyro sign is flipped, whose velocity is 10 degrees off, and whose frames are rendered through the transposed rotation.
+
+`reproduce_p3.sh` gets the stage `validate_boreas`.
+
+### 17.4 What is repeated
+
+* `validate_boreas_2020` (new rotation, new checks), `boreas_overlap` (gate with the convention checks), and the feasibility probe (`p3_feas_boreas.sh`, the same 10 frames) on a binary built from the committed code.
+* The earlier logs stay as `*.attempt-*`. The old probe records stay in `results_p3/feas/original/` and in git history.
+* The probe measures cost. Cells, memory and time may differ slightly from the table of section 14. The configuration (3 m to 25 m, 0.2 m, veto off) changes only if a row exceeds the memory of the host. Read section 14 together with the repeated table.
