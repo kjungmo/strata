@@ -543,3 +543,12 @@ The same rule (1 and 2) applies to the KTH and Boreas stages. Their memory limit
 The run `spires_03_shipped_v0_1_r0.1_W10_p1` (Keble 03, 0.1 m, `W = 10`, Periodic veto on) failed twice with `std::bad_alloc`: at 6 GB (17 minutes) and at the 9 GB limit of Amendment 8 (about 20 minutes). Each failing 0.1 m run costs about 20 minutes. The host has 11.9 GB.
 Rule from now on: the first 0.1 m run of an arm and veto setting is Keble 03 `W = 10` (the loop order). If it fails, the later 0.1 m runs of that arm and veto setting (Keble 03 `W = 20`, Keble 04, Keble 05) are not started, because a longer window, a longer sequence and the same arm need at least the memory of the failed run. They are listed in `results_p3/not_run_steps.tsv` with this reason, and the Spires 0.1 m table says "not run" for them, not "failed".
 An arm that succeeds on Keble 03 `W = 10` runs everywhere as before. The 0.1 m runs with the veto off (the secondary pass) use the same rule. No limit is raised again.
+
+## 23. Amendment 10 (2026-10-18, during the evaluation): the zip reader reads zip64 archives
+
+The step `spires_04_convert` failed with `zip64 archives are not supported` (`results_p3/logs/spires_04_convert.log`, kept). The Keble 04 and Keble 05 archives are 4.6 GB and 4.1 GB; the reader of phase 1 (`ZipArchive` in `p1b_io.hpp`) accepted only archives below 4 GB (Keble 02 and 03).
+The harness validation read Keble 03 only, so the defect was not found before. No Keble 04 or 05 scan was read by the failed step: the reader stopped at the end-of-central-directory record.
+
+**Change** (`p1b_io.hpp`, tests in `test_p1b.cpp`): the reader follows the zip64 end-of-central-directory locator and record when a field of the end record is 0xFFFF or 0xFFFFFFFF, and reads usize, csize and the local header offset of an entry from the zip64 extra field (id 0x0001) when the central directory entry holds 0xFFFFFFFF.
+Multi-disk archives, a missing locator, a wrong signature and a missing extra field are errors. Archives below 4 GB take the old path unchanged (the 35 earlier tests of `test_p1b` pass). Mutation record: `results_p3/mutation_record_zip64.md` (12 mutants, 11 killed, 1 equivalent).
+No arm, label, window, resolution or metric changes. The change reaches the conversion of Keble 03 (not zip64) in no way; the cache of Keble 03 already made is not rebuilt.

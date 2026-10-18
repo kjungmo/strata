@@ -60,6 +60,55 @@ void writeZip(const std::string& path, const std::vector<std::pair<std::string, 
   o << body << cd << eocd;
 }
 
+void put64(std::string& s, std::uint64_t v) { put32(s, std::uint32_t(v & 0xFFFFFFFFu)); put32(s, std::uint32_t(v >> 32)); }
+
+// zip64 writer (stored members). `lead` bytes of hole come before the first local header (a sparse file), so offsets can pass 4 GiB.
+// mode 0: sizes and offset of every entry are 0xFFFFFFFF in the header and carried in the extra field (usize, csize, offset);
+// mode 1: only the offset is 0xFFFFFFFF (the extra field holds the offset alone);
+// mode 2: header fields are 0xFFFFFFFF but the extra field is missing (corrupt);
+// mode 3: the end-of-central-directory record asks for zip64 but there is no locator (corrupt);
+// mode 4: entries as mode 0, the end record holds the true count and size and only the central directory offset is 0xFFFFFFFF;
+// mode 5: entries as mode 0, the signature of the zip64 end record is wrong; mode 6: entries as mode 0, the locator signature is wrong.
+void writeZip64(const std::string& path, const std::vector<std::pair<std::string, std::string>>& members, std::uint64_t lead, int mode_arg, bool deflate = false) {
+  const int mode = mode_arg >= 4 ? 0 : mode_arg;
+  std::string body, cd;
+  for (const auto& m : members) {
+    const std::string& name = m.first; const std::string& raw = m.second;
+    const std::string data = deflate ? deflateRaw(raw) : raw;      // `data` is what is stored; raw.size() is the uncompressed size
+    const std::uint32_t crc = crc32(0, reinterpret_cast<const Bytef*>(raw.data()), raw.size());
+    const std::uint64_t off = lead + body.size();
+    put32(body, 0x04034b50); put16(body, 45); put16(body, 0); put16(body, deflate ? 8 : 0); put16(body, 0); put16(body, 0);
+    put32(body, crc); put32(body, data.size()); put32(body, raw.size()); put16(body, name.size()); put16(body, 4); body += name;
+    put16(body, 0xCAFE); put16(body, 0);                       // a foreign extra field in the local header; the reader skips it
+    body += data;
+    std::string extra;
+    const bool all = (mode == 0 || mode == 2), off_only = (mode == 1);
+    if (mode == 0) { put16(extra, 0x0001); put16(extra, 24); put64(extra, raw.size()); put64(extra, data.size()); put64(extra, off); }
+    if (mode == 1) { put16(extra, 0x00AA); put16(extra, 2); put16(extra, 7); put16(extra, 0x0001); put16(extra, 8); put64(extra, off); }
+    put32(cd, 0x02014b50); put16(cd, 45); put16(cd, 45); put16(cd, 0); put16(cd, deflate ? 8 : 0); put16(cd, 0); put16(cd, 0);
+    put32(cd, crc);
+    put32(cd, all ? 0xFFFFFFFFu : std::uint32_t(data.size())); put32(cd, all ? 0xFFFFFFFFu : std::uint32_t(raw.size()));
+    put16(cd, name.size()); put16(cd, extra.size()); put16(cd, 0); put16(cd, 0); put16(cd, 0); put32(cd, 0);
+    put32(cd, (all || off_only) ? 0xFFFFFFFFu : std::uint32_t(off));
+    cd += name; cd += extra;
+  }
+  const std::uint64_t cd_off = lead + body.size();
+  std::string tail;
+  if (mode != 3) {
+    const std::uint64_t z64_off = cd_off + cd.size();
+    put32(tail, mode_arg == 5 ? 0x06064b51u : 0x06064b50u); put64(tail, 44); put16(tail, 45); put16(tail, 45); put32(tail, 0); put32(tail, 0);
+    put64(tail, members.size()); put64(tail, members.size()); put64(tail, cd.size()); put64(tail, cd_off);
+    put32(tail, mode_arg == 6 ? 0x07064b51u : 0x07064b50u); put32(tail, 0); put64(tail, z64_off); put32(tail, 1);
+  }
+  put32(tail, 0x06054b50); put16(tail, 0); put16(tail, 0);
+  if (mode_arg == 4) { put16(tail, members.size()); put16(tail, members.size()); put32(tail, cd.size()); put32(tail, 0xFFFFFFFFu); }
+  else { put16(tail, 0xFFFF); put16(tail, 0xFFFF); put32(tail, 0xFFFFFFFFu); put32(tail, 0xFFFFFFFFu); }
+  put16(tail, 0);
+  std::ofstream o(path, std::ios::binary);
+  if (lead) { o.seekp(static_cast<std::streamoff>(lead)); }
+  o << body << cd << tail;
+}
+
 // PCD with fields x y z intensity timestamp ring (like the Spires scans)
 std::vector<std::uint8_t> spiresPcdBytes(const std::vector<std::array<double, 4>>& pts /* x y z t */, bool with_ts = true) {
   std::string h = "# .PCD v0.7\nVERSION 0.7\n";
@@ -151,6 +200,64 @@ TEST(Zip, RejectsNonZipAndCorruptMember) {
   ZipArchive z(path);
   std::vector<std::uint8_t> out;
   EXPECT_THROW(z.read(z.entries()[0], out), std::runtime_error);
+}
+
+TEST(Zip, ReadsZip64SizesAndOffsets) {
+  const std::string a(70000, 'x'), b = "second member";
+  for (int mode : {0, 1, 4}) {
+    const std::string path = tmpPath("z64a" + std::to_string(mode) + ".zip");
+    writeZip64(path, {{"lidar-clouds/1.5.pcd", a}, {"lidar-clouds/2.5.pcd", b}}, 0, mode);
+    ZipArchive z(path);
+    ASSERT_EQ(z.entries().size(), 2u);
+    EXPECT_EQ(z.entries()[0].usize, a.size());
+    EXPECT_EQ(z.entries()[1].csize, b.size());
+    std::vector<std::uint8_t> out;
+    z.read(z.entries()[1], out); EXPECT_EQ(std::string(out.begin(), out.end()), b);
+    z.read(z.entries()[0], out); EXPECT_EQ(std::string(out.begin(), out.end()), a);
+  }
+}
+
+TEST(Zip, ReadsZip64DeflatedMembersWithDifferentSizes) {
+  std::string a(60000, 'x');
+  for (std::size_t i = 0; i < a.size(); i += 5) a[i] = char('a' + i % 13);
+  for (int mode : {0, 1}) {
+    const std::string path = tmpPath(mode == 0 ? "z64e.zip" : "z64f.zip");
+    writeZip64(path, {{"p.pcd", a}, {"q.pcd", "tiny tiny tiny tiny tiny"}}, 0, mode, true);
+    ZipArchive z(path);
+    ASSERT_EQ(z.entries().size(), 2u);
+    EXPECT_EQ(z.entries()[0].usize, a.size());
+    EXPECT_LT(z.entries()[0].csize, a.size());
+    std::vector<std::uint8_t> out;
+    z.read(z.entries()[0], out); EXPECT_EQ(std::string(out.begin(), out.end()), a);
+    z.read(z.entries()[1], out); EXPECT_EQ(std::string(out.begin(), out.end()), "tiny tiny tiny tiny tiny");
+  }
+}
+
+TEST(Zip, ReadsMembersBeyondFourGiB) {
+  // a sparse file: the first member starts at 4.5e9 bytes, the second follows it
+  const std::uint64_t lead = 4500000000ull;
+  for (int mode : {0, 1}) {
+    const std::string path = tmpPath(mode == 0 ? "big0.zip" : "big1.zip");
+    writeZip64(path, {{"a.pcd", "first-after-4GiB"}, {"b.pcd", "second"}}, lead, mode);
+    ZipArchive z(path);
+    ASSERT_EQ(z.entries().size(), 2u);
+    EXPECT_EQ(z.entries()[0].offset, lead);
+    EXPECT_EQ(z.entries()[1].offset, lead + 30 + 5 + 4 + 16);
+    std::vector<std::uint8_t> out;
+    z.read(z.entries()[0], out); EXPECT_EQ(std::string(out.begin(), out.end()), "first-after-4GiB");
+    z.read(z.entries()[1], out); EXPECT_EQ(std::string(out.begin(), out.end()), "second");
+  }
+}
+
+TEST(Zip, RejectsBrokenZip64) {
+  writeZip64(tmpPath("z64c.zip"), {{"a.pcd", "abc"}}, 0, 2);       // header says zip64, the extra field is missing
+  EXPECT_THROW(ZipArchive(tmpPath("z64c.zip")), std::runtime_error);
+  writeZip64(tmpPath("z64d.zip"), {{"a.pcd", "abc"}}, 0, 3);       // end record asks for zip64, no locator
+  EXPECT_THROW(ZipArchive(tmpPath("z64d.zip")), std::runtime_error);
+  writeZip64(tmpPath("z64g.zip"), {{"a.pcd", "abc"}}, 0, 5);       // the zip64 end record has a wrong signature
+  EXPECT_THROW(ZipArchive(tmpPath("z64g.zip")), std::runtime_error);
+  writeZip64(tmpPath("z64h.zip"), {{"a.pcd", "abc"}}, 0, 6);       // the locator has a wrong signature
+  EXPECT_THROW(ZipArchive(tmpPath("z64h.zip")), std::runtime_error);
 }
 
 TEST(ScanTime, ParsesNames) {

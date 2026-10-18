@@ -1,5 +1,5 @@
 // Readers and tables for phase 1b (PREREG_P1B.md). Header-only, no ROS.
-//   * a zip reader (stored and deflate members) for the Spires per-scan PCD archive
+//   * a zip reader (stored and deflate members, zip64 sizes and offsets) for the Spires per-scan PCD archive
 //   * binary PCD from memory (x y z and the per-point timestamp)
 //   * SE(3) ground-truth track (TUM) with interpolation, extrinsic, deskewing conversion of a Spires scan
 //   * a streaming reader of the TLS map that keeps only points inside the Keble 02 area
@@ -226,14 +226,30 @@ class ZipArchive {
     for (std::int64_t i = span - 22; i >= 0; --i)
       if (le32(tail.data() + i) == 0x06054b50u) { eocd = i; break; }
     if (eocd < 0) fail(path, "no end-of-central-directory record");
-    const std::uint32_t total = le16(tail.data() + eocd + 10), cd_size = le32(tail.data() + eocd + 12), cd_off = le32(tail.data() + eocd + 16);
-    if (total == 0xFFFFu || cd_size == 0xFFFFFFFFu || cd_off == 0xFFFFFFFFu) fail(path, "zip64 archives are not supported");
+    std::uint64_t total = le16(tail.data() + eocd + 10), cd_size = le32(tail.data() + eocd + 12), cd_off = le32(tail.data() + eocd + 16);
+    if (total == 0xFFFFu || cd_size == 0xFFFFFFFFu || cd_off == 0xFFFFFFFFu) {
+      // zip64 (PREREG_P3.md Amendment 10): the locator sits 20 bytes before the end-of-central-directory record and points at the zip64 record
+      const std::int64_t loc_pos = size - span + eocd - 20;
+      if (loc_pos < 0) fail(path, "zip64 archive without a zip64 end-of-central-directory locator");
+      std::uint8_t loc[20];
+      f_.clear(); f_.seekg(loc_pos);
+      f_.read(reinterpret_cast<char*>(loc), 20);
+      if (!f_ || le32(loc) != 0x07064b50u) fail(path, "zip64 archive without a zip64 end-of-central-directory locator");
+      const std::uint64_t z64_off = le64(loc + 8);
+      std::uint8_t z64[56];
+      f_.clear(); f_.seekg(static_cast<std::streamoff>(z64_off));
+      f_.read(reinterpret_cast<char*>(z64), 56);
+      if (!f_ || le32(z64) != 0x06064b50u) fail(path, "bad zip64 end-of-central-directory record");
+      if (le32(z64 + 16) != 0 || le32(z64 + 20) != 0) fail(path, "multi-disk zip64 archives are not supported");
+      total = le64(z64 + 32); cd_size = le64(z64 + 40); cd_off = le64(z64 + 48);
+    }
+    if (cd_size > (1ull << 31)) fail(path, "central directory larger than 2 GB");
     std::vector<std::uint8_t> cd(cd_size);
     f_.clear(); f_.seekg(cd_off);
     f_.read(reinterpret_cast<char*>(cd.data()), cd_size);
     if (!f_) fail(path, "cannot read the central directory");
     std::size_t p = 0;
-    for (std::uint32_t k = 0; k < total; ++k) {
+    for (std::uint64_t k = 0; k < total; ++k) {
       if (p + 46 > cd.size() || le32(cd.data() + p) != 0x02014b50u) fail(path, "bad central directory entry " + std::to_string(k));
       Entry e;
       e.method = le16(cd.data() + p + 10);
@@ -242,7 +258,26 @@ class ZipArchive {
       e.offset = le32(cd.data() + p + 42);
       if (p + 46 + nl > cd.size()) fail(path, "central directory entry overruns");
       e.name.assign(reinterpret_cast<const char*>(cd.data() + p + 46), nl);
-      if (e.csize == 0xFFFFFFFFu || e.usize == 0xFFFFFFFFu || e.offset == 0xFFFFFFFFu) fail(path, "zip64 entry: " + e.name);
+      if (p + 46 + nl + xl > cd.size()) fail(path, "central directory entry overruns");
+      if (e.csize == 0xFFFFFFFFu || e.usize == 0xFFFFFFFFu || e.offset == 0xFFFFFFFFu) {
+        // the zip64 extra field (id 0x0001) holds, in this order, only the values that are 0xFFFFFFFF in the header: usize, csize, offset (disk number not used)
+        const std::uint8_t* x = cd.data() + p + 46 + nl;
+        std::size_t q = 0; bool found = false;
+        while (q + 4 <= xl) {
+          const std::uint32_t id = le16(x + q), len = le16(x + q + 2);
+          if (q + 4 + len > xl) break;
+          if (id == 0x0001) {
+            std::size_t r = q + 4; const std::size_t end = q + 4 + len;
+            auto take = [&](std::uint64_t& v) { if (r + 8 > end) fail(path, "short zip64 extra field of " + e.name); v = le64(x + r); r += 8; };
+            if (e.usize == 0xFFFFFFFFu) take(e.usize);
+            if (e.csize == 0xFFFFFFFFu) take(e.csize);
+            if (e.offset == 0xFFFFFFFFu) take(e.offset);
+            found = true; break;
+          }
+          q += 4 + len;
+        }
+        if (!found) fail(path, "zip64 entry without a zip64 extra field: " + e.name);
+      }
       p += 46 + nl + xl + cl;
       entries_.push_back(e);
     }
@@ -279,6 +314,7 @@ class ZipArchive {
  private:
   static std::uint32_t le16(const std::uint8_t* p) { return static_cast<std::uint32_t>(p[0]) | (static_cast<std::uint32_t>(p[1]) << 8); }
   static std::uint32_t le32(const std::uint8_t* p) { return le16(p) | (le16(p + 2) << 16); }
+  static std::uint64_t le64(const std::uint8_t* p) { return static_cast<std::uint64_t>(le32(p)) | (static_cast<std::uint64_t>(le32(p + 4)) << 32); }
   std::string path_;
   std::ifstream f_;
   std::vector<Entry> entries_;

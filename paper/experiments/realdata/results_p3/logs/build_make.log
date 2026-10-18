@@ -1,15 +1,15 @@
 STEP build_make
-START 2026-10-18T18:18:34+09:00 host=DESKTOP-KCD7BRS load=7.73 6.01 4.49 cores=12
-COMMIT f8cdc93e2f206976b22a2f3e9b2af753a683e471
+START 2026-10-18T18:49:21+09:00 host=DESKTOP-KCD7BRS load=6.22 5.72 5.07 cores=12
+COMMIT 4fe45f08f81b319115988d0d918b15c7c1575aac
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT f8cdc93e2f206976b22a2f3e9b2af753a683e471
+BINARY_COMMIT 4fe45f08f81b319115988d0d918b15c7c1575aac
 STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
 STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
 CMD cmake --build <BUILD_DIR>/build -j4 --target p3_probe hitrate_probe p1b_probe test_p3
 Scanning dependencies of target strata_core
-[ 12%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
-[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
+[ 12%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
 [ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/periodicity.cpp.o
+[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
 [ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp: In function ‘bool strata_core::worldToGrid(const strata_core::GridMeta&, double, double, int&, int&)’:
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp:6:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
@@ -46,4 +46,4 @@ Scanning dependencies of target test_p3
 [100%] Linking CXX executable test_p3
 [100%] Built target test_p3
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/build_make.json rc=0
-END 2026-10-18T18:19:32+09:00 rc=0 load=7.92 6.35 4.70
+END 2026-10-18T18:50:22+09:00 rc=0 load=6.72 6.00 5.21

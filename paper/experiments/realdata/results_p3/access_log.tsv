@@ -330,3 +330,7 @@ time	step	commit	uncommitted_files	path	open_calls
 2026-10-18T16:42:15+09:00	spires_03_tls	02462c3485d342114d136abe34ef58e804bc2c94	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-03/processed/trajectory/gt-tum.txt	1
 2026-10-18T16:42:51+09:00	spires_03_convert	02462c3485d342114d136abe34ef58e804bc2c94	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-03/processed/trajectory/gt-tum.txt	1
 2026-10-18T16:42:51+09:00	spires_03_convert	02462c3485d342114d136abe34ef58e804bc2c94	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-03/raw/lidar-clouds.zip	1
+2026-10-18T21:23:04+09:00	spires_04_tls	4fe45f08f81b319115988d0d918b15c7c1575aac	0	/home/cona/datasets/strata/spires/keble/ground_truth_map/keble-college/merged-cloud-1cm.pcd	1
+2026-10-18T21:23:04+09:00	spires_04_tls	4fe45f08f81b319115988d0d918b15c7c1575aac	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-04/processed/trajectory/gt-tum.txt	1
+2026-10-18T21:23:54+09:00	spires_04_convert	4fe45f08f81b319115988d0d918b15c7c1575aac	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-04/processed/trajectory/gt-tum.txt	1
+2026-10-18T21:23:54+09:00	spires_04_convert	4fe45f08f81b319115988d0d918b15c7c1575aac	0	/home/cona/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-04/raw/lidar-clouds.zip	1

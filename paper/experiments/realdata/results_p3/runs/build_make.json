@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "7.92 6.35 4.70 7/751 1367866",
+  "loadavg": "6.72 6.00 5.21 6/823 1389959",
   "meminfo": {
-   "MemAvailable": "10104668 kB",
+   "MemAvailable": "10137548 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31977032 kB"
+   "SwapFree": "31831536 kB"
   },
-  "time": "2026-10-18T18:19:32+0900",
+  "time": "2026-10-18T18:50:22+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.9 31268 lever",
-   "99.9 31428 lever",
-   "99.9 31416 lever",
-   "99.8 14632 lever2",
-   "99.8 14532 lever2"
+   " 100 25600 lever",
+   " 100 22296 lever",
+   " 100 25860 lever",
+   " 100 25752 lever",
+   "16.6 79168 python3"
   ]
  },
  "argv": [
@@ -28,26 +28,26 @@
   "test_p3"
  ],
  "before": {
-  "loadavg": "7.73 6.01 4.49 8/762 1367184",
+  "loadavg": "6.22 5.72 5.07 6/816 1387941",
   "meminfo": {
-   "MemAvailable": "10030264 kB",
+   "MemAvailable": "10239232 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31977032 kB"
+   "SwapFree": "31822232 kB"
   },
-  "time": "2026-10-18T18:18:34+0900",
+  "time": "2026-10-18T18:49:21+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 100 19416 lever2",
-   " 100 20540 lever2",
-   " 100 19880 lever2",
-   "99.9 31268 lever",
-   "99.9  7024 lever"
+   "99.0 19224 lever",
+   "99.0 19240 lever",
+   "98.9 19376 lever",
+   "98.9 19392 lever",
+   "25.0 71328 cc1plus"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "f8cdc93e2f206976b22a2f3e9b2af753a683e471",
-  "commit": "f8cdc93e2f206976b22a2f3e9b2af753a683e471",
+  "binary_commit": "4fe45f08f81b319115988d0d918b15c7c1575aac",
+  "commit": "4fe45f08f81b319115988d0d918b15c7c1575aac",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
@@ -60,6 +60,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 58.64,
+ "seconds": 60.629,
  "step": "build_make"
 }
