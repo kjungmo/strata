@@ -1,0 +1,10 @@
+time	step	commit	uncommitted_files	path	open_calls
+2026-10-18T10:32:09+09:00	boreas_peek	63aa207e981f18df535d7d05f35db8588a5c56e5	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/applanix/gps_post_process.csv	1
+2026-10-18T10:32:09+09:00	boreas_peek	63aa207e981f18df535d7d05f35db8588a5c56e5	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/applanix/lidar_poses.csv	1
+2026-10-18T10:32:09+09:00	boreas_peek	63aa207e981f18df535d7d05f35db8588a5c56e5	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/applanix/lidar_times.txt	1
+2026-10-18T10:32:09+09:00	boreas_peek	63aa207e981f18df535d7d05f35db8588a5c56e5	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/calib/T_applanix_lidar.txt	1
+2026-10-18T10:32:09+09:00	boreas_peek	63aa207e981f18df535d7d05f35db8588a5c56e5	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/lidar	1
+2026-10-18T10:32:09+09:00	boreas_peek	63aa207e981f18df535d7d05f35db8588a5c56e5	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/lidar/1606417543533737.bin	1
+2026-10-18T10:32:50+09:00	boreas_peek2	8331bf95a5275b698c77ae169e4c88c9ed7ae976	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/applanix/gps_post_process.csv	1
+2026-10-18T10:32:50+09:00	boreas_peek2	8331bf95a5275b698c77ae169e4c88c9ed7ae976	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/applanix/lidar_poses.csv	1
+2026-10-18T10:32:50+09:00	boreas_peek2	8331bf95a5275b698c77ae169e4c88c9ed7ae976	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/applanix/lidar_times.txt	2
