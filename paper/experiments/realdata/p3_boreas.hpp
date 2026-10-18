@@ -341,15 +341,5 @@ inline TileOverlap tileOverlap(const std::map<TileKey, std::size_t>& a, const st
   return o;
 }
 
-// Constant z offset of session B relative to session A: the median over shared tiles of (ground_a - ground_b), where
-// the ground height of a tile is a low percentile of the z of the returns in it (computed by the caller). NaN if no shared tile.
-inline double estimateZOffset(const std::map<TileKey, double>& ground_a, const std::map<TileKey, double>& ground_b) {
-  std::vector<double> d;
-  for (const auto& kv : ground_a) { auto it = ground_b.find(kv.first); if (it != ground_b.end()) d.push_back(kv.second - it->second); }
-  if (d.empty()) return std::nan("");
-  std::sort(d.begin(), d.end());
-  return d.size() % 2 ? d[d.size() / 2] : 0.5 * (d[d.size() / 2 - 1] + d[d.size() / 2]);
-}
-
 }  // namespace p3
 }  // namespace realdata

@@ -67,6 +67,8 @@ TEST(P3Arms, TableMatchesTheDocumentedNumbers) {
   EXPECT_GT(o.graduate_prob, 0.5); EXPECT_LT(o.graduate_prob, 0.5 + 1e-9); EXPECT_DOUBLE_EQ(o.demote_prob, 0.5);
   const ArmSpec e = armSpec("elite_like");
   EXPECT_NEAR(e.l_hit, 2.1972246, 1e-6); EXPECT_NEAR(e.l_miss, -2.1972246, 1e-6); EXPECT_DOUBLE_EQ(e.decay, 1.0); EXPECT_TRUE(e.binary);
+  EXPECT_DOUBLE_EQ(e.l_min, -50.0); EXPECT_DOUBLE_EQ(e.l_max, 50.0); EXPECT_EQ(e.min_observations, 1); EXPECT_DOUBLE_EQ(e.prune_prob, 0.0);
+  EXPECT_GT(e.graduate_prob, 0.5); EXPECT_LT(e.graduate_prob, 0.5 + 1e-9); EXPECT_DOUBLE_EQ(e.demote_prob, 0.5);
   const ArmSpec p = armSpec("sprt");
   EXPECT_TRUE(p.sprt); EXPECT_DOUBLE_EQ(p.m0, 0.20); EXPECT_DOUBLE_EQ(p.m1, 0.70); EXPECT_DOUBLE_EQ(p.alpha, 0.01); EXPECT_DOUBLE_EQ(p.beta, 0.01);
   EXPECT_EQ(p.n_max_undecided, 80);
@@ -351,9 +353,9 @@ TEST(P3Kth, MissingViewpointAndMissingFramesFailLoudly) {
 
 TEST(P3Kth, MaxFramesLimitsTheRun) {
   const std::string dir = makeKthSequence("kth4", 12);
-  KthExportOptions o; o.res = 0.2; o.window_steps = 2; o.periodicity = false; o.max_frames = 4; o.policies = {Policy::All};
+  KthExportOptions o; o.res = 0.2; o.window_steps = 2; o.periodicity = false; o.max_frames = 5; o.policies = {Policy::All};
   const KthExportReport r = kthExport(dir, armSpec("shipped_v0_1"), o, tmpPath("kth4_out"));
-  EXPECT_EQ(r.frames, 4u); EXPECT_EQ(r.windows, 2u);
+  EXPECT_EQ(r.frames, 5u); EXPECT_EQ(r.windows, 2u);                                // 5 frames, windows of 2: the last partial window is not closed
 }
 
 // ----------------------------------------------------------------------------- Boreas ----------
@@ -663,18 +665,6 @@ TEST(P3Boreas, TileOverlap) {
   EXPECT_DOUBLE_EQ(tileOverlap({}, hb).share_a_in_b, 0.0);
 }
 
-TEST(P3Boreas, ZOffsetIsTheMedianOfTheTileDifferences) {
-  std::map<TileKey, double> a, b;
-  a[{0, 0}] = 1.0; b[{0, 0}] = 0.5;                                                 // +0.5
-  a[{1, 0}] = 2.0; b[{1, 0}] = 1.0;                                                 // +1.0
-  a[{2, 0}] = 3.0; b[{2, 0}] = 2.9;                                                 // +0.1
-  a[{9, 9}] = 100.0;                                                                // not shared
-  EXPECT_NEAR(estimateZOffset(a, b), 0.5, 1e-12);
-  b[{3, 0}] = 0.0; a[{3, 0}] = 0.2;                                                 // +0.2: now four values 0.1 0.2 0.5 1.0
-  EXPECT_NEAR(estimateZOffset(a, b), 0.35, 1e-12);
-  EXPECT_TRUE(std::isnan(estimateZOffset(a, std::map<TileKey, double>{{{50, 50}, 0.0}})));
-}
-
 // ----------------------------------------------------------------------------- the sprt arm ----------
 
 TEST(P3Sprt, WallGraduatesInFourWindowsAndClutterIsRejectedOrUndecided) {
@@ -969,6 +959,27 @@ std::string makeBoreasSession(const std::string& id, double lat0, double lon_ori
   writeText(d + "/applanix/gps_post_process.csv", gps);
   writeText(d + "/applanix/lidar_poses.csv", lp);
   return d;
+}
+
+TEST(P3Probe, TileGroundGivesThePercentileHeightPerTile) {
+  // one frame at the origin: 700 points at z = 0.33 in tile (0, 0) within 25 m, 30 points at z = 6 in the same tile (4.1 %: below the 5th
+  // percentile), 600 points at z = -1.23 in tile (-1, 0), 800 points beyond 25 m (ignored), 100 points in tile (0, 1) (too few)
+  Frame f; f.group = 0; f.origin = Eigen::Vector3d(0, 0, 2);
+  std::mt19937 g(4); std::uniform_real_distribution<float> u(0.5f, 9.5f);
+  for (int i = 0; i < 700; ++i) f.xyz.insert(f.xyz.end(), {u(g), u(g), 0.33f});
+  for (int i = 0; i < 30; ++i) f.xyz.insert(f.xyz.end(), {u(g), 2.f, 6.0f});
+  for (int i = 0; i < 600; ++i) f.xyz.insert(f.xyz.end(), {-u(g), 2.f, -1.23f});
+  for (int i = 0; i < 800; ++i) f.xyz.insert(f.xyz.end(), {30.f + u(g), 2.f, 0.0f});
+  for (int i = 0; i < 100; ++i) f.xyz.insert(f.xyz.end(), {u(g), 10.f + u(g) * 0.5f, 0.33f});
+  writeCache(tmpPath("tg.bin"), 3, {f});
+  std::string out;
+  ASSERT_EQ(runProbe("tile-ground --cache " + tmpPath("tg.bin") + " --out " + tmpPath("tg.csv"), &out), 0) << out;
+  EXPECT_EQ(readText(tmpPath("tg.csv")), "tx,ty,count,ground_z\n-1,0,600,-1.25\n0,0,730,0.35\n");
+  EXPECT_NE(out.find("points_used=1430"), std::string::npos) << out;
+  ASSERT_EQ(runProbe("tile-ground --cache " + tmpPath("tg.bin") + " --out " + tmpPath("tg2.csv") + " --min-points 50 --radius 100", &out), 0) << out;
+  EXPECT_NE(readText(tmpPath("tg2.csv")).find("0,1,100,0.35"), std::string::npos);
+  EXPECT_NE(readText(tmpPath("tg2.csv")).find("3,0,800,"), std::string::npos);
+  EXPECT_NE(runProbe("tile-ground --cache " + tmpPath("c2.bin") + " --out " + tmpPath("tg3.csv"), &out), 0);                  // a 2D cache
 }
 
 TEST(P3Probe, BoreasValidateOverlapAndConvertOnSyntheticSessions) {

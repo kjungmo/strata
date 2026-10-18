@@ -6,7 +6,8 @@
                    (100 unless dynamic points touch static ones within tol); remove nothing (the whole GT) -> SA = 100, DA = 0
     lil            false-Static on clutter and false-reject on wall runs from an `arm-eval` cell dump (section 6)
     spires         the same rates from an `arm-eval` counts table of a 3D label file (section 7)
-    boreas         cross-session Jaccard of Static voxel sets inside shared tiles (section 5)
+    jaccard        Jaccard of Static voxel sets of several sequences or sessions, inside the tiles they share (sections 5 and 7)
+    zoffset        vertical offset between two sessions from the tile ground heights of `p3_probe tile-ground` (section 5)
 
 Run with `python3 -I p3_eval.py <command> ...`.
 """
@@ -453,12 +454,34 @@ def jaccard_in_shared_tiles(a, b, res, all_a=None, all_b=None, tile_m=TILE_M):
     return out
 
 
+def zoffset(csv_a, csv_b, min_count=500):
+    """Offset to ADD to the z of session B so that its ground meets the ground of session A: the median over the tiles present in both
+    tables (at least min_count returns in each) of ground_a - ground_b. (n_tiles, median, p10, p90) in a dict; NaN if no shared tile."""
+    def load(p):
+        with open(p) as f:
+            return {(int(r["tx"]), int(r["ty"])): float(r["ground_z"]) for r in csv.DictReader(f) if int(r["count"]) >= min_count}
+    a, b = load(csv_a), load(csv_b)
+    d = np.array([a[k] - b[k] for k in a if k in b])
+    if d.size == 0:
+        return {"tiles": 0, "median": float("nan"), "p10": float("nan"), "p90": float("nan")}
+    return {"tiles": int(d.size), "median": float(np.median(d)), "p10": float(np.percentile(d, 10)), "p90": float(np.percentile(d, 90))}
+
+
+def cmd_zoffset(args):
+    r = zoffset(args.a, args.b, args.min_count)
+    if args.field:
+        print(repr(r[args.field]))
+    else:
+        print(json.dumps(r, indent=1, sort_keys=True))
+    return 0
+
+
 def cmd_spires(args):
     print(json.dumps(spires_metrics(args.counts, args.latency), indent=1, sort_keys=True))
     return 0
 
 
-def cmd_boreas(args):
+def cmd_jaccard(args):
     sets = [np.fromfile(p, dtype="<i8") for p in args.ids]
     out = []
     for i in range(len(sets)):
@@ -477,7 +500,8 @@ def main(argv=None):
     p = sub.add_parser("kth-selfcheck"); p.add_argument("--gt", required=True); p.add_argument("--tol", type=float, default=0.05); p.set_defaults(fn=cmd_kth_selfcheck)
     p = sub.add_parser("lil"); p.add_argument("--dump", required=True); p.add_argument("--res", type=float, required=True); p.add_argument("--origin", type=float, default=-30.0); p.add_argument("--nmin", type=int, default=5); p.set_defaults(fn=cmd_lil)
     p = sub.add_parser("spires"); p.add_argument("--counts", required=True); p.add_argument("--latency"); p.set_defaults(fn=cmd_spires)
-    p = sub.add_parser("boreas"); p.add_argument("--ids", nargs="+", required=True); p.add_argument("--res", type=float, required=True); p.set_defaults(fn=cmd_boreas)
+    p = sub.add_parser("zoffset"); p.add_argument("--a", required=True); p.add_argument("--b", required=True); p.add_argument("--min-count", type=int, default=500); p.add_argument("--field", choices=("tiles", "median", "p10", "p90")); p.set_defaults(fn=cmd_zoffset)
+    p = sub.add_parser("jaccard"); p.add_argument("--ids", nargs="+", required=True); p.add_argument("--res", type=float, required=True); p.set_defaults(fn=cmd_jaccard)
     args = ap.parse_args(argv)
     return args.fn(args)
 

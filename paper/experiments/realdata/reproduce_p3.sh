@@ -193,6 +193,12 @@ stage_eval_spires() {
       done
     done
   done
+  # agreement of the Static sets of the three same-day sequences (one TLS frame), per arm
+  for arm in $(arms_to_run); do
+    must step "spires_static_${arm}" -- "$P3" static-export --caches "$OUT/spires_03/cache.bin,$OUT/spires_04/cache.bin,$OUT/spires_05/cache.bin" --arm "$arm" --res 0.2 --window 10 \
+      --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}" --meta "$OUT/spires_agree_${arm}.meta"
+    must step "spires_jaccard_${arm}" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_s0_static.ids' '$OUT/spires_agree_${arm}_s1_static.ids' '$OUT/spires_agree_${arm}_s2_static.ids' --res 0.2 > '$RES/spires_agree_${arm}.json'"
+  done
 }
 
 stage_eval_kth() {
@@ -216,10 +222,18 @@ stage_eval_boreas() {
   local ids=(boreas-2020-11-26-13-58 boreas-2021-04-08-12-44 boreas-2021-06-17-17-52) d="$OUT/boreas"; mkdir -p "$d"
   stage_boreas_gate
   local caches=""
+  # pass 1: common frame without a vertical offset; the ground height per 10 m tile gives the offset of each session to the first one
   for id in "${ids[@]}"; do
-    local -a zargs=()
-    if [ -n "${P3_Z_OFFSET_FILE:-}" ]; then zargs=(--z-offset "$(grep "^$id " "$P3_Z_OFFSET_FILE" | cut -d' ' -f2)"); fi
-    must step "boreas_convert_$id" --traced -- "$P3" boreas-convert --seq "$DATA/boreas/$id" --ref "$DATA/boreas/${ids[0]}" --out "$d/cache_$id.bin" --meta "$d/cache_$id.meta" "${zargs[@]}"
+    must step "boreas_convert0_$id" --traced -- "$P3" boreas-convert --seq "$DATA/boreas/$id" --ref "$DATA/boreas/${ids[0]}" --out "$d/cache0_$id.bin" --meta "$d/cache0_$id.meta"
+    must step "boreas_ground_$id" -- "$P3" tile-ground --cache "$d/cache0_$id.bin" --out "$d/ground_$id.csv"
+  done
+  # pass 2: the same conversion with the offset (0 for the reference session)
+  for id in "${ids[@]}"; do
+    local zoff=0
+    if [ "$id" != "${ids[0]}" ]; then zoff="$(python3 -I "$HERE/p3_eval.py" zoffset --a "$d/ground_${ids[0]}.csv" --b "$d/ground_$id.csv" --field median)"; fi
+    python3 -I "$HERE/p3_eval.py" zoffset --a "$d/ground_${ids[0]}.csv" --b "$d/ground_$id.csv" > "$RES/boreas_zoffset_$id.json"
+    echo "$id $zoff" >> "$RES/boreas_zoffsets_used.txt"
+    must step "boreas_convert_$id" --traced -- "$P3" boreas-convert --seq "$DATA/boreas/$id" --ref "$DATA/boreas/${ids[0]}" --out "$d/cache_$id.bin" --meta "$d/cache_$id.meta" --z-offset "$zoff"
     caches="${caches:+$caches,}$d/cache_$id.bin"
   done
   for arm in $(arms_to_run); do
@@ -227,7 +241,7 @@ stage_eval_boreas() {
       must step "boreas_static_${arm}_$mode" -- "$P3" static-export --caches "$caches" --arm "$arm" --res 0.2 --window 10 --periodicity "$PER" --mode "$mode" \
         --out-prefix "$d/${arm}_$mode" --meta "$d/${arm}_$mode.meta"
     done
-    must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' boreas --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
+    must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
   done
 }
 

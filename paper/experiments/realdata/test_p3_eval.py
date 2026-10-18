@@ -434,6 +434,28 @@ class TestSpiresAndBoreas(unittest.TestCase):
         self.assertEqual(r2["shared_tiles"], 2)
         self.assertLess(r2["jaccard"], r["jaccard"])
 
+    def test_zoffset_is_the_median_of_the_tile_differences(self):
+        with tempfile.TemporaryDirectory() as d:
+            def table(path, rows):
+                with open(path, "w") as f:
+                    f.write("tx,ty,count,ground_z\n")
+                    for r in rows:
+                        f.write("%d,%d,%d,%.3f\n" % r)
+            table(d + "/a.csv", [(0, 0, 900, 1.0), (1, 0, 900, 2.0), (2, 0, 900, 3.0), (3, 0, 900, 5.0), (9, 9, 900, 7.0), (4, 0, 100, 9.0)])
+            table(d + "/b.csv", [(0, 0, 900, 0.5), (1, 0, 900, 1.0), (2, 0, 900, 2.9), (3, 0, 900, 4.9), (8, 8, 900, 0.0), (4, 0, 900, 0.0)])
+            r = ev.zoffset(d + "/a.csv", d + "/b.csv")
+            self.assertEqual(r["tiles"], 4)                       # (9,9) and (8,8) are not shared; tile (4,0) has too few returns in a
+            self.assertAlmostEqual(r["median"], 0.3)              # differences 0.5, 1.0, 0.1, 0.1 -> sorted 0.1 0.1 0.5 1.0 -> median 0.3
+            self.assertAlmostEqual(ev.zoffset(d + "/a.csv", d + "/b.csv", min_count=50)["tiles"], 5)
+            self.assertAlmostEqual(ev.zoffset(d + "/b.csv", d + "/a.csv")["median"], -0.3)     # reversed roles, reversed sign
+            table(d + "/c.csv", [(50, 50, 900, 1.0)])
+            self.assertTrue(math.isnan(ev.zoffset(d + "/a.csv", d + "/c.csv")["median"]))
+            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "zoffset", "--a", d + "/a.csv", "--b", d + "/b.csv"], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertAlmostEqual(json.loads(run.stdout)["median"], 0.3)
+            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "zoffset", "--a", d + "/a.csv", "--b", d + "/b.csv", "--field", "median"], capture_output=True, text=True)
+            self.assertAlmostEqual(float(run.stdout), 0.3)
+
     def test_cli_boreas_and_spires(self):
         def pack(ix, iy, iz):
             off = 1 << 20
@@ -441,7 +463,7 @@ class TestSpiresAndBoreas(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             np.array([pack(i, 0, 0) for i in range(0, 40)], dtype="<i8").tofile(d + "/a.ids")
             np.array([pack(i, 0, 0) for i in range(20, 60)], dtype="<i8").tofile(d + "/b.ids")
-            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "boreas", "--ids", d + "/a.ids", d + "/b.ids", "--res", "0.2"], capture_output=True, text=True)
+            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "jaccard", "--ids", d + "/a.ids", d + "/b.ids", "--res", "0.2"], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stderr)
             self.assertAlmostEqual(json.loads(run.stdout)[0]["jaccard"], 20 / 50)      # inside the one shared tile: 20 common of 50
             with open(d + "/c.csv", "w") as f:

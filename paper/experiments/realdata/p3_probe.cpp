@@ -7,6 +7,7 @@
 //   boreas-overlap   common frame and 10 m tile overlap of the trajectories of several Boreas sequences (poses only)
 //   boreas-convert   Boreas sequence -> frame cache in the common frame (deskewed, 3 m to 50 m)
 //   static-export    3D frame caches + arm -> Static and observed voxel id sets (independent or cumulative sessions)
+//   tile-ground      3D frame cache -> ground height (5th percentile of z) per 10 m tile, to compare the vertical level of sessions
 //   lil-validate   reader check on the first N scan pairs of a LILocBench bag and its GT poses
 //   ref-export     reference label file (hitrate_probe lil-reference) -> CSV of cells
 //   arm-eval       frame cache + label file + arm -> final verdict of every labelled cell (2D) or counts (3D)
@@ -360,6 +361,43 @@ int cmdBoreasConvert(const std::map<std::string, std::string>& a) {
   return 0;
 }
 
+// Ground height per 10 m tile from a 3D cache in the common frame: the 5th percentile of z of the returns within `radius` of the
+// sensor (horizontally), from a histogram with 0.1 m bins. Used to compare the vertical level of two sessions (p3_eval.py zoffset).
+int cmdTileGround(const std::map<std::string, std::string>& a) {
+  CacheReader cache(need(a, "cache"));
+  if (cache.dim() != 3) fail(need(a, "cache"), "not a 3D cache");
+  const double tile = std::stod(opt(a, "tile", "10")), radius = std::stod(opt(a, "radius", "25")), pctl = std::stod(opt(a, "percentile", "5"));
+  const std::size_t min_points = std::stoul(opt(a, "min-points", "500"));
+  constexpr int kBins = 4000; constexpr double kZ0 = -200.0, kBin = 0.1;
+  std::map<TileKey, std::vector<std::uint32_t>> hist;
+  Frame fr; std::size_t used = 0;
+  while (cache.next(fr)) {
+    for (std::size_t i = 0; i < fr.size(); ++i) {
+      const double x = fr.xyz[3 * i], y = fr.xyz[3 * i + 1], z = fr.xyz[3 * i + 2];
+      if (std::hypot(x - fr.origin.x(), y - fr.origin.y()) > radius) continue;
+      const int bin = static_cast<int>(std::floor((z - kZ0) / kBin));
+      if (bin < 0 || bin >= kBins) continue;
+      auto& h = hist[{static_cast<std::int64_t>(std::floor(x / tile)), static_cast<std::int64_t>(std::floor(y / tile))}];
+      if (h.empty()) h.assign(kBins, 0);
+      ++h[bin]; ++used;
+    }
+  }
+  std::ofstream o(need(a, "out"));
+  if (!o) fail(need(a, "out"), "cannot write");
+  o << "tx,ty,count,ground_z\n";
+  std::size_t written = 0;
+  for (const auto& kv : hist) {
+    std::size_t n = 0; for (auto c : kv.second) n += c;
+    if (n < min_points) continue;
+    std::size_t acc = 0; int bin = 0;
+    for (; bin < kBins; ++bin) { acc += kv.second[bin]; if (static_cast<double>(acc) >= pctl / 100.0 * n) break; }
+    o << kv.first.x << "," << kv.first.y << "," << n << "," << kZ0 + (bin + 0.5) * kBin << "\n";
+    ++written;
+  }
+  std::cerr << "points_used=" << used << " tiles=" << hist.size() << " written=" << written << "\n";
+  return 0;
+}
+
 void writeIds(const std::string& path, std::vector<CellId> ids) {
   std::sort(ids.begin(), ids.end());
   std::ofstream o(path, std::ios::binary);
@@ -538,7 +576,7 @@ int cmdArmEval(const std::map<std::string, std::string>& a) {
 }  // namespace
 
 int main(int argc, char** argv) {
-  if (argc < 2) { std::cerr << "usage: p3_probe <arms|kth-validate|kth-export|spires-validate|boreas-validate|boreas-overlap|lil-validate|ref-export|arm-eval> --key value ...\n"; return 2; }
+  if (argc < 2) { std::cerr << "usage: p3_probe <arms|kth-validate|kth-export|spires-validate|boreas-validate|boreas-overlap|boreas-convert|static-export|tile-ground|lil-validate|ref-export|arm-eval> --key value ...\n"; return 2; }
   try {
     const std::string cmd = argv[1];
     const auto a = parseArgs(argc, argv, 2);
@@ -550,6 +588,7 @@ int main(int argc, char** argv) {
     if (cmd == "boreas-overlap") return cmdBoreasOverlap(a);
     if (cmd == "boreas-convert") return cmdBoreasConvert(a);
     if (cmd == "static-export") return cmdStaticExport(a);
+    if (cmd == "tile-ground") return cmdTileGround(a);
     if (cmd == "lil-validate") return cmdLilValidate(a);
     if (cmd == "ref-export") return cmdRefExport(a);
     if (cmd == "arm-eval") return cmdArmEval(a);

@@ -83,8 +83,7 @@ CPP = [
     ("p3_kth.hpp", "if (!c.hdr.has_viewpoint) fail(", "if (c.hdr.has_viewpoint) fail(", "kth: viewpoint required"),
     ("p3_kth.hpp", "b.integrate(obs, c.hdr.t);", "b.integrate(obs, Eigen::Vector3d::Zero());", "kth: integration origin"),
     ("p3_kth.hpp", "if (b.tick()) ++rep.windows;", "if (!b.tick()) ++rep.windows;", "kth: window count"),
-    ("p3_kth.hpp", "if (!((p - c.hdr.t).norm() < o.max_range))", "if (!((p - c.hdr.t).norm() <= o.max_range))", "kth: range rule is strict"),
-    ("p3_kth.hpp", "if (!((p - c.hdr.t).norm() < o.max_range))", "if (!(p.norm() < o.max_range))", "kth: range from the viewpoint"),
+    ("p3_kth.hpp", "if (o.max_range > 0.0 && !((p - c.hdr.t).norm() < o.max_range))", "if (o.max_range > 0.0 && !(p.norm() < o.max_range))", "kth: range from the viewpoint"),
     ("p3_kth.hpp", "++rep.verdict_points[static_cast<int>(v)];", "++rep.verdict_points[0];", "kth: verdict histogram"),
     ("p3_kth.hpp", "if (keeps(o.policies[k], v)) w[k]->add(&c.xyz[i]);", "if (!keeps(o.policies[k], v)) w[k]->add(&c.xyz[i]);", "kth: policy applied"),
     ("p3_kth.hpp", "const Verdict v = verdictOf(b.layered(), b.voxelId(p), arm.binary);", "const Verdict v = verdictOf(b.layered(), b.voxelId(p), !arm.binary);", "kth: binary flag"),
@@ -135,19 +134,39 @@ CPP = [
     ("p3_boreas.hpp", "if (!applanix.at(frame_time + static_cast<double>(s.t[i]) + opt.dt, pa, opt.max_gap_s))", "if (!applanix.at(frame_time + opt.dt, pa, opt.max_gap_s))", "convert: per-point time"),
     ("p3_boreas.hpp", "if (!applanix.at(frame_time + static_cast<double>(s.t[i]) + opt.dt, pa, opt.max_gap_s))", "if (!applanix.at(frame_time + static_cast<double>(s.t[i]) - opt.dt, pa, opt.max_gap_s))", "convert: dt of the points"),
     ("p3_boreas.hpp", "const Eigen::Vector3d w = lp.t + lp.q * Eigen::Vector3d(x, y, z);", "const Eigen::Vector3d w = lp.t + Eigen::Vector3d(x, y, z);", "convert: rotation of the points"),
-    ("p3_boreas.hpp", "const Pose3 l0 = compose(to_common, compose(pa0, T_app_lidar));", "const Pose3 l0 = compose(to_common, pa0);", "convert: calibration of the origin"),
     ("p3_boreas.hpp", "return std::strtod(s.c_str(), nullptr) * 1e-6;", "return std::strtod(s.c_str(), nullptr) * 1e-3;", "frame time: microseconds"),
     ("p3_boreas.hpp", "if (s.empty() || s.find_first_not_of(\"0123456789\") != std::string::npos) return std::nan(\"\");", "if (s.empty()) return std::nan(\"\");", "frame time: digits only"),
     ("p3_boreas.hpp", "std::floor(p.x() / tile_m)", "std::trunc(p.x() / tile_m)", "tiles: floor of x"),
     ("p3_boreas.hpp", "for (int dx = -1; dx <= 1; ++dx) for (int dy = -1; dy <= 1; ++dy) if (m.count({k.x + dx, k.y + dy})) return true;", "for (int dx = 0; dx <= 1; ++dx) for (int dy = -1; dy <= 1; ++dy) if (m.count({k.x + dx, k.y + dy})) return true;", "tiles: near neighbourhood"),
     ("p3_boreas.hpp", "if (!a.empty()) { o.share_a_in_b = double(a_in_b) / a.size(); o.share_a_near_b = double(a_near) / a.size(); }", "if (!a.empty()) { o.share_a_in_b = double(a_in_b) / b.size(); o.share_a_near_b = double(a_near) / a.size(); }", "tiles: share denominator"),
-    ("p3_boreas.hpp", "for (const auto& kv : ground_a) { auto it = ground_b.find(kv.first); if (it != ground_b.end()) d.push_back(kv.second - it->second); }", "for (const auto& kv : ground_a) { auto it = ground_b.find(kv.first); if (it != ground_b.end()) d.push_back(it->second - kv.second); }", "z offset: sign"),
-    ("p3_boreas.hpp", "return d.size() % 2 ? d[d.size() / 2] : 0.5 * (d[d.size() / 2 - 1] + d[d.size() / 2]);", "return d.size() % 2 ? d[d.size() / 2] : d[d.size() / 2];", "z offset: even median"),
+    # ---- added after the first reader validations
+    ("p3_boreas.hpp", "Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t + calib_file.t; return p;", "Pose3 p; p.q = (pa.q * calib_file.q.inverse()).normalized(); p.t = pa.t + calib_file.t; return p;", "lidar pose: yaw shift on the world side"),
+    ("p3_boreas.hpp", "Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t + calib_file.t; return p;", "Pose3 p; p.q = (calib_file.q * pa.q).normalized(); p.t = pa.t + calib_file.t; return p;", "lidar pose: inverse of the file rotation"),
+    ("p3_boreas.hpp", "Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t + calib_file.t; return p;", "Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t - calib_file.t; return p;", "lidar pose: translation sign"),
+    ("p3_boreas.hpp", "Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t + calib_file.t; return p;", "Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t + pa.q * calib_file.t; return p;", "lidar pose: translation frame"),
+    ("p3_boreas.hpp", "const Pose3 l0 = compose(to_common, lidarPoseFromApplanix(pa0, calib_file));", "const Pose3 l0 = compose(to_common, pa0);", "convert: calibration of the origin"),
+    ("p3_boreas.hpp", "const Pose3 lp = compose(to_common, lidarPoseFromApplanix(pa, calib_file));", "const Pose3 lp = compose(to_common, pa);", "convert: calibration of the points"),
+    ("p3_probe.cpp", "const Pose3 lidar = lidarPoseFromApplanix(pa, T), ref = poseOf(*row);", "const Pose3 lidar = pa, ref = poseOf(*row);", "cli: validate compares the calibrated pose"),
+    ("p3_probe.cpp", "const bool before_gt = !ok && tmid + dt < gt.t0();", "const bool before_gt = !ok;", "cli: spires scans before the track"),
+    ("p3_probe.cpp", "v.check(ok || before_gt, entries[k].name + \": no ground-truth pose at the scan time\");", "v.check(true, entries[k].name + \": no ground-truth pose at the scan time\");", "cli: spires pose check"),
+    ("p3_probe.cpp", "const std::size_t expected = (f.stamp + dt >= gt.t0() ? 1u : 0u) + (r.stamp + dt >= gt.t0() ? 1u : 0u);", "const std::size_t expected = 2;", "cli: lil expected scans"),
+    ("p3_probe.cpp", "const std::size_t expected = (f.stamp + dt >= gt.t0() ? 1u : 0u) + (r.stamp + dt >= gt.t0() ? 1u : 0u);", "const std::size_t expected = (f.stamp + dt > gt.t0() ? 1u : 0u) + (r.stamp + dt > gt.t0() ? 1u : 0u);", "cli: lil track start"),
+    ("p3_probe.cpp", "if (std::hypot(x - fr.origin.x(), y - fr.origin.y()) > radius) continue;", "if (std::hypot(x - fr.origin.x(), y - fr.origin.y()) < radius) continue;", "tile-ground: radius"),
+    ("p3_probe.cpp", "if (n < min_points) continue;", "if (n <= min_points) continue;", "tile-ground: minimum points"),
+    ("p3_probe.cpp", "if (static_cast<double>(acc) >= pctl / 100.0 * n) break;", "if (static_cast<double>(acc) >= 0.5 * n) break;", "tile-ground: percentile"),
+    ("p3_probe.cpp", "o << kv.first.x << \",\" << kv.first.y << \",\" << n << \",\" << kZ0 + (bin + 0.5) * kBin << \"\\n\";", "o << kv.first.x << \",\" << kv.first.y << \",\" << n << \",\" << kZ0 + bin * kBin << \"\\n\";", "tile-ground: bin centre"),
+    ("p3_kth.hpp", "if (o.max_range > 0.0 && !((p - c.hdr.t).norm() < o.max_range))", "if (o.max_range >= 0.0 && !((p - c.hdr.t).norm() < o.max_range))", "kth: no range cut by default"),
+    ("p3_kth.hpp", "if (o.max_range > 0.0 && !((p - c.hdr.t).norm() < o.max_range))", "if (o.max_range > 0.0 && !((p - c.hdr.t).norm() <= o.max_range))", "kth: range rule is strict"),
+    ("p3_kth.hpp", "double max_range{0.0};", "double max_range{50.0};", "kth: default range"),
+    ("p3_run.hpp", "if (c.first_touch < 0) c.first_touch = window_index;", "c.first_touch = window_index;", "tally: first touch"),
+    ("p3_run.hpp", "<< c.first_static << \",\" << c.first_touch << \"\\n\";", "<< c.first_static << \",\" << c.n << \"\\n\";", "dump: first_touch column"),
+    ("p3_probe.cpp", "++lat[{int(kv.second), c.first_static - c.first_touch + 1}];", "++lat[{int(kv.second), c.first_static}];", "cli: latency from the first touch"),
+    ("p3_probe.cpp", "++lat[{int(kv.second), c.first_static - c.first_touch + 1}];", "++lat[{int(kv.second), c.first_static - c.first_touch}];", "cli: latency counts the first window"),
     # ---- command line
     ("p3_probe.cpp", "if (it->second == \"1\" || it->second == \"on\" || it->second == \"true\") return true;", "if (it->second == \"0\" || it->second == \"on\" || it->second == \"true\") return true;", "cli: flag true"),
     ("p3_probe.cpp", "const BoreasSession ref = loadSession(need(a, \"ref\"));\n  const std::size_t maxf", "const BoreasSession ref = s;\n  const std::size_t maxf", "cli: boreas-convert reference"),
     ("p3_probe.cpp", "c.n >= static_cast<std::uint32_t>(nmin) ? 1 : 0", "c.n > static_cast<std::uint32_t>(nmin) ? 1 : 0", "cli: eligibility boundary"),
-    ("p3_probe.cpp", "if (c.first_static >= 0) ++lat[{int(kv.second), c.first_static}];", "if (c.first_static > 0) ++lat[{int(kv.second), c.first_static}];", "cli: latency sentinel"),
+    ("p3_probe.cpp", "if (c.first_static >= 0) ++lat[{int(kv.second), c.first_static - c.first_touch + 1}];", "if (c.first_static > 0) ++lat[{int(kv.second), c.first_static - c.first_touch + 1}];", "cli: latency sentinel"),
     ("p3_probe.cpp", "if (cache.dim() != ldim) fail(", "if (cache.dim() == ldim) fail(", "cli: dimension check"),
     ("p3_probe.cpp", "if (cache.dim() != 3) fail(caches[i], \"not a 3D cache\");", "if (cache.dim() == 3) fail(caches[i], \"not a 3D cache\");", "cli: static-export dimension"),
     ("p3_probe.cpp", "if (!b || mode == \"independent\") b.reset(", "if (!b || mode == \"cumulative\") b.reset(", "cli: static-export modes"),
@@ -158,7 +177,6 @@ CPP = [
     ("p3_probe.cpp", "v.check(worst_enu < 0.5,", "v.check(worst_enu < 5000.0,", "cli: ENU agreement bound"),
     ("p3_probe.cpp", "v.check(med > 0.5 && med < 60.0, files[k] +", "v.check(med > 0.5 || med < 60.0, files[k] +", "cli: kth range sanity"),
     ("p3_probe.cpp", "v.check(std::fabs(c.hdr.q_norm - 1.0) <= 1e-3,", "v.check(std::fabs(c.hdr.q_norm - 1.0) <= 1e3,", "cli: kth quaternion"),
-    ("p3_probe.cpp", "v.check(ok, entries[k].name + \": no ground-truth pose at the scan time\");", "v.check(true, entries[k].name + \": no ground-truth pose at the scan time\");", "cli: spires pose check"),
 ]
 
 PY = [
@@ -172,8 +190,6 @@ PY = [
     ("p3_eval.py", "ha = 0.0 if sa + da == 0 else 2.0 * sa * da / (sa + da)", "ha = 0.0 if sa + da == 0 else sa * da / (sa + da)", "scores: HA"),
     ("p3_eval.py", "if n_dyn == 0 or n_sta == 0:", "if n_dyn == 0 and n_sta == 0:", "scores: both classes needed"),
     ("p3_eval.py", "if not set(vals.tolist()) <= {0.0, 1.0}:", "if not set(vals.tolist()) <= {0.0, 1.0, 5.0}:", "cli: GT flag values"),
-    ("p3_eval.py", "ok = (a[\"SA\"] == 100.0 and a[\"DA\"] == 100.0 and b[\"SA\"] == 100.0 and b[\"DA\"] == 0.0)", "ok = (a[\"SA\"] == 100.0 and a[\"DA\"] == 100.0 and b[\"SA\"] == 100.0 and b[\"DA\"] == 100.0)", "selfcheck: remove nothing expects DA 0"),
-    ("p3_eval.py", "a = kth_scores(gt, dyn, gt[~dyn], args.tol)", "a = kth_scores(gt, dyn, gt[dyn], args.tol)", "selfcheck: GT static only"),
     ("p3_eval.py", "d = 1 + z * z / n", "d = 1 + z / n", "wilson: denominator"),
     ("p3_eval.py", "h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))", "h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n))", "wilson: half width"),
     ("p3_eval.py", "return (float(np.percentile(r, 2.5)), float(np.percentile(r, 97.5)))", "return (float(np.percentile(r, 5.0)), float(np.percentile(r, 97.5)))", "bootstrap: lower percentile"),
@@ -196,7 +212,7 @@ PY = [
     ("p3_eval.py", "block(clutter, ver == VERDICTS[\"static\"], \"false_static_on_clutter\")", "block(clutter, ver != VERDICTS[\"rejected\"], \"false_static_on_clutter\")", "lil: false static is Static"),
     ("p3_eval.py", "m = clutter & (r >= lo_b) & (r < hi_b)", "m = clutter & (r > lo_b) & (r < hi_b)", "lil: band lower edge"),
     ("p3_eval.py", "m = clutter & (r >= lo_b) & (r < hi_b)", "m = clutter & (r >= lo_b) & (r <= hi_b)", "lil: band upper edge"),
-    ("p3_eval.py", "lat = d[\"first_static\"][structure & (d[\"first_static\"] >= 0)]", "lat = d[\"first_static\"][structure & (d[\"first_static\"] > 0)]", "lil: latency sentinel"),
+    ("p3_eval.py", "got = structure & (d[\"first_static\"] >= 0)", "got = structure & (d[\"first_static\"] > 0)", "lil: latency sentinel"),
     ("p3_eval.py", "x = origin + (d[\"ix\"] + 0.5) * res", "x = origin + d[\"ix\"] * res", "lil: cell centre"),
     ("p3_eval.py", "\"ref_occupied_cells_rejected\": int((occ & elig & (ver == VERDICTS[\"rejected\"])).sum()),", "\"ref_occupied_cells_rejected\": int((occ & elig & (ver != VERDICTS[\"static\"])).sum()),", "lil: qualitative rejected count"),
     ("p3_eval.py", "kc = c.get((clutter_label, 1, \"static\"), 0)", "kc = c.get((clutter_label, 0, \"static\"), 0)", "spires: eligible clutter"),
@@ -208,9 +224,24 @@ PY = [
     ("p3_eval.py", "t = int(round(tile_m / res))", "t = int(round(tile_m / res)) * 2", "tiles: size"),
     ("p3_eval.py", "shared = np.intersect1d(ta, tb, assume_unique=True)", "shared = np.union1d(ta, tb)", "tiles: shared tiles"),
     ("p3_eval.py", "ta = np.unique(tiles_of_ids(all_a if all_a is not None else a, res, tile_m))", "ta = np.unique(tiles_of_ids(a, res, tile_m))", "tiles: observed set of A"),
+    ("p3_eval.py", "ok = (a[\"SA\"] == 100.0 and abs(a[\"DA\"] - ceiling) < 1e-9 and b[\"SA\"] == 100.0 and b[\"DA\"] == 0.0)", "ok = (a[\"SA\"] == 100.0 and abs(a[\"DA\"] - ceiling) < 1e-9 and b[\"SA\"] == 100.0 and b[\"DA\"] == 100.0)", "selfcheck: remove nothing expects DA 0"),
+    ("p3_eval.py", "ok = (a[\"SA\"] == 100.0 and abs(a[\"DA\"] - ceiling) < 1e-9 and b[\"SA\"] == 100.0 and b[\"DA\"] == 0.0)", "ok = (a[\"SA\"] == 100.0 and abs(a[\"DA\"] - ceiling) < 1e-9 and b[\"SA\"] == 0.0 and b[\"DA\"] == 0.0)", "selfcheck: remove nothing expects SA 100"),
+    ("p3_eval.py", "ok = (a[\"SA\"] == 100.0 and abs(a[\"DA\"] - ceiling) < 1e-9 and b[\"SA\"] == 100.0 and b[\"DA\"] == 0.0)", "ok = (a[\"SA\"] == 100.0 and abs(a[\"DA\"] - 100.0) < 1e-9 and b[\"SA\"] == 100.0 and b[\"DA\"] == 0.0)", "selfcheck: DA against the ceiling"),
+    ("p3_eval.py", "a = kth_scores(gt, dyn, gt[~dyn], args.tol)\n    b = kth_scores(gt, dyn, gt, args.tol)", "a = kth_scores(gt, dyn, gt[dyn], args.tol)\n    b = kth_scores(gt, dyn, gt, args.tol)", "selfcheck: GT static only"),
+    ("p3_eval.py", "ceiling = 100.0 * (a[\"gt_dynamic\"] - shadowed) / a[\"gt_dynamic\"]", "ceiling = 100.0 * shadowed / a[\"gt_dynamic\"]", "selfcheck: ceiling"),
+    ("p3_eval.py", "lo = np.searchsorted(xs, p[0] - tol, side=\"left\")", "lo = np.searchsorted(xs, p[0] - tol, side=\"right\")", "shadowed: window start"),
+    ("p3_eval.py", "hi = np.searchsorted(xs, p[0] + tol, side=\"right\")", "hi = np.searchsorted(xs, p[0] + tol, side=\"left\")", "shadowed: window end"),
+    ("p3_eval.py", "if ((d * d).sum(axis=1) <= tol * tol).any():\n                count += 1", "if ((d * d).sum(axis=1) < tol * tol).any():\n                count += 1", "shadowed: boundary"),
+    ("p3_eval.py", "lat = (d[\"first_static\"] - d[\"first_touch\"] + 1)[got]", "lat = d[\"first_static\"][got]", "lil: latency from the first touch"),
+    ("p3_eval.py", "lat = (d[\"first_static\"] - d[\"first_touch\"] + 1)[got]", "lat = (d[\"first_static\"] - d[\"first_touch\"])[got]", "lil: latency counts the first window"),
+    ("p3_eval.py", "return {\"tiles\": int(d.size), \"median\": float(np.median(d)), \"p10\": float(np.percentile(d, 10)), \"p90\": float(np.percentile(d, 90))}", "return {\"tiles\": int(d.size), \"median\": float(np.mean(d)), \"p10\": float(np.percentile(d, 10)), \"p90\": float(np.percentile(d, 90))}", "zoffset: median"),
+    ("p3_eval.py", "d = np.array([a[k] - b[k] for k in a if k in b])", "d = np.array([b[k] - a[k] for k in a if k in b])", "zoffset: sign"),
+    ("p3_eval.py", "if int(r[\"count\"]) >= min_count}", "if int(r[\"count\"]) > min_count}", "zoffset: minimum count"),
 ]
 
-EQUIVALENT = {}
+EQUIVALENT = {
+    "tally: first_static sentinel": "first_static is -1 (not yet) or a window index >= 1, never 0: `<= 0` and `< 0` select the same cells",
+}
 
 
 def read(p):
@@ -247,6 +278,7 @@ def main(argv=None):
     ap.add_argument("--out", required=True)
     ap.add_argument("--only", default="")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--only-notes", default="", help="regular expression: run only the mutants whose note matches")
     ap.add_argument("--jobs", default="2")
     a = ap.parse_args(argv)
     os.makedirs(a.scratch, exist_ok=True)
@@ -256,6 +288,9 @@ def main(argv=None):
     todo = [("cpp", m) for m in CPP] + [("py", m) for m in PY]
     if a.only:
         todo = [t for t in todo if t[0] == a.only]
+    if a.only_notes:
+        import re
+        todo = [t for t in todo if re.search(a.only_notes, t[1][3])]
     bad = [(fn, note, read(os.path.join(rd, fn)).count(old)) for _, (fn, old, new, note) in todo if read(os.path.join(rd, fn)).count(old) != 1]
     for fn, note, c in bad:
         print("PATTERN %d times: %s: %s" % (c, fn, note))
