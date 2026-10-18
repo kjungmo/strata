@@ -42,6 +42,31 @@ class TestRun(unittest.TestCase):
             else:
                 self.assertEqual(rec["git"]["commit"], "")
             self.assertIn("uncommitted_in_experiment_dir", rec["git"])
+            # the engine pin (PREREG_P3.md Amendment 3): the tree of strata_core at HEAD is recorded; the binary's tree only when asked
+            self.assertNotIn("strata_core_tree_binary", rec["git"])
+            if inside:
+                self.assertEqual(len(rec["git"]["strata_core_tree_head"]), 40)
+            else:
+                self.assertEqual(rec["git"]["strata_core_tree_head"], "")
+
+    def test_binary_commit_gives_the_engine_tree_of_that_commit(self):
+        inside = subprocess.run(["git", "-C", HERE, "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True).returncode == 0
+        if not inside:
+            self.skipTest("not a git work tree")
+        head = subprocess.run(["git", "-C", HERE, "rev-parse", "HEAD"], capture_output=True, text=True).stdout.strip()
+        with tempfile.TemporaryDirectory() as d:
+            def record(binary):
+                cmd = [sys.executable, "-I", TOOL, "run", "--step", "b", "--results", d, "--binary-commit", binary, "--", sys.executable, "-I", "-c", "pass"]
+                self.assertEqual(subprocess.run(cmd, capture_output=True, text=True).returncode, 0)
+                return json.load(open(d + "/runs/b.json"))["git"]
+            g = record(head)
+            self.assertEqual(g["binary_commit"], head)
+            self.assertEqual(len(g["strata_core_tree_binary"]), 40)
+            self.assertEqual(g["strata_core_tree_binary"], g["strata_core_tree_head"])        # built from HEAD: same engine
+            g = record("0" * 40)                                                            # a commit that does not exist: no tree, not an error text
+            self.assertEqual(g["strata_core_tree_binary"], "")
+            self.assertEqual(rl.tree_of(HERE, "HEAD", "no_such_directory"), "")
+            self.assertEqual(len(rl.tree_of(HERE, "HEAD")), 40)
 
     def test_failing_command_is_recorded_and_returned(self):
         with tempfile.TemporaryDirectory() as d:

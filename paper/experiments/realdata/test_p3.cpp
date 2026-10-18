@@ -499,6 +499,8 @@ TEST(P3Boreas, PoseCsvWindowOriginAndTimeScale) {
   EXPECT_DOUBLE_EQ(rows.front().east, 2); EXPECT_DOUBLE_EQ(rows.front().north, 4); EXPECT_NEAR(rows.front().up, 0.2, 1e-12);
   EXPECT_DOUBLE_EQ(rows.front().heading, 0.5); EXPECT_DOUBLE_EQ(rows.front().roll, 0.01);
   ASSERT_TRUE(org.valid); EXPECT_DOUBLE_EQ(org.lat, 0.76); EXPECT_DOUBLE_EQ(org.lon, -1.38);
+  EXPECT_DOUBLE_EQ(org.east, 0.0); EXPECT_DOUBLE_EQ(org.north, 0.0);                  // the file coordinates of the first row (not of the window)
+  EXPECT_DOUBLE_EQ(rows.front().lat, 0.76); EXPECT_DOUBLE_EQ(rows.front().lon, -1.38);
   // the window edges are inclusive on both sides
   EXPECT_EQ(readBoreasPoseCsv(p, 1.0, 100.01 - 1e-9, 100.01 + 1e-9).size(), 1u);
   EXPECT_EQ(readBoreasPoseCsv(p, 1.0, 100.011, 100.014).size(), 0u);
@@ -512,6 +514,7 @@ TEST(P3Boreas, PoseCsvWindowOriginAndTimeScale) {
   GeoOrigin o3;
   const auto lr = readBoreasPoseCsv(q, 1e-6, 1606417543.0, 1606417544.0, &o3);
   ASSERT_EQ(lr.size(), 2u); EXPECT_NEAR(lr[0].t, 1606417543.533737, 1e-6); EXPECT_FALSE(o3.valid);
+  EXPECT_FALSE(std::isfinite(lr[0].lat)); EXPECT_FALSE(std::isfinite(lr[0].lon));       // no latitude/longitude columns: NaN, never a silent zero
   // malformed input fails loudly
   writeText(tmpPath("b1.csv"), "GPSTime,easting\n1,2\n");
   EXPECT_THROW(readBoreasPoseCsv(tmpPath("b1.csv"), 1.0, 0, 10), std::runtime_error);                 // columns missing
@@ -596,25 +599,64 @@ TEST(P3Boreas, GeodesyAndTheCommonFrame) {
   // the curvature of the Earth: 1 km east is about 1000^2 / (2 N) metres below the tangent plane
   const Eigen::Vector3d far = enuOf(lat0, lon0 + 1000.0 / (N * std::cos(lat0)), lat0, lon0);
   EXPECT_NEAR(far.z(), -1000.0 * 1000.0 / (2 * N), 0.01);
-  // session -> reference
-  GeoOrigin ref{lat0, lon0, true}, ses{lat0, lon0 + 1000.0 / (N * std::cos(lat0)), true};
-  const Pose3 same = sessionToReference(ref, ref);
-  EXPECT_NEAR(same.t.norm(), 0.0, 1e-9); EXPECT_NEAR(same.q.angularDistance(Eigen::Quaterniond::Identity()), 0.0, 1e-12);
-  const Pose3 tr = sessionToReference(ref, ses);
-  EXPECT_NEAR((tr.t - enuOf(ses.lat, ses.lon, ref.lat, ref.lon)).norm(), 0.0, 1e-6);                 // the session origin lands where geodesy says
-  EXPECT_NEAR(tr.t.x(), 1000.0, 0.5);
-  // the local frames differ by the meridian convergence: yaw = d_lon * sin(lat)
-  const double yaw = std::atan2(2 * (tr.q.w() * tr.q.z() + tr.q.x() * tr.q.y()), 1 - 2 * (tr.q.y() * tr.q.y() + tr.q.z() * tr.q.z()));
-  EXPECT_NEAR(std::fabs(yaw), (ses.lon - ref.lon) * std::sin(lat0), 1e-6);
-  EXPECT_GT(std::fabs(yaw), 1e-5);
-  // a point 100 m north of the session origin, in session coordinates, is 100 m from the origin in the reference frame
-  const Eigen::Vector3d p = tr.q * Eigen::Vector3d(0, 100, 0) + tr.t;
-  EXPECT_NEAR((p - tr.t).norm(), 100.0, 1e-9);
-  // z offset only moves z
-  const Pose3 tz = sessionToReference(ref, ses, 0.25);
-  EXPECT_NEAR(tz.t.z() - tr.t.z(), 0.25, 1e-12); EXPECT_NEAR(tz.t.x() - tr.t.x(), 0.0, 1e-12);
-  EXPECT_THROW(sessionToReference(GeoOrigin{}, ses), std::runtime_error);
-  EXPECT_THROW(sessionToReference(ref, GeoOrigin{}), std::runtime_error);
+  // The common frame is the frame of the files: the identity, plus an optional vertical offset (review finding 1).
+  const Pose3 id = commonFrame();
+  EXPECT_EQ(id.t.norm(), 0.0); EXPECT_NEAR(id.q.angularDistance(Eigen::Quaterniond::Identity()), 0.0, 1e-15);
+  const Pose3 tz = commonFrame(0.25);
+  EXPECT_EQ(tz.t.x(), 0.0); EXPECT_EQ(tz.t.y(), 0.0); EXPECT_EQ(tz.t.z(), 0.25);
+  // enuAgreement: rows whose file east/north equal the geodetic ENU at the reference origin agree; rows measured from another origin do not
+  GeoOrigin ref{lat0, lon0, true};
+  auto rowAt = [&](double east_m, double north_m, double file_east, double file_north) {
+    BoreasPoseRow r; r.lat = lat0 + north_m / M; r.lon = lon0 + east_m / (N * std::cos(lat0)); r.east = file_east; r.north = file_north; return r;
+  };
+  std::vector<BoreasPoseRow> rows = {rowAt(0, 0, 0, 0), rowAt(100, 50, 100, 50), rowAt(-300, 20, -300, 20)};
+  EnuAgreement ea = enuAgreement(rows, ref);
+  EXPECT_EQ(ea.rows, 3u); EXPECT_LT(ea.worst_m, 0.01);
+  // a session whose first row is at (-4.302, -0.149) of the shared frame, with files in the shared frame: agrees (the case of 2021-04-08)
+  rows = {rowAt(-4.302, -0.149, -4.302, -0.149), rowAt(60, 10, 60, 10)};
+  EXPECT_LT(enuAgreement(rows, ref).worst_m, 0.01);
+  // the same rows with files measured from the session's own first row (the premise of the old frame): they miss by 4.3 m
+  rows = {rowAt(-4.302, -0.149, 0, 0), rowAt(60, 10, 64.302, 10.149)};
+  ea = enuAgreement(rows, ref);
+  EXPECT_NEAR(ea.worst_m, std::hypot(4.302, 0.149), 0.01); EXPECT_NEAR(ea.mean_dx_m, 4.302, 0.01); EXPECT_NEAR(ea.mean_dy_m, 0.149, 0.01);
+  EXPECT_GT(ea.worst_m, kEnuAgreementTolM);
+  // a miss of 0.09 m passes, 0.11 m does not (both sides of the limit)
+  rows = {rowAt(10, 0, 10.09, 0)}; EXPECT_LT(enuAgreement(rows, ref).worst_m, kEnuAgreementTolM);
+  rows = {rowAt(10, 0, 10.11, 0)}; EXPECT_GT(enuAgreement(rows, ref).worst_m, kEnuAgreementTolM);
+  // height is ignored; rows without latitude and longitude are skipped and not counted; no usable row gives rows = 0
+  { BoreasPoseRow r = rowAt(5, 5, 5, 5); r.up = 40.0; rows = {r}; EXPECT_LT(enuAgreement(rows, ref).worst_m, 0.01); }
+  { BoreasPoseRow r; r.east = 1e6; rows = {r, rowAt(5, 5, 5, 5)}; ea = enuAgreement(rows, ref); EXPECT_EQ(ea.rows, 1u); EXPECT_LT(ea.worst_m, 0.01); }
+  EXPECT_EQ(enuAgreement({}, ref).rows, 0u);
+  EXPECT_THROW(enuAgreement(rows, GeoOrigin{}), std::runtime_error);
+}
+
+TEST(P3Boreas, AltitudeDifferenceBetweenTrajectories) {
+  auto line = [](double up0, double slope, int n, double dy) {
+    std::vector<BoreasPoseRow> v;
+    for (int i = 0; i < n; ++i) { BoreasPoseRow r; r.east = i; r.north = dy; r.up = up0 + slope * i; v.push_back(r); }
+    return v;
+  };
+  // B runs 1 m beside A and 0.4 m higher everywhere: every row of A finds a partner and the difference is 0.4
+  AltitudeDifference d = altitudeDifference(line(10, 0.01, 100, 0), line(10.4, 0.01, 100, 1.0), 3.0);
+  EXPECT_EQ(d.pairs, 100u); EXPECT_NEAR(d.median, 0.4, 1e-12); EXPECT_NEAR(d.p10, 0.4, 1e-12); EXPECT_NEAR(d.p90, 0.4, 1e-12);
+  // the sign is up_B - up_A
+  d = altitudeDifference(line(10.4, 0.01, 100, 1.0), line(10, 0.01, 100, 0), 3.0);
+  EXPECT_NEAR(d.median, -0.4, 1e-12);
+  // a partner farther than the radius does not count (3.0 m is inside, 3.5 m outside); no partner at all: no pairs, NaN
+  EXPECT_EQ(altitudeDifference(line(0, 0, 10, 0), line(0, 0, 10, 3.0), 3.0).pairs, 10u);
+  d = altitudeDifference(line(0, 0, 10, 0), line(0, 0, 10, 3.5), 3.0);
+  EXPECT_EQ(d.pairs, 0u); EXPECT_FALSE(std::isfinite(d.median));
+  EXPECT_EQ(altitudeDifference({}, line(0, 0, 10, 0), 3.0).pairs, 0u);
+  EXPECT_EQ(altitudeDifference(line(0, 0, 10, 0), {}, 3.0).pairs, 0u);
+  // the nearest row decides: B holds two rows near the A row, 0.5 m away at +1 m height and 2 m away at +5 m
+  std::vector<BoreasPoseRow> a1 = line(0, 0, 1, 0), b1;
+  { BoreasPoseRow r; r.east = 0.5; r.north = 0; r.up = 1.0; b1.push_back(r); r.east = 2.0; r.up = 5.0; b1.push_back(r); }
+  EXPECT_NEAR(altitudeDifference(a1, b1, 3.0).median, 1.0, 1e-12);
+  // spread: half the road is 0.1 higher, half 0.9 higher -> p10 0.1, p90 0.9, median at the step
+  std::vector<BoreasPoseRow> a2 = line(0, 0, 100, 0), b2 = line(0, 0, 100, 0.5);
+  for (int i = 0; i < 100; ++i) b2[i].up = i < 50 ? 0.1 : 0.9;
+  d = altitudeDifference(a2, b2, 3.0);
+  EXPECT_NEAR(d.p10, 0.1, 1e-12); EXPECT_NEAR(d.p90, 0.9, 1e-12); EXPECT_GE(d.median, 0.1); EXPECT_LE(d.median, 0.9);
 }
 
 TEST(P3Boreas, DeskewPlacesAStaticPointWhereItIs) {
@@ -998,20 +1040,27 @@ TEST(P3Probe, StaticExportIndependentAndCumulative) {
   EXPECT_NE(runProbe("static-export --caches " + tmpPath("c2.bin") + " --arm shipped_v0_1 --res 0.2 --window 2 --out-prefix x --meta y", &out), 0);   // a 2D cache
 }
 
-// Two synthetic sessions with 12 frames each, a straight drive at 10 m/s east. Session B's ENU origin lies 1000 m east of A's.
-// The GPS rows carry latitude and longitude consistent with their east coordinate, as in the real files.
-std::string makeBoreasSession(const std::string& id, double lat0, double lon_origin, double t0_us, double speed = 10.0, double lp_shift = 0.0, double lon_scale = 1.0) {
+// Synthetic sessions with 12 frames each, a straight drive at 10 m/s east, as in the real files (review finding 1): the easting and northing of
+// EVERY session are in one shared frame, whose origin (lat0, lon_ref) is the first row of the reference session. A session starts at
+// (east0, north0) of that frame and its GPS rows carry latitude and longitude consistent with the shared-frame coordinates. lon_scale
+// distorts the longitude (an inconsistent file); alt_offset raises the altitude columns; own_frame_error_m writes the files as if
+// measured from the session's own first row (the premise of the old common frame): files in (east - east0, north - north0).
+std::string makeBoreasSession(const std::string& id, double lat0, double lon_ref, double t0_us, double speed = 10.0, double lp_shift = 0.0, double lon_scale = 1.0,
+                              double east0 = 0.0, double north0 = 0.0, double alt_offset = 0.0, bool own_frame_files = false) {
   const double e2 = kWgs84F * (2 - kWgs84F), s = std::sin(lat0), N = kWgs84A / std::sqrt(1 - e2 * s * s);
+  const double M = kWgs84A * (1 - e2) / std::pow(1 - e2 * s * s, 1.5);
   const std::string d = tmpPath(id);
   makeDir(d); makeDir(d + "/lidar"); makeDir(d + "/applanix"); makeDir(d + "/calib");
   writeText(d + "/calib/T_applanix_lidar.txt", "1 0 0 0\n0 1 0 0\n0 0 1 0.13\n");
   const double tstart = t0_us * 1e-6 - 1.0;
+  const double fe = own_frame_files ? east0 : 0.0, fn = own_frame_files ? north0 : 0.0;          // what to subtract from the shared-frame coordinates in the files
   std::string gps = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x,accelz,accely,accelx,latitude,longitude\n";
   std::string lp = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x\n";
   for (int i = 0; i < 1000; ++i) {                                                  // 200 Hz GPS
     const double x = speed * 0.005 * i;
     std::ostringstream l; l.precision(15);
-    l << tstart + 0.005 * i << "," << x << ",0,0,10,0,0,0,0,0,0,0,0,0,0,0," << lat0 << "," << lon_origin + lon_scale * x / (N * std::cos(lat0)) << "\n";
+    l << tstart + 0.005 * i << "," << east0 + x - fe << "," << north0 - fn << "," << alt_offset << ",10,0,0,0,0,0,0,0,0,0,0,0," << lat0 + north0 / M << ","
+      << lon_ref + lon_scale * (east0 + x) / (N * std::cos(lat0)) << "\n";
     gps += l.str();
   }
   for (int k = 0; k < 12; ++k) {
@@ -1023,7 +1072,7 @@ std::string makeBoreasSession(const std::string& id, double lat0, double lon_ori
     const auto b = binOf(pts);
     std::ofstream(d + "/lidar/" + nm, std::ios::binary).write(reinterpret_cast<const char*>(b.data()), b.size());
     std::ostringstream l; l.precision(15);
-    l << us << "," << speed * (us * 1e-6 - tstart) + lp_shift << ",0,0.13,10,0,0,0,0,0,0,0,0\n";
+    l << us << "," << east0 - fe + speed * (us * 1e-6 - tstart) + lp_shift << "," << north0 - fn << "," << 0.13 + alt_offset << ",10,0,0,0,0,0,0,0,0\n";
     lp += l.str();
   }
   writeText(d + "/applanix/gps_post_process.csv", gps);
@@ -1064,39 +1113,66 @@ TEST(P3Probe, TileGroundGivesThePercentileHeightPerTile) {
 
 TEST(P3Probe, BoreasValidateOverlapAndConvertOnSyntheticSessions) {
   const double lat0 = 0.7641426285, lon0 = -1.3869452891;
-  const double e2 = kWgs84F * (2 - kWgs84F), s = std::sin(lat0), N = kWgs84A / std::sqrt(1 - e2 * s * s);
+  // A is the reference session (first row = the shared origin). B starts 1000 m east in the shared frame; C starts at (-4.302, -0.149)
+  // of the shared frame as the real 2021-04-08 session does, and is otherwise the same drive as A.
   const std::string a = makeBoreasSession("bsA", lat0, lon0, 1606417543533737.0);
-  const std::string b = makeBoreasSession("bsB", lat0, lon0 + 1000.0 / (N * std::cos(lat0)), 1606417543533737.0);
+  const std::string b = makeBoreasSession("bsB", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 1000.0);
+  const std::string c = makeBoreasSession("bsC", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, -4.302, -0.149);
   std::string out;
-  EXPECT_EQ(runProbe("boreas-validate --seq " + a + " --n 5", &out), 0) << out;
+  EXPECT_EQ(runProbe("boreas-validate --seq " + a + " --ref " + a + " --n 5", &out), 0) << out;
   EXPECT_NE(out.find("VERDICT boreas reader OK"), std::string::npos);
   EXPECT_NE(out.find("layout_ok"), std::string::npos);
-  // B is 1000 m east of A in the common frame, but the two look identical in their own local frames
+  EXPECT_NE(out.find("enu_from_latlon_vs_files"), std::string::npos);
+  // the validator checks a session that does NOT start at the reference origin, against the reference origin (the gap of the old validator)
+  EXPECT_EQ(runProbe("boreas-validate --seq " + c + " --ref " + a + " --n 5", &out), 0) << out;
+  EXPECT_NE(out.find("first_row: file east,north=(-4.302,-0.149)"), std::string::npos) << out;
+  EXPECT_EQ(runProbe("boreas-validate --seq " + b + " --ref " + a + " --n 5", &out), 0) << out;
+  EXPECT_NE(runProbe("boreas-validate --seq " + a + " --n 5", &out), 0);                  // --ref is required: no silent self-reference
+  EXPECT_NE(runProbe("boreas-validate --seq " + a + " --ref " + tmpPath("nope") + " --n 5", &out), 0);
+  // B is 1000 m east of A in the shared frame: the overlap gate fails on the tiles, not on the frame check
   EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + b, &out), 3) << out;
-  EXPECT_NE(out.find("VERDICT boreas tile overlap FAIL"), std::string::npos);
-  EXPECT_NE(out.find("raw_local,bsA,bsB,"), std::string::npos) << out;
-  EXPECT_NE(out.find("common,bsA,bsB,"), std::string::npos) << out;
+  EXPECT_NE(out.find("VERDICT boreas shared frame and tile overlap FAIL"), std::string::npos);
+  EXPECT_NE(out.find("file,bsA,bsB,"), std::string::npos) << out;
+  EXPECT_NE(out.find("tile overlap: FAIL"), std::string::npos);
+  EXPECT_NE(out.find("enu agreement of every session: ok"), std::string::npos);
+  EXPECT_EQ(out.find("raw_local"), std::string::npos);                                      // one frame only
+  EXPECT_NE(out.find("enu_check,bsB,rows="), std::string::npos) << out;
   EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + a, &out), 0) << out;
-  EXPECT_NE(out.find("VERDICT boreas tile overlap PASS"), std::string::npos);
+  EXPECT_NE(out.find("VERDICT boreas shared frame and tile overlap PASS"), std::string::npos);
+  // A and C start 4.3 m apart: the same road, the gate passes, and the frame check passes for C although C's first row is not (0, 0)
+  EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + c, &out), 0) << out;
+  EXPECT_NE(out.find("enu_check,bsC,rows="), std::string::npos);
+  EXPECT_NE(out.find("first_row_east,north=(-4.302,-0.149)"), std::string::npos) << out;
+  EXPECT_EQ(out.find("FAIL"), std::string::npos) << out;
   EXPECT_EQ(runProbe("boreas-overlap --seqs " + a, &out), 1);                         // one sequence is not an overlap
-  // conversion: session A into its own frame, and into B's frame (A's origin is 1000 m west of B's origin)
+  // conversion: no session is moved. A into its own frame; C keeps its shared-frame position (-4.302 + 10 m at the first frame, not shifted by 4.3 m again).
   ASSERT_EQ(runProbe("boreas-convert --seq " + a + " --ref " + a + " --out " + tmpPath("bsA.cache") + " --meta " + tmpPath("bsA.meta"), &out), 0) << out;
   auto m = readMeta(tmpPath("bsA.meta"));
   EXPECT_EQ(m.at("frames_written"), "12"); EXPECT_EQ(m.at("scans_dropped_no_pose"), "0");
-  EXPECT_NEAR(std::stod(m.at("to_common_t_x")), 0.0, 1e-9);
-  ASSERT_EQ(runProbe("boreas-convert --seq " + a + " --ref " + b + " --out " + tmpPath("bsAB.cache") + " --meta " + tmpPath("bsAB.meta") + " --max-frames 3", &out), 0) << out;
-  m = readMeta(tmpPath("bsAB.meta"));
+  EXPECT_EQ(std::stod(m.at("to_common_t_x")), 0.0); EXPECT_EQ(std::stod(m.at("to_common_t_y")), 0.0); EXPECT_EQ(std::stod(m.at("to_common_t_z")), 0.0);
+  EXPECT_LT(std::stod(m.at("enu_worst_horizontal_diff_m")), 0.01); EXPECT_GT(std::stoi(m.at("enu_rows_checked")), 100);
+  ASSERT_EQ(runProbe("boreas-convert --seq " + c + " --ref " + a + " --out " + tmpPath("bsC.cache") + " --meta " + tmpPath("bsC.meta") + " --max-frames 3", &out), 0) << out;
+  m = readMeta(tmpPath("bsC.meta"));
   EXPECT_EQ(m.at("frames_written"), "3");
-  EXPECT_NEAR(std::stod(m.at("to_common_t_x")), -1000.0, 0.5);
-  const auto fa = readCache(tmpPath("bsA.cache")), fab = readCache(tmpPath("bsAB.cache"));
-  ASSERT_EQ(fa.size(), 12u); ASSERT_EQ(fab.size(), 3u);
+  EXPECT_EQ(std::stod(m.at("to_common_t_x")), 0.0); EXPECT_EQ(std::stod(m.at("to_common_t_y")), 0.0);
+  const auto fa = readCache(tmpPath("bsA.cache")), fc = readCache(tmpPath("bsC.cache"));
+  ASSERT_EQ(fa.size(), 12u); ASSERT_EQ(fc.size(), 3u);
   EXPECT_NEAR(fa[0].origin.x(), 10.0, 1e-3);                                          // the car is 1 s x 10 m/s from the start of its track at the first frame
-  EXPECT_NEAR(fab[0].origin.x() - fa[0].origin.x(), -1000.0, 0.5);
+  EXPECT_NEAR(fc[0].origin.x() - fa[0].origin.x(), -4.302, 1e-3);                     // the real offset of the starts, once
+  EXPECT_NEAR(fc[0].origin.y() - fa[0].origin.y(), -0.149, 1e-3);
   for (std::size_t i = 0; i < fa[0].xyz.size(); i += 3) {                              // every point within [3, 50] m of the sensor, in the common frame
     const double r = (Eigen::Vector3d(fa[0].xyz[i], fa[0].xyz[i + 1], fa[0].xyz[i + 2]) - fa[0].origin).norm();
     ASSERT_LE(r, 50.2);
     ASSERT_GE(r, 2.8);
   }
+  // a vertical offset moves z only
+  ASSERT_EQ(runProbe("boreas-convert --seq " + a + " --ref " + a + " --z-offset 0.25 --max-frames 2 --out " + tmpPath("bsAz.cache") + " --meta " + tmpPath("bsAz.meta"), &out), 0) << out;
+  EXPECT_EQ(std::stod(readMeta(tmpPath("bsAz.meta")).at("to_common_t_z")), 0.25);
+  const auto fz = readCache(tmpPath("bsAz.cache"));
+  EXPECT_NEAR(fz[0].origin.z() - fa[0].origin.z(), 0.25, 1e-9); EXPECT_NEAR(fz[0].origin.x() - fa[0].origin.x(), 0.0, 1e-9);
+  // converting A against B's origin: A's files do not agree with the geodetic ENU at B's origin (B's first row is 1000 m east) -> refused
+  EXPECT_NE(runProbe("boreas-convert --seq " + a + " --ref " + b + " --out " + tmpPath("bsAB.cache") + " --meta " + tmpPath("bsAB.meta") + " --max-frames 3", &out), 0);
+  EXPECT_NE(out.find("not in one frame"), std::string::npos) << out;
   // every second frame: frames 0, 2, 4, ... and groups renumbered
   ASSERT_EQ(runProbe("boreas-convert --seq " + a + " --ref " + a + " --frame-step 2 --out " + tmpPath("bsA2.cache") + " --meta " + tmpPath("bsA2.meta"), &out), 0) << out;
   EXPECT_EQ(readMeta(tmpPath("bsA2.meta")).at("frames_written"), "6");
@@ -1108,7 +1184,7 @@ TEST(P3Probe, BoreasValidateOverlapAndConvertOnSyntheticSessions) {
   EXPECT_NE(runProbe("boreas-convert --seq " + a + " --ref " + tmpPath("nope") + " --out x --meta y", &out), 0);
   // broken layout: a frame of the wrong size is reported
   { std::ofstream f(a + "/lidar/1606417543533737.bin", std::ios::binary | std::ios::trunc); f << std::string(1000, 'x'); }
-  EXPECT_NE(runProbe("boreas-validate --seq " + a + " --n 1", &out), 0);
+  EXPECT_NE(runProbe("boreas-validate --seq " + a + " --ref " + a + " --n 1", &out), 0);
 }
 
 TEST(P3Probe, BoreasGateAndValidatorFailures) {
@@ -1121,13 +1197,29 @@ TEST(P3Probe, BoreasGateAndValidatorFailures) {
   EXPECT_EQ(runProbe("boreas-overlap --seqs " + c + "," + a, &out), 3) << out;
   // lidar_poses.csv 0.5 m away from the GPS pose: the validator refuses the session
   const std::string d = makeBoreasSession("bsGD", lat0, lon0, 1606417543533737.0, 10.0, 0.5);
-  EXPECT_EQ(runProbe("boreas-validate --seq " + d + " --n 5", &out), 3) << out;
+  EXPECT_EQ(runProbe("boreas-validate --seq " + d + " --ref " + a + " --n 5", &out), 3) << out;
   EXPECT_NE(out.find("lidar_poses.csv by more than 0.10 m"), std::string::npos);
   // latitude and longitude that do not match east and north
   const std::string e = makeBoreasSession("bsGE", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 3.0);
-  EXPECT_EQ(runProbe("boreas-validate --seq " + e + " --n 5", &out), 3) << out;
+  EXPECT_EQ(runProbe("boreas-validate --seq " + e + " --ref " + a + " --n 5", &out), 3) << out;
   EXPECT_NE(out.find("geodetic ENU"), std::string::npos);
-  EXPECT_EQ(runProbe("boreas-validate --seq " + a + " --n 5", &out), 0) << out;
+  EXPECT_EQ(runProbe("boreas-validate --seq " + a + " --ref " + a + " --n 5", &out), 0) << out;
+  // Review finding 1: a session whose files are measured from its own first row (4.302 m, 0.149 m from the shared origin) is NOT in the shared frame.
+  // The old validator looked only at the reference session and missed this; now every session is checked against the reference origin.
+  const std::string o = makeBoreasSession("bsGO", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, -4.302, -0.149, 0.0, true);
+  EXPECT_EQ(runProbe("boreas-validate --seq " + o + " --ref " + a + " --n 5", &out), 3) << out;
+  EXPECT_NE(out.find("reference origin by more than 0.10 m"), std::string::npos) << out;
+  EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + o, &out), 3) << out;
+  EXPECT_NE(out.find("enu_check,bsGO,"), std::string::npos);
+  EXPECT_NE(out.find(",FAIL\n"), std::string::npos) << out;
+  EXPECT_NE(out.find("enu agreement of every session: FAIL"), std::string::npos) << out;
+  EXPECT_NE(out.find("tile overlap: ok"), std::string::npos) << out;                          // the tiles alone would have passed: the frame check is what refuses
+  EXPECT_NE(runProbe("boreas-convert --seq " + o + " --ref " + a + " --out " + tmpPath("bsGO.cache") + " --meta " + tmpPath("bsGO.meta"), &out), 0);
+  EXPECT_NE(out.find("not in one frame"), std::string::npos) << out;
+  // altitude columns on another datum are reported, not refused
+  const std::string h = makeBoreasSession("bsGH", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.5);
+  EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + h, &out), 0) << out;
+  EXPECT_NE(out.find("altitude,bsGA,bsGH,12,0.5,0.5,0.5"), std::string::npos) << out;
 }
 
 TEST(P3Probe, SpiresValidateOnASyntheticZip) {

@@ -116,8 +116,10 @@ inline std::string layoutVerdict(const BoreasLayoutStats& s) {
 
 // ---------------------------------------------------------------------------- pose CSVs ----------
 
-struct BoreasPoseRow { double t{0}; double east{0}, north{0}, up{0}, roll{0}, pitch{0}, heading{0}; };
-struct GeoOrigin { double lat{0}, lon{0}; bool valid{false}; };   // radians
+// lat and lon (radians) are NaN when the file has no such columns.
+struct BoreasPoseRow { double t{0}; double east{0}, north{0}, up{0}, roll{0}, pitch{0}, heading{0}; double lat{std::nan("")}, lon{std::nan("")}; };
+// lat and lon in radians; east and north: the file coordinates of the same (first) row.
+struct GeoOrigin { double lat{0}, lon{0}; bool valid{false}; double east{0}, north{0}; };
 
 namespace csvdetail {
 inline std::vector<std::string> splitCsv(const std::string& line) {
@@ -165,13 +167,17 @@ inline std::vector<BoreasPoseRow> readBoreasPoseCsv(const std::string& path, dou
     prev = t;
     if (first) {
       first = false;
-      if (origin && clat >= 0 && clon >= 0) { origin->lat = std::strtod(c[clat].c_str(), nullptr); origin->lon = std::strtod(c[clon].c_str(), nullptr); origin->valid = true; }
+      if (origin && clat >= 0 && clon >= 0) {
+        origin->lat = std::strtod(c[clat].c_str(), nullptr); origin->lon = std::strtod(c[clon].c_str(), nullptr); origin->valid = true;
+        origin->east = std::strtod(c[ce].c_str(), nullptr); origin->north = std::strtod(c[cn].c_str(), nullptr);
+      }
     }
     if (t > t_hi) break;                   // rows increase in time: nothing later is wanted
     if (t < t_lo) continue;
     BoreasPoseRow r; r.t = t;
     r.east = std::strtod(c[ce].c_str(), nullptr); r.north = std::strtod(c[cn].c_str(), nullptr); r.up = std::strtod(c[cu].c_str(), nullptr);
     r.roll = std::strtod(c[cr].c_str(), nullptr); r.pitch = std::strtod(c[cp].c_str(), nullptr); r.heading = std::strtod(c[ch].c_str(), nullptr);
+    if (clat >= 0 && clon >= 0) { r.lat = std::strtod(c[clat].c_str(), nullptr); r.lon = std::strtod(c[clon].c_str(), nullptr); }
     if (!std::isfinite(r.east + r.north + r.up + r.roll + r.pitch + r.heading)) fail(path, "line " + std::to_string(ln) + ": non-finite value");
     rows.push_back(r);
   }
@@ -247,17 +253,62 @@ inline Eigen::Vector3d enuOf(double lat, double lon, double ref_lat, double ref_
   return enuFromEcef(ref_lat, ref_lon) * (ecefOf(lat, lon) - ecefOf(ref_lat, ref_lon));
 }
 
-// Rigid map from the ENU frame of a session origin to the ENU frame of the reference origin:
-//   p_ref = R * p_session + t,  R = R_ref * R_session^T,  t = R_ref * (e_session - e_ref)
-// Heights of the two origins are taken as equal (the files carry no absolute height); z_offset is added to t.z.
-inline Pose3 sessionToReference(const GeoOrigin& ref, const GeoOrigin& session, double z_offset = 0.0) {
-  if (!ref.valid || !session.valid) fail("common frame", "origin latitude and longitude are missing");
-  const Eigen::Matrix3d Rr = enuFromEcef(ref.lat, ref.lon), Rs = enuFromEcef(session.lat, session.lon);
-  const Eigen::Matrix3d R = Rr * Rs.transpose();
-  Pose3 p; p.q = Eigen::Quaterniond(R).normalized();
-  p.t = Rr * (ecefOf(session.lat, session.lon) - ecefOf(ref.lat, ref.lon));
-  p.t.z() += z_offset;
-  return p;
+// The common frame of the three sessions is the frame of the files themselves. Review finding 1 (2026-10-18): the easting and northing
+// of every session are measured from ONE origin (the first row of the 2020-11-26 session), not from the first row of the session
+// itself: the first rows of 2021-04-08 and 2021-06-17 are at (-4.302, -0.149) and (-0.450, 0.821). Moving a session by the geodetic
+// difference of its first row to the reference origin would therefore move it twice (by 4.3 m and 0.94 m). So the map to the common
+// frame is the identity; only a vertical offset can be added. The premise is checked on every session (enuAgreement), not assumed.
+inline Pose3 commonFrame(double z_offset = 0.0) {
+  Pose3 p; p.q = Eigen::Quaterniond::Identity(); p.t = Eigen::Vector3d(0.0, 0.0, z_offset); return p;
+}
+
+// Agreement of the files' easting/northing with the geodetic ENU frame at the REFERENCE origin, over the rows that carry latitude and
+// longitude. Heights are ignored (horizontal distance). This is the test of the common-frame premise for one session.
+struct EnuAgreement { std::size_t rows{0}; double worst_m{0}, mean_dx_m{0}, mean_dy_m{0}; };
+inline EnuAgreement enuAgreement(const std::vector<BoreasPoseRow>& rows, const GeoOrigin& ref) {
+  if (!ref.valid) fail("common frame", "reference origin latitude and longitude are missing");
+  EnuAgreement a; double sx = 0, sy = 0;
+  for (const auto& r : rows) {
+    if (!std::isfinite(r.lat) || !std::isfinite(r.lon)) continue;
+    const Eigen::Vector3d e = enuOf(r.lat, r.lon, ref.lat, ref.lon);
+    const double dx = r.east - e.x(), dy = r.north - e.y();
+    a.worst_m = std::max(a.worst_m, std::hypot(dx, dy));
+    sx += dx; sy += dy; ++a.rows;
+  }
+  if (a.rows > 0) { a.mean_dx_m = sx / a.rows; a.mean_dy_m = sy / a.rows; }
+  return a;
+}
+constexpr double kEnuAgreementTolM = 0.10;      // PREREG_P3.md Amendment 3: every session, against the reference origin
+
+// Vertical difference between two trajectories in the shared file frame: for every row of A, the nearest row of B within `radius`
+// (horizontal); the distribution of up_B - up_A over those pairs. A pose-only comparison (no lidar content): it shows whether the
+// altitude columns of two sessions are on one vertical datum.
+struct AltitudeDifference { std::size_t pairs{0}; double median{std::nan("")}, p10{std::nan("")}, p90{std::nan("")}; };
+inline AltitudeDifference altitudeDifference(const std::vector<BoreasPoseRow>& a, const std::vector<BoreasPoseRow>& b, double radius = 3.0) {
+  struct Key { std::int64_t x, y; bool operator<(const Key& o) const { return x != o.x ? x < o.x : y < o.y; } };
+  auto key = [&](double x, double y) { return Key{static_cast<std::int64_t>(std::floor(x / radius)), static_cast<std::int64_t>(std::floor(y / radius))}; };
+  std::map<Key, std::vector<std::size_t>> grid;
+  for (std::size_t i = 0; i < b.size(); ++i) grid[key(b[i].east, b[i].north)].push_back(i);
+  std::vector<double> dz;
+  for (const auto& r : a) {
+    const Key k = key(r.east, r.north);
+    double best = radius; long bi = -1;
+    for (int dx = -1; dx <= 1; ++dx) for (int dy = -1; dy <= 1; ++dy) {
+      auto it = grid.find(Key{k.x + dx, k.y + dy});
+      if (it == grid.end()) continue;
+      for (std::size_t j : it->second) {
+        const double d = std::hypot(b[j].east - r.east, b[j].north - r.north);
+        if (d <= best) { best = d; bi = static_cast<long>(j); }
+      }
+    }
+    if (bi >= 0) dz.push_back(b[static_cast<std::size_t>(bi)].up - r.up);
+  }
+  AltitudeDifference o; o.pairs = dz.size();
+  if (dz.empty()) return o;
+  std::sort(dz.begin(), dz.end());
+  auto q = [&](double f) { return dz[std::min(dz.size() - 1, static_cast<std::size_t>(f * (dz.size() - 1) + 0.5))]; };
+  o.median = q(0.5); o.p10 = q(0.1); o.p90 = q(0.9);
+  return o;
 }
 
 // ---------------------------------------------------------------------------- scan conversion ----------

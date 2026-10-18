@@ -72,11 +72,26 @@ def file_record(path, with_hash):
     return rec
 
 
-def git_state(repo):
+def tree_of(repo, rev, path="strata_core"):
+    """Git tree hash of `path` at `rev` (the engine pin of PREREG_P3.md Amendment 3), or "" if there is none."""
+    try:
+        r = subprocess.run(["git", "-C", repo, "rev-parse", "--verify", "-q", f"{rev}:{path}"], capture_output=True, text=True, timeout=30)
+    except Exception:
+        return ""
+    out = r.stdout.strip()
+    return out if r.returncode == 0 and len(out) == 40 else ""
+
+
+def git_state(repo, binary_commit=""):
     commit = sh(["git", "-C", repo, "rev-parse", "HEAD"])
     exp = sh(["git", "-C", repo, "status", "--porcelain", "--", ".", ":(exclude)results_p3"]).splitlines()
     whole = sh(["git", "-C", repo, "status", "--porcelain"]).splitlines()
-    return {"commit": commit, "uncommitted_in_experiment_dir": len(exp), "uncommitted_in_repository": len(whole)}
+    st = {"commit": commit, "uncommitted_in_experiment_dir": len(exp), "uncommitted_in_repository": len(whole),
+          "strata_core_tree_head": tree_of(repo, "HEAD")}
+    if binary_commit:                                  # the engine of the binary that the step runs: the tree of the commit it was built from
+        st["binary_commit"] = binary_commit
+        st["strata_core_tree_binary"] = tree_of(repo, binary_commit)
+    return st
 
 
 def cmd_run(args):
@@ -90,7 +105,7 @@ def cmd_run(args):
         "host": socket.gethostname(), "kernel": platform.release(), "cores": os.cpu_count(),
         "python": sys.version.split()[0],
         "before": load_state(),
-        "git": git_state(HERE),
+        "git": git_state(HERE, args.binary_commit),
         "inputs": [file_record(p, args.hash_inputs) for p in args.input],
         "hash_inputs": bool(args.hash_inputs),
     }
@@ -198,6 +213,7 @@ def main(argv=None):
     p.add_argument("--input", action="append", default=[])
     p.add_argument("--output", action="append", default=[])
     p.add_argument("--hash-inputs", action="store_true")
+    p.add_argument("--binary-commit", default="")
     p.add_argument("argv", nargs=argparse.REMAINDER)
     p.set_defaults(fn=cmd_run)
     p = sub.add_parser("make-list")

@@ -249,29 +249,22 @@ int cmdBoreasValidate(const std::map<std::string, std::string>& a) {
   std::cout << "gps_x_calib_vs_lidar_poses: worst_position_diff_m=" << worst_pos << " worst_rotation_diff_deg=" << worst_rot_deg << "\n";
   v.check(worst_pos < 0.10, "GPS times calibration differs from lidar_poses.csv by more than 0.10 m");
   v.check(worst_rot_deg < 0.5, "GPS times calibration differs from lidar_poses.csv by more than 0.5 degrees");
-  // ENU convention check: the east and north of the files against the latitude and longitude of the origin
-  std::ifstream f(s.dir + "/applanix/gps_post_process.csv");
-  double worst_enu = 0; std::size_t checked = 0;
-  {
-    std::string line; std::getline(f, line);
-    const auto hdr = csvdetail::splitCsv(line);
-    const int clat = csvdetail::colOf(hdr, "latitude"), clon = csvdetail::colOf(hdr, "longitude"), ct = csvdetail::colOf(hdr, "GPSTime");
-    while (std::getline(f, line) && checked < 100000) {
-      const auto c = csvdetail::splitCsv(line);
-      const double t = std::strtod(c[ct].c_str(), nullptr);
-      if (t < t_first - 0.5) continue;
-      if (t > t_last_wanted + 0.5) break;
-      const double lat = std::strtod(c[clat].c_str(), nullptr), lon = std::strtod(c[clon].c_str(), nullptr);
-      const Eigen::Vector3d e = enuOf(lat, lon, org.lat, org.lon);
-      auto row = std::find_if(gps.begin(), gps.end(), [&](const BoreasPoseRow& r) { return std::fabs(r.t - t) < 1e-6; });
-      if (row == gps.end()) continue;
-      worst_enu = std::max(worst_enu, std::hypot(e.x() - row->east, e.y() - row->north));
-      ++checked;
-    }
+  // ENU convention check (review finding 1): the east and north of THIS session against the geodetic ENU at the REFERENCE origin
+  // (--ref, required; the reference session itself is validated against its own origin). The sessions are in one shared frame; a session whose first row is not the reference origin
+  // must still agree, so the check cannot be limited to the reference session.
+  GeoOrigin refo;
+  readBoreasPoseCsv(need(a, "ref") + "/applanix/gps_post_process.csv", 1.0, 1e300, -1e300, &refo);
+  v.check(refo.valid, "the reference session has no latitude and longitude");
+  if (refo.valid) {
+    const EnuAgreement ea = enuAgreement(gps, refo);
+    std::cout << "enu_from_latlon_vs_files (reference origin lat_deg=" << refo.lat * 180 / M_PI << " lon_deg=" << refo.lon * 180 / M_PI << "): rows=" << ea.rows
+              << " worst_horizontal_diff_m=" << ea.worst_m << " mean_dx_m=" << ea.mean_dx_m << " mean_dy_m=" << ea.mean_dy_m << "\n";
+    const Eigen::Vector3d first = enuOf(org.lat, org.lon, refo.lat, refo.lon);
+    std::cout << "first_row: file east,north=(" << org.east << "," << org.north << ") geodetic ENU at the reference origin=(" << first.x() << "," << first.y()
+              << ") (the old common frame moved the session by the geodetic part, " << std::hypot(first.x(), first.y()) << " m)\n";
+    v.check(ea.rows > 0, "no GPS row compared with its latitude and longitude");
+    v.check(ea.worst_m < kEnuAgreementTolM, "east and north of the files differ from the geodetic ENU at the reference origin by more than 0.10 m");
   }
-  std::cout << "enu_from_latlon_vs_files: rows=" << checked << " worst_horizontal_diff_m=" << worst_enu << "\n";
-  v.check(checked > 0, "no GPS row compared with its latitude and longitude");
-  v.check(worst_enu < 0.5, "east and north of the files differ from the geodetic ENU by more than 0.5 m");
   // lidar frames
   BoreasConvertOptions co; BoreasConvertReport rep; Frame fr;
   for (std::size_t k = 0; k < std::min(n, s.frames.size()); ++k) {
@@ -283,47 +276,59 @@ int cmdBoreasValidate(const std::map<std::string, std::string>& a) {
               << " range_max=" << st.range_max << " z=[" << st.z_min << "," << st.z_max << "] intensity=[" << st.intensity_min << "," << st.intensity_max << "] ring=["
               << st.ring_min << "," << st.ring_max << "] ring_integer_share=" << st.ring_integer_share << " t=[" << st.t_min << "," << st.t_max << "] " << (why.empty() ? "layout_ok" : "LAYOUT: " + why) << "\n";
     v.check(why.empty(), s.frames[k] + ": " + why);
-    const bool ok = convertBoreasScan(sc, boreasFrameTime(s.frames[k]), track, T, Pose3{}, co, static_cast<std::uint32_t>(k), fr, rep);
+    const bool ok = convertBoreasScan(sc, boreasFrameTime(s.frames[k]), track, T, commonFrame(), co, static_cast<std::uint32_t>(k), fr, rep);
     v.check(ok, s.frames[k] + ": no pose for the conversion");
   }
   std::cout << "converted: scans=" << rep.scans << " dropped_no_pose=" << rep.scans_dropped_no_pose << " points_used=" << rep.points_used << " out_of_range=" << rep.points_out_of_range << " no_pose=" << rep.points_no_pose << "\n";
   return finishValidate(v, "boreas");
 }
 
+// Pose-only gate (no lidar content): the trajectories in the shared file frame, the premise of that frame for EVERY session, and the vertical
+// agreement of the altitude columns. Review finding 1: the frame is the frame of the files; no session is moved.
 int cmdBoreasOverlap(const std::map<std::string, std::string>& a) {
   const auto dirs = splitList(need(a, "seqs"));
   const double tile = std::stod(opt(a, "tile", "10")), need_share = std::stod(opt(a, "min-share", "0.8"));
   if (dirs.size() < 2) fail("arguments", "--seqs needs at least two sequence directories (comma separated; the first is the reference)");
-  std::vector<BoreasSession> ss; std::vector<GeoOrigin> org(dirs.size()); std::vector<std::vector<Eigen::Vector2d>> common(dirs.size()), raw(dirs.size());
+  std::vector<BoreasSession> ss; std::vector<GeoOrigin> org(dirs.size()); std::vector<std::vector<BoreasPoseRow>> poses(dirs.size());
+  std::vector<std::vector<Eigen::Vector2d>> xy(dirs.size());
+  bool enu_ok = true;
   for (std::size_t i = 0; i < dirs.size(); ++i) {
     ss.push_back(loadSession(dirs[i]));
     const double t0 = boreasFrameTime(ss[i].frames.front()), t1 = boreasFrameTime(ss[i].frames.back());
-    const auto rows = readBoreasPoseCsv(dirs[i] + "/applanix/lidar_poses.csv", 1e-6, t0 - 1e-3, t1 + 1e-3);
-    readBoreasPoseCsv(dirs[i] + "/applanix/gps_post_process.csv", 1.0, 1e300, -1e300, &org[i]);     // origin only: stops after the first row
-    std::set<double> have; for (const auto& r : rows) have.insert(r.t);
+    poses[i] = readBoreasPoseCsv(dirs[i] + "/applanix/lidar_poses.csv", 1e-6, t0 - 1e-3, t1 + 1e-3);
+    const auto gps = readBoreasPoseCsv(dirs[i] + "/applanix/gps_post_process.csv", 1.0, t0 - 1.0, t1 + 1.0, &org[i]);
+    std::set<double> have; for (const auto& r : poses[i]) have.insert(r.t);
     std::size_t missing = 0;
     for (const auto& f : ss[i].frames) if (!have.count(boreasFrameTime(f))) ++missing;
-    std::cout << ss[i].id << " frames=" << ss[i].frames.size() << " pose_rows_in_slice=" << rows.size() << " frames_without_pose_row=" << missing << " origin_lat_deg=" << org[i].lat * 180 / M_PI << " origin_lon_deg=" << org[i].lon * 180 / M_PI << "\n";
+    std::cout << ss[i].id << " frames=" << ss[i].frames.size() << " pose_rows_in_slice=" << poses[i].size() << " frames_without_pose_row=" << missing << " gps_rows_in_slice=" << gps.size()
+              << " origin_lat_deg=" << org[i].lat * 180 / M_PI << " origin_lon_deg=" << org[i].lon * 180 / M_PI << " first_row_east,north=(" << org[i].east << "," << org[i].north << ")\n";
     if (!org[i].valid) fail(dirs[i], "no origin latitude and longitude");
-    const Pose3 to_ref = sessionToReference(org[0], org[i]);
-    for (const auto& r : rows) {
-      const Eigen::Vector3d p = to_ref.q * Eigen::Vector3d(r.east, r.north, r.up) + to_ref.t;
-      common[i].emplace_back(p.x(), p.y());
-      raw[i].emplace_back(r.east, r.north);
-    }
+    // premise of the shared frame: this session's files against the geodetic ENU at the REFERENCE origin (all sessions, not only the reference)
+    const EnuAgreement ea = enuAgreement(gps, org[0]);
+    const Eigen::Vector3d first = enuOf(org[i].lat, org[i].lon, org[0].lat, org[0].lon);
+    const bool ok = ea.rows > 0 && ea.worst_m < kEnuAgreementTolM;
+    std::cout << "enu_check," << ss[i].id << ",rows=" << ea.rows << ",worst_horizontal_diff_m=" << ea.worst_m << ",mean_dx_m=" << ea.mean_dx_m << ",mean_dy_m=" << ea.mean_dy_m
+              << ",first_row_geodetic_enu_at_reference=(" << first.x() << "|" << first.y() << "),limit_m=" << kEnuAgreementTolM << "," << (ok ? "ok" : "FAIL") << "\n";
+    if (!ok) enu_ok = false;
+    for (const auto& r : poses[i]) xy[i].emplace_back(r.east, r.north);
   }
-  bool all_pass = true;
-  std::cout << "tile_m=" << tile << " rule: pass if every ordered pair has share_near >= " << need_share << "\n";
+  bool overlap_ok = true;
+  std::cout << "tile_m=" << tile << " rule: pass if every ordered pair has share_near >= " << need_share << " in the shared file frame\n";
   std::cout << "frame,a,b,tiles_a,tiles_b,share_a_in_b,share_b_in_a,share_a_near_b,share_b_near_a\n";
-  for (int variant = 0; variant < 2; ++variant) {
-    for (std::size_t i = 0; i < dirs.size(); ++i) for (std::size_t j = i + 1; j < dirs.size(); ++j) {
-      const TileOverlap o = tileOverlap(tileHistogram(variant == 0 ? common[i] : raw[i], tile), tileHistogram(variant == 0 ? common[j] : raw[j], tile));
-      std::cout << (variant == 0 ? "common" : "raw_local") << "," << ss[i].id << "," << ss[j].id << "," << o.tiles_a << "," << o.tiles_b << "," << o.share_a_in_b << "," << o.share_b_in_a << "," << o.share_a_near_b << "," << o.share_b_near_a << "\n";
-      if (variant == 0 && (o.share_a_near_b < need_share || o.share_b_near_a < need_share)) all_pass = false;
-    }
+  for (std::size_t i = 0; i < dirs.size(); ++i) for (std::size_t j = i + 1; j < dirs.size(); ++j) {
+    const TileOverlap o = tileOverlap(tileHistogram(xy[i], tile), tileHistogram(xy[j], tile));
+    std::cout << "file," << ss[i].id << "," << ss[j].id << "," << o.tiles_a << "," << o.tiles_b << "," << o.share_a_in_b << "," << o.share_b_in_a << "," << o.share_a_near_b << "," << o.share_b_near_a << "\n";
+    if (o.share_a_near_b < need_share || o.share_b_near_a < need_share) overlap_ok = false;
   }
-  std::cout << "VERDICT boreas tile overlap " << (all_pass ? "PASS" : "FAIL") << " (common frame; the raw_local rows show what the check would give without the common frame)\n";
-  return all_pass ? 0 : 3;
+  // vertical datum: the altitude columns of two sessions along the same road (information, no pass rule; PREREG_P3.md Amendment 3 decides from it)
+  std::cout << "altitude_pair,a,b,pairs_within_3m,median_dz_m(b-a),p10_dz_m,p90_dz_m\n";
+  for (std::size_t i = 0; i < dirs.size(); ++i) for (std::size_t j = i + 1; j < dirs.size(); ++j) {
+    const AltitudeDifference d = altitudeDifference(poses[i], poses[j], 3.0);
+    std::cout << "altitude," << ss[i].id << "," << ss[j].id << "," << d.pairs << "," << d.median << "," << d.p10 << "," << d.p90 << "\n";
+  }
+  const bool pass = overlap_ok && enu_ok;
+  std::cout << "VERDICT boreas shared frame and tile overlap " << (pass ? "PASS" : "FAIL") << " (enu agreement of every session: " << (enu_ok ? "ok" : "FAIL") << "; tile overlap: " << (overlap_ok ? "ok" : "FAIL") << ")\n";
+  return pass ? 0 : 3;
 }
 
 
@@ -344,7 +349,12 @@ int cmdBoreasConvert(const std::map<std::string, std::string>& a) {
   readBoreasPoseCsv(ref.dir + "/applanix/gps_post_process.csv", 1.0, 1e300, -1e300, &refo);
   const PoseTrack3 track = trackOf(gps);
   const Pose3 T = readBoreasCalib(s.dir + "/calib/T_applanix_lidar.txt");
-  const Pose3 to_common = sessionToReference(refo, org, zoff);
+  // the premise of the shared frame is checked on this session's rows before anything is written (review finding 1)
+  const EnuAgreement ea = enuAgreement(gps, refo);
+  if (ea.rows == 0) fail(s.dir, "no GPS row with latitude and longitude in the window");
+  if (!(ea.worst_m < kEnuAgreementTolM))
+    fail(s.dir, "easting/northing differ from the geodetic ENU at the reference origin by " + std::to_string(ea.worst_m) + " m (limit 0.10 m): the sessions are not in one frame");
+  const Pose3 to_common = commonFrame(zoff);
   CacheWriter w(need(a, "out"), 3);
   BoreasConvertReport rep; Frame fr;
   for (std::size_t k = 0; k < nf; k += step) {
@@ -359,6 +369,7 @@ int cmdBoreasConvert(const std::map<std::string, std::string>& a) {
   m.put("points_no_pose", rep.points_no_pose); m.put("points_used", rep.points_used);
   m.put("origin_lat_rad", org.lat); m.put("origin_lon_rad", org.lon); m.put("reference_lat_rad", refo.lat); m.put("reference_lon_rad", refo.lon);
   m.put("to_common_t_x", to_common.t.x()); m.put("to_common_t_y", to_common.t.y()); m.put("to_common_t_z", to_common.t.z());
+  m.put("enu_rows_checked", ea.rows); m.put("enu_worst_horizontal_diff_m", ea.worst_m); m.put("enu_mean_dx_m", ea.mean_dx_m); m.put("enu_mean_dy_m", ea.mean_dy_m);
   m.put("seconds", nowSeconds() - t0); m.put("peak_rss_kb", peakRssKb());
   return 0;
 }

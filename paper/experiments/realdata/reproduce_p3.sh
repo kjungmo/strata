@@ -35,6 +35,10 @@ scrub() {
   s="${s//$OUT/<OUT_DIR>}"; s="${s//$DATA/<DATA_ROOT>}"; s="${s//$BUILD/<BUILD_DIR>}"; s="${s//$RES/<RESULTS_DIR>}"; s="${s//$HERE/<REALDATA_DIR>}"; s="${s//$HOME/\~}"
   printf '%s' "$s"
 }
+# Engine pin (PREREG_P3.md Amendment 3): the git tree hash of strata_core that every evaluation must run on. The last line
+# `STRATA_CORE_TREE=<40 hex>` of PREREG_P3.md counts, so a later amendment can re-pin.
+engine_pin() { grep -E '^STRATA_CORE_TREE=[0-9a-f]{40}$' "$HERE/PREREG_P3.md" 2>/dev/null | tail -1 | cut -d= -f2; }
+engine_tree() { git -C "$HERE" rev-parse --verify -q "$1:strata_core" 2>/dev/null || echo unknown; }
 tree_dirty() { git -C "$HERE" status --porcelain -- ':(glob)p3_*' ':(glob)test_p3*' ':(glob)mutation_p3.py' ':(glob)reproduce_p3.sh' ':(glob)data_inputs_p3*' ':(glob)PREREG_P3.md' ':(glob)CMakeLists.txt' ':(glob)realdata_io.hpp' ':(glob)p1b_*' ':(glob)probe_core.hpp' ':(glob)hitrate_probe.cpp' ':(glob)stat_test_split.sh' ':(glob)compare_stat.py' | wc -l; }
 
 # step NAME [--traced] [--hash] [--input P]... [--output P]... -- cmd...   (--hash: sha256 of the --input files, for inputs without a recorded checksum)
@@ -54,10 +58,11 @@ step() {
   { echo "STEP $name"; echo "START $(stamp) host=$(hostname) load=$(cut -d' ' -f1-3 /proc/loadavg) cores=$(nproc)"
     echo "COMMIT $(git -C "$HERE" rev-parse HEAD)"; echo "EXPERIMENT_DIR_UNCOMMITTED $(tree_dirty)"
     echo "BINARY_COMMIT $(cat "$BUILD/commit" 2>/dev/null || echo unknown)"
+    echo "STRATA_CORE_TREE $(engine_tree "$(cat "$BUILD/commit" 2>/dev/null || echo none)")"; echo "STRATA_CORE_TREE_PINNED $(engine_pin)"
     echo "CMD $(scrub "$*")"; } > "$log"
   local -a inner=("$@")
   if [ "$traced" = "1" ]; then inner=(bash "$HERE/p3_traced.sh" "$name" "$@"); fi
-  ( ulimit -v "${MEM_LIMIT_KB:-6000000}"; exec nice -n 19 python3 -I "$HERE/p3_runlog.py" run --step "$name" --results "$RES" "${rl[@]}" -- "${inner[@]}" ) 2>&1 | sed "s|$HOME|~|g; s|$OUT|<OUT_DIR>|g" >> "$log"
+  ( ulimit -v "${MEM_LIMIT_KB:-6000000}"; exec nice -n 19 python3 -I "$HERE/p3_runlog.py" run --step "$name" --results "$RES" --binary-commit "$(cat "$BUILD/commit" 2>/dev/null)" "${rl[@]}" -- "${inner[@]}" ) 2>&1 | sed "s|$HOME|~|g; s|$OUT|<OUT_DIR>|g" >> "$log"
   local rc=${PIPESTATUS[0]}
   echo "END $(stamp) rc=$rc load=$(cut -d' ' -f1-3 /proc/loadavg)" >> "$log"
   echo "step $name rc=$rc"
@@ -91,7 +96,7 @@ stage_build() {   # from a git archive copy of HEAD: the binary is the committed
 
 stage_check() {
   {
-    echo "commit=$(git -C "$HERE" rev-parse HEAD)"; echo "binary_commit=$(cat "$BUILD/commit" 2>/dev/null || echo none)"
+    echo "commit=$(git -C "$HERE" rev-parse HEAD)"; echo "binary_commit=$(cat "$BUILD/commit" 2>/dev/null || echo none)"; echo "strata_core_tree_head=$(engine_tree HEAD)"; echo "strata_core_tree_binary=$(engine_tree "$(cat "$BUILD/commit" 2>/dev/null || echo none)")"; echo "strata_core_tree_pinned=$(engine_pin)"
     echo "experiment_dir_uncommitted=$(tree_dirty)"
     echo "host=$(hostname)"; echo "kernel=$(uname -r)"; echo "cores=$(nproc)"
     echo "cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ //')"
@@ -120,7 +125,7 @@ stage_validate_readers() {
   must step validate_spires_keble03 --traced -- "$P3" spires-validate --zip "$KEBLE/sequences/2024-03-12-keble-college-03/raw/lidar-clouds.zip" \
     --gt "$KEBLE/sequences/2024-03-12-keble-college-03/processed/trajectory/gt-tum.txt" --dt "$dt" --n $n
   # Boreas: layout by bytes, ranges, pose convention, ENU from latitude and longitude, conversion of the first frames
-  must step validate_boreas_2020 --traced -- "$P3" boreas-validate --seq "$DATA/boreas/boreas-2020-11-26-13-58" --n $n
+  must step validate_boreas_2020 --traced -- "$P3" boreas-validate --seq "$DATA/boreas/boreas-2020-11-26-13-58" --ref "$DATA/boreas/boreas-2020-11-26-13-58" --n $n
   # KTH test sequences
   must step validate_kth_05 --traced -- "$P3" kth-validate --dir "$DATA/kth/05" --n $n
   must step validate_kth_semindoor --traced -- "$P3" kth-validate --dir "$DATA/kth/semindoor" --n $n
@@ -167,7 +172,11 @@ guard_eval() {
   if [ -n "$(git -C "$HERE" status --porcelain -- PREREG_P3.md data_inputs_p3.sha256 p3_arms.hpp)" ]; then echo "refusing: PREREG_P3.md, the arm table or the input list has uncommitted changes"; exit 4; fi
   if [ "$(tree_dirty)" != "0" ]; then echo "refusing: uncommitted files in the experiment directory"; exit 4; fi
   if [ "$(cat "$BUILD/commit" 2>/dev/null)" != "$(git -C "$HERE" rev-parse HEAD)" ]; then echo "refusing: the binary was not built from HEAD (run the build stage)"; exit 4; fi
-  { echo "evaluations started $(stamp)"; echo "head $(git -C "$HERE" rev-parse HEAD)"; echo "prereg_p3_last_commit $(git -C "$HERE" log -1 --format='%H %cI' -- PREREG_P3.md)"; } >> "$RES/eval_start.txt"
+  # one engine for all five datasets (PREREG_P3.md Amendment 3): the strata_core tree of HEAD must equal the pinned tree (the binary was built from HEAD, see above)
+  local pin; pin="$(engine_pin)"
+  if [ -z "$pin" ]; then echo "refusing: PREREG_P3.md records no engine pin (line STRATA_CORE_TREE=<hash>)"; exit 4; fi
+  if [ "$(engine_tree HEAD)" != "$pin" ]; then echo "refusing: strata_core at HEAD ($(engine_tree HEAD)) is not the pinned engine ($pin); an amendment must re-pin it"; exit 4; fi
+  { echo "evaluations started $(stamp)"; echo "head $(git -C "$HERE" rev-parse HEAD)"; echo "strata_core_tree $pin"; echo "prereg_p3_last_commit $(git -C "$HERE" log -1 --format='%H %cI' -- PREREG_P3.md)"; } >> "$RES/eval_start.txt"
 }
 
 arms_to_run() {
@@ -218,7 +227,7 @@ stage_eval_spires() {
   for arm in $(arms_to_run); do
     must step "spires_static_${arm}" -- "$P3" static-export --caches "$OUT/spires_03/cache.bin,$OUT/spires_04/cache.bin,$OUT/spires_05/cache.bin" --arm "$arm" --res 0.2 --window 10 \
       --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}" --meta "$OUT/spires_agree_${arm}.meta"
-    must step "spires_jaccard_${arm}" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_s0_static.ids' '$OUT/spires_agree_${arm}_s1_static.ids' '$OUT/spires_agree_${arm}_s2_static.ids' --res 0.2 > '$RES/spires_agree_${arm}.json'"
+    must step "spires_jaccard_${arm}" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_s0_static.ids' '$OUT/spires_agree_${arm}_s1_static.ids' '$OUT/spires_agree_${arm}_s2_static.ids' --observed '$OUT/spires_agree_${arm}_s0_observed.ids' '$OUT/spires_agree_${arm}_s1_observed.ids' '$OUT/spires_agree_${arm}_s2_observed.ids' --res 0.2 >'$RES/spires_agree_${arm}.json'"
   done
   finish_eval eval_spires "$OUT"/spires_0? "$OUT"/spires_agree_* "$RES"/spires_*.json
 }
@@ -269,7 +278,7 @@ stage_eval_boreas() {
       must step "boreas_static_${arm}_$mode" -- "$P3" static-export --caches "$caches" --arm "$arm" --res 0.2 --window 10 --periodicity 0 --mode "$mode" \
         --out-prefix "$d/${arm}_$mode" --meta "$d/${arm}_$mode.meta"
     done
-    must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
+    must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --observed '$d/${arm}_independent_s0_observed.ids' '$d/${arm}_independent_s1_observed.ids' '$d/${arm}_independent_s2_observed.ids' --res 0.2 >'$RES/boreas_${arm}_independent.json'"
     must step "boreas_newstatic_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' newstatic --cum '$d/${arm}_cumulative_s2_static.ids' --ind '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' > '$RES/boreas_${arm}_newstatic.json'"
   done
   finish_eval eval_boreas "$d" "$RES"/boreas_*.json "$RES"/boreas_zoffsets_used.txt
