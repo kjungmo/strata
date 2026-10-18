@@ -376,3 +376,13 @@ The exported points are the original frame points, at distance 0 from themselves
 Section 14 says the probe ran on "data that was already opened". More exactly: the probe ran **two arms of the engine (`shipped_v0_1` and `sprt`) on the first 10 frames of the test session boreas-2020-11-26-13-58** (the same 10 frames as the reader validation), with `static-export`. It computed no label, no rate and no metric, and nothing was chosen from a result except the range window and the veto switch, by cost.
 The files read are in `access_log.tsv` (`feas_boreas_convert*`). The first run printed its table to the terminal and did not save it. The files that survived are in `results_p3/feas/original/`; the probe was run again on the same 10 frames (`feas_rerun_boreas_convert_r*` in `access_log.tsv`),
 and its table and meta files are in `results_p3/feas/`. Cells and peak memory equal the table of section 14 in every row; the seconds differ with host load and are for planning only (R6). `deviations.md` carries the corrected order of events.
+
+### 16.7 Re-pin (2026-10-18, before any evaluation)
+
+Commit `bb93d84` (13:56, other work on the branch) added three lines to `strata_core/test/test_sprt.cpp`. The trees of `strata_core/src` (`be2e48e0f03b5340989480bbf25f1681fdcff1ce`), `strata_core/include` (`50d9d7f4710fa5e27884cf0b8956a14a72005f5e`) and the file `strata_core/CMakeLists.txt` are the same as at the pin of item 16.4;
+only `strata_core/test` changed. So the code that the smoke tests and the Spires repeat of item 16.4 ran on is the code of the new pin. The guard compares the whole `strata_core` tree and therefore refused at the new HEAD, as designed. The last `STRATA_CORE_TREE=` line of this file is the pin; it replaces the line of item 16.4.
+A further commit to `strata_core`, test-only or not, needs a new amendment of this kind before an evaluation can start.
+
+```text pin
+STRATA_CORE_TREE=d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
+```
