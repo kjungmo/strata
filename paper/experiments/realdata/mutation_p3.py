@@ -162,6 +162,10 @@ CPP = [
     ("p3_run.hpp", "<< c.first_static << \",\" << c.first_touch << \"\\n\";", "<< c.first_static << \",\" << c.n << \"\\n\";", "dump: first_touch column"),
     ("p3_probe.cpp", "++lat[{int(kv.second), c.first_static - c.first_touch + 1}];", "++lat[{int(kv.second), c.first_static}];", "cli: latency from the first touch"),
     ("p3_probe.cpp", "++lat[{int(kv.second), c.first_static - c.first_touch + 1}];", "++lat[{int(kv.second), c.first_static - c.first_touch}];", "cli: latency counts the first window"),
+    ("p3_probe.cpp", "for (std::size_t k = 0; k < nf; k += step) {", "for (std::size_t k = 0; k < nf; k += 1) {", "boreas-convert: frame step"),
+    ("p3_probe.cpp", "static_cast<std::uint32_t>(k / step), fr, rep)) w.add(fr);", "static_cast<std::uint32_t>(k), fr, rep)) w.add(fr);", "boreas-convert: frame step group"),
+    ("p3_probe.cpp", "if (step < 1) fail(\"arguments\", \"--frame-step must be at least 1\");", "if (step < 2) fail(\"arguments\", \"--frame-step must be at least 1\");", "boreas-convert: frame step bound"),
+    ("p3_probe.cpp", "m.put(\"frame_step\", step);", "m.put(\"frame_step\", 1);", "boreas-convert: frame step meta"),
     # ---- command line
     ("p3_probe.cpp", "if (it->second == \"1\" || it->second == \"on\" || it->second == \"true\") return true;", "if (it->second == \"0\" || it->second == \"on\" || it->second == \"true\") return true;", "cli: flag true"),
     ("p3_probe.cpp", "const BoreasSession ref = loadSession(need(a, \"ref\"));\n  const std::size_t maxf", "const BoreasSession ref = s;\n  const std::size_t maxf", "cli: boreas-convert reference"),
