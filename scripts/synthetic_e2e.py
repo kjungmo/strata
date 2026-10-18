@@ -288,12 +288,13 @@ def check_grid(maps, final, detuned=False):
     if detuned:   # negative control: the stretched windows no longer match period_windows
         results.append((n75 == 0, f'negative control: door cells Periodic (75): {n75}/{len(door)} (need 0)'))
         # Unrecognised, the door is taken for structure while it is closed. The legacy rule keeps it
-        # Static; the sequential test demotes it again in the open phase, so "Static in the final map"
-        # depends on the phase the run ends in. Static in some published map is the phase-free reading.
+        # Static (f100 >= 0.95 in the final map); the sequential test demotes it again in the open phase,
+        # so "Static in the final map" depends on the phase the run ends in, and Static in some published
+        # map is the phase-free reading. Either one passes; both are printed.
         ever100 = sum(1 for c in door if any(val(m)(c) == 100 for m in maps))
-        results.append((ever100 >= 0.95 * len(door),
-                        f'negative control: door cells Static (100) in some of {len(maps)} maps: {ever100}/{len(door)} '
-                        f'= {ever100 / max(1, len(door)):.3f} (need >= 0.95)'))
+        results.append((f100 >= 0.95 or ever100 >= 0.95 * len(door),
+                        f'negative control: door cells Static (100): {n100}/{len(door)} = {f100:.3f} in the final map, '
+                        f'{ever100}/{len(door)} in some of {len(maps)} maps (need >= 0.95 in one of the two)'))
     else:
         results.append((f75 >= 0.95, f'door cells Periodic (75): {n75}/{len(door)} = {f75:.3f} (need >= 0.95; '
                                      f'{len(skipped)} door cells the open-door ray skips are not tested)'))

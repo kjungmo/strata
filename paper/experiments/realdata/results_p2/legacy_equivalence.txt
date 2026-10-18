@@ -1,0 +1,16 @@
+date 2026-10-18T12:01:33+09:00
+== real build, committed results ==
+legacy equivalence OK: 19 CSV files byte-identical to the committed results (E0-E3, E5, E6)
+== witness: survival decay deleted from the legacy path in a scratch copy (must FAIL) ==
+FAIL: e1_static_quality.csv differs from the committed file
+FAIL: e1_static_quality_periodic.csv differs from the committed file
+FAIL: e3_sensitivity.csv differs from the committed file
+FAIL: e3_sensitivity_periodic.csv differs from the committed file
+FAIL: e5_calibration.csv differs from the committed file
+FAIL: e5_calibration_choice.csv differs from the committed file
+FAIL: e5_doors.csv differs from the committed file
+FAIL: e5_trajectory.csv differs from the committed file
+FAIL: e6_confusion.csv differs from the committed file
+FAIL: e6_static_vs_m.csv differs from the committed file
+legacy equivalence FAILED: 10 problem(s), 9 identical
+rc=1

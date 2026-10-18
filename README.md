@@ -73,6 +73,13 @@ paths a ground robot actually has:
 | Geometry & projection | 2D occupancy grid; 6-DoF endpoints projected onto the plane (z dropped) | fully volumetric voxel-hash (x, y, z kept) |
 | Ray clearing | Bresenham ray-trace | ray-sample along the beam |
 
+> **Evidence defaults (0.2.0).** Both backends graduate a cell with the sequential test of
+> [`SPEC.md` §3.2a](SPEC.md) at `m0 = 0.20`, `m1 = 0.70`, `alpha = beta = 0.01`. The pair was measured on one
+> 2D scanner dataset (0.05 m, 1.0 s windows) and is provisional. **`voxel3d` uses the same pair and it is *not*
+> calibrated for 3D**: on single-pass driving data most structure voxels stay undecided (KITTI 00 slice, 14 s;
+> structure voxels are touched in a median of 4 windows). The node logs this at start and shows it on `/diagnostics` (`<node>: evidence model`). Re-derive
+> `m0` and `m1` for your sensor, window length and resolution with `paper/experiments/realdata/hitrate_probe`.
+
 **Why "STRATA".** Like geological **strata**, the map is built from layers of
 observation that accumulate over time. Durable layers — seen again and again —
 consolidate into the permanent **static** map; **periodic** layers (a door open
@@ -80,7 +87,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 **transient** layers erode away.
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
-cell id, and is unit-tested with gtest **without ROS or PCL** (106 gtests across 12
+cell id, and is unit-tested with gtest **without ROS or PCL** (112 gtests across 12
 suites, plus 64 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
@@ -163,7 +170,7 @@ cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 #    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 64 node gtests; the 106 engine
+colcon test --packages-select strata      # the 64 node gtests; the 112 engine
 colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 

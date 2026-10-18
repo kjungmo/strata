@@ -49,11 +49,25 @@ SprtDerived deriveSprt(const LayeredMapParams& p) {
   }
   d.demote_level = d.ceiling - d.A;
   d.m_star = -d.l_miss / (d.l_hit - d.l_miss);
+  // A pair so close that a decision needs more than a million windows is a configuration error, and
+  // the loops below would run for as long.
+  constexpr double kMaxWindows = 1.0e6;
+  if (!(d.A / d.l_hit <= kMaxWindows) || !(d.A / -d.l_miss <= kMaxWindows))
+    throw std::invalid_argument("sprt: m0 and m1 are too close for these error rates (a decision would need over " +
+                                std::to_string(static_cast<long>(kMaxWindows)) + " windows)");
   // Summed exactly as endWindowSprt() adds, so the numbers cannot differ by rounding.
+  // (The bound on the loops is a second line of defence behind the check above.)
+  const int kGuard = static_cast<int>(kMaxWindows) + 8;
   double l = 0.0;
-  while (l < d.A) { l += d.l_hit; if (l > d.ceiling) l = d.ceiling; ++d.latency; }
+  while (l < d.A) {
+    if (d.latency > kGuard) throw std::invalid_argument("sprt: the statistic does not reach A");
+    l += d.l_hit; if (l > d.ceiling) l = d.ceiling; ++d.latency;
+  }
   l = d.ceiling;
-  while (l > d.demote_level) { l += d.l_miss; ++d.demote_misses; }
+  while (l > d.demote_level) {
+    if (d.demote_misses > kGuard) throw std::invalid_argument("sprt: the reverse statistic does not reach its level");
+    l += d.l_miss; ++d.demote_misses;
+  }
   return d;
 }
 

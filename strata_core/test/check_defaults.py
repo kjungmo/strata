@@ -13,7 +13,9 @@ Checks, with no ROS and no YAML library:
   3. evidence_calibration says what is true: grid2d "measured_2d", voxel3d "fallback_2d_pair" while
      the 3D status is not frozen;
   4. the node declares each evidence parameter from the library default (def.m0 ...), not from a
-     second literal, and reads evidence_calibration.
+     second literal, and reads evidence_calibration;
+  5. every parameter the node declares is in each shipped YAML (except the other backend's), and every
+     YAML key is declared by the node.
 Exits 1 and prints every difference when one is found.
 """
 import json
@@ -116,6 +118,17 @@ def main(root):
             problems.append(f'mapping_node.cpp does not declare "{k}" from the library default def.{k}')
     if 'declare_parameter<std::string>("evidence_model", "sprt")' not in node:
         problems.append('mapping_node.cpp does not declare evidence_model with the default "sprt"')
+    # 5. no parameter the node declares is missing from a shipped YAML (a deleted line would otherwise
+    #    pass the binding check, which only reads the keys the YAML has)
+    declared = set(re.findall(r'declare_parameter<[\w:]+>\("(\w+)"', node))
+    only3 = {'voxel_size', 'points_topic'}
+    only2 = {'grid_width', 'grid_height', 'grid_resolution', 'grid_origin_x', 'grid_origin_y', 'scan_topic'}
+    for b, y in yamls.items():
+        expect = declared - (only3 if b == 'grid2d' else only2)
+        for k in sorted(expect - set(y)):
+            problems.append(f'{b}.yaml lacks "{k}", which the node declares')
+        for k in sorted(set(y) - declared - {'backend'}):
+            problems.append(f'{b}.yaml has "{k}", which the node does not declare')
 
     if problems:
         print('FAIL: the shipped defaults disagree:')

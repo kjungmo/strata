@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 #include "strata_core/grid2d_backend.hpp"
+#include "strata_core/voxel3d_backend.hpp"
 #include "strata_core/layered_map.hpp"
 
 using namespace strata_core;
@@ -225,6 +226,14 @@ TEST(Sprt, ValidationRejectsEachBadInputOnBothSides) {
   EXPECT_THROW(LayeredMap(bad([&](LayeredMapParams& p) { p.m1 = inf; })), std::invalid_argument);
   EXPECT_THROW(LayeredMap(bad([&](LayeredMapParams& p) { p.alpha = nan; })), std::invalid_argument);
   EXPECT_THROW(LayeredMap(bad([&](LayeredMapParams& p) { p.beta = inf; })), std::invalid_argument);
+  // m0 and m1 so close that deriving the latency would never end
+  EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-9; })), std::invalid_argument);
+  EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = std::nextafter(0.5, 1.0); })), std::invalid_argument);
+  EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-6; })), std::invalid_argument);   // 2.3 million windows
+  // below m0 = 0.5 the miss increment is the smaller one: 230,000 windows to graduate, 2.1 million to demote
+  EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.1; p.m1 = 0.1 + 2e-6; })), std::invalid_argument);
+  EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 2e-5; })));   // 115,000 windows
+  EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-4; })));   // 23,000 windows
   // n_max_undecided: 0 allowed (never), negative not
   EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.n_max_undecided = 0; })));
   EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.n_max_undecided = -1; })), std::invalid_argument);
@@ -401,7 +410,13 @@ TEST(Sprt, DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic) {
       const bool on_floor = m.occupancyProb(9) <= 0.0100001;
       EXPECT_EQ(m.classify(9), on_floor ? CellClass::Unknown : CellClass::Transient) << "window " << (w + 1);
     }
-    if (w + 1 == 24) { EXPECT_EQ(m.classify(9), CellClass::Unknown); }
+    if (w + 1 == 24) {
+      EXPECT_EQ(m.classify(9), CellClass::Unknown);
+      EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)), 1e-12);        // l was floored at B at n = T
+    }
+    if (w + 1 == 25) {   // the first hit of the next period starts from the floor, not from the unclamped -12.75
+      EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-(m.sprt().B + m.sprt().l_hit))), 1e-12);
+    }
   }
   EXPECT_TRUE(periodic_seen);
   EXPECT_EQ(m.classify(9), CellClass::Periodic);
@@ -450,6 +465,60 @@ TEST(Sprt, GraduatedCellIsDemotedByTheReverseTestAfterTheDerivedMissCount) {
   }
 }
 
+TEST(Sprt, GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt) {
+  // Graduates at exactly the derived window, l = 4 l_hit = 5.01 < ceiling 7.10. The reverse test must
+  // still start from the ceiling: five all-miss windows, not three.
+  LayeredMap m(Sp());
+  const int L = m.sprt().latency;
+  for (int w = 0; w < L; ++w) { m.observeHit(4); m.tick(); }
+  ASSERT_TRUE(m.isStatic(4));
+  EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12);
+  for (int k = 1; k <= m.sprt().demote_misses; ++k) {
+    ASSERT_TRUE(m.isStatic(4)) << "miss " << k - 1;
+    m.observeMiss(4); m.tick();
+  }
+  EXPECT_FALSE(m.isStatic(4));
+}
+
+TEST(Sprt, PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone) {
+  // 12 on / 12 off door, T = 24. Once the cell reads Periodic, its statistic follows the plain update
+  // (ceiling above, floor below) and is never reset by a graduation that the veto forbids.
+  LayeredMapParams p = Sp(); p.enable_periodicity = true;
+  LayeredMap m(p);
+  const SprtDerived& d = m.sprt();
+  bool tracking = false;
+  double l = 0.0;
+  int checked = 0;
+  for (int w = 0; w < 240; ++w) {
+    const bool on = (w % 24) < 12;
+    if (on) m.observeHit(6); else m.observeMiss(6);
+    m.tick();
+    if (tracking) {
+      l = std::min(d.ceiling, std::max(d.B, l + (on ? d.l_hit : d.l_miss)));
+      EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1);
+      EXPECT_FALSE(m.isStatic(6)) << "window " << (w + 1);
+      ++checked;
+    } else if (m.classify(6) == CellClass::Periodic && !m.isStatic(6)) {
+      tracking = true;
+      const double pr = m.occupancyProb(6);
+      l = std::log(pr / (1.0 - pr));
+    }
+  }
+  ASSERT_TRUE(tracking);
+  EXPECT_GT(checked, 100);
+}
+
+TEST(Sprt, Voxel3DBackendCountsIntermittentCells) {
+  LayeredMapParams p = Sp(); p.n_max_undecided = 2;
+  Voxel3DBackend b(0.5, p);
+  Observation o; o.hits.push_back({3.0, 0.0, 0.5});
+  b.integrate(o, {0.0, 0.0, 0.5}); b.tick();
+  b.integrate(o, {0.0, 0.0, 0.5}); b.tick();                      // endpoint voxel: n = 2, l = 2 l_hit = 2.5 < A
+  EXPECT_GE(b.intermittentCellCount(), 1u);
+  EXPECT_EQ(b.intermittentCellCount(), b.layered().intermittentCells().size());
+  EXPECT_EQ(b.staticCellCount(), 0u);
+}
+
 TEST(Sprt, ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever) {
   LayeredMap m(Sp());
   for (int w = 0; w < 30; ++w) { m.observeHit(4); m.tick(); }
@@ -474,7 +543,7 @@ TEST(Sprt, DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain) {
   EXPECT_TRUE(m.isStatic(4));
 }
 
-TEST(Sprt, GraduatedDoorIsDemotedOncePeriodic) {
+TEST(Sprt, DoorGraduatesEarlyAndPeriodicityThenDemotesIt) {
   // 4 on / 4 off, T = 8, H = 3: graduates at window 4 (n < T), the reverse test never
   // fires (four misses from the ceiling stay above the demotion level), only the periodic
   // predicate removes it.
@@ -634,6 +703,10 @@ TEST(Sprt, WindowObserverSeesTheSameTouchesAsUnderLegacy) {
   // the same cells are touched in the same windows with the same outcome: the cell set
   // each model keeps differs (rejected cells are erased), but a touched cell is reported either way
   EXPECT_EQ(rs.rows, rl.rows);
+}
+
+TEST(Sprt, CellStaysTwentyFourBytes) {   // the sequential test adds no per-cell state
+  EXPECT_EQ(sizeof(CellEvidence), 24u);
 }
 
 TEST(Sprt, LegacyIsStillAvailableByName) {

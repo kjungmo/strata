@@ -42,14 +42,16 @@ MUTANTS = [
     (LM, "d.demote_level = d.ceiling - d.A;", "d.demote_level = d.ceiling - d.A - 1.0;", "demotion level lower", None),
     (LM, "d.demote_level = d.ceiling - d.A;", "d.demote_level = d.ceiling - 0.5 * d.A;", "demotion level higher", None),
     (LM, "d.m_star = -d.l_miss / (d.l_hit - d.l_miss);", "d.m_star = d.l_miss / (d.l_hit - d.l_miss);", "m* sign", None),
-    (LM, "while (l < d.A) { l += d.l_hit;", "while (l <= d.A) { l += d.l_hit;", "latency loop <=", None),
-    (LM, "while (l > d.demote_level) { l += d.l_miss; ++d.demote_misses; }", "while (l >= d.demote_level) { l += d.l_miss; ++d.demote_misses; }", "demote_misses loop >=",
+    (LM, "while (l < d.A) {\n    if (d.latency > kGuard)", "while (l <= d.A) {\n    if (d.latency > kGuard)", "latency loop <=", None),
+    (LM, "while (l > d.demote_level) {\n    if (d.demote_misses > kGuard)", "while (l >= d.demote_level) {\n    if (d.demote_misses > kGuard)", "demote_misses loop >=",
      "equivalent: a step lands exactly on the level only for a rational ratio of the increments"),
-    # ---- validation
+    (LM, "constexpr double kMaxWindows = 1.0e6;", "constexpr double kMaxWindows = 1.0e7;", "window cap 1e7", None),
+    (LM, "constexpr double kMaxWindows = 1.0e6;", "constexpr double kMaxWindows = 1.0e5;", "window cap 1e5", None),
+    (LM, "if (!(d.A / d.l_hit <= kMaxWindows) || !(d.A / -d.l_miss <= kMaxWindows))", "if (!(d.A / d.l_hit <= kMaxWindows))", "no cap on the demotion loop", "equivalent: the loop guard behind it throws the same invalid_argument after 1e6 steps"),    # ---- validation
     (LM, "p.m0 > 0.0 && p.m0 < p.m1 && p.m1 < 1.0", "p.m0 >= 0.0 && p.m0 < p.m1 && p.m1 < 1.0", "m0 > 0", None),
-    (LM, "p.m0 > 0.0 && p.m0 < p.m1 && p.m1 < 1.0", "p.m0 > 0.0 && p.m0 <= p.m1 && p.m1 < 1.0", "m0 < m1", None),
+    (LM, "p.m0 > 0.0 && p.m0 < p.m1 && p.m1 < 1.0", "p.m0 > 0.0 && p.m0 <= p.m1 && p.m1 < 1.0", "m0 < m1", "equivalent: m0 == m1 gives l_hit = 0, and the window cap rejects it"),
     (LM, "p.m0 > 0.0 && p.m0 < p.m1 && p.m1 < 1.0", "p.m0 > 0.0 && p.m0 < p.m1 && p.m1 <= 1.0", "m1 < 1", None),
-    (LM, "p.alpha > 0.0 && p.beta > 0.0 && p.alpha + p.beta < 1.0", "p.alpha >= 0.0 && p.beta > 0.0 && p.alpha + p.beta < 1.0", "alpha > 0", None),
+    (LM, "p.alpha > 0.0 && p.beta > 0.0 && p.alpha + p.beta < 1.0", "p.alpha >= 0.0 && p.beta > 0.0 && p.alpha + p.beta < 1.0", "alpha > 0", "equivalent: alpha = 0 gives A = infinity, and the window cap rejects it"),
     (LM, "p.alpha > 0.0 && p.beta > 0.0 && p.alpha + p.beta < 1.0", "p.alpha > 0.0 && p.beta >= 0.0 && p.alpha + p.beta < 1.0", "beta > 0", None),
     (LM, "p.alpha > 0.0 && p.beta > 0.0 && p.alpha + p.beta < 1.0", "p.alpha > 0.0 && p.beta > 0.0 && p.alpha + p.beta <= 1.0", "alpha + beta < 1", None),
     (LM, "if (p.n_max_undecided < 0)", "if (p.n_max_undecided <= 0)", "n_max >= 0", None),
@@ -82,7 +84,7 @@ MUTANTS = [
     (LM, "const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;", "const bool rejected = !e.graduated && e.observations > gate && e.log_odds <= d.B;", "reject from n > T", None),
     (LM, "const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;", "const bool rejected = !e.graduated && e.log_odds <= d.B;", "reject before the gate", None),
     (LM, "const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;", "const bool rejected = !e.graduated && e.observations >= gate && e.log_odds < d.B;", "reject at l < B", None),
-    (LM, "const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;", "const bool rejected = e.observations >= gate && e.log_odds <= d.B;", "graduated cells can be rejected", None),
+    (LM, "const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;", "const bool rejected = e.observations >= gate && e.log_odds <= d.B;", "graduated cells can be rejected", "equivalent: a graduated cell has l >= ceiling - A = 2 l_hit > 0 > B, so l <= B never holds for it"),
     (LM, "if (rejected && amp < params_.periodic_amplitude_min) {", "if (rejected && amp > params_.periodic_amplitude_min) {", "keep non-candidates", None),
     (LM, "if (rejected && amp < params_.periodic_amplitude_min) {", "if (rejected) {", "no periodic-candidate guard", None),
     (LM, "if (rejected && amp < params_.periodic_amplitude_min) {\n      periodicity_.erase(it->first);", "if (rejected && amp < params_.periodic_amplitude_min) {", "periodicity history kept after rejection", None),
@@ -127,6 +129,8 @@ DEFAULTS = [
     ("strata_params_voxel3d", "strata/params/voxel3d.yaml", 'evidence_calibration: "fallback_2d_pair"', 'evidence_calibration: "measured_2d"', "voxel3d calibration label"),
     ("strata_params_grid2d", "strata/params/grid2d.yaml", "    l_hit: 0.85", "    l_hit: 0.9", "grid2d legacy l_hit against the library"),
     ("strata_params_voxel3d", "strata/params/voxel3d.yaml", "    period_windows: 24", "    period_windows: 12", "voxel3d period_windows against the library"),
+    ("strata_params_grid2d", "strata/params/grid2d.yaml", "    grid_origin_x: -10.0\n", "", "grid2d loses grid_origin_x (an error made once while editing this file)"),
+    ("strata_params_voxel3d", "strata/params/voxel3d.yaml", "    n_harmonics: 2", "    n_harmonicz: 2", "voxel3d key the node does not declare"),
     ("prereg", "paper/experiments/realdata/PREREG.json", '"m0": 0.2,', '"m0": 0.25,', "PREREG m0"),
     ("prereg", "paper/experiments/realdata/PREREG.json", '"n_max_undecided": 80,', '"n_max_undecided": 96,', "PREREG n_max_undecided"),
     ("node", "strata/src/mapping_node.cpp", 'declare_parameter<double>("m0", def.m0)', 'declare_parameter<double>("m0", 0.2)', "node m0 from a literal"),
@@ -136,7 +140,10 @@ DEFAULTS = [
 
 
 def sh(cmd, cwd=None, timeout=1800):
-    r = subprocess.run(cmd, cwd=cwd, shell=isinstance(cmd, str), capture_output=True, text=True, timeout=timeout)
+    try:
+        r = subprocess.run(cmd, cwd=cwd, shell=isinstance(cmd, str), capture_output=True, text=True, timeout=timeout)
+    except subprocess.TimeoutExpired:
+        return 124, "TIMEOUT after %d s" % timeout
     return r.returncode, r.stdout + r.stderr
 
 
@@ -145,8 +152,10 @@ def build_and_test(scr, jobs):
     rc, out = sh(["cmake", "--build", b, "-j%d" % jobs])
     if rc != 0:
         return "build error", [l for l in out.splitlines() if "error" in l][:2]
-    rc, out = sh([os.path.join(b, "strata_core_tests")], cwd=scr)
+    rc, out = sh([os.path.join(b, "strata_core_tests")], cwd=scr, timeout=180)   # a hang is a kill
     failed = sorted(set(re.findall(r"\[  FAILED  \] (\S+)", out)))
+    if rc == 124:
+        failed.append("timeout (a hang)")
     failed = [f for f in failed if "." in f and not f.endswith(")")]
     rc2, out2 = sh(["ctest", "-R", "defaults_match_yaml_and_prereg"], cwd=b)
     if rc2 != 0:
@@ -242,22 +251,77 @@ def tests(scr, jobs, rows):
             if rc != 0:
                 st, failed = "build error", []
             else:
-                rc, out = sh([os.path.join(b, "strata_core_tests"), "--gtest_filter=Sprt.*"], cwd=scr)
+                rc, out = sh([os.path.join(b, "strata_core_tests"), "--gtest_filter=Sprt.*"], cwd=scr, timeout=120)
                 failed = sorted(set(re.findall(r"\[  FAILED  \] (\S+)", out)))
                 st = "killed" if (rc != 0 or failed) else "survived"
         finally:
             open(path, "w").write(orig)
-        rows.append(("tests", "line %d: %s -> %s" % (i + 1, tok, new), lines[i].strip()[:90], st, failed, None))
+        rows.append(("tests", "line %d: %s -> %s" % (i + 1, tok, new), lines[i].strip()[:240], st, failed, None))
         print("%-9s line %d %s -> %s" % (st, i + 1, tok, new), flush=True)
+
+
+def survivor_class(desc, line):
+    """Why a surviving test-literal mutant is allowed, or UNEXPLAINED. desc is 'line N: tok -> new'."""
+    m = re.match(r"line \d+: (\S+) -> (\S+)", desc)
+    tok = m.group(1) if m else ""
+    st = line.lstrip()
+    code = st.split("//")[0]
+    # position of the first occurrence of the token in the code part
+    pos = code.find(tok)
+    if "<<" in code and pos > code.find("<<"):
+        return "literal in the failure message, not in an assertion"
+    if st.startswith("EXPECT_NEAR(") and re.search(r",\s*%s\);\s*$" % re.escape(tok), code):
+        return "tolerance of an EXPECT_NEAR widened"
+    if st.startswith("EXPECT_NEAR(") and pos >= 0:
+        depth, commas = 0, 0
+        for ch in code[:pos]:
+            depth += ch in "({"
+            depth -= ch in ")}"
+            if ch == "," and depth == 1:
+                commas += 1
+        if commas >= 2:
+            return "tolerance of an EXPECT_NEAR widened"
+    if re.search(r"e-%s\b" % re.escape(tok), code) or re.search(r"\d%s\b" % re.escape(tok) + r"(?=[,)])", code) and "e-" in code:
+        return "tolerance exponent"
+    if re.search(r"\b(isStatic|classify|occupancyProb|observations|observeHit|observeMiss|periodicProb)\(\s*%s\s*\)" % re.escape(tok), code):
+        return "cell id: the same cell is asserted on in other lines"
+    if st.startswith("EXPECT_THROW") or st.startswith("EXPECT_NO_THROW"):
+        return "input value: the mutant is still invalid (or still valid), the boundary cases are separate lines"
+    if re.match(r"(EXPECT|ASSERT)_(LE|LT|GE|GT)\(", st):
+        return "one-sided bound moved away from the data: a looser bound passes by design"
+    if "waldOc(" in code and st.startswith("EXPECT_NEAR"):
+        return "Wald identity: OC(m0) = alpha and OC(m1) = 1 - beta do not depend on the other error rate or on the third argument's position"
+    if re.search(r"1\.0 / \(1\.0 \+ std::exp", code) and tok in ("1", "1.0"):
+        return "logistic constant inside the expected value"
+    if "gridCellId" in code or "exp(" in code:
+        return "cell coordinate or exponent inside an expression"
+    return "UNEXPLAINED"
+
+
+def annotate(path_in, path_out):
+    """Classify the survivors of a tests sweep in an existing record, reading the full line from test_sprt.cpp."""
+    src = open(os.path.join(HERE, "..", "..", "..", "strata_core", "test", "test_sprt.cpp")).read().split("\n")
+    out = []
+    for l in open(path_in).read().split("\n"):
+        cells = [c.strip() for c in l.strip().strip("|").split(" | ")]
+        if l.startswith("| line ") and len(cells) >= 4 and cells[2].startswith("survived"):
+            n = int(re.match(r"line (\d+):", cells[0]).group(1))
+            l = "| " + " | ".join([cells[0], cells[1], cells[2] + " (" + survivor_class(cells[0], src[n - 1]) + ")", cells[3]]) + " |"
+        out.append(l)
+    open(path_out, "w").write("\n".join(out))
 
 
 def main():
     ap = argparse.ArgumentParser()
+    ap.add_argument("--annotate", nargs=2, metavar=("IN", "OUT"), help="classify the survivors of a tests sweep in an existing record")
     ap.add_argument("--scratch", default="/tmp/strata_p2_mut")
     ap.add_argument("--out", default=os.path.join(HERE, "results_p2", "mutation_record.md"))
     ap.add_argument("--only", choices=["engine", "defaults", "tests"])
     ap.add_argument("--jobs", type=int, default=4)
     a = ap.parse_args()
+    if a.annotate:
+        annotate(*a.annotate)
+        return
     t0 = time.time()
     setup(a.scratch, a.jobs)
     rows = []
@@ -281,7 +345,9 @@ def main():
             f.write("| mutant | where | result | killed by (first) |\n|---|---|---|---|\n")
             for r in sel:
                 extra = ("; EQUIVALENT: " + r[5]) if (r[3] == "survived" and r[5]) else ""
-                f.write("| %s | %s | %s%s | %s |\n" % (r[1].replace("|", "/"), r[2].replace("|", "/"), r[3], extra, ", ".join(r[4][:3])))
+                if kind == "tests" and r[3] == "survived":
+                    extra = " (" + survivor_class(r[1], r[2]) + ")"
+                f.write("| %s | %s | %s%s | %s |\n" % (r[1].replace("|", "/"), r[2][:100].replace("|", "/"), r[3], extra, ", ".join(r[4][:3])))
             f.write("\n")
     print("wrote", a.out)
 
