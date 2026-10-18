@@ -100,6 +100,14 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
     clean committed tree.
     **Result (2026-10-18, 09:4x):** binary built by `reproduce_p1b.sh build` at 11d90db with a clean tree; `spires-measure` on `r = 0.1`, windows 10 and 20, today and refined: 4 of 4 cell tables
     byte-identical (`cmp`) to the committed run. Output in `/mnt/d/wsl/strata/p1b_rerun/` (not in the repository).
+    **Three more cases (third review, finding 3; Amendment 5 item 3 replaces the count "two" in Amendment 4 item 2).** The chronology above was still incomplete. Exploratory outputs also ran or were written before their script was committed:
+    (a) `explore_gate2d.sh` was first committed in d2e2579 at 07:30:59, but the logs `gate2d_static_0_front_steps0.log` (start 07:30:16) and `gate2d_static_0_rear_steps0.log` (start 07:30:45) are earlier. The review named the first log;
+    the second is earlier than the commit as well. The file time of the script is 07:30:16, so it existed unchanged from the first start on; the other six variants started after the commit (07:31:15 to 07:33:00).
+    (b) `keble_clutter_r0.2_W10_today.txt` was written at 07:45:21; `explore_keble_clutter.py` was first committed in d759627 at 07:52:47.
+    (c) `keble_clutter_height_r0.2_W10_today.txt` was written at 09:38:27; `explore_keble_clutter_height.py` was first committed in d3e08b4 at 09:40:33, in the round that wrote the provenance rule.
+    **Result of the byte-identity check (2026-10-18, after Amendment 5, commit 6dfff2c, clean tree):** a `git archive` copy of 6dfff2c ran both Keble scripts on the committed cell tables: both outputs are byte-identical (`cmp`) to the committed
+    files (the reviewer got the same from a copy of 2807c03). `explore_gate2d.sh` from the same copy, on a binary built by `reproduce_p1b.sh build` from the clean tree at 6dfff2c, reproduced all 8 `.meta` files; they are identical
+    except for the timing fields `seconds` and `peak_rss_kb`. No number is affected. The re-run output is in `/mnt/d/wsl/strata/p1b_rerun_scripts/` (not in the repository). From Amendment 5 on, exploratory scripts run only from committed code.
 25. **Build provenance (finding 3).** `run_manifest.txt` records `commit=43fa004` for the whole phase, but the steps from `equiv_kth_r0.1` on ran on binaries rebuilt at later commits (571acf6, 26f7df0, then the uncommitted tree
     of item 24), and no step log recorded the commit of its binary. Nothing is changed retroactively. From now on `reproduce_p1b.sh` writes `COMMIT` and `TREE_STATUS_PORCELAIN_LINES` into every step log, and the `build`
     stage refuses a tree with uncommitted files outside the results directories (`ALLOW_DIRTY_BUILD=1` overrides and must be disclosed). For P3 the rule is: rebuild only from a clean committed tree.
@@ -110,3 +118,10 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
     unless the directory is inside a git work tree (`skipUnless`); `make_report_p1b.py` still fails loudly there. Checked in a `git archive` copy of 11d90db: 23 tests run, 2 skipped, OK.
 28. **Nits (finding 6).** (a) `laser_optima` now reads only rows with `anchor == start` (test added: an `end` row and a `single` row that would win are ignored); the table in report section 13.1 is unchanged in value.
     (b) `logs/report.log` showed the 08:48 run while the committed report came from about 09:13 without a step log; the report and `PREREG.md` are regenerated through `reproduce_p1b.sh freeze report`, so both logs are current.
+29. **Pair at both interval ends was not printed (third review, finding 1).** `PREREG_P1B.md` section 1 asks for it; no generator did. Now printed by `pair_ends.py`, `freeze_prereg.py` and `make_report_p1b.py` (Amendment 5 item 1).
+    Shipped 2D row (0.05 m, W = 15): point pair (0.20, 0.70); low interval end (0.20, 0.65); high end (0.30, 0.75). The 0.10 m row crosses through `q_c` ([0.2273, 0.3463]): (0.25, 0.70), (0.25, 0.65), (0.35, 0.75). No pair is frozen; the
+    frozen and conditional pair stay the pair of the point estimates. Tests: `PairAtBothEnds` in `test_p1b_analysis.py` (the review's numbers, a non-crossing row, a value on the grid, the freeze text, the report column).
+30. **Clean-tree check did not cover `strata_core` (third review, finding 2).** The check of `reproduce_p1b.sh` looked only at `paper/experiments/realdata`, but the two probes link `strata_core` (built from `../../strata_core`).
+    The `build` stage, the `TREE_STATUS_PORCELAIN_LINES` line of every step log and `run_manifest.txt` now count the whole repository except the two result directories (Amendment 5 item 2). Test: `test_reproduce_tree_check.sh`
+    (registered in CMake as `reproduce_tree_check`); against the earlier script it fails with "dirty strata_core file (expected 1, got 0)". Binaries from before this change were built from trees whose `strata_core` state is not
+    recorded; the steps of this review round (build at 6dfff2c) are the first with the whole-repository check.
