@@ -77,6 +77,8 @@ CPP = [
     ("p3_run.hpp", "o_.seekp(0);", "o_.seekp(1);", "pcd writer: header rewrite"),
     ("p3_run.hpp", "o_.write(reinterpret_cast<const char*>(xyz), 12); ++n_;", "o_.write(reinterpret_cast<const char*>(xyz), 8); ++n_;", "pcd writer: record size"),
     ("p3_run.hpp", "o_.write(reinterpret_cast<const char*>(xyz), 12); ++n_;", "o_.write(reinterpret_cast<const char*>(xyz), 12);", "pcd writer: point count"),
+    ("p3_run.hpp", "const std::string pad(40 - 2 * num.size(), ' ');", "const std::string pad(40 - num.size(), ' ');", "pcd writer: header padding"),
+    ("p3_run.hpp", "const std::string num = std::to_string(n);", "char buf[32]; std::snprintf(buf, sizeof buf, \"%03zu\", n); const std::string num = buf;", "pcd writer: plain decimal count"),
     # ---- KTH exporter
     ("p3_kth.hpp", "if (o.max_frames > 0 && files.size() > o.max_frames) files.resize(o.max_frames);", "if (o.max_frames >= 0 && files.size() > o.max_frames) files.resize(o.max_frames);", "kth: max_frames 0 means all"),
     ("p3_kth.hpp", "if (o.max_frames > 0 && files.size() > o.max_frames) files.resize(o.max_frames);", "if (o.max_frames > 0 && files.size() > o.max_frames) files.resize(o.max_frames - 1);", "kth: max_frames value"),

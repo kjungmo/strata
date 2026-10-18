@@ -146,7 +146,7 @@ inline void writeLabelledDump(const std::string& path, const LabelMap& labels, c
 
 // ------------------------------------------------------------------ streaming PCD output ----------
 
-// Binary PCD with fields x y z (float32), written point by point; the header is rewritten at close().
+// Binary PCD with fields x y z (float32), written point by point; the header is rewritten at close() with the same length.
 class PcdStreamWriter {
  public:
   explicit PcdStreamWriter(const std::string& path) : path_(path), o_(path, std::ios::binary) {
@@ -167,10 +167,12 @@ class PcdStreamWriter {
   }
   ~PcdStreamWriter() { try { close(); } catch (...) {} }
  private:
-  // fixed width so that the header length does not change when the count is known
+  // The header has the same length for every count: the count is written without leading zeros (PCL reads WIDTH and POINTS as
+  // decimal integers) and the padding sits in the first comment line.
   void writeHeader(std::size_t n) {
-    char num[32]; std::snprintf(num, sizeof num, "%020zu", n);
-    o_ << "# .PCD v0.7 - Point Cloud Data file format\nVERSION 0.7\nFIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\nWIDTH " << num
+    const std::string num = std::to_string(n);
+    const std::string pad(40 - 2 * num.size(), ' ');
+    o_ << "# .PCD v0.7 - Point Cloud Data file format" << pad << "\nVERSION 0.7\nFIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\nWIDTH " << num
        << "\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0\nPOINTS " << num << "\nDATA binary\n";
   }
   std::string path_;

@@ -42,8 +42,8 @@ class TestPcd(unittest.TestCase):
         self.assertIsNone(ib)
 
     def test_reads_the_header_written_by_the_cpp_streaming_writer(self):
-        hdr = ("# .PCD v0.7 - Point Cloud Data file format\nVERSION 0.7\nFIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\n"
-               "WIDTH 00000000000000000002\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0\nPOINTS 00000000000000000002\nDATA binary\n")
+        hdr = ("# .PCD v0.7 - Point Cloud Data file format" + " " * 38 + "\nVERSION 0.7\nFIELDS x y z\nSIZE 4 4 4\nTYPE F F F\nCOUNT 1 1 1\n"
+               "WIDTH 2\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0\nPOINTS 2\nDATA binary\n")
         with tempfile.TemporaryDirectory() as d:
             with open(d + "/c.pcd", "wb") as f:
                 f.write(hdr.encode())

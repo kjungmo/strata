@@ -247,6 +247,19 @@ TEST(P3Pcd, StreamWriterRoundTripAndEmpty) {
   ASSERT_EQ(c.xyz.size(), 6u);
   EXPECT_EQ(c.hdr.points, 2u);
   EXPECT_FLOAT_EQ(c.xyz[0], 1.f); EXPECT_FLOAT_EQ(c.xyz[3], -4.5f); EXPECT_FLOAT_EQ(c.xyz[4], 5.25f);
+  // the header is plain decimal and has the same length for every count
+  auto headerOf = [&](std::size_t n) {
+    const std::string pth = tmpPath("h" + std::to_string(n) + ".pcd");
+    { PcdStreamWriter w(pth); const float p[3] = {1.f, 2.f, 3.f}; for (std::size_t i = 0; i < n; ++i) w.add(p); }
+    return readText(pth);
+  };
+  const std::string h0 = headerOf(0), h2 = headerOf(2), h123456 = headerOf(123456 % 1000);
+  const std::size_t len0 = h0.size();                                                // no points: the file is the header
+  EXPECT_EQ(h2.size(), len0 + 24u);
+  EXPECT_EQ(h123456.size(), len0 + 456u * 12u);
+  EXPECT_NE(h2.find("WIDTH 2\n"), std::string::npos); EXPECT_NE(h2.find("POINTS 2\n"), std::string::npos);
+  EXPECT_NE(h123456.find("POINTS 456\n"), std::string::npos);
+  EXPECT_EQ(h2.find("DATA binary\n"), h0.find("DATA binary\n"));                    // the data start at the same offset
   const std::string empty = tmpPath("e.pcd");
   { PcdStreamWriter w(empty); }                                                     // destructor closes
   EXPECT_EQ(readPcd(empty).hdr.points, 0u);
