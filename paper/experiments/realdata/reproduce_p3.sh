@@ -227,7 +227,7 @@ stage_eval_spires() {
   for arm in $(arms_to_run); do
     must step "spires_static_${arm}" -- "$P3" static-export --caches "$OUT/spires_03/cache.bin,$OUT/spires_04/cache.bin,$OUT/spires_05/cache.bin" --arm "$arm" --res 0.2 --window 10 \
       --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}" --meta "$OUT/spires_agree_${arm}.meta"
-    must step "spires_jaccard_${arm}" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_s0_static.ids' '$OUT/spires_agree_${arm}_s1_static.ids' '$OUT/spires_agree_${arm}_s2_static.ids' --observed '$OUT/spires_agree_${arm}_s0_observed.ids' '$OUT/spires_agree_${arm}_s1_observed.ids' '$OUT/spires_agree_${arm}_s2_observed.ids' --res 0.2 >'$RES/spires_agree_${arm}.json'"
+    must step "spires_jaccard_${arm}" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_s0_static.ids' '$OUT/spires_agree_${arm}_s1_static.ids' '$OUT/spires_agree_${arm}_s2_static.ids' --observed '$OUT/spires_agree_${arm}_s0_observed.ids' '$OUT/spires_agree_${arm}_s1_observed.ids' '$OUT/spires_agree_${arm}_s2_observed.ids' --res 0.2 > '$RES/spires_agree_${arm}.json'"
   done
   finish_eval eval_spires "$OUT"/spires_0? "$OUT"/spires_agree_* "$RES"/spires_*.json
 }
@@ -259,29 +259,25 @@ stage_eval_boreas() {
   local ids=(boreas-2020-11-26-13-58 boreas-2021-04-08-12-44 boreas-2021-06-17-17-52) d="$OUT/boreas"; mkdir -p "$d"
   stage_boreas_gate
   local caches=""
-  # pass 1: common frame without a vertical offset; the ground height per 10 m tile gives the offset of each session to the first one
+  # Amendment 3: the common frame is the frame of the files and no vertical offset is applied (z offset 0 for every session; the altitude
+  # columns of the three sessions agree to centimetres, see the gate log). boreas-convert refuses a session whose files do not agree
+  # with the geodetic ENU at the reference origin.
   for id in "${ids[@]}"; do
-    must step "boreas_convert0_$id" --traced -- "$P3" boreas-convert --seq "$DATA/boreas/$id" --ref "$DATA/boreas/${ids[0]}" --r-max 25 --out "$d/cache0_$id.bin" --meta "$d/cache0_$id.meta"
-    must step "boreas_ground_$id" -- "$P3" tile-ground --cache "$d/cache0_$id.bin" --out "$d/ground_$id.csv"
-  done
-  # pass 2: the same conversion with the offset (0 for the reference session)
-  for id in "${ids[@]}"; do
-    local zoff=0
-    if [ "$id" != "${ids[0]}" ]; then zoff="$(python3 -I "$HERE/p3_eval.py" zoffset --a "$d/ground_${ids[0]}.csv" --b "$d/ground_$id.csv" --field median)"; fi
-    python3 -I "$HERE/p3_eval.py" zoffset --a "$d/ground_${ids[0]}.csv" --b "$d/ground_$id.csv" > "$RES/boreas_zoffset_$id.json"
-    echo "$id $zoff" >> "$RES/boreas_zoffsets_used.txt"
-    must step "boreas_convert_$id" --traced -- "$P3" boreas-convert --seq "$DATA/boreas/$id" --ref "$DATA/boreas/${ids[0]}" --r-max 25 --out "$d/cache_$id.bin" --meta "$d/cache_$id.meta" --z-offset "$zoff"
+    must step "boreas_convert_$id" --traced -- "$P3" boreas-convert --seq "$DATA/boreas/$id" --ref "$DATA/boreas/${ids[0]}" --r-max 25 --out "$d/cache_$id.bin" --meta "$d/cache_$id.meta" --z-offset 0
     caches="${caches:+$caches,}$d/cache_$id.bin"
+    # diagnostic only: the ground height per 10 m tile, compared with the reference session; reported, never applied
+    must step "boreas_ground_$id" -- "$P3" tile-ground --cache "$d/cache_$id.bin" --out "$d/ground_$id.csv"
+    if [ "$id" != "${ids[0]}" ]; then python3 -I "$HERE/p3_eval.py" zoffset --a "$d/ground_${ids[0]}.csv" --b "$d/ground_$id.csv" > "$RES/boreas_ground_diagnostic_$id.json"; fi
   done
   for arm in $(arms_to_run); do
     for mode in independent cumulative; do
       must step "boreas_static_${arm}_$mode" -- "$P3" static-export --caches "$caches" --arm "$arm" --res 0.2 --window 10 --periodicity 0 --mode "$mode" \
         --out-prefix "$d/${arm}_$mode" --meta "$d/${arm}_$mode.meta"
     done
-    must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --observed '$d/${arm}_independent_s0_observed.ids' '$d/${arm}_independent_s1_observed.ids' '$d/${arm}_independent_s2_observed.ids' --res 0.2 >'$RES/boreas_${arm}_independent.json'"
+    must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --observed '$d/${arm}_independent_s0_observed.ids' '$d/${arm}_independent_s1_observed.ids' '$d/${arm}_independent_s2_observed.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
     must step "boreas_newstatic_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' newstatic --cum '$d/${arm}_cumulative_s2_static.ids' --ind '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' > '$RES/boreas_${arm}_newstatic.json'"
   done
-  finish_eval eval_boreas "$d" "$RES"/boreas_*.json "$RES"/boreas_zoffsets_used.txt
+  finish_eval eval_boreas "$d" "$RES"/boreas_*.json
 }
 
 # test of finish_eval on the outputs of the calibration smoke tests
