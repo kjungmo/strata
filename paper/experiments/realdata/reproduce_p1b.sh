@@ -22,6 +22,9 @@ SEQ="$KEBLE/sequences/2024-03-12-keble-college-02"
 mkdir -p "$RES/logs" "$RES/meta" "$OUT"
 
 stamp() { date -Is; }
+# Uncommitted files that can change a binary: the whole repository (p1b_probe and hitrate_probe link strata_core, built from
+# ../../strata_core by paper/experiments/CMakeLists.txt), except the two result directories that the stages write into.
+tree_dirty() { git -C "$HERE" status --porcelain -- ':(top)' ':(top,exclude)paper/experiments/realdata/results_p1b' ':(top,exclude)paper/experiments/realdata/results_p1' | wc -l; }
 scrub() {
   local s="$1"
   s="${s//$OUT/<OUT_DIR>}"; s="${s//$P1/<DATA_ROOT>/p1}"; s="${s//$DATA/<DATA_ROOT>}"; s="${s//$BUILD/<BUILD_DIR>}"
@@ -34,7 +37,7 @@ step() {   # step NAME cmd...: logs start, end, load, return code; stops the scr
   local log="$RES/logs/$name.log"
   { echo "STEP $name"; echo "START $(stamp) host=$(hostname) load=$(cut -d' ' -f1-3 /proc/loadavg) cores=$(nproc)";
     echo "COMMIT $(git -C "$HERE" rev-parse HEAD)"
-    echo "TREE_STATUS_PORCELAIN_LINES $(git -C "$HERE" status --porcelain | wc -l) (outside results: $(git -C "$HERE" status --porcelain -- . ':(exclude)results_p1b' ':(exclude)results_p1' | wc -l))"
+    echo "TREE_STATUS_PORCELAIN_LINES $(git -C "$HERE" status --porcelain | wc -l) (whole repository outside the result directories: $(tree_dirty))"
     echo "CMD $(scrub "$*")"; } > "$log"
   ( ulimit -v "${MEM_LIMIT_KB:-6000000}"; exec nice -n 19 "$@" ) 2>&1 | sed "s|$HOME|~|g; s|$OUT|<OUT_DIR>|g" >> "$log"
   local rc=${PIPESTATUS[0]}
@@ -45,9 +48,9 @@ step() {   # step NAME cmd...: logs start, end, load, return code; stops the scr
 keepmeta() { cp "$@" "$RES/meta/"; }
 
 stage_build() {   # builds only from a clean committed tree, so the commit in every step log is the commit of the binary
-  local dirty; dirty="$(git -C "$HERE" status --porcelain -- . ':(exclude)results_p1b' ':(exclude)results_p1' | wc -l)"
+  local dirty; dirty="$(tree_dirty)"
   if [ "$dirty" != "0" ] && [ "${ALLOW_DIRTY_BUILD:-0}" != "1" ]; then
-    echo "refusing to build: $dirty uncommitted file(s) outside the results directories (commit first; ALLOW_DIRTY_BUILD=1 overrides and must be disclosed)"; exit 3
+    echo "refusing to build: $dirty uncommitted file(s) in the repository outside the result directories (commit first; ALLOW_DIRTY_BUILD=1 overrides and must be disclosed)"; exit 3
   fi
   step build_configure cmake -S "$HERE/.." -B "$BUILD" -DCMAKE_BUILD_TYPE=Release
   step build_make cmake --build "$BUILD" -j4 --target hitrate_probe p1b_probe
@@ -56,7 +59,7 @@ stage_build() {   # builds only from a clean committed tree, so the commit in ev
 stage_check() {
   {
     echo "commit=$(git -C "$HERE" rev-parse HEAD)"
-    echo "tree_dirty_files_outside_results=$(git -C "$HERE" status --porcelain -- . ':(exclude)results_p1b' ':(exclude)results_p1' | wc -l)"
+    echo "tree_dirty_files_outside_results=$(tree_dirty)"
     echo "host=$(hostname)"; echo "kernel=$(uname -r)"; echo "cores=$(nproc)"
     echo "cpu=$(grep -m1 'model name' /proc/cpuinfo | cut -d: -f2- | sed 's/^ //')"
     echo "loadavg=$(cat /proc/loadavg)"; echo "mem_available_kb=$(grep MemAvailable /proc/meminfo | tr -s ' ' | cut -d' ' -f2)"

@@ -11,6 +11,9 @@ import os
 import subprocess
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import pair_ends  # noqa: E402
+
 
 def load(path):
     if not os.path.exists(path):
@@ -87,14 +90,17 @@ def gap_table(rows, dataset, extra_filter=None, n_min="5"):
             continue
         if extra_filter and not extra_filter(r):
             continue
+        r = dict(r)
+        # PREREG_P1B.md section 1: a row with a rounded pair states the pair at both interval ends
+        r["pair_ends"] = pair_ends.cell(r) if r.get("m0_rounded", "n/a") not in ("n/a", "") else "n/a"
         out.append(r)
     return out
 
 
 GAP_COLS = ["res_m", "W", "miss", "pair", "n_structure", "n_clutter", "q_s_p10", "q_c_p90", "gap", "gap_ci95_block_lo", "gap_ci95_block_hi",
-            "q_s_ci95_block_lo", "q_s_ci95_block_hi", "q_c_ci95_block_lo", "q_c_ci95_block_hi", "gap_ge_0.15", "m0_rounded", "m1_rounded"]
+            "q_s_ci95_block_lo", "q_s_ci95_block_hi", "q_c_ci95_block_lo", "q_c_ci95_block_hi", "gap_ge_0.15", "m0_rounded", "m1_rounded", "pair_ends"]
 GAP_HEADS = ["res", "W", "miss", "pair", "N struct", "N clutter", "q_s", "q_c", "gap", "gap CI lo", "gap CI hi", "q_s CI lo", "q_s CI hi",
-             "q_c CI lo", "q_c CI hi", "gap>=0.15", "m0", "m1"]
+             "q_c CI lo", "q_c CI hi", "gap>=0.15", "m0", "m1", "pair at interval ends (low / high)"]
 
 
 def main(argv=None):

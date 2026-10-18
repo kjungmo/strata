@@ -31,5 +31,7 @@ add_test(NAME no_data_staged_selftest
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_no_data_staged.sh --selftest)
 add_test(NAME check_realdata_script
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_check_realdata.sh)
+add_test(NAME reproduce_tree_check
+         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_reproduce_tree_check.sh)
 add_test(NAME analysis_unit_tests
          COMMAND python3 -I -m unittest discover -s ${CMAKE_CURRENT_SOURCE_DIR} -p "test_*.py")

@@ -402,5 +402,77 @@ class GapRows(unittest.TestCase):
         self.assertTrue(all(len(r) == len(ab.HEAD_GAP_B) for r in tables2["gap"]))
 
 
+def shipped_row(qs=0.7130, qs_lo=0.6730, qs_hi=0.7500, qc=0.1725, qc_lo=0.1628, qc_hi=0.2727, gap=0.5404):
+    r = gap_row("lil", "0.05", 15, "-", "structure@static_0_vs_clutter@dynamics_0", gap, qs, qc)
+    r.update({"q_s_ci95_block_lo": "%.4f" % qs_lo, "q_s_ci95_block_hi": "%.4f" % qs_hi,
+              "q_c_ci95_block_lo": "%.4f" % qc_lo, "q_c_ci95_block_hi": "%.4f" % qc_hi})
+    return r
+
+
+class PairAtBothEnds(unittest.TestCase):
+    """PREREG_P1B.md section 1: if an interval crosses a rounding boundary, the report states the pair at both ends."""
+
+    def test_shipped_2d_row_gives_the_pairs_of_the_review(self):
+        import pair_ends as pe
+        e = pe.ends(shipped_row())
+        self.assertEqual(e["point"], (0.20, 0.70))
+        self.assertEqual(e["low"], (0.20, 0.65))
+        self.assertEqual(e["high"], (0.30, 0.75))
+        self.assertTrue(e["crosses"])
+
+    def test_the_010_row_crosses_through_q_c(self):
+        import pair_ends as pe
+        e = pe.ends(shipped_row(qs=0.7222, qs_lo=0.6818, qs_hi=0.7565, qc=0.2381, qc_lo=0.2273, qc_hi=0.3463))
+        self.assertEqual(e["point"], (0.25, 0.70))
+        self.assertEqual(e["low"], (0.25, 0.65))
+        self.assertEqual(e["high"], (0.35, 0.75))
+
+    def test_no_text_when_the_interval_stays_in_one_rounding_cell(self):
+        import pair_ends as pe
+        r = shipped_row(qs=0.72, qs_lo=0.705, qs_hi=0.745, qc=0.16, qc_lo=0.155, qc_hi=0.195)
+        self.assertFalse(pe.ends(r)["crosses"])
+        self.assertEqual(pe.sentence(r), "")
+        self.assertEqual(pe.cell(r), "same")
+        self.assertEqual(pe.cell({"q_s_p10": "nan"}), "-")
+
+    def test_a_value_on_the_grid_does_not_count_as_crossing(self):
+        import pair_ends as pe
+        r = shipped_row(qs=0.70, qs_lo=0.70, qs_hi=0.70, qc=0.20, qc_lo=0.20, qc_hi=0.20)
+        self.assertFalse(pe.ends(r)["crosses"])
+
+    def test_freeze_text_prints_both_ends_for_conditional_and_frozen_values(self):
+        row = shipped_row()
+        bad = [gate("lil_mapping", ok1=False), gate("lil_static_0"), gate("lil_dynamics_0"), gate("keble02", ok1=False)]
+        two = fp.decide_2d([row], bad)
+        three = fp.decide_3d([], bad, GOOD_OFFSET, {}, EQUIV_OK, two)
+        text = fp.render(two, three, "abc", {})
+        self.assertIn("NOT A FREEZE", text)
+        self.assertIn("(0.20, 0.65)", text)
+        self.assertIn("(0.30, 0.75)", text)
+        ok = [gate("lil_mapping"), gate("lil_static_0"), gate("lil_dynamics_0"), gate("keble02")]
+        two_f = fp.decide_2d([row], ok)
+        self.assertEqual(two_f["status"], "FROZEN")
+        self.assertEqual((two_f["m0"], two_f["m1"]), (0.20, 0.70))        # the frozen pair does not change
+        text_f = fp.render(two_f, fp.decide_3d([], ok, GOOD_OFFSET, {}, EQUIV_OK, two_f), "abc", {})
+        self.assertIn("(0.30, 0.75)", text_f)
+
+    def test_freeze_text_has_no_both_ends_line_without_a_crossing(self):
+        row = shipped_row(qs=0.72, qs_lo=0.705, qs_hi=0.745, qc=0.16, qc_lo=0.155, qc_hi=0.195)
+        bad = [gate("lil_mapping", ok1=False), gate("lil_static_0"), gate("lil_dynamics_0"), gate("keble02", ok1=False)]
+        two = fp.decide_2d([row], bad)
+        text = fp.render(two, fp.decide_3d([], bad, GOOD_OFFSET, {}, EQUIV_OK, two), "abc", {})
+        self.assertNotIn("both ends are stated", text)
+
+    def test_report_table_has_the_pair_at_both_ends(self):
+        import make_report_p1b as mr
+        r = shipped_row()
+        r.update({"dataset": "lil", "N_min": "5", "m0_rounded": "0.20", "m1_rounded": "0.70"})
+        n = dict(r, m0_rounded="n/a", m1_rounded="n/a")
+        out = mr.gap_table([r, n], "lil")
+        self.assertEqual(out[0]["pair_ends"], "(0.20, 0.65) / (0.30, 0.75)")
+        self.assertEqual(out[1]["pair_ends"], "n/a")
+        self.assertIn("(0.20, 0.65) / (0.30, 0.75)", mr.table(out, mr.GAP_COLS, mr.GAP_HEADS))
+
+
 if __name__ == "__main__":
     unittest.main()

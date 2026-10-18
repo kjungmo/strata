@@ -15,6 +15,7 @@ import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import derive_defaults as dd  # noqa: E402
+import pair_ends as pe  # noqa: E402
 
 ALPHA = BETA = 0.01
 GAP_RULE = 0.15
@@ -98,10 +99,12 @@ def decide_2d(gap_rows, gates):
         out["reasons"] = reasons
         if r is not None and not math.isnan(num(r["gap"])) and num(r["gap"]) >= GAP_RULE:
             out["conditional"] = freeze_values(*pair_from_row(r))      # what the rounding rule gives; NOT a freeze
+            out["conditional"]["ends"] = pe.sentence(r)
         return out
     m0, m1 = pair_from_row(r)
     out.update(status="FROZEN", reasons=[])
     out.update(freeze_values(m0, m1))
+    out["ends"] = pe.sentence(r)
     return out
 
 
@@ -133,20 +136,24 @@ def decide_3d(gap_rows, gates, offset_meta, convert_meta, equivalence_text, two_
     if valid and gt >= GAP_RULE:
         out.update(branch="T", status="FROZEN", miss_definition="today (the engine's half-voxel march, every sample is a miss)")
         out.update(freeze_values(*pair_from_row(today)))
+        out["ends"] = pe.sentence(today)
         out["source_row"] = today
     elif valid and gr >= GAP_RULE:
         out.update(branch="R", status="FROZEN", miss_definition="refined (no pass-through miss within one voxel of the endpoint along the ray); a backend change")
         out.update(freeze_values(*pair_from_row(refined)))
+        out["ends"] = pe.sentence(refined)
         out["source_row"] = refined
     else:
         out.update(branch="F", miss_definition="today")
         if gt >= GAP_RULE:
             out["conditional_branch"] = "T"
             out["conditional"] = freeze_values(*pair_from_row(today))
+            out["conditional"]["ends"] = pe.sentence(today)
             out["conditional_miss_definition"] = "today"
         elif gr >= GAP_RULE:
             out["conditional_branch"] = "R"
             out["conditional"] = freeze_values(*pair_from_row(refined))
+            out["conditional"]["ends"] = pe.sentence(refined)
             out["conditional_miss_definition"] = "refined"
         why = [c for c, p, _ in checks if not p]
         if not (gt >= GAP_RULE) and not (gr >= GAP_RULE):
@@ -228,6 +235,9 @@ def render(two_d, three_d, commit, inputs):
             L.append("|---|---|---|---|---|---|---|---|---|---|")
             L.append("| %.2f | %.2f | %.2f | %.4f | %.4f | %.4f | %.4f | %d | %d | %.4f |" % (c["m0"], c["m1"], c["alpha"], c["A"], c["l_hit"], c["l_miss"], c["ceiling"], c["n_max_undecided"], c["latency_all_hit"], c["mstar"]))
             L.append("")
+            if c.get("ends"):
+                L.append("The interval crosses a rounding boundary (`PREREG_P1B.md` section 1), so both ends are stated: %s." % c["ends"])
+                L.append("")
         if "m0" in d:
             src = d.get("source_row") or d.get("gap_row")
             L.append("| quantity | value |")
@@ -247,6 +257,8 @@ def render(two_d, three_d, commit, inputs):
             L.append("| miss definition | %s |" % d["miss_definition"])
             if src:
                 L.append("| source row | %s |" % row_line(src))
+            if d.get("ends"):
+                L.append("| interval crosses a rounding boundary (`PREREG_P1B.md` section 1; the frozen pair does not change) | %s |" % d["ends"])
             L.append("")
     L.append("## Inputs (sha256)")
     L.append("")
