@@ -388,7 +388,12 @@ def cmd_lil(args):
 
 # --------------------------------------------------------------------------- Spires, Boreas ------
 
-def spires_metrics(counts_csv, latency_csv=None, structure_labels=(3,), clutter_label=1):
+SPIRES_STRUCTURE_LABELS = (3, 2)     # PREREG_P3.md section 7.2: non-ground structure (3) and, separately, ground (2)
+
+
+def spires_metrics(counts_csv, latency_csv=None, structure_labels=SPIRES_STRUCTURE_LABELS, clutter_label=1):
+    """Spires rates from a counts table (label, eligible, verdict, count) and the optional latency table (label, windows_to_static, count).
+    One block per structure label, each with its own false-reject rate, undecided share and windows to first Static."""
     with open(counts_csv) as f:
         rows = list(csv.DictReader(f))
     c = {}
@@ -397,6 +402,13 @@ def spires_metrics(counts_csv, latency_csv=None, structure_labels=(3,), clutter_
 
     def tot(label, elig=1):
         return sum(v for (l, e, _), v in c.items() if l == label and e == elig)
+
+    lat = {lab: [] for lab in structure_labels}
+    if latency_csv:
+        with open(latency_csv) as f:
+            for r in csv.DictReader(f):
+                if int(r["label"]) in lat:
+                    lat[int(r["label"])] += [int(r["windows_to_static"])] * int(r["count"])
 
     out = {}
     nc = tot(clutter_label)
@@ -407,16 +419,13 @@ def spires_metrics(counts_csv, latency_csv=None, structure_labels=(3,), clutter_
         kr = c.get((lab, 1, "rejected"), 0)
         ku = c.get((lab, 1, "undecided"), 0)
         ks = c.get((lab, 1, "static"), 0)
-        out[f"structure_label_{lab}"] = {"n": ns, "rejected": kr, "undecided": ku, "static": ks,
-                                         "false_reject_rate": (kr / ns if ns else float("nan")), "wilson95": list(wilson(kr, ns)),
-                                         "undecided_share": (ku / ns if ns else float("nan"))}
-    if latency_csv:
-        w = []
-        with open(latency_csv) as f:
-            for r in csv.DictReader(f):
-                if int(r["label"]) in structure_labels:
-                    w += [int(r["windows_to_static"])] * int(r["count"])
-        out["structure_windows_to_first_static"] = {"n": len(w), "p50": pct(w, 50), "p90": pct(w, 90)}
+        blk = {"n": ns, "rejected": kr, "undecided": ku, "static": ks,
+               "false_reject_rate": (kr / ns if ns else float("nan")), "wilson95": list(wilson(kr, ns)),
+               "undecided_share": (ku / ns if ns else float("nan"))}
+        if latency_csv:
+            w = lat[lab]
+            blk["windows_to_first_static"] = {"n": len(w), "p50": pct(w, 50), "p90": pct(w, 90)}
+        out[f"structure_label_{lab}"] = blk
     return out
 
 
@@ -440,18 +449,47 @@ def tiles_of_ids(ids, res, tile_m=TILE_M):
     return (np.floor_divide(ix, t) + 4096) * 8192 + (np.floor_divide(iy, t) + 4096)
 
 
+def _in_tiles(ids, res, tiles, tile_m=TILE_M):
+    ids = np.unique(np.asarray(ids, dtype=np.int64))
+    return ids[np.isin(tiles_of_ids(ids, res, tile_m), tiles)]
+
+
 def jaccard_in_shared_tiles(a, b, res, all_a=None, all_b=None, tile_m=TILE_M):
-    """Jaccard of two Static voxel sets inside the tiles where BOTH sessions have observed anything (all_a, all_b: the tiles of the
-    observed voxels; default the tiles of the sets themselves)."""
+    """Jaccard of two Static voxel sets inside the tiles where BOTH sessions have observed anything (all_a, all_b: the observed voxels
+    of each session; default the sets themselves, which is NOT the pre-registered rule: tiles without a Static voxel drop out)."""
     ta = np.unique(tiles_of_ids(all_a if all_a is not None else a, res, tile_m))
     tb = np.unique(tiles_of_ids(all_b if all_b is not None else b, res, tile_m))
     shared = np.intersect1d(ta, tb, assume_unique=True)
-    a = np.asarray(a, dtype=np.int64)
-    b = np.asarray(b, dtype=np.int64)
-    ka = a[np.isin(tiles_of_ids(a, res, tile_m), shared)]
-    kb = b[np.isin(tiles_of_ids(b, res, tile_m), shared)]
-    out = jaccard(ka, kb)
+    out = jaccard(_in_tiles(a, res, shared, tile_m), _in_tiles(b, res, shared, tile_m))
     out["shared_tiles"] = int(shared.size)
+    return out
+
+
+def jaccard_over_sessions(static_sets, observed_sets, res, tile_m=TILE_M):
+    """Pairwise Jaccard of the Static sets of several sessions, inside the tiles that ALL sessions observed (PREREG_P3.md sections 7.2 and
+    8.3, as amended). observed_sets[i] holds every voxel the map of session i held (Static or not), so a tile in which one session has no
+    Static voxel still counts as shared. Each pair also carries `pairwise_tiles`: the Jaccard inside the tiles that only the two
+    sessions of the pair observed (secondary). A Static set must lie inside its observed set."""
+    if len(static_sets) != len(observed_sets) or len(static_sets) < 2:
+        raise ValueError("need the same number (at least two) of Static sets and observed sets")
+    static_sets = [np.unique(np.asarray(x, dtype=np.int64)) for x in static_sets]
+    observed_sets = [np.unique(np.asarray(x, dtype=np.int64)) for x in observed_sets]
+    for i, (s_, o_) in enumerate(zip(static_sets, observed_sets)):
+        if np.setdiff1d(s_, o_, assume_unique=True).size:
+            raise ValueError("session %d: the Static set is not inside the observed set" % i)
+    tiles = [np.unique(tiles_of_ids(o_, res, tile_m)) for o_ in observed_sets]
+    shared = tiles[0]
+    for t in tiles[1:]:
+        shared = np.intersect1d(shared, t, assume_unique=True)
+    out = []
+    for i in range(len(static_sets)):
+        for j in range(i + 1, len(static_sets)):
+            r = jaccard(_in_tiles(static_sets[i], res, shared, tile_m), _in_tiles(static_sets[j], res, shared, tile_m))
+            r["shared_tiles"] = int(shared.size)
+            r["scope"] = "tiles observed by all %d sessions" % len(static_sets)
+            r["pairwise_tiles"] = jaccard_in_shared_tiles(static_sets[i], static_sets[j], res, observed_sets[i], observed_sets[j], tile_m)
+            r["session_a"], r["session_b"] = i, j
+            out.append(r)
     return out
 
 
@@ -494,18 +532,22 @@ def cmd_zoffset(args):
 
 
 def cmd_spires(args):
-    print(json.dumps(spires_metrics(args.counts, args.latency), indent=1, sort_keys=True))
+    labels = tuple(int(x) for x in args.structure_labels.split(","))
+    print(json.dumps(spires_metrics(args.counts, args.latency, labels), indent=1, sort_keys=True))
     return 0
 
 
 def cmd_jaccard(args):
-    sets = [np.fromfile(p, dtype="<i8") for p in args.ids]
-    out = []
-    for i in range(len(sets)):
-        for j in range(i + 1, len(sets)):
-            r = jaccard_in_shared_tiles(sets[i], sets[j], args.res)
-            r.update({"a": args.ids[i], "b": args.ids[j]})
-            out.append(r)
+    if len(args.observed) != len(args.ids):
+        print("jaccard: --observed needs one file per --ids file (the voxels each session held, Static or not)", file=sys.stderr)
+        return 2
+    try:
+        out = jaccard_over_sessions([np.fromfile(p, dtype="<i8") for p in args.ids], [np.fromfile(p, dtype="<i8") for p in args.observed], args.res)
+    except ValueError as e:
+        print("jaccard: %s" % e, file=sys.stderr)
+        return 2
+    for r in out:
+        r["a"], r["b"] = args.ids[r["session_a"]], args.ids[r["session_b"]]
     print(json.dumps(out, indent=1, sort_keys=True))
     return 0
 
@@ -516,10 +558,10 @@ def main(argv=None):
     p = sub.add_parser("kth"); p.add_argument("--gt", required=True); p.add_argument("--map", required=True); p.add_argument("--tol", type=float, default=0.05); p.set_defaults(fn=cmd_kth)
     p = sub.add_parser("kth-selfcheck"); p.add_argument("--gt", required=True); p.add_argument("--tol", type=float, default=0.05); p.set_defaults(fn=cmd_kth_selfcheck)
     p = sub.add_parser("lil"); p.add_argument("--dump", required=True); p.add_argument("--res", type=float, required=True); p.add_argument("--origin", type=float, default=-30.0); p.add_argument("--nmin", type=int, default=5); p.set_defaults(fn=cmd_lil)
-    p = sub.add_parser("spires"); p.add_argument("--counts", required=True); p.add_argument("--latency"); p.set_defaults(fn=cmd_spires)
+    p = sub.add_parser("spires"); p.add_argument("--counts", required=True); p.add_argument("--latency"); p.add_argument("--structure-labels", default="3,2"); p.set_defaults(fn=cmd_spires)
     p = sub.add_parser("newstatic"); p.add_argument("--cum", required=True); p.add_argument("--ind", nargs="+", required=True); p.set_defaults(fn=cmd_newstatic)
     p = sub.add_parser("zoffset"); p.add_argument("--a", required=True); p.add_argument("--b", required=True); p.add_argument("--min-count", type=int, default=500); p.add_argument("--field", choices=("tiles", "median", "p10", "p90")); p.set_defaults(fn=cmd_zoffset)
-    p = sub.add_parser("jaccard"); p.add_argument("--ids", nargs="+", required=True); p.add_argument("--res", type=float, required=True); p.set_defaults(fn=cmd_jaccard)
+    p = sub.add_parser("jaccard"); p.add_argument("--ids", nargs="+", required=True); p.add_argument("--observed", nargs="+", required=True); p.add_argument("--res", type=float, required=True); p.set_defaults(fn=cmd_jaccard)
     args = ap.parse_args(argv)
     return args.fn(args)
 

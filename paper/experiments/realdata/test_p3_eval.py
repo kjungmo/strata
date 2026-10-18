@@ -388,9 +388,10 @@ class TestSpiresAndBoreas(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             with open(d + "/c.csv", "w") as f:
                 f.write("label,eligible,verdict,count\n1,1,static,30\n1,1,undecided,10\n1,1,rejected,60\n1,0,static,999\n"
-                        "3,1,static,700\n3,1,undecided,200\n3,1,rejected,100\n3,0,rejected,5\n2,1,static,10\n")
+                        "3,1,static,700\n3,1,undecided,200\n3,1,rejected,100\n3,0,rejected,5\n"
+                        "2,1,static,600\n2,1,undecided,50\n2,1,rejected,350\n2,0,static,7\n")
             with open(d + "/c.csv.latency", "w") as f:
-                f.write("label,windows_to_static,count\n3,4,500\n3,6,200\n1,5,30\n")
+                f.write("label,windows_to_static,count\n3,4,500\n3,6,200\n1,5,30\n2,3,100\n2,9,500\n")
             m = ev.spires_metrics(d + "/c.csv", d + "/c.csv.latency")
         c = m["false_static_on_clutter"]
         self.assertEqual((c["k"], c["n"]), (30, 100))                     # ineligible cells are excluded
@@ -398,9 +399,23 @@ class TestSpiresAndBoreas(unittest.TestCase):
         self.assertEqual((s["n"], s["rejected"], s["undecided"], s["static"]), (1000, 100, 200, 700))
         self.assertAlmostEqual(s["false_reject_rate"], 0.1)
         self.assertAlmostEqual(s["undecided_share"], 0.2)
-        self.assertEqual(m["structure_windows_to_first_static"]["n"], 700)
-        self.assertEqual(m["structure_windows_to_first_static"]["p50"], 4.0)
-        self.assertEqual(m["structure_windows_to_first_static"]["p90"], 6.0)
+        self.assertEqual(s["windows_to_first_static"], {"n": 700, "p50": 4.0, "p90": 6.0})
+        # ground (label 2) is a block of its own, with its own rates and its own latency (PREREG_P3.md section 7.2)
+        g = m["structure_label_2"]
+        self.assertEqual((g["n"], g["rejected"], g["undecided"], g["static"]), (1000, 350, 50, 600))
+        self.assertAlmostEqual(g["false_reject_rate"], 0.35)
+        self.assertAlmostEqual(g["undecided_share"], 0.05)
+        self.assertEqual(g["windows_to_first_static"], {"n": 600, "p50": 9.0, "p90": 9.0})
+        self.assertNotIn("structure_windows_to_first_static", m)
+        # a label that is asked for but absent gives an empty block, not a crash; a label not asked for gives no block
+        with tempfile.TemporaryDirectory() as d:
+            with open(d + "/c.csv", "w") as f:
+                f.write("label,eligible,verdict,count\n1,1,static,1\n3,1,static,9\n")
+            m2 = ev.spires_metrics(d + "/c.csv")
+            self.assertEqual(m2["structure_label_2"]["n"], 0)
+            self.assertTrue(math.isnan(m2["structure_label_2"]["false_reject_rate"]))
+            self.assertNotIn("windows_to_first_static", m2["structure_label_3"])
+            self.assertNotIn("structure_label_2", ev.spires_metrics(d + "/c.csv", structure_labels=(3,)))
 
     def test_voxel_id_decoding_matches_the_engine_packing(self):
         def pack(ix, iy, iz):
@@ -433,6 +448,52 @@ class TestSpiresAndBoreas(unittest.TestCase):
         r2 = ev.jaccard_in_shared_tiles(np.array(a), np.array(b), res, all_b=obs_b)
         self.assertEqual(r2["shared_tiles"], 2)
         self.assertLess(r2["jaccard"], r["jaccard"])
+
+    def test_jaccard_over_sessions_uses_the_tiles_all_sessions_observed(self):
+        def pack(ix, iy, iz):
+            off = 1 << 20
+            return ((ix + off) << 42) | ((iy + off) << 21) | (iz + off)
+        res = 0.2                                                          # 10 m tile = 50 voxels; tile k holds ix in [50k, 50k+49]
+        t = lambda k, n: [pack(50 * k + i, 0, 0) for i in range(n)]
+        # tiles 0, 1, 2. Session A: Static in 0 (10 voxels), 1 (10), observes 2 without a Static voxel.
+        # Session B: Static in 0 (5 of A's 10), observes 1 without Static voxels, Static in 2 (10).
+        # Session C: Static in 0 (10), 1 (10), 2 (10).
+        sa, sb, sc = t(0, 10) + t(1, 10), t(0, 5) + t(2, 10), t(0, 10) + t(1, 10) + t(2, 10)
+        oa = sa + t(2, 20)
+        ob = sb + t(1, 20)
+        oc = list(sc)
+        out = ev.jaccard_over_sessions([sa, sb, sc], [oa, ob, oc], res)
+        self.assertEqual(len(out), 3)
+        by = {(r["session_a"], r["session_b"]): r for r in out}
+        for r in out:
+            self.assertEqual(r["shared_tiles"], 3)                      # all three tiles are observed by all sessions
+        # A vs B in the three tiles: A = 20 Static, B = 15 Static, common = 5 (tile 0), union = 30
+        self.assertEqual((by[(0, 1)]["intersection"], by[(0, 1)]["union"]), (5, 30))
+        # the old reading (tiles of the Static sets only): A and B share tile 0 only -> 5 / 10
+        old = ev.jaccard_in_shared_tiles(np.array(sa), np.array(sb), res)
+        self.assertEqual(old["shared_tiles"], 1)
+        self.assertAlmostEqual(old["jaccard"], 5 / 10)
+        self.assertLess(by[(0, 1)]["jaccard"], old["jaccard"])          # dropping tiles without a Static voxel biased the Jaccard upward
+        # pairwise secondary block uses the tiles of the pair only
+        self.assertEqual(by[(0, 1)]["pairwise_tiles"]["shared_tiles"], 3)
+        # a tile that one session never observed is outside for every pair, also for the pair that both observed
+        out2 = ev.jaccard_over_sessions([sa, sb, t(0, 10)], [oa, ob, t(0, 10)], res)
+        by2 = {(r["session_a"], r["session_b"]): r for r in out2}
+        self.assertEqual(by2[(0, 1)]["shared_tiles"], 1)
+        self.assertEqual(by2[(0, 1)]["pairwise_tiles"]["shared_tiles"], 3)
+        self.assertAlmostEqual(by2[(0, 1)]["jaccard"], 5 / 10)
+        self.assertNotEqual(by2[(0, 1)]["jaccard"], by2[(0, 1)]["pairwise_tiles"]["jaccard"])
+        # errors: counts differ, one session, a Static set outside its observed set
+        with self.assertRaises(ValueError):
+            ev.jaccard_over_sessions([sa, sb], [oa], res)
+        with self.assertRaises(ValueError):
+            ev.jaccard_over_sessions([sa], [oa], res)
+        with self.assertRaises(ValueError):
+            ev.jaccard_over_sessions([sa, sb], [oa, t(1, 20)], res)
+        # nothing shared: empty sets give NaN, zero shared tiles
+        nothing = ev.jaccard_over_sessions([t(0, 3), t(5, 3)], [t(0, 3), t(5, 3)], res)[0]
+        self.assertEqual(nothing["shared_tiles"], 0)
+        self.assertTrue(math.isnan(nothing["jaccard"]))
 
     def test_new_static_counts_cells_that_need_more_than_one_session(self):
         r = ev.new_static([1, 2, 3, 4, 5], [[1, 2], [2, 9], [4]])
@@ -476,14 +537,35 @@ class TestSpiresAndBoreas(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             np.array([pack(i, 0, 0) for i in range(0, 40)], dtype="<i8").tofile(d + "/a.ids")
             np.array([pack(i, 0, 0) for i in range(20, 60)], dtype="<i8").tofile(d + "/b.ids")
-            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "jaccard", "--ids", d + "/a.ids", d + "/b.ids", "--res", "0.2"], capture_output=True, text=True)
+            np.array([pack(i, 0, 0) for i in range(0, 120)], dtype="<i8").tofile(d + "/a_obs.ids")           # tiles 0, 1, 2
+            np.array([pack(i, 0, 0) for i in range(20, 120)], dtype="<i8").tofile(d + "/b_obs.ids")
+            prog = [sys.executable, "-I", os.path.join(HERE, "p3_eval.py")]
+            run = subprocess.run(prog + ["jaccard", "--ids", d + "/a.ids", d + "/b.ids", "--observed", d + "/a_obs.ids", d + "/b_obs.ids", "--res", "0.2"], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertAlmostEqual(json.loads(run.stdout)[0]["jaccard"], 20 / 50)      # inside the one shared tile: 20 common of 50
+            r = json.loads(run.stdout)[0]
+            self.assertEqual(r["shared_tiles"], 3)                                  # the observed sets decide, not the Static sets (which share one tile)
+            self.assertAlmostEqual(r["jaccard"], 20 / 60)                           # 20 common of 60 in the union
+            self.assertTrue(r["a"].endswith("a.ids") and r["b"].endswith("b.ids"))
+            # --observed is required; a different number of files, or a Static voxel outside the observed set, is an error with a message
+            run = subprocess.run(prog + ["jaccard", "--ids", d + "/a.ids", d + "/b.ids", "--res", "0.2"], capture_output=True, text=True)
+            self.assertNotEqual(run.returncode, 0)
+            run = subprocess.run(prog + ["jaccard", "--ids", d + "/a.ids", d + "/b.ids", "--observed", d + "/a_obs.ids", "--res", "0.2"], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 2); self.assertIn("one file per", run.stderr)
+            run = subprocess.run(prog + ["jaccard", "--ids", d + "/b_obs.ids", d + "/a_obs.ids", "--observed", d + "/a.ids", d + "/b.ids", "--res", "0.2"], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 2); self.assertIn("not inside the observed set", run.stderr)
             with open(d + "/c.csv", "w") as f:
-                f.write("label,eligible,verdict,count\n1,1,static,1\n3,1,static,9\n")
-            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "spires", "--counts", d + "/c.csv"], capture_output=True, text=True)
+                f.write("label,eligible,verdict,count\n1,1,static,1\n3,1,static,9\n2,1,rejected,4\n2,1,static,6\n")
+            with open(d + "/c.csv.latency", "w") as f:
+                f.write("label,windows_to_static,count\n3,4,9\n2,7,6\n")
+            run = subprocess.run(prog + ["spires", "--counts", d + "/c.csv", "--latency", d + "/c.csv.latency"], capture_output=True, text=True)
             self.assertEqual(run.returncode, 0, run.stderr)
-            self.assertEqual(json.loads(run.stdout)["false_static_on_clutter"]["k"], 1)
+            j = json.loads(run.stdout)
+            self.assertEqual(j["false_static_on_clutter"]["k"], 1)
+            self.assertEqual(j["structure_label_3"]["n"], 9)
+            self.assertEqual(j["structure_label_2"]["n"], 10)                       # ground is reported by the default command line
+            self.assertEqual(j["structure_label_2"]["windows_to_first_static"]["p50"], 7.0)
+            run = subprocess.run(prog + ["spires", "--counts", d + "/c.csv", "--structure-labels", "3"], capture_output=True, text=True)
+            self.assertNotIn("structure_label_2", json.loads(run.stdout))
 
 
 if __name__ == "__main__":
