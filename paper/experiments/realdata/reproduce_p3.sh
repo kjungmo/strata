@@ -65,7 +65,7 @@ engine_has_sprt() { "$P3" arms | grep -q '^engine_has_sprt=1'; }
 stage_build() {   # from a git archive copy of HEAD: the binary is the committed code
   local commit; commit="$(git -C "$HERE" rev-parse HEAD)"
   rm -rf "$BUILD/src"; mkdir -p "$BUILD/src"
-  git -C "$HERE" archive HEAD | tar -x -C "$BUILD/src"
+  git -C "$(git -C "$HERE" rev-parse --show-toplevel)" archive HEAD | tar -x -C "$BUILD/src"
   echo "$commit" > "$BUILD/commit"
   must step build_configure -- cmake -S "$BUILD/src/paper/experiments" -B "$BUILD/build" -DCMAKE_BUILD_TYPE=Release
   must step build_make -- cmake --build "$BUILD/build" -j4 --target p3_probe hitrate_probe p1b_probe test_p3
