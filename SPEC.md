@@ -294,8 +294,8 @@ provisional. The CTest `defaults_match_yaml_and_prereg` (`strata_core/test/check
   `alpha` (0.0101 at the default pair; Ville's inequality), and the exact value for the default pair at `m0` is 0.0055
   (`results/e7_oc.csv`). Real windows are autocorrelated (lag-1 0.2 to 0.5 on the
   calibration sequences). With lag-1 autocorrelation 0.23 at exactly `m0`, the
-  per-history rate on the engine is 0.035, 3.5 times `alpha` (0.0054 at 0, 0.014 at 0.10,
-  0.062 at 0.35; `results/e7_autocorr.csv`); a bare random walk floored at `B` without
+  per-history rate on the engine is 0.035, 3.5 times `alpha` (0.0056 at 0, 0.014 at 0.10,
+  0.061 at 0.35; `results/e7_autocorr.csv`); a bare random walk floored at `B` without
   rejection, the first reading, gives 13 times at the pair (0.15, 0.65).
 - *The realised rate on real clutter is lower than the bound only because most clutter
   lies far below `m0`.* On the W = 15 calibration sequences the shipped rule graduates
