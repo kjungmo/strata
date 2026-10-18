@@ -6,3 +6,17 @@
 2026-10-18T20:35:15+09:00	spires_03_sprt_r0.1_W20_p1	not run: arm sprt failed at 0.1 m with veto 1
 2026-10-18T20:58:30+09:00	spires_03_sprt_low_end_r0.1_W20_p1	not run: arm sprt_low_end failed at 0.1 m with veto 1
 2026-10-18T21:23:04+09:00	spires_03_sprt_high_end_r0.1_W20_p1	not run: arm sprt_high_end failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_shipped_v0_1_r0.1_W10_p1	not run: arm shipped_v0_1 failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_shipped_v0_1_r0.1_W20_p1	not run: arm shipped_v0_1 failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_symmetric_r0.1_W10_p1	not run: arm symmetric failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_symmetric_r0.1_W20_p1	not run: arm symmetric failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_octomap_r0.1_W10_p1	not run: arm octomap failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_octomap_r0.1_W20_p1	not run: arm octomap failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_elite_like_r0.1_W10_p1	not run: arm elite_like failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_elite_like_r0.1_W20_p1	not run: arm elite_like failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_sprt_r0.1_W10_p1	not run: arm sprt failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_sprt_r0.1_W20_p1	not run: arm sprt failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_sprt_low_end_r0.1_W10_p1	not run: arm sprt_low_end failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_sprt_low_end_r0.1_W20_p1	not run: arm sprt_low_end failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_sprt_high_end_r0.1_W10_p1	not run: arm sprt_high_end failed at 0.1 m with veto 1
+2026-10-18T21:44:36+09:00	spires_03_sprt_high_end_r0.1_W20_p1	not run: arm sprt_high_end failed at 0.1 m with veto 1

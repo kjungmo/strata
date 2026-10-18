@@ -10,6 +10,7 @@
 #include <Eigen/Core>
 #include <Eigen/Geometry>
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstdio>
@@ -18,6 +19,7 @@
 #include <istream>
 #include <streambuf>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 #include "realdata_io.hpp"
@@ -186,25 +188,45 @@ class CacheReader {
   }
   std::uint64_t frames() const { return n_; }
   int dim() const { return static_cast<int>(dim_); }
+  // Reads the next frame. A failed read of a frame (an error of the /mnt/d mount under load, PREREG_P3.md Amendment 11) is repeated from the start of
+  // that frame up to kReadRetries times; a file that really is short fails after the last retry with the old message.
+  static constexpr int kReadRetries = 6;
+  static inline int retry_sleep_ms = 1000;          // tests set 0 or a few ms
   bool next(Frame& fr) {
     if (i_ >= n_) return false;
+    const std::streamoff pos = f_.tellg();
+    for (int attempt = 0;; ++attempt) {
+      const char* what = readFrame(fr);
+      if (!what) break;
+      if (attempt >= kReadRetries) fail(path_, std::string(what) + " " + std::to_string(i_));
+      ++retries_;
+      std::fprintf(stderr, "read retry %d of frame %llu of %s (%s)\n", attempt + 1, static_cast<unsigned long long>(i_), path_.c_str(), what);
+      f_.clear();
+      if (retry_sleep_ms > 0) std::this_thread::sleep_for(std::chrono::milliseconds(static_cast<long long>(retry_sleep_ms) * (attempt + 1)));
+      f_.seekg(pos);
+    }
+    ++i_;
+    return true;
+  }
+  std::uint64_t retries() const { return retries_; }
+ private:
+  const char* readFrame(Frame& fr) {      // nullptr on success, else the reason
     std::uint32_t np = 0; double org[3];
     f_.read(reinterpret_cast<char*>(&fr.group), 4);
     f_.read(reinterpret_cast<char*>(org), 24);
     f_.read(reinterpret_cast<char*>(&np), 4);
-    if (!f_) fail(path_, "truncated frame header " + std::to_string(i_));
+    if (!f_) return "truncated frame header";
     fr.origin = Eigen::Vector3d(org[0], org[1], org[2]);
     fr.xyz.resize(static_cast<std::size_t>(np) * 3);
     f_.read(reinterpret_cast<char*>(fr.xyz.data()), static_cast<std::streamsize>(fr.xyz.size() * 4));
-    if (!f_) fail(path_, "truncated frame " + std::to_string(i_));
-    ++i_;
-    return true;
+    if (!f_) return "truncated frame";
+    return nullptr;
   }
- private:
   std::string path_;
   std::ifstream f_;
   std::uint32_t dim_{0};
   std::uint64_t n_{0}, i_{0};
+  std::uint64_t retries_{0};
 };
 
 // ----------------------------------------------------------------------------- zip -----

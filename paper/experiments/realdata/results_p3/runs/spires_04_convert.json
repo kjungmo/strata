@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "5.71 5.10 5.58 5/1030 1494615",
+  "loadavg": "6.97 7.02 7.06 5/948 1524354",
   "meminfo": {
-   "MemAvailable": "9882408 kB",
+   "MemAvailable": "9692984 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "30919280 kB"
+   "SwapFree": "31145448 kB"
   },
-  "time": "2026-10-18T21:23:54+0900",
+  "time": "2026-10-18T21:46:38+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "74.0  9876 lever",
-   "74.0  9932 lever",
-   "73.5  9952 lever",
-   "72.5 10008 lever",
-   "17.8 76456 python3"
+   " 100 19284 lever",
+   " 100 19424 lever",
+   " 100 19316 lever",
+   " 100 19468 lever",
+   "19.6 88108 python3"
   ]
  },
  "argv": [
@@ -34,30 +34,30 @@
   "/mnt/d/wsl/strata/p3/spires_04/spires_convert.meta"
  ],
  "before": {
-  "loadavg": "5.71 5.10 5.58 5/1023 1494575",
+  "loadavg": "6.08 6.98 7.05 5/956 1522232",
   "meminfo": {
-   "MemAvailable": "9887552 kB",
+   "MemAvailable": "9820192 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "30919268 kB"
+   "SwapFree": "31145060 kB"
   },
-  "time": "2026-10-18T21:23:54+0900",
+  "time": "2026-10-18T21:44:36+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "62.0  9860 lever",
-   "62.0  9992 lever",
-   "62.0  9916 lever",
-   "61.5  9952 lever",
-   "17.8 76424 python3"
+   "99.4 13344 lever",
+   "99.4 13592 lever",
+   "99.3 14100 lever",
+   "99.3 13304 lever",
+   "19.7 88108 python3"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "4fe45f08f81b319115988d0d918b15c7c1575aac",
-  "commit": "4fe45f08f81b319115988d0d918b15c7c1575aac",
+  "binary_commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
+  "commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
-  "uncommitted_in_repository": 28
+  "uncommitted_in_repository": 22
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -65,7 +65,7 @@
  "kernel": "6.18.54.1-microsoft-standard-WSL2",
  "outputs": [],
  "python": "3.8.10",
- "returncode": 1,
- "seconds": 0.201,
+ "returncode": 0,
+ "seconds": 121.291,
  "step": "spires_04_convert"
 }

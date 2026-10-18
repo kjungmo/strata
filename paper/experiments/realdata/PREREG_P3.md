@@ -552,3 +552,13 @@ The harness validation read Keble 03 only, so the defect was not found before. N
 **Change** (`p1b_io.hpp`, tests in `test_p1b.cpp`): the reader follows the zip64 end-of-central-directory locator and record when a field of the end record is 0xFFFF or 0xFFFFFFFF, and reads usize, csize and the local header offset of an entry from the zip64 extra field (id 0x0001) when the central directory entry holds 0xFFFFFFFF.
 Multi-disk archives, a missing locator, a wrong signature and a missing extra field are errors. Archives below 4 GB take the old path unchanged (the 35 earlier tests of `test_p1b` pass). Mutation record: `results_p3/mutation_record_zip64.md` (12 mutants, 11 killed, 1 equivalent).
 No arm, label, window, resolution or metric changes. The change reaches the conversion of Keble 03 (not zip64) in no way; the cache of Keble 03 already made is not rebuilt.
+
+## 24. Amendment 11 (2026-10-19, during the evaluation): a failed read of a cache frame is repeated
+
+**What happened.** On Keble 04, three arm runs ended with `cache.bin: truncated frame <n>` (`spires_04_sprt_r0.2_W10_p1` at frame 6299, `spires_04_sprt_low_end_r0.2_W10_p1` at frame 1782, `spires_04_sprt_low_end_r0.2_W20_p1`; listed in `failed_steps.tsv`).
+The file is complete: it is 4,157,305,924 bytes, it was written by one conversion step (6826 frames), and 12 earlier arm runs read all 6826 frames of it. The failing runs ran while other jobs loaded the host (load 7 to 13) and the cache sits on the /mnt/d mount.
+The earlier note on a transient read error of this mount is in section 11, item 6. A run that fails this way is a crash; section 4 allows a repeat with an identical configuration. The failures are reported, not hidden.
+
+**Change** (`p1b_io.hpp`, tests in `test_p1b.cpp`): `CacheReader::next` repeats the read of a frame from its start, up to 6 times, with a wait of 1, 2, ..., 6 seconds, after clearing the stream state. Each repeat prints a line `read retry` to the step log. A file that is really short fails after the sixth repeat with the old message.
+The frames that are returned are the same as before; only the failure path differs. Mutation record: `results_p3/mutation_record_cache_retry.md` (9 mutants, 9 killed). No arm, label, window, resolution or metric changes.
+The three failed runs are run again with an identical command (`P3_RESUME=1` runs steps whose record has a non-zero return code again); their first logs stay as attempts and the repetition is listed in `results_p3/deviations.md`. Runs that finished are not run again.

@@ -7,6 +7,8 @@
 #include <map>
 #include <random>
 #include <sstream>
+#include <chrono>
+#include <thread>
 #include "p1b_core.hpp"
 #include "strata_core/voxel3d_backend.hpp"
 
@@ -460,6 +462,61 @@ TEST(Cache, StreamingWriterReaderRoundtripAndLegacyReader) {
   EXPECT_EQ(all.size(), 4u); EXPECT_EQ(dim, 3);
   { std::ofstream o(tmpPath("junk.bin"), std::ios::binary); o << "nope"; }
   EXPECT_THROW(CacheReader(tmpPath("junk.bin")), std::runtime_error);
+}
+
+// Amendment 11 of PREREG_P3.md: a failed read of a frame is repeated; a file that is really short still fails with the old message.
+namespace {
+std::string makeCache(const std::string& name) {
+  const std::string path = tmpPath(name);
+  CacheWriter w(path, 3);
+  for (std::uint32_t g = 0; g < 3; ++g) {
+    Frame f; f.group = g; f.origin = {double(g), 1, 2};
+    for (int i = 0; i < 40; ++i) { f.xyz.push_back(float(i)); f.xyz.push_back(float(g)); f.xyz.push_back(0.5f); }
+    w.add(f);
+  }
+  w.finish();
+  return path;
+}
+std::string slurp(const std::string& path) { std::ifstream i(path, std::ios::binary); return std::string((std::istreambuf_iterator<char>(i)), std::istreambuf_iterator<char>()); }
+}  // namespace
+
+TEST(Cache, ShortFileFailsAfterTheRetriesWithTheOldMessage) {
+  const std::string full = slurp(makeCache("cr_full.bin"));
+  const std::size_t frame_bytes = 4 + 24 + 4 + 40 * 12;
+  struct Cut { std::size_t keep; const char* msg; };
+  for (const Cut c : {Cut{28 + frame_bytes * 2 + 10, "truncated frame header 2"}, Cut{28 + frame_bytes * 2 + 4 + 24 + 4 + 100, "truncated frame 2"}}) {
+    const std::string path = tmpPath("cr_short.bin");
+    { std::ofstream o(path, std::ios::binary); o.write(full.data(), static_cast<std::streamsize>(c.keep)); }
+    const int saved = CacheReader::retry_sleep_ms; CacheReader::retry_sleep_ms = 0;
+    CacheReader r(path); Frame f;
+    EXPECT_TRUE(r.next(f)); EXPECT_TRUE(r.next(f));
+    try { r.next(f); ADD_FAILURE() << "no error"; } catch (const std::runtime_error& e) { EXPECT_NE(std::string(e.what()).find(c.msg), std::string::npos) << e.what(); }
+    EXPECT_EQ(r.retries(), 6u);          // the documented number of retries (Amendment 11)
+    CacheReader::retry_sleep_ms = saved;
+  }
+}
+
+TEST(Cache, ATransientShortReadIsRepeatedAndReturnsTheRightFrame) {
+  const std::string full = slurp(makeCache("cr_full2.bin"));
+  const std::size_t frame_bytes = 4 + 24 + 4 + 40 * 12;
+  const std::size_t keep = 28 + frame_bytes * 2 + 4 + 24 + 4 + 100;        // the last frame is cut inside its points
+  const std::string path = tmpPath("cr_grow.bin");
+  { std::ofstream o(path, std::ios::binary); o.write(full.data(), static_cast<std::streamsize>(keep)); }
+  const int saved = CacheReader::retry_sleep_ms; CacheReader::retry_sleep_ms = 40;
+  CacheReader r(path); Frame f;
+  EXPECT_TRUE(r.next(f)); EXPECT_TRUE(r.next(f));
+  std::thread completer([&] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    std::ofstream o(path, std::ios::binary | std::ios::app);
+    o.write(full.data() + keep, static_cast<std::streamsize>(full.size() - keep));
+  });
+  EXPECT_TRUE(r.next(f));
+  completer.join();
+  EXPECT_GE(r.retries(), 1u);
+  EXPECT_EQ(f.group, 2u); EXPECT_EQ(f.size(), 40u); EXPECT_DOUBLE_EQ(f.origin.x(), 2.0);
+  EXPECT_FLOAT_EQ(f.xyz[3 * 39], 39.0f); EXPECT_FLOAT_EQ(f.xyz[3 * 39 + 1], 2.0f);
+  EXPECT_FALSE(r.next(f));
+  CacheReader::retry_sleep_ms = saved;
 }
 
 // ------------------------------------------------------------------- TLS area ---------
