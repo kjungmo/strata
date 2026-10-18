@@ -246,6 +246,8 @@ PY = [
 ]
 
 EQUIVALENT = {
+    "cli: lil track start": "differs only if a scan stamp plus the offset equals the first ground-truth time to the last bit; the stamps come from integer seconds and nanoseconds and cannot be set equal by a test",
+    "cli: latency sentinel": "first_static is -1 (not yet) or a window index >= 1, never 0: `> 0` and `>= 0` select the same cells",
     "tally: first_static sentinel": "first_static is -1 (not yet) or a window index >= 1, never 0: `<= 0` and `< 0` select the same cells",
 }
 

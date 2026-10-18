@@ -873,6 +873,12 @@ TEST(P3Probe, KthValidateAcceptsAFrameAndRejectsBrokenOnes) {
   const double vp2[7] = {0, 0, 0, 0.5, 0, 0, 0};                                      // quaternion not unit
   writePcd(dir + "/pcd/000000.pcd", xyz, &inten, vp2);
   EXPECT_EQ(runProbe("kth-validate --dir " + dir + " --n 1", &out), 3);
+  for (float scale : {0.01f, 12.f}) {                                                  // median range 0.1 m and 120 m: outside 0.5 m to 60 m, everything else fine
+    std::vector<float> sc = xyz; for (auto& v : sc) v *= scale;
+    writePcd(dir + "/pcd/000000.pcd", sc, &inten, vp);
+    EXPECT_EQ(runProbe("kth-validate --dir " + dir + " --n 1", &out), 3) << scale << " " << out;
+    EXPECT_NE(out.find("median sensor range outside"), std::string::npos);
+  }
   const double vp3[7] = {500, 0, 0, 1, 0, 0, 0};                                      // viewpoint far from the points: not a world-frame cloud around it
   writePcd(dir + "/pcd/000000.pcd", xyz, &inten, vp3);
   EXPECT_EQ(runProbe("kth-validate --dir " + dir + " --n 1", &out), 3);
@@ -896,7 +902,7 @@ TEST(P3Probe, ArmEvalCellsAndCounts) {
   for (int k = 0; k < 30; ++k) {
     Frame f; f.group = k; f.origin = Eigen::Vector3d(0, 0, 0);
     f.xyz = {1.05f, 0.05f, 0.f};                                                      // wall: hit every step (10 windows of 3 steps)
-    if (k % 3 == 0 && k <= 6) { f.xyz.push_back(-1.95f); f.xyz.push_back(0.05f); f.xyz.push_back(0.f); }    // clutter A: hit in windows 1, 2, 3
+    if (k % 3 == 0 && k >= 6 && k <= 12) { f.xyz.push_back(-1.95f); f.xyz.push_back(0.05f); f.xyz.push_back(0.f); }    // clutter A: hit in windows 3, 4, 5
     if (k % 3 == 0 && k <= 3) { f.xyz.push_back(-1.95f); f.xyz.push_back(1.05f); f.xyz.push_back(0.f); }    // clutter B: hit in windows 1, 2
     frames.push_back(f);
   }
@@ -914,7 +920,7 @@ TEST(P3Probe, ArmEvalCellsAndCounts) {
   // ids are sorted: gy * 100 + gx -> (60,50)=5060, (30,50)=5030, (30,60)=6030, (5,5)=505
   ASSERT_EQ(rows.size(), 4u);
   EXPECT_EQ(rows[0], "3,5,5,0,0,0,rejected,-1,-1");
-  EXPECT_EQ(rows[1], "2,30,50,0,3,3,static,3,1");                                     // three hit windows: graduates in window 3
+  EXPECT_EQ(rows[1], "2,30,50,0,3,3,static,5,3");                                     // first touched in window 3, graduates in window 5
   EXPECT_EQ(rows[2], "1,60,50,0,10,10,static,3,1");
   EXPECT_EQ(rows[3], "2,30,60,0,2,2,undecided,-1,1");                                   // two hit windows: not enough observations
   const auto m = readMeta(tmpPath("d2.meta"));
@@ -959,6 +965,11 @@ TEST(P3Probe, StaticExportIndependentAndCumulative) {
     writeCache(tmpPath(name), 3, frames);
   };
   writeSession("s1.bin", false); writeSession("s2.bin", true);
+  {  // session 3 sees only the second wall: independent maps differ from the cumulative one
+    std::vector<Frame> frames;
+    for (int k = 0; k < 20; ++k) { Frame f; f.group = k; f.xyz = {0.05f, 15.05f, 0.05f}; frames.push_back(f); }
+    writeCache(tmpPath("s3.bin"), 3, frames);
+  }
   std::string out;
   const std::string caches = tmpPath("s1.bin") + "," + tmpPath("s2.bin");
   ASSERT_EQ(runProbe("static-export --caches " + caches + " --arm shipped_v0_1 --res 0.2 --window 2 --periodicity 0 --mode independent --out-prefix " + tmpPath("ind") + " --meta " + tmpPath("ind.meta"), &out), 0) << out;
@@ -969,6 +980,13 @@ TEST(P3Probe, StaticExportIndependentAndCumulative) {
   m = readMeta(tmpPath("cum.meta"));
   EXPECT_EQ(m.at("session0_static_cells"), "1"); EXPECT_EQ(m.at("session1_static_cells"), "2");
   EXPECT_EQ(m.at("session1_windows_closed"), "10");
+  {
+    const std::string two = tmpPath("s1.bin") + "," + tmpPath("s3.bin");
+    ASSERT_EQ(runProbe("static-export --caches " + two + " --arm shipped_v0_1 --res 0.2 --window 2 --periodicity 0 --mode independent --out-prefix " + tmpPath("ind2") + " --meta " + tmpPath("ind2.meta"), &out), 0) << out;
+    EXPECT_EQ(readMeta(tmpPath("ind2.meta")).at("session1_static_cells"), "1");              // only the second wall
+    ASSERT_EQ(runProbe("static-export --caches " + two + " --arm shipped_v0_1 --res 0.2 --window 2 --periodicity 0 --mode cumulative --out-prefix " + tmpPath("cum2") + " --meta " + tmpPath("cum2.meta"), &out), 0) << out;
+    EXPECT_EQ(readMeta(tmpPath("cum2.meta")).at("session1_static_cells"), "2");              // the first wall is kept from session 1
+  }
   // the id file: int64 little endian, sorted; decode the voxel of the first wall
   std::ifstream f(tmpPath("ind_s0_static.ids"), std::ios::binary);
   std::int64_t id = 0; f.read(reinterpret_cast<char*>(&id), 8);
@@ -982,7 +1000,7 @@ TEST(P3Probe, StaticExportIndependentAndCumulative) {
 
 // Two synthetic sessions with 12 frames each, a straight drive at 10 m/s east. Session B's ENU origin lies 1000 m east of A's.
 // The GPS rows carry latitude and longitude consistent with their east coordinate, as in the real files.
-std::string makeBoreasSession(const std::string& id, double lat0, double lon_origin, double t0_us) {
+std::string makeBoreasSession(const std::string& id, double lat0, double lon_origin, double t0_us, double speed = 10.0, double lp_shift = 0.0, double lon_scale = 1.0) {
   const double e2 = kWgs84F * (2 - kWgs84F), s = std::sin(lat0), N = kWgs84A / std::sqrt(1 - e2 * s * s);
   const std::string d = tmpPath(id);
   makeDir(d); makeDir(d + "/lidar"); makeDir(d + "/applanix"); makeDir(d + "/calib");
@@ -991,9 +1009,9 @@ std::string makeBoreasSession(const std::string& id, double lat0, double lon_ori
   std::string gps = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x,accelz,accely,accelx,latitude,longitude\n";
   std::string lp = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x\n";
   for (int i = 0; i < 1000; ++i) {                                                  // 200 Hz GPS
-    const double x = 10.0 * 0.005 * i;
+    const double x = speed * 0.005 * i;
     std::ostringstream l; l.precision(15);
-    l << tstart + 0.005 * i << "," << x << ",0,0,10,0,0,0,0,0,0,0,0,0,0,0," << lat0 << "," << lon_origin + x / (N * std::cos(lat0)) << "\n";
+    l << tstart + 0.005 * i << "," << x << ",0,0,10,0,0,0,0,0,0,0,0,0,0,0," << lat0 << "," << lon_origin + lon_scale * x / (N * std::cos(lat0)) << "\n";
     gps += l.str();
   }
   for (int k = 0; k < 12; ++k) {
@@ -1005,7 +1023,7 @@ std::string makeBoreasSession(const std::string& id, double lat0, double lon_ori
     const auto b = binOf(pts);
     std::ofstream(d + "/lidar/" + nm, std::ios::binary).write(reinterpret_cast<const char*>(b.data()), b.size());
     std::ostringstream l; l.precision(15);
-    l << us << "," << 10.0 * (us * 1e-6 - tstart) << ",0,0.13,10,0,0,0,0,0,0,0,0\n";
+    l << us << "," << speed * (us * 1e-6 - tstart) + lp_shift << ",0,0.13,10,0,0,0,0,0,0,0,0\n";
     lp += l.str();
   }
   writeText(d + "/applanix/gps_post_process.csv", gps);
@@ -1031,6 +1049,16 @@ TEST(P3Probe, TileGroundGivesThePercentileHeightPerTile) {
   ASSERT_EQ(runProbe("tile-ground --cache " + tmpPath("tg.bin") + " --out " + tmpPath("tg2.csv") + " --min-points 50 --radius 100", &out), 0) << out;
   EXPECT_NE(readText(tmpPath("tg2.csv")).find("0,1,100,0.35"), std::string::npos);
   EXPECT_NE(readText(tmpPath("tg2.csv")).find("3,0,800,"), std::string::npos);
+  {  // a tile with exactly min-points returns is kept; the 5th percentile follows the low part of a 30/70 mix
+    Frame g2; g2.group = 0; g2.origin = Eigen::Vector3d(0, 0, 2);
+    for (int i = 0; i < 30; ++i) g2.xyz.insert(g2.xyz.end(), {u(g), u(g), -1.23f});
+    for (int i = 0; i < 70; ++i) g2.xyz.insert(g2.xyz.end(), {u(g), u(g), 0.33f});
+    writeCache(tmpPath("tg4.bin"), 3, {g2});
+    ASSERT_EQ(runProbe("tile-ground --cache " + tmpPath("tg4.bin") + " --out " + tmpPath("tg4.csv") + " --min-points 100", &out), 0) << out;
+    EXPECT_EQ(readText(tmpPath("tg4.csv")), "tx,ty,count,ground_z\n0,0,100,-1.25\n");
+    ASSERT_EQ(runProbe("tile-ground --cache " + tmpPath("tg4.bin") + " --out " + tmpPath("tg5.csv") + " --min-points 101", &out), 0) << out;
+    EXPECT_EQ(readText(tmpPath("tg5.csv")), "tx,ty,count,ground_z\n");
+  }
   EXPECT_NE(runProbe("tile-ground --cache " + tmpPath("c2.bin") + " --out " + tmpPath("tg3.csv"), &out), 0);                  // a 2D cache
 }
 
@@ -1081,6 +1109,25 @@ TEST(P3Probe, BoreasValidateOverlapAndConvertOnSyntheticSessions) {
   // broken layout: a frame of the wrong size is reported
   { std::ofstream f(a + "/lidar/1606417543533737.bin", std::ios::binary | std::ios::trunc); f << std::string(1000, 'x'); }
   EXPECT_NE(runProbe("boreas-validate --seq " + a + " --n 1", &out), 0);
+}
+
+TEST(P3Probe, BoreasGateAndValidatorFailures) {
+  const double lat0 = 0.7641426285, lon0 = -1.3869452891;
+  const std::string a = makeBoreasSession("bsGA", lat0, lon0, 1606417543533737.0);
+  const std::string c = makeBoreasSession("bsGC", lat0, lon0, 1606417543533737.0, 20.0);          // twice as fast: a longer track from the same start
+  std::string out;
+  // A lies inside C, C does not lie inside A: one direction below 0.8 is enough to fail
+  EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + c, &out), 3) << out;
+  EXPECT_EQ(runProbe("boreas-overlap --seqs " + c + "," + a, &out), 3) << out;
+  // lidar_poses.csv 0.5 m away from the GPS pose: the validator refuses the session
+  const std::string d = makeBoreasSession("bsGD", lat0, lon0, 1606417543533737.0, 10.0, 0.5);
+  EXPECT_EQ(runProbe("boreas-validate --seq " + d + " --n 5", &out), 3) << out;
+  EXPECT_NE(out.find("lidar_poses.csv by more than 0.10 m"), std::string::npos);
+  // latitude and longitude that do not match east and north
+  const std::string e = makeBoreasSession("bsGE", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 3.0);
+  EXPECT_EQ(runProbe("boreas-validate --seq " + e + " --n 5", &out), 3) << out;
+  EXPECT_NE(out.find("geodetic ENU"), std::string::npos);
+  EXPECT_EQ(runProbe("boreas-validate --seq " + a + " --n 5", &out), 0) << out;
 }
 
 TEST(P3Probe, SpiresValidateOnASyntheticZip) {
