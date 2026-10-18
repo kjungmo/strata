@@ -45,7 +45,8 @@ if(BUILD_TESTING OR STRATA_CORE_BUILD_TESTS)
     test/test_voxel3d_backend.cpp
     test/test_integration.cpp
     test/test_window_observer.cpp
-    test/test_sprt.cpp)
+    test/test_sprt.cpp
+    test/test_replay_p1.cpp)
   add_executable(strata_core_tests ${STRATA_CORE_TESTS})
   target_link_libraries(strata_core_tests strata_core GTest::gtest GTest::gtest_main)
   add_test(NAME strata_core_tests COMMAND strata_core_tests)
