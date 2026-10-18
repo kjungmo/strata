@@ -11,7 +11,7 @@ The harness is built and tested; **no test evaluation has been run**. The evalua
 | `p3_arms.hpp` | the five arms (and two extra `sprt` arms) as engine parameters; the table in `PREREG_P3.md` section 2.1 is checked against it |
 | `p3_run.hpp` | verdicts (Static, Undecided, Rejected), export policies, per-cell tally with windows to decision, the driver, the streaming PCD writer |
 | `p3_kth.hpp` | KTH exporter: original points whose voxel is kept, per policy |
-| `p3_boreas.hpp` | Boreas `.bin` reader and layout check, pose CSVs, lidar pose convention, WGS84 common frame, deskewed conversion, 10 m tile overlap |
+| `p3_boreas.hpp` | Boreas `.bin` reader and layout check, pose CSVs, lidar pose convention, common frame (the frame of the files, checked against WGS84 ENU for every session), deskewed conversion, 10 m tile overlap, altitude comparison |
 | `p3_probe.cpp` | command line: `arms kth-validate kth-export spires-validate boreas-validate boreas-overlap boreas-convert static-export tile-ground lil-validate ref-export arm-eval` |
 | `p3_eval.py` | SA/DA/AA/HA (exact radius match), LILocBench false-Static and wall-run false-reject, Spires counts, Jaccard, new-Static cells, vertical offset |
 | `p3_runlog.py`, `p3_traced.sh` | run records (host, load, commit, checksums) and file-open traces with the access log |
