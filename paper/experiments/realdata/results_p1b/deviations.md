@@ -125,3 +125,5 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
     The `build` stage, the `TREE_STATUS_PORCELAIN_LINES` line of every step log and `run_manifest.txt` now count the whole repository except the two result directories (Amendment 5 item 2). Test: `test_reproduce_tree_check.sh`
     (registered in CMake as `reproduce_tree_check`); against the earlier script it fails with "dirty strata_core file (expected 1, got 0)". Binaries from before this change were built from trees whose `strata_core` state is not
     recorded; the steps of this review round (build at 6dfff2c) are the first with the whole-repository check.
+    `run_manifest.txt` was rewritten by the `check` stage of this round: its `commit=` now names the commit of the regeneration (91532aa), not the commit of the measurement steps (item 25 lists those); the measurement
+    steps keep their own commit in their step logs.
