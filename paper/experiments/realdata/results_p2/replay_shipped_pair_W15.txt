@@ -1,0 +1,10 @@
+Realised rates of the shipped pair (m0 0.20, m1 0.70, alpha = beta = 0.01) on the W = 15 calibration sequences
+(LILocBench, 0.05 m, 1.0 s windows). Structure: static_0, label structure, all N >= 1 (n=11027). Clutter: dynamics_0, label free with H >= 1 (n=24096).
+Bound under independent windows: P(clutter at m0 graduates) <= alpha = 0.0100 per history.
+
+pure rule (T = 1)
+  structure  S 0.8605  R 0.0571  U 0.0823  windows to Static p50/p90 4.0000/8.0000
+  clutter    FS 0.0192 (n=24096)  FS at H/N <= m0 0.0040 (n=22273)  FS above m0 0.2052 (n=1823)
+shipped rule (gate T = 24, no lower clamp before the gate)
+  structure  S 0.8956  R 0.0141  U 0.0902  windows to Static p50/p90 4.0000/10.0000
+  clutter    FS 0.0206 (n=24096)  FS at H/N <= m0 0.0040 (n=22273)  FS above m0 0.2227 (n=1823)

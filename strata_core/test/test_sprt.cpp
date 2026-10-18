@@ -174,6 +174,22 @@ TEST(Sprt, DerivedQuantitiesOfThePairsInTheAdvice) {
   EXPECT_EQ(c.latency, 7);
 }
 
+TEST(Sprt, ThresholdsOfUnequalErrorRatesAndACustomCeiling) {
+  LayeredMapParams p = Sp(0.20, 0.70, 0.001, 0.02);        // alpha != beta: A and B differ in size
+  const SprtDerived d = deriveSprt(p);
+  EXPECT_NEAR(d.A, std::log(0.98 / 0.001), 1e-12);
+  EXPECT_NEAR(d.B, std::log(0.02 / 0.999), 1e-12);
+  EXPECT_LT(d.B, 0.0);
+  EXPECT_NEAR(d.ceiling, d.A + 2 * d.l_hit, 1e-12);
+  // a custom ceiling replaces the derived one; at the smallest allowed value (A) the reverse test
+  // from the ceiling crosses its level at 0
+  p.sprt_ceiling = d.A;
+  const SprtDerived c = deriveSprt(p);
+  EXPECT_EQ(c.ceiling, d.A);
+  EXPECT_NEAR(c.demote_level, 0.0, 1e-12);
+  EXPECT_EQ(c.demote_misses, static_cast<int>(std::ceil(d.A / -c.l_miss - 1e-12)));
+}
+
 TEST(Sprt, StructDefaultsAreTheShippedSprtPair) {
   const LayeredMapParams p;
   EXPECT_EQ(p.evidence_model, EvidenceModel::Sprt);
@@ -377,10 +393,30 @@ TEST(Sprt, DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic) {
     m.tick();
     if (w + 1 <= 24) { EXPECT_EQ(m.cellCount(), 1u) << "window " << (w + 1); }   // alive through the gate
     if (m.classify(9) == CellClass::Periodic) periodic_seen = true;
+    // Before the gate a cell is never Unknown (not rejected): here Static in the first hit phase, then Transient.
+    if (w + 1 < 24) { EXPECT_NE(m.classify(9), CellClass::Unknown) << "window " << (w + 1); }
+    // From n = T on l is floored at B. A kept candidate that sits on the floor reads Unknown; one that
+    // the next hits lifted above it reads Transient (undecided) until the significance test fires.
+    if (w + 1 >= 24 && m.classify(9) != CellClass::Periodic) {
+      const bool on_floor = m.occupancyProb(9) <= 0.0100001;
+      EXPECT_EQ(m.classify(9), on_floor ? CellClass::Unknown : CellClass::Transient) << "window " << (w + 1);
+    }
+    if (w + 1 == 24) { EXPECT_EQ(m.classify(9), CellClass::Unknown); }
   }
   EXPECT_TRUE(periodic_seen);
   EXPECT_EQ(m.classify(9), CellClass::Periodic);
   EXPECT_FALSE(m.isStatic(9));
+}
+
+TEST(Sprt, RejectionAlsoDropsThePeriodicityHistoryOfTheCell) {
+  // A re-created cell starts a new history in the periodicity model too: one hit after the
+  // rejection predicts occupancy 1.0 (n = 1), not the 1/25 of the erased history.
+  LayeredMapParams p = Sp(); p.enable_periodicity = true; p.periodicity.period_windows = 8;
+  LayeredMap m(p);
+  for (int n = 0; n < 8; ++n) { m.observeMiss(2); m.tick(); }
+  ASSERT_EQ(m.cellCount(), 0u);
+  m.observeHit(2); m.tick();
+  EXPECT_GT(m.periodicProb(2), 0.99);
 }
 
 TEST(Sprt, RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory) {

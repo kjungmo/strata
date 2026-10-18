@@ -35,19 +35,32 @@ fade. Sensor poses are full 6-DoF.
 > corrupts the map; there is no correction here.
 
 ## 📢 News
+- **2026-10** — **Version 0.2.0, behaviour change** (branch `v2/evidence-sprt`, not yet
+  merged or released): cells now graduate by a **sequential probability ratio test**
+  (`evidence_model: sprt`, the new default) instead of the v0.1 log-odds rule. You state
+  `m0`, `m1`, `alpha` and `beta`; the increments and thresholds are derived
+  ([`SPEC.md` §3.2a](SPEC.md)). What changes for an existing user:
+  an always-hit wall graduates after **4** windows, not 3, and never earlier; a cell can be
+  rejected or read out `Intermittent`; the 3D defaults are **not calibrated for 3D**.
+  To get the v0.1 behaviour, set `evidence_model: "legacy"` (the nine v0.1 keys `l_hit` to
+  `prune_prob` are read only then). The defaults `m0 = 0.20`, `m1 = 0.70` were measured on one 2D
+  dataset and are provisional until the calibration is frozen
+  (`paper/experiments/realdata/PREREG.md`). The paper (`paper/arxiv_ref`) still describes
+  `312b09c`: its text and numbers are not updated yet.
 - **2026-10** — Paper and repository audited for submission: the manuscript
   (`paper/arxiv_ref`, PDF `paper/strata_paper.pdf`) describes the code of commit
   `312b09c`. Since the first release the periodicity test was corrected (centred
   amplitude, calibrated significance, level spent over repeated read-outs) and
   the node gained time-based windows, input diagnostics and a verified map save.
-  The package version string is still `0.1.0`.
+  The package version string was still `0.1.0` then.
 - **2026-07** — **v0.1.0 public release** (commit `a82f935`): the `strata_core`
   engine + both backends, the paper and the seeded reproduction harness.
 
 ## Overview
 
-One `LayeredMap` persistence core (log-odds occupancy + survival decay +
-Schmitt-trigger graduation) and one `PeriodicityModel` (FreMEn-lite) drive
+One `LayeredMap` persistence core (per-cell evidence graduated by a sequential
+test, or by the v0.1 log-odds rule with survival decay and Schmitt-trigger
+hysteresis) and one `PeriodicityModel` (FreMEn-lite) drive
 **both** backends behind a `MapBackend` interface — the classifier that
 graduates, demotes, prunes, and periodicity-labels every cell is shared by
 composition, not duplicated per dimension. The two backends are the two sensor
@@ -67,7 +80,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 **transient** layers erode away.
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
-cell id, and is unit-tested with gtest **without ROS or PCL** (56 gtests across 9
+cell id, and is unit-tested with gtest **without ROS or PCL** (106 gtests across 12
 suites, plus 64 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
@@ -150,7 +163,7 @@ cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 #    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 64 node gtests; the 56 engine
+colcon test --packages-select strata      # the 64 node gtests; the 106 engine
 colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 
@@ -203,7 +216,9 @@ mechanism rather than a distributional performance claim; E5 and E6 are multi-se
 
 <img src="docs/assets/fig_e1_f1_vs_time.png" width="100%" alt="E1: static-set F1 versus window index, one panel for grid2d and one for voxel3d, one line per clutter density (low, medium, high). Both backends jump to F1 near 1.0 within three windows."/>
 
-**E1 — static-map quality.** Both backends graduate the 161-cell static wall by
+**E1 — static-map quality.** (E0–E6 ran with `evidence_model = legacy`, the v0.1
+arithmetic, which the harness names explicitly; with the 0.2.0 default the same wall
+graduates at window 4.) Both backends graduate the 161-cell static wall by
 **window 3** and hold **recall 1.0** thereafter. The only map-quality divergence
 is a clutter-induced static-precision gap of **0.9253 (grid2d) vs. 0.9758
 (voxel3d)** at 100 movers/window — and it arises in the backends' native

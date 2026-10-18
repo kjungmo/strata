@@ -1,0 +1,24 @@
+Running main() from /build/googletest-j5yxiC/googletest-1.10.0/googletest/src/gtest_main.cc
+Note: Google Test filter = ReplayP1.*
+[==========] Running 7 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 7 tests from ReplayP1
+[ RUN      ] ReplayP1.DerivedTableOfTheAdvice
+[       OK ] ReplayP1.DerivedTableOfTheAdvice (0 ms)
+[ RUN      ] ReplayP1.WaldOperatingCharacteristicOfThe2DPairInTheAdvice
+[       OK ] ReplayP1.WaldOperatingCharacteristicOfThe2DPairInTheAdvice (0 ms)
+[ RUN      ] ReplayP1.TruncationTableAgainstTheAdvisorsMonteCarloAtM
+[       OK ] ReplayP1.TruncationTableAgainstTheAdvisorsMonteCarloAtM (0 ms)
+[ RUN      ] ReplayP1.NMaxOfTheShippedPairIsTheSmallestMultipleOf16UnderThreePercent
+[       OK ] ReplayP1.NMaxOfTheShippedPairIsTheSmallestMultipleOf16UnderThreePercent (0 ms)
+[ RUN      ] ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences
+[       OK ] ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences (666 ms)
+[ RUN      ] ReplayP1.InSampleKittiReplayOfTheAdvice
+[       OK ] ReplayP1.InSampleKittiReplayOfTheAdvice (881 ms)
+[ RUN      ] ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences
+[       OK ] ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences (297 ms)
+[----------] 7 tests from ReplayP1 (1844 ms total)
+
+[----------] Global test environment tear-down
+[==========] 7 tests from 1 test suite ran. (1844 ms total)
+[  PASSED  ] 7 tests.
