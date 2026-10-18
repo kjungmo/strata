@@ -28,6 +28,11 @@ Commits of the branch since the stat record (oldest first):
 - f5ae53f 2026-10-18T09:13:49+09:00 realdata: amendment 3 (wording of the access evidence, open items n_max, dynamics_0 time base and G1 after the Opus review of phase 1b)
 - fd08285 2026-10-18T09:13:52+09:00 realdata: fix the chronology root in the phase 1b report (was paper/, list empty), fail loudly, non-modification wording of the stat comparison, review items in the report and deviations
 - d3e08b4 2026-10-18T09:40:33+09:00 realdata: amendment 4 (clutter support caveat, provenance rule), chronology corrections, step logs record commit and tree state, report hygiene, test skips outside git, laser_optima anchor
+- 11d90db 2026-10-18T09:40:51+09:00 realdata: PREREG.md and report regenerated through reproduce_p1b.sh (clutter height caveat, report hygiene), step logs with commit
+- 2807c03 2026-10-18T09:50:04+09:00 realdata: deviations, results of the byte-identity re-run and the git-archive test run
+- c1ba329 2026-10-18T10:22:20+09:00 realdata: pair at both interval ends in the conditional table, the freeze table and the phase 1b report (PREREG_P1B section 1); clean-tree check covers the whole repository (strata_core included), with a shell test
+- 6dfff2c 2026-10-18T10:22:43+09:00 realdata: amendment 5 (pair at both ends printed, whole-repository clean-tree rule, complete chronology, provenance rule for scripts), before the byte-identity re-runs
+- 91532aa 2026-10-18T10:27:02+09:00 realdata: deviations items 24 (three more cases, byte-identity result), 29, 30
 
 Step logs (`results_p1b/logs/`, sorted by start; each carries host, load and the command):
 
@@ -54,8 +59,8 @@ Step logs (`results_p1b/logs/`, sorted by start; each carries host, load and the
 | spires_measure_r0.2 | 2026-10-18T07:40:35+09:00 | 2026-10-18T07:43:51+09:00 | 0 |
 | spires_measure_r0.1 | 2026-10-18T07:43:51+09:00 | 2026-10-18T07:52:34+09:00 | 0 |
 | analyze | 2026-10-18T08:13:14+09:00 | 2026-10-18T08:29:13+09:00 | 0 |
-| freeze | 2026-10-18T09:40:36+09:00 | 2026-10-18T09:40:36+09:00 | 0 |
-| report | 2026-10-18T09:40:36+09:00 |  |  |
+| freeze | 2026-10-18T10:27:02+09:00 | 2026-10-18T10:27:02+09:00 | 0 |
+| report | 2026-10-18T10:27:02+09:00 |  |  |
 
 The first measurement step (`gate2d_mapping`) started 2026-10-18T07:23:03+09:00, after the commits of the stat record, Amendment 2 and the code.
 
@@ -83,14 +88,14 @@ No calibration sequence passes both gates, so no table below is a headline table
 
 Primary row: resolution 0.05 m, `structure@static_0_vs_clutter@dynamics_0`, N_min = 5. Intervals: block bootstrap (tiles of 10 m, 2000 replicates, seed 20261014).
 
-| res | W | miss | pair | N struct | N clutter | q_s | q_c | gap | gap CI lo | gap CI hi | q_s CI lo | q_s CI hi | q_c CI lo | q_c CI hi | gap>=0.15 | m0 | m1 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0.05 | 15 | - | structure@static_0_vs_clutter@dynamics_0 | 10126 | 23888 | 0.7130 | 0.1725 | 0.5404 | 0.4435 | 0.5795 | 0.6730 | 0.7500 | 0.1628 | 0.2727 | yes | 0.20 | 0.70 |
-| 0.05 | 15 | - | structure@dynamics_0_vs_clutter@dynamics_0 | 4438 | 23888 | 0.2500 | 0.1725 | 0.0775 | -0.1406 | 0.3250 | 0.0500 | 0.5000 | 0.1625 | 0.3653 | no | n/a | n/a |
-| 0.05 | 15 | - | structure@static_0_vs_hit_in_free@static_0 | 10126 | 34182 | 0.7130 | 0.0857 | 0.6272 | 0.5360 | 0.6563 | 0.6708 | 0.7500 | 0.0649 | 0.1765 | yes | 0.10 | 0.70 |
-| 0.1 | 15 | - | structure@static_0_vs_clutter@dynamics_0 | 4582 | 6220 | 0.7222 | 0.2381 | 0.4841 | 0.3746 | 0.5183 | 0.6818 | 0.7565 | 0.2273 | 0.3463 | yes | 0.25 | 0.70 |
-| 0.1 | 15 | - | structure@dynamics_0_vs_clutter@dynamics_0 | 2126 | 6220 | 0.2857 | 0.2381 | 0.0476 | -0.2473 | 0.3044 | 0.0196 | 0.5714 | 0.2273 | 0.3947 | no | n/a | n/a |
-| 0.1 | 15 | - | structure@static_0_vs_hit_in_free@static_0 | 4582 | 10180 | 0.7222 | 0.0833 | 0.6389 | 0.5355 | 0.6662 | 0.6818 | 0.7564 | 0.0727 | 0.1702 | yes | 0.10 | 0.70 |
+| res | W | miss | pair | N struct | N clutter | q_s | q_c | gap | gap CI lo | gap CI hi | q_s CI lo | q_s CI hi | q_c CI lo | q_c CI hi | gap>=0.15 | m0 | m1 | pair at interval ends (low / high) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.05 | 15 | - | structure@static_0_vs_clutter@dynamics_0 | 10126 | 23888 | 0.7130 | 0.1725 | 0.5404 | 0.4435 | 0.5795 | 0.6730 | 0.7500 | 0.1628 | 0.2727 | yes | 0.20 | 0.70 | (0.20, 0.65) / (0.30, 0.75) |
+| 0.05 | 15 | - | structure@dynamics_0_vs_clutter@dynamics_0 | 4438 | 23888 | 0.2500 | 0.1725 | 0.0775 | -0.1406 | 0.3250 | 0.0500 | 0.5000 | 0.1625 | 0.3653 | no | n/a | n/a | n/a |
+| 0.05 | 15 | - | structure@static_0_vs_hit_in_free@static_0 | 10126 | 34182 | 0.7130 | 0.0857 | 0.6272 | 0.5360 | 0.6563 | 0.6708 | 0.7500 | 0.0649 | 0.1765 | yes | 0.10 | 0.70 | (0.10, 0.65) / (0.20, 0.75) |
+| 0.1 | 15 | - | structure@static_0_vs_clutter@dynamics_0 | 4582 | 6220 | 0.7222 | 0.2381 | 0.4841 | 0.3746 | 0.5183 | 0.6818 | 0.7565 | 0.2273 | 0.3463 | yes | 0.25 | 0.70 | (0.25, 0.65) / (0.35, 0.75) |
+| 0.1 | 15 | - | structure@dynamics_0_vs_clutter@dynamics_0 | 2126 | 6220 | 0.2857 | 0.2381 | 0.0476 | -0.2473 | 0.3044 | 0.0196 | 0.5714 | 0.2273 | 0.3947 | no | n/a | n/a | n/a |
+| 0.1 | 15 | - | structure@static_0_vs_hit_in_free@static_0 | 4582 | 10180 | 0.7222 | 0.0833 | 0.6389 | 0.5355 | 0.6662 | 0.6818 | 0.7564 | 0.0727 | 0.1702 | yes | 0.10 | 0.70 | (0.10, 0.65) / (0.20, 0.75) |
 
 N_min sensitivity of the primary pair:
 
@@ -118,24 +123,24 @@ N_min sensitivity of the primary pair:
 
 ### 4.2 Hit-rate gap, both miss definitions
 
-| res | W | miss | pair | N struct | N clutter | q_s | q_c | gap | gap CI lo | gap CI hi | q_s CI lo | q_s CI hi | q_c CI lo | q_c CI hi | gap>=0.15 | m0 | m1 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0.2 | 10 | today | structure_vs_clutter | 195641 | 15864 | 0.4667 | 1.0000 | -0.5333 | -0.6000 | -0.4762 | 0.4000 | 0.5238 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.2 | 10 | today | ground_vs_clutter | 118059 | 15864 | 0.4872 | 1.0000 | -0.5128 | -0.5763 | -0.4667 | 0.4237 | 0.5333 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.2 | 10 | refined | structure_vs_clutter | 192255 | 13990 | 0.5357 | 1.0000 | -0.4643 | -0.5333 | -0.4000 | 0.4667 | 0.6000 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.2 | 10 | refined | ground_vs_clutter | 117091 | 13990 | 0.5333 | 1.0000 | -0.4667 | -0.5313 | -0.4167 | 0.4687 | 0.5833 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.2 | 20 | today | structure_vs_clutter | 180126 | 8798 | 0.5714 | 1.0000 | -0.4286 | -0.5000 | -0.3784 | 0.5000 | 0.6216 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.2 | 20 | today | ground_vs_clutter | 114893 | 8798 | 0.6000 | 1.0000 | -0.4000 | -0.4545 | -0.3571 | 0.5455 | 0.6429 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.2 | 20 | refined | structure_vs_clutter | 177370 | 7905 | 0.6000 | 1.0000 | -0.4000 | -0.4545 | -0.3333 | 0.5455 | 0.6667 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.2 | 20 | refined | ground_vs_clutter | 114048 | 7905 | 0.6250 | 1.0000 | -0.3750 | -0.4286 | -0.3333 | 0.5714 | 0.6667 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.1 | 10 | today | structure_vs_clutter | 642859 | 64376 | 0.2969 | 0.8333 | -0.5365 | -0.6111 | -0.4667 | 0.2353 | 0.3529 | 0.8000 | 0.8750 | no | n/a | n/a |
-| 0.1 | 10 | today | ground_vs_clutter | 441076 | 64376 | 0.2000 | 0.8333 | -0.6333 | -0.7000 | -0.5725 | 0.1481 | 0.2571 | 0.8000 | 0.8669 | no | n/a | n/a |
-| 0.1 | 10 | refined | structure_vs_clutter | 615220 | 53006 | 0.4000 | 1.0000 | -0.6000 | -0.6786 | -0.5227 | 0.3214 | 0.4773 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.1 | 10 | refined | ground_vs_clutter | 430628 | 53006 | 0.2222 | 1.0000 | -0.7778 | -0.8333 | -0.7059 | 0.1667 | 0.2941 | 1.0000 | 1.0000 | no | n/a | n/a |
-| 0.1 | 20 | today | structure_vs_clutter | 596666 | 43405 | 0.4000 | 0.8333 | -0.4333 | -0.5093 | -0.3675 | 0.3333 | 0.4545 | 0.8000 | 0.8750 | no | n/a | n/a |
-| 0.1 | 20 | today | ground_vs_clutter | 429484 | 43405 | 0.2857 | 0.8333 | -0.5476 | -0.6333 | -0.4667 | 0.2143 | 0.3571 | 0.8000 | 0.8750 | no | n/a | n/a |
-| 0.1 | 20 | refined | structure_vs_clutter | 570641 | 38027 | 0.5000 | 1.0000 | -0.5000 | -0.6000 | -0.3504 | 0.4000 | 0.5556 | 0.8333 | 1.0000 | no | n/a | n/a |
-| 0.1 | 20 | refined | ground_vs_clutter | 418355 | 38027 | 0.3077 | 1.0000 | -0.6923 | -0.7600 | -0.5139 | 0.2308 | 0.3889 | 0.8571 | 1.0000 | no | n/a | n/a |
+| res | W | miss | pair | N struct | N clutter | q_s | q_c | gap | gap CI lo | gap CI hi | q_s CI lo | q_s CI hi | q_c CI lo | q_c CI hi | gap>=0.15 | m0 | m1 | pair at interval ends (low / high) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.2 | 10 | today | structure_vs_clutter | 195641 | 15864 | 0.4667 | 1.0000 | -0.5333 | -0.6000 | -0.4762 | 0.4000 | 0.5238 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.2 | 10 | today | ground_vs_clutter | 118059 | 15864 | 0.4872 | 1.0000 | -0.5128 | -0.5763 | -0.4667 | 0.4237 | 0.5333 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.2 | 10 | refined | structure_vs_clutter | 192255 | 13990 | 0.5357 | 1.0000 | -0.4643 | -0.5333 | -0.4000 | 0.4667 | 0.6000 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.2 | 10 | refined | ground_vs_clutter | 117091 | 13990 | 0.5333 | 1.0000 | -0.4667 | -0.5313 | -0.4167 | 0.4687 | 0.5833 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.2 | 20 | today | structure_vs_clutter | 180126 | 8798 | 0.5714 | 1.0000 | -0.4286 | -0.5000 | -0.3784 | 0.5000 | 0.6216 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.2 | 20 | today | ground_vs_clutter | 114893 | 8798 | 0.6000 | 1.0000 | -0.4000 | -0.4545 | -0.3571 | 0.5455 | 0.6429 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.2 | 20 | refined | structure_vs_clutter | 177370 | 7905 | 0.6000 | 1.0000 | -0.4000 | -0.4545 | -0.3333 | 0.5455 | 0.6667 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.2 | 20 | refined | ground_vs_clutter | 114048 | 7905 | 0.6250 | 1.0000 | -0.3750 | -0.4286 | -0.3333 | 0.5714 | 0.6667 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.1 | 10 | today | structure_vs_clutter | 642859 | 64376 | 0.2969 | 0.8333 | -0.5365 | -0.6111 | -0.4667 | 0.2353 | 0.3529 | 0.8000 | 0.8750 | no | n/a | n/a | n/a |
+| 0.1 | 10 | today | ground_vs_clutter | 441076 | 64376 | 0.2000 | 0.8333 | -0.6333 | -0.7000 | -0.5725 | 0.1481 | 0.2571 | 0.8000 | 0.8669 | no | n/a | n/a | n/a |
+| 0.1 | 10 | refined | structure_vs_clutter | 615220 | 53006 | 0.4000 | 1.0000 | -0.6000 | -0.6786 | -0.5227 | 0.3214 | 0.4773 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.1 | 10 | refined | ground_vs_clutter | 430628 | 53006 | 0.2222 | 1.0000 | -0.7778 | -0.8333 | -0.7059 | 0.1667 | 0.2941 | 1.0000 | 1.0000 | no | n/a | n/a | n/a |
+| 0.1 | 20 | today | structure_vs_clutter | 596666 | 43405 | 0.4000 | 0.8333 | -0.4333 | -0.5093 | -0.3675 | 0.3333 | 0.4545 | 0.8000 | 0.8750 | no | n/a | n/a | n/a |
+| 0.1 | 20 | today | ground_vs_clutter | 429484 | 43405 | 0.2857 | 0.8333 | -0.5476 | -0.6333 | -0.4667 | 0.2143 | 0.3571 | 0.8000 | 0.8750 | no | n/a | n/a | n/a |
+| 0.1 | 20 | refined | structure_vs_clutter | 570641 | 38027 | 0.5000 | 1.0000 | -0.5000 | -0.6000 | -0.3504 | 0.4000 | 0.5556 | 0.8333 | 1.0000 | no | n/a | n/a | n/a |
+| 0.1 | 20 | refined | ground_vs_clutter | 418355 | 38027 | 0.3077 | 1.0000 | -0.6923 | -0.7600 | -0.5139 | 0.2308 | 0.3889 | 0.8571 | 1.0000 | no | n/a | n/a | n/a |
 
 **Caveat (section 13.4):** about two thirds of the Keble 02 clutter cells lie more than 0.5 m above the device. These gaps are not evidence that hit rates do not separate in 3D.
 
@@ -162,24 +167,24 @@ r=0.1 W=10 IDENTICAL sha256_lean=419176829338bfc7 sha256_engine=419176829338bfc7
 r=0.1 W=2 IDENTICAL sha256_lean=4b5b7eaf223ba884 sha256_engine=4b5b7eaf223ba884
 ```
 
-| res | W | miss | pair | N struct | N clutter | q_s | q_c | gap | gap CI lo | gap CI hi | q_s CI lo | q_s CI hi | q_c CI lo | q_c CI hi | gap>=0.15 | m0 | m1 |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 0.2 | 10 | today | structure_vs_moving | 121651 | 5791 | 0.1250 | 0.1667 | -0.0417 | -0.1071 | -0.0238 | 0.1250 | 0.1429 | 0.1667 | 0.2500 | no | n/a | n/a |
-| 0.2 | 10 | today | solid_vs_moving | 33644 | 5791 | 0.1429 | 0.1667 | -0.0238 | -0.1071 | 0.0000 | 0.1250 | 0.1667 | 0.1667 | 0.2500 | no | n/a | n/a |
-| 0.2 | 10 | refined | structure_vs_moving | 116013 | 5791 | 0.1250 | 0.1667 | -0.0417 | -0.1071 | -0.0238 | 0.1250 | 0.1429 | 0.1667 | 0.2500 | no | n/a | n/a |
-| 0.2 | 10 | refined | solid_vs_moving | 32310 | 5791 | 0.1429 | 0.1667 | -0.0238 | -0.1071 | 0.0000 | 0.1250 | 0.1667 | 0.1667 | 0.2500 | no | n/a | n/a |
-| 0.2 | 2 | today | structure_vs_moving | 190373 | 5899 | 0.0588 | 0.0612 | -0.0024 | -0.0571 | 0.0075 | 0.0526 | 0.0667 | 0.0526 | 0.1176 | no | n/a | n/a |
-| 0.2 | 2 | today | solid_vs_moving | 54703 | 5899 | 0.0833 | 0.0612 | 0.0221 | -0.0406 | 0.0375 | 0.0690 | 0.0952 | 0.0526 | 0.1236 | no | n/a | n/a |
-| 0.2 | 2 | refined | structure_vs_moving | 181196 | 5899 | 0.0588 | 0.0612 | -0.0024 | -0.0553 | 0.0080 | 0.0526 | 0.0667 | 0.0526 | 0.1138 | no | n/a | n/a |
-| 0.2 | 2 | refined | solid_vs_moving | 52455 | 5899 | 0.0833 | 0.0612 | 0.0221 | -0.0312 | 0.0412 | 0.0714 | 0.1000 | 0.0526 | 0.1176 | no | n/a | n/a |
-| 0.1 | 10 | today | structure_vs_moving | 396662 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0139 | 0.1111 | 0.1250 | 0.1111 | 0.1250 | no | n/a | n/a |
-| 0.1 | 10 | today | solid_vs_moving | 126045 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0317 | 0.1111 | 0.1429 | 0.1111 | 0.1250 | no | n/a | n/a |
-| 0.1 | 10 | refined | structure_vs_moving | 372156 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0139 | 0.1111 | 0.1250 | 0.1111 | 0.1250 | no | n/a | n/a |
-| 0.1 | 10 | refined | solid_vs_moving | 118576 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0252 | 0.1111 | 0.1429 | 0.1111 | 0.1250 | no | n/a | n/a |
-| 0.1 | 2 | today | structure_vs_moving | 631889 | 15660 | 0.0556 | 0.0444 | 0.0111 | 0.0048 | 0.0243 | 0.0513 | 0.0625 | 0.0333 | 0.0500 | no | n/a | n/a |
-| 0.1 | 2 | today | solid_vs_moving | 208388 | 15660 | 0.0667 | 0.0444 | 0.0222 | 0.0125 | 0.0385 | 0.0600 | 0.0769 | 0.0333 | 0.0513 | no | n/a | n/a |
-| 0.1 | 2 | refined | structure_vs_moving | 590835 | 15656 | 0.0556 | 0.0444 | 0.0111 | 0.0048 | 0.0238 | 0.0513 | 0.0625 | 0.0333 | 0.0500 | no | n/a | n/a |
-| 0.1 | 2 | refined | solid_vs_moving | 194195 | 15656 | 0.0714 | 0.0444 | 0.0270 | 0.0149 | 0.0412 | 0.0625 | 0.0811 | 0.0333 | 0.0500 | no | n/a | n/a |
+| res | W | miss | pair | N struct | N clutter | q_s | q_c | gap | gap CI lo | gap CI hi | q_s CI lo | q_s CI hi | q_c CI lo | q_c CI hi | gap>=0.15 | m0 | m1 | pair at interval ends (low / high) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 0.2 | 10 | today | structure_vs_moving | 121651 | 5791 | 0.1250 | 0.1667 | -0.0417 | -0.1071 | -0.0238 | 0.1250 | 0.1429 | 0.1667 | 0.2500 | no | n/a | n/a | n/a |
+| 0.2 | 10 | today | solid_vs_moving | 33644 | 5791 | 0.1429 | 0.1667 | -0.0238 | -0.1071 | 0.0000 | 0.1250 | 0.1667 | 0.1667 | 0.2500 | no | n/a | n/a | n/a |
+| 0.2 | 10 | refined | structure_vs_moving | 116013 | 5791 | 0.1250 | 0.1667 | -0.0417 | -0.1071 | -0.0238 | 0.1250 | 0.1429 | 0.1667 | 0.2500 | no | n/a | n/a | n/a |
+| 0.2 | 10 | refined | solid_vs_moving | 32310 | 5791 | 0.1429 | 0.1667 | -0.0238 | -0.1071 | 0.0000 | 0.1250 | 0.1667 | 0.1667 | 0.2500 | no | n/a | n/a | n/a |
+| 0.2 | 2 | today | structure_vs_moving | 190373 | 5899 | 0.0588 | 0.0612 | -0.0024 | -0.0571 | 0.0075 | 0.0526 | 0.0667 | 0.0526 | 0.1176 | no | n/a | n/a | n/a |
+| 0.2 | 2 | today | solid_vs_moving | 54703 | 5899 | 0.0833 | 0.0612 | 0.0221 | -0.0406 | 0.0375 | 0.0690 | 0.0952 | 0.0526 | 0.1236 | no | n/a | n/a | n/a |
+| 0.2 | 2 | refined | structure_vs_moving | 181196 | 5899 | 0.0588 | 0.0612 | -0.0024 | -0.0553 | 0.0080 | 0.0526 | 0.0667 | 0.0526 | 0.1138 | no | n/a | n/a | n/a |
+| 0.2 | 2 | refined | solid_vs_moving | 52455 | 5899 | 0.0833 | 0.0612 | 0.0221 | -0.0312 | 0.0412 | 0.0714 | 0.1000 | 0.0526 | 0.1176 | no | n/a | n/a | n/a |
+| 0.1 | 10 | today | structure_vs_moving | 396662 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0139 | 0.1111 | 0.1250 | 0.1111 | 0.1250 | no | n/a | n/a | n/a |
+| 0.1 | 10 | today | solid_vs_moving | 126045 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0317 | 0.1111 | 0.1429 | 0.1111 | 0.1250 | no | n/a | n/a | n/a |
+| 0.1 | 10 | refined | structure_vs_moving | 372156 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0139 | 0.1111 | 0.1250 | 0.1111 | 0.1250 | no | n/a | n/a | n/a |
+| 0.1 | 10 | refined | solid_vs_moving | 118576 | 15501 | 0.1250 | 0.1250 | 0.0000 | -0.0139 | 0.0252 | 0.1111 | 0.1429 | 0.1111 | 0.1250 | no | n/a | n/a | n/a |
+| 0.1 | 2 | today | structure_vs_moving | 631889 | 15660 | 0.0556 | 0.0444 | 0.0111 | 0.0048 | 0.0243 | 0.0513 | 0.0625 | 0.0333 | 0.0500 | no | n/a | n/a | n/a |
+| 0.1 | 2 | today | solid_vs_moving | 208388 | 15660 | 0.0667 | 0.0444 | 0.0222 | 0.0125 | 0.0385 | 0.0600 | 0.0769 | 0.0333 | 0.0513 | no | n/a | n/a | n/a |
+| 0.1 | 2 | refined | structure_vs_moving | 590835 | 15656 | 0.0556 | 0.0444 | 0.0111 | 0.0048 | 0.0238 | 0.0513 | 0.0625 | 0.0333 | 0.0500 | no | n/a | n/a | n/a |
+| 0.1 | 2 | refined | solid_vs_moving | 194195 | 15656 | 0.0714 | 0.0444 | 0.0270 | 0.0149 | 0.0412 | 0.0625 | 0.0811 | 0.0333 | 0.0500 | no | n/a | n/a | n/a |
 
 ## 6. Option C evidence (matched hit rate, lag-1 autocorrelation)
 

@@ -1,6 +1,6 @@
 # PREREG: frozen STRATA v2 evidence defaults (phase 1b)
 
-Written by `freeze_prereg.py` from the committed result tables of `results_p1b/` (commit `d3e08b4`, 2026-10-18T09:40:36+0900). Not edited by hand.
+Written by `freeze_prereg.py` from the committed result tables of `results_p1b/` (commit `91532aa`, 2026-10-18T10:27:02+0900). Not edited by hand.
 The rule is `PREREG_P1B.md` sections 1, 6, 7 and 8; the definitions are those of `PREREG_P1.md` with Amendments 1 and 2.
 `m0 = ceil_0.05(q_c)`, `m1 = floor_0.05(q_s)`, `alpha = beta = 0.01`; `l_hit = ln(m1/m0)`, `l_miss = ln((1-m1)/(1-m0))`, `A = -B = ln(99)`,
 ceiling `A + 2 l_hit`; engine floor rule: no lower clamp before `n >= 24` touched windows, reject at `l <= B` once `n >= 24`.
@@ -25,6 +25,8 @@ Conditional values, **NOT A FREEZE**: what the rounding rule gives from the meas
 | m0 | m1 | alpha = beta | A = -B | l_hit | l_miss | ceiling | n_max | windows for an always-hit cell | m* |
 |---|---|---|---|---|---|---|---|---|---|
 | 0.20 | 0.70 | 0.01 | 4.5951 | 1.2528 | -0.9808 | 7.1006 | 80 | 4 | 0.4391 |
+
+The interval crosses a rounding boundary (`PREREG_P1B.md` section 1), so both ends are stated: pair at the low interval end (0.20, 0.65), at the high end (0.30, 0.75); point pair (0.20, 0.70).
 
 ## 3D backend (`voxel3d`)
 

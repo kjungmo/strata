@@ -13,6 +13,7 @@
    "alpha": 0.01,
    "beta": 0.01,
    "ceiling": 7.100645787125325,
+   "ends": "pair at the low interval end (0.20, 0.65), at the high end (0.30, 0.75); point pair (0.20, 0.70)",
    "l_hit": 1.2527629684953678,
    "l_miss": -0.9808292530117261,
    "latency_all_hit": 4,
