@@ -404,6 +404,9 @@ TEST(Sprt, DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic) {
     m.tick();
     if (w + 1 <= 24) { EXPECT_EQ(m.cellCount(), 1u) << "window " << (w + 1); }   // alive through the gate
     if (m.classify(9) == CellClass::Periodic) periodic_seen = true;
+    // The floor applies from the window n = T itself: no cell with n >= T reads below sigma(B).
+    if (m.cellCount() == 1u && m.observations(9) >= p.periodicity.period_windows)
+      EXPECT_GE(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)) - 1e-12) << "window " << (w + 1);
     // A cell at the floor (n >= T, l <= B) that is kept only as a periodic candidate and is not yet
     // read out Periodic or Static reads Unknown: neither Transient nor Intermittent (n_max = 64 here).
     if (p.n_max_undecided > 0 && m.observations(9) >= p.periodicity.period_windows && !m.isStatic(9) &&
