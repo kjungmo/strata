@@ -936,6 +936,13 @@ TEST(P3Probe, SpiresValidateOnASyntheticZip) {
   EXPECT_EQ(runProbe("spires-validate --zip " + tmpPath("sp.zip") + " --gt " + tmpPath("sp_gt.txt") + " --n 2", &out), 0) << out;
   EXPECT_NE(out.find("VERDICT spires reader OK"), std::string::npos);
   EXPECT_NE(out.find("members=2"), std::string::npos);
+  // a GT track that starts after the first scan: that scan has no pose by the data (reported), the second has one: the reader is fine
+  std::string lategt;
+  for (int i = 0; i <= 40; ++i) { std::ostringstream l; l.precision(15); l << 1710255656.06 + 0.05 * i << " 0 0 0 0 0 0 1\n"; lategt += l.str(); }
+  writeText(tmpPath("sp_gt3.txt"), lategt);
+  EXPECT_EQ(runProbe("spires-validate --zip " + tmpPath("sp.zip") + " --gt " + tmpPath("sp_gt3.txt") + " --n 2", &out), 0) << out;
+  EXPECT_NE(out.find("(before the first GT pose)"), std::string::npos);
+  EXPECT_NE(out.find("scans_before_first_gt_pose=1"), std::string::npos);
   // a GT track that ends before the scans: pose missing, the validator fails
   std::string shortgt;
   for (int i = 0; i <= 10; ++i) { std::ostringstream l; l.precision(15); l << 1710255655.0 + 0.05 * i << " 0 0 0 0 0 0 1\n"; shortgt += l.str(); }

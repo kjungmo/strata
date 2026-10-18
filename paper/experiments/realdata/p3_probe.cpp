@@ -168,6 +168,7 @@ int cmdSpiresValidate(const std::map<std::string, std::string>& a) {
   SpiresExtrinsic ex; SpiresConvertOptions co; co.dt = dt;
   SpiresConvertReport rep;
   std::vector<std::uint8_t> buf; Frame fr;
+  std::size_t scans_before_gt = 0;
   for (std::size_t k = 0; k < std::min(n, entries.size()); ++k) {
     zip.read(entries[k], buf);
     const SpiresPcd s = parsePcdBuffer(buf, entries[k].name);
@@ -178,17 +179,21 @@ int cmdSpiresValidate(const std::map<std::string, std::string>& a) {
     for (std::size_t i = 0; i < s.xyz.size(); i += 3) { const double r = std::sqrt(double(s.xyz[i]) * s.xyz[i] + double(s.xyz[i + 1]) * s.xyz[i + 1] + double(s.xyz[i + 2]) * s.xyz[i + 2]); rr.push_back(r); rmax = std::max(rmax, r); }
     std::sort(rr.begin(), rr.end());
     const bool ok = convertSpiresScan(s, st, gt, ex, co, static_cast<std::uint32_t>(k), fr, rep);
+    // a scan before the first ground-truth pose has no pose by the data, not by the reader (the conversion counts and drops it)
+    const double tmid = s.ts.empty() ? st : tmin + 0.5 * (tmax - tmin);
+    const bool before_gt = !ok && tmid + dt < gt.t0();
+    if (before_gt) ++scans_before_gt;
     std::cout << entries[k].name << " bytes=" << buf.size() << " points=" << s.points << " finite=" << s.xyz.size() / 3 << " has_timestamp=" << (!s.ts.empty())
               << " name_time=" << st << " point_time=[" << (s.ts.empty() ? 0 : tmin) << "," << (s.ts.empty() ? 0 : tmax) << "] range_median=" << (rr.empty() ? 0 : rr[rr.size() / 2])
-              << " range_max=" << rmax << " pose_ok=" << ok << " kept=" << (ok ? fr.size() : 0) << "\n";
+              << " range_max=" << rmax << " pose_ok=" << ok << (before_gt ? " (before the first GT pose)" : "") << " kept=" << (ok ? fr.size() : 0) << "\n";
     v.check(s.points > 1000, entries[k].name + ": fewer than 1000 points");
     v.check(!s.ts.empty(), entries[k].name + ": no timestamp field (the per-point deskew of calibration cannot be repeated)");
     v.check(std::isfinite(st), entries[k].name + ": the member name has no time");
     v.check(!rr.empty() && rr[rr.size() / 2] > 0.5 && rr[rr.size() / 2] < 60.0, entries[k].name + ": median range outside 0.5 to 60 m");
-    v.check(ok, entries[k].name + ": no ground-truth pose at the scan time");
+    v.check(ok || before_gt, entries[k].name + ": no ground-truth pose at the scan time");
     if (!s.ts.empty() && std::isfinite(st)) v.check(std::fabs(tmax - st) < 1.0 && std::fabs(tmin - st) < 1.0, entries[k].name + ": point times differ from the name time by more than 1 s");
   }
-  std::cout << "scans=" << rep.scans << " dropped_no_pose=" << rep.scans_dropped_no_pose << " points_used=" << rep.points_used << " points_no_pose=" << rep.points_no_pose << "\n";
+  std::cout << "scans_before_first_gt_pose=" << scans_before_gt << " scans=" << rep.scans << " dropped_no_pose=" << rep.scans_dropped_no_pose << " points_used=" << rep.points_used << " points_no_pose=" << rep.points_no_pose << "\n";
   return finishValidate(v, "spires");
 }
 
