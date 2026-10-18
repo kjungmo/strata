@@ -26,6 +26,8 @@ Commits of the branch since the stat record (oldest first):
 - 2a111db 2026-10-18T08:47:31+09:00 realdata: mutation record, pass 2 (65 of 68 killed, 3 equivalent)
 - 5fbff7e 2026-10-18T08:49:01+09:00 realdata: final stat comparison and report for phase 1b
 - f5ae53f 2026-10-18T09:13:49+09:00 realdata: amendment 3 (wording of the access evidence, open items n_max, dynamics_0 time base and G1 after the Opus review of phase 1b)
+- fd08285 2026-10-18T09:13:52+09:00 realdata: fix the chronology root in the phase 1b report (was paper/, list empty), fail loudly, non-modification wording of the stat comparison, review items in the report and deviations
+- d3e08b4 2026-10-18T09:40:33+09:00 realdata: amendment 4 (clutter support caveat, provenance rule), chronology corrections, step logs record commit and tree state, report hygiene, test skips outside git, laser_optima anchor
 
 Step logs (`results_p1b/logs/`, sorted by start; each carries host, load and the command):
 
@@ -52,8 +54,8 @@ Step logs (`results_p1b/logs/`, sorted by start; each carries host, load and the
 | spires_measure_r0.2 | 2026-10-18T07:40:35+09:00 | 2026-10-18T07:43:51+09:00 | 0 |
 | spires_measure_r0.1 | 2026-10-18T07:43:51+09:00 | 2026-10-18T07:52:34+09:00 | 0 |
 | analyze | 2026-10-18T08:13:14+09:00 | 2026-10-18T08:29:13+09:00 | 0 |
-| freeze | 2026-10-18T08:29:43+09:00 | 2026-10-18T08:29:43+09:00 | 0 |
-| report | 2026-10-18T08:48:07+09:00 | 2026-10-18T08:48:07+09:00 | 0 |
+| freeze | 2026-10-18T09:40:36+09:00 | 2026-10-18T09:40:36+09:00 | 0 |
+| report | 2026-10-18T09:40:36+09:00 |  |  |
 
 The first measurement step (`gate2d_mapping`) started 2026-10-18T07:23:03+09:00, after the commits of the stat record, Amendment 2 and the code.
 
@@ -135,6 +137,8 @@ N_min sensitivity of the primary pair:
 | 0.1 | 20 | refined | structure_vs_clutter | 570641 | 38027 | 0.5000 | 1.0000 | -0.5000 | -0.6000 | -0.3504 | 0.4000 | 0.5556 | 0.8333 | 1.0000 | no | n/a | n/a |
 | 0.1 | 20 | refined | ground_vs_clutter | 418355 | 38027 | 0.3077 | 1.0000 | -0.6923 | -0.7600 | -0.5139 | 0.2308 | 0.3889 | 0.8571 | 1.0000 | no | n/a | n/a |
 
+**Caveat (section 13.4):** about two thirds of the Keble 02 clutter cells lie more than 0.5 m above the device. These gaps are not evidence that hit rates do not separate in 3D.
+
 ### 4.3 Grazing-miss diagnostic
 
 | dataset | res_m | W | structure_miss_events | events_endpoint_within_1_voxel | share_events | structure_miss_windows | miss_windows_with_such_event | share_windows | structure_touched_windows_today | structure_touched_windows_refined | share_touched_windows_removed |
@@ -204,7 +208,7 @@ Shipped conditions only (all conditions are in `p1b_matched_band.csv`). AUC abov
   - reason: lil_dynamics_0 fails: G1 FAIL (accepted 470, median 0.1832 m, p90 0.2285 m; limits 0.1, 0.2)
 - `voxel3d`: **NOT FROZEN**, branch F
   - reason: G1 and G2 on Keble 02
-  - reason: the gap is below 0.15 under both miss definitions (today -0.5333, refined -0.4643), whatever the checks say
+  - reason: the gap is below 0.15 under both miss definitions (today -0.5333, refined -0.4643), whatever the checks say. Caveat (review finding 1, deviations item 23): 64 % of the Keble 02 clutter cells lie more than 0.5 m above the device, so the clutter class is mostly not walking people and this gap is not evidence that hit rates do not separate in 3D
   - reason: the fallback is the 2D pair, and the 2D pair is not frozen
 
 Full text: `PREREG.md`.
@@ -242,6 +246,8 @@ buffer k voxels (0.20 m) | clutter cells N>=5 | q_c (90th percentile) | implied 
   k=6 (1.2 m) |   3087 | 1.0000 | -0.5333
   k=7 (1.4 m) |   2057 | 1.0000 | -0.5333
 ```
+
+Height of the clutter cells above the device: see section 13.4 (`explore_keble_clutter_height.py`).
 
 ## 9. Replay of the derived test over the calibration run sequences
 
@@ -322,7 +328,7 @@ No file outside the amendment's list was modified (size, mtime, ctime). **No mod
 
 ### 13.1 Time base of the LILocBench clutter sequence (`dynamics_0`)
 
-Advice section 4: if LIL fails G1 or G2, stop and re-examine the time base first. Phase 1b stopped but did not look. The phase 1 offset search already shows a per-laser disagreement on `dynamics_0` only (fewest occupied cells, front and rear laser alone; `results_p1/meta/lil_offset_*.csv`):
+Advice section 4: if LIL fails G1 or G2, stop and re-examine the time base first. Phase 1b stopped but did not look. The phase 1 offset search already shows a per-laser disagreement on `dynamics_0` only (fewest occupied cells, front and rear laser alone, rows with anchor `start`; `results_p1/meta/lil_offset_*.csv`):
 
 | sequence | front optimum dt (s) | cells | rear optimum dt (s) | cells | both lasers optimum dt (s) | cells |
 |---|---|---|---|---|---|---|
@@ -330,7 +336,7 @@ Advice section 4: if LIL fails G1 or G2, stop and re-examine the time base first
 | static_0 | -0.13 | 6994 | -0.13 | 9006 | -0.13 | 16000 |
 | dynamics_0 | -0.13 | 6159 | -0.06 | 7258 | -0.11 | 14851 |
 
-Run B used one offset, -0.13 s, for all three sequences. On `dynamics_0` the rear laser is best at -0.06 s (7258 cells; 8904 at -0.13 s). The reviewer's post hoc check (own code, files under `/mnt/d/wsl/strata/review_p1b/`, not committed, not pre-registered, not reproduced here): robust wall width 3.46 x 1.4826 x MAD of the perpendicular offsets in the accepted linear patches is 0.172 m for the `dynamics_0` rear laser against 0.075 m for the `static_0` rear laser; with the rear frames of `dynamics_0` taken at -0.06 s it is 0.120 m. The pre-registered G1 statistic on `dynamics_0` would move from median 0.185 m (485 patches) to 0.140 m (581 patches); `q_c` (0.05 m, W = 15) from 0.1725 to 0.1707, so the conditional pair stays (0.20, 0.70); `structure@dynamics_0` q10 from 0.25 to 0.36. The W = 15 cell table of `dynamics_0` rebuilt at -0.13 s is byte-identical to the run B cache. **The lead must settle the `dynamics_0` rear-laser offset (a pre-registered per-laser rule, as an amendment) before waiving any gate for `dynamics_0`.**
+Run B used one offset, -0.13 s, for all three sequences. On `dynamics_0` the rear laser is best at -0.06 s (7258 cells; 8904 at -0.13 s). The reviewer also ran a post hoc check with its own uncommitted code (robust wall width of the rear laser, G1 and `q_c` with the rear frames at -0.06 s). Those numbers are not reproduced by the implementer, are not committed and are not quoted here; they must never reach the paper. A reproducible check would be a new exploratory script with its output under `results_p1b/exploratory/`. **The lead must settle the `dynamics_0` rear-laser offset (a pre-registered per-laser rule, as an amendment) before waiving any gate for `dynamics_0`.**
 
 ### 13.2 `n_max_undecided`
 
@@ -345,4 +351,17 @@ The value that binds P2 is for the lead to record in `LEAD_DECISIONS_P1.md`: the
 
 ### 13.3 G1 does not measure what it claims
 
-The gates match the spec. The reviewer's independent C++ (own reader, RNG, nearest-neighbour search and eigen code) reproduces G2 on `static_0` exactly (1,445,199 query points, matched 0.999698, median 0.001326 m, p90 0.005970 m) and G1 within sampling (427 patches, 0.1707 / 0.2550 m against the branch's 391, 0.1705 / 0.2545 m). But sqrt(12 lambda_min) does not resist off-line points. On the same accepted patches the robust core width is 0.076 m on `static_0` (the spec predicts 0.077) and 0.063 m on `mapping`; on the run A cache, which has the known 0.13 s error, it is 0.131 m. So the 0.17 to 0.19 m G1 failures come from second surfaces inside 'linear' patches, not from pose smear. On Keble 02, G1 fails (0.32 m) while the poses are good. G2 cannot see smear (`deviations.md`, item 7). Any replacement gate is a second gate change made after seeing data: it must be committed as an amendment with this chronology and reported as such. A robust-width G1 at the spec's 0.10 m limit separates run A from run B in the reviewer's post hoc check; that check is not pre-registered and must not be presented as such. **This blocks the freeze; the decision is the lead's.**
+The gates match the spec. The reviewer's independent C++ (own reader, RNG, nearest-neighbour search and eigen code) reproduces G2 and G1 within sampling on `static_0`. It also finds that sqrt(12 lambda_min) does not resist off-line points: the G1 failures come from second surfaces inside 'linear' patches, not from pose smear, and on Keble 02 G1 fails while the poses are good. The reviewer's code and numbers are uncommitted, post hoc and not reproduced here (their baselines differ from the gate's committed values, for example on `dynamics_0`), so none of them is quoted; they must never reach the paper. G2 cannot see smear (`deviations.md`, item 7). Any replacement gate is a second gate change made after seeing data: it must be committed as an amendment with this chronology and reported as such. A robust-width G1 is only post hoc evidence and must not be presented as pre-registered. **This blocks the freeze; the decision is the lead's.**
+
+### 13.4 The Keble 02 clutter class is mostly not clutter (review finding 1; open for the lead)
+
+The labels match the spec, but the support rule (`PREREG_P1B.md` section 4.6) asks only for one TLS point somewhere in the 1 m column. It does not exclude heights the TLS never reached. Of the clutter cells with N >= 5 (0.2 m, W = 10, today's miss) the exploratory script `explore_keble_clutter_height.py` finds, by height relative to the nearest track position:
+
+```
+clutter cells with N >= 5: 15864; q90 overall 1.0000
+below -1.8 m                  609 cells (  3.8 %)  q90 1.0000
+person band -1.8..+0.5 m     5059 cells ( 31.9 %)  q90 1.0000
+above +0.5 m                10196 cells ( 64.3 %)  q90 1.0000
+```
+
+About two thirds of the cells are more than 0.5 m above the device, so above head height and not walking people; q90 is 1.000 in every band. So q_c = 1.0 mostly measures static surfaces that the TLS missed or captured at another time. **The Keble gaps (-0.53 and -0.46) must not be cited as evidence that hit rates do not separate in 3D.** No verdict changes (3D is branch F because G1 fails and 2D is not frozen). A corrected clutter definition (vertical support or a height band) would be a further dated amendment, decided by the lead before any 3D re-run.

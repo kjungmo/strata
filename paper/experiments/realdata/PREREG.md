@@ -1,6 +1,6 @@
 # PREREG: frozen STRATA v2 evidence defaults (phase 1b)
 
-Written by `freeze_prereg.py` from the committed result tables of `results_p1b/` (commit `081e595`, 2026-10-18T08:29:43+0900). Not edited by hand.
+Written by `freeze_prereg.py` from the committed result tables of `results_p1b/` (commit `d3e08b4`, 2026-10-18T09:40:36+0900). Not edited by hand.
 The rule is `PREREG_P1B.md` sections 1, 6, 7 and 8; the definitions are those of `PREREG_P1.md` with Amendments 1 and 2.
 `m0 = ceil_0.05(q_c)`, `m1 = floor_0.05(q_s)`, `alpha = beta = 0.01`; `l_hit = ln(m1/m0)`, `l_miss = ln((1-m1)/(1-m0))`, `A = -B = ln(99)`,
 ceiling `A + 2 l_hit`; engine floor rule: no lower clamp before `n >= 24` touched windows, reject at `l <= B` once `n >= 24`.
@@ -45,7 +45,7 @@ Checks before the rule is read:
 Reasons:
 
 - G1 and G2 on Keble 02
-- the gap is below 0.15 under both miss definitions (today -0.5333, refined -0.4643), whatever the checks say
+- the gap is below 0.15 under both miss definitions (today -0.5333, refined -0.4643), whatever the checks say. Caveat (review finding 1, deviations item 23): 64 % of the Keble 02 clutter cells lie more than 0.5 m above the device, so the clutter class is mostly not walking people and this gap is not evidence that hit rates do not separate in 3D
 - the fallback is the 2D pair, and the 2D pair is not frozen
 
 ## Inputs (sha256)

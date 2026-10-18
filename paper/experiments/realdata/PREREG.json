@@ -65,7 +65,7 @@
   "miss_definition": "today",
   "reasons": [
    "G1 and G2 on Keble 02",
-   "the gap is below 0.15 under both miss definitions (today -0.5333, refined -0.4643), whatever the checks say",
+   "the gap is below 0.15 under both miss definitions (today -0.5333, refined -0.4643), whatever the checks say. Caveat (review finding 1, deviations item 23): 64 % of the Keble 02 clutter cells lie more than 0.5 m above the device, so the clutter class is mostly not walking people and this gap is not evidence that hit rates do not separate in 3D",
    "the fallback is the 2D pair, and the 2D pair is not frozen"
   ],
   "status": "NOT FROZEN"

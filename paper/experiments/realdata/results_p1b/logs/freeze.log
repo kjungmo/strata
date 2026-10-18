@@ -1,4 +1,6 @@
 STEP freeze
-START 2026-10-18T08:29:43+09:00 host=DESKTOP-KCD7BRS load=2.96 3.13 3.33 cores=12
-CMD python3 -I <REALDATA_DIR>/freeze_prereg.py --results-dir <RESULTS_DIR> --out-dir <REALDATA_DIR> --commit 081e595
-END 2026-10-18T08:29:43+09:00 rc=0 load=2.96 3.13 3.33
+START 2026-10-18T09:40:36+09:00 host=DESKTOP-KCD7BRS load=0.38 1.34 2.56 cores=12
+COMMIT d3e08b419a94077e21ee35b0a1bc31d80b7e051d
+TREE_STATUS_PORCELAIN_LINES 1 (outside results: 0)
+CMD python3 -I <REALDATA_DIR>/freeze_prereg.py --results-dir <RESULTS_DIR> --out-dir <REALDATA_DIR> --commit d3e08b4
+END 2026-10-18T09:40:36+09:00 rc=0 load=0.38 1.34 2.56
