@@ -5,8 +5,12 @@ Made by `mutation_p2.py` on a scratch copy; the repository was not modified. Swe
 `test_sprt.cpp` changed once; survivors are classified by `survivor_class`, none is unexplained).
 Engine survivors are all equivalent mutants with the reason in the row, except the legacy one, which the bit-equivalence script kills.
 A mutant that hangs counts as killed (timeout).
+Run at strata_core tree d8db00e (after the review fixes: the count restart at demotion, the Unknown read-out of a rejected periodic
+candidate pinned, the floor pinned at n = T). Two engine mutants are new since the first record: "rejected periodic candidate reads
+Transient" and "no count restart at demotion". "floor from n > T" survived the previous test file once the count restart changed the
+path; the door test now kills it.
 
-## engine: 73 mutants, 64 killed, 9 survived, 0 build errors
+## engine: 75 mutants, 66 killed, 9 survived, 0 build errors
 
 | mutant | where | result | killed by (first) |
 |---|---|---|---|
@@ -17,8 +21,8 @@ A mutant that hangs counts as killed (timeout).
 | B without (1 - alpha) | src/layered_map.cpp | killed | ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences, ReplayP1.DerivedTableOfTheAdvice, ReplayP1.TruncationTableAgainstTheAdvisorsMonteCarloAtM |
 | ceiling one hit lower | src/layered_map.cpp | killed | Sprt.DerivedQuantitiesOfTheShippedPair, Sprt.ThresholdsOfUnequalErrorRatesAndACustomCeiling |
 | ceiling three hits | src/layered_map.cpp | killed | Sprt.DerivedQuantitiesOfTheShippedPair, Sprt.ThresholdsOfUnequalErrorRatesAndACustomCeiling |
-| demotion level lower | src/layered_map.cpp | killed | Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DerivedQuantitiesOfThePairsInTheAdvice, Sprt.DerivedQuantitiesOfTheShippedPair |
-| demotion level higher | src/layered_map.cpp | killed | Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DerivedQuantitiesOfThePairsInTheAdvice, Sprt.DerivedQuantitiesOfTheShippedPair |
+| demotion level lower | src/layered_map.cpp | killed | Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce, Sprt.DerivedQuantitiesOfThePairsInTheAdvice |
+| demotion level higher | src/layered_map.cpp | killed | Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce, Sprt.DerivedQuantitiesOfThePairsInTheAdvice |
 | m* sign | src/layered_map.cpp | killed | ReplayP1.DerivedTableOfTheAdvice, ReplayP1.NMaxOfTheShippedPairIsTheSmallestMultipleOf16UnderThreePercent, ReplayP1.TruncationTableAgainstTheAdvisorsMonteCarloAtM |
 | latency loop <= | src/layered_map.cpp | killed | Sprt.ThresholdsOfUnequalErrorRatesAndACustomCeiling, Sprt.ValidationRejectsEachBadInputOnBothSides |
 | demote_misses loop >= | src/layered_map.cpp | survived; EQUIVALENT: equivalent: a step lands exactly on the level only for a rational ratio of the increments |  |
@@ -38,7 +42,7 @@ A mutant that hangs counts as killed (timeout).
 | model switch | src/layered_map.cpp | killed | Grid2DBackend.CloseWindowsClosesRegardlessOfTickCount, Grid2DBackend.FreeSurvivesPruning, Grid2DBackend.RenderOccupancyGrid |
 | sprt path never taken | src/layered_map.cpp | killed | LayeredMap.AlwaysHitWallNeverPeriodicShippedDefaultsT24, ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences, ReplayP1.InSampleKittiReplayOfTheAdvice |
 | increments swapped | src/layered_map.cpp | killed | LayeredMap.AlwaysHitWallNeverPeriodicShippedDefaultsT24, LayeredMap.PeriodicDemotionNeedsContradictingFreeEvidence, LayeredMap.RevisitLoopWall8of48StaysStatic |
-| no ceiling | src/layered_map.cpp | killed | Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.GraduatedCellIsDemotedByTheReverseTestAfterTheDerivedMissCount |
+| no ceiling | src/layered_map.cpp | killed | Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
 | ceiling clamp >= | src/layered_map.cpp | survived; EQUIVALENT: equivalent: assigns the value it already has |  |
 | floor before the gate (the rejected design) | src/layered_map.cpp | killed | ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences, ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences, Sprt.ALongMissRunCanDelayButNotPreventGraduationBeforeTheGate |
 | floor from n > T | src/layered_map.cpp | killed | Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
@@ -52,7 +56,7 @@ A mutant that hangs counts as killed (timeout).
 | periodic cell not demoted | src/layered_map.cpp | killed | Sprt.DoorGraduatesEarlyAndPeriodicityThenDemotesIt, Sprt.PeriodicWinsOverIntermittent |
 | demote at l < level | src/layered_map.cpp | survived; EQUIVALENT: equivalent: l = level exactly does not occur for irrational increments |  |
 | no restart after the reverse test | src/layered_map.cpp | killed | Sprt.ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever |
-| demote one step early | src/layered_map.cpp | killed | Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.GraduatedCellIsDemotedByTheReverseTestAfterTheDerivedMissCount, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
+| demote one step early | src/layered_map.cpp | killed | Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce, Sprt.GraduatedCellIsDemotedByTheReverseTestAfterTheDerivedMissCount |
 | demote direction | src/layered_map.cpp | killed | LayeredMap.AlwaysHitWallNeverPeriodicShippedDefaultsT24, LayeredMap.PeriodicDemotionNeedsContradictingFreeEvidence, LayeredMap.RevisitLoopWall8of48StaysStatic |
 | reject from n > T | src/layered_map.cpp | killed | ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences, ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences, Sprt.AllMissCellIsKeptUntilTouchedWindowTAndErasedExactlyThen |
 | reject before the gate | src/layered_map.cpp | killed | ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences, ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences, Sprt.ALongMissRunCanDelayButNotPreventGraduationBeforeTheGate |
@@ -67,10 +71,12 @@ A mutant that hangs counts as killed (timeout).
 | Unknown at l < B | src/layered_map.cpp | killed | Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
 | Unknown with // | src/layered_map.cpp | killed | Sprt.AllMissCellIsKeptUntilTouchedWindowTAndErasedExactlyThen, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic, Sprt.NMaxZeroNeverReadsOutIntermittent |
 | Intermittent from n > n_max | src/layered_map.cpp | killed | Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate, Sprt.Voxel3DBackendCountsIntermittentCells |
-| n_max 0 means never | src/layered_map.cpp | killed | Sprt.AllMissCellIsKeptUntilTouchedWindowTAndErasedExactlyThen, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| Intermittent with // | src/layered_map.cpp | killed | Sprt.AllMissCellIsKeptUntilTouchedWindowTAndErasedExactlyThen, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
+| n_max 0 means never | src/layered_map.cpp | killed | Sprt.AllMissCellIsKeptUntilTouchedWindowTAndErasedExactlyThen, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.NMaxZeroNeverReadsOutIntermittent |
+| Intermittent with // | src/layered_map.cpp | killed | Sprt.AllMissCellIsKeptUntilTouchedWindowTAndErasedExactlyThen, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
+| rejected periodic candidate reads Transient | src/layered_map.cpp | killed | Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
+| no count restart at demotion | src/layered_map.cpp | killed | Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
 | intermittentCells wrong class | src/layered_map.cpp | killed | Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted, Sprt.NMaxZeroNeverReadsOutIntermittent, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
-| observations() off by one | src/layered_map.cpp | killed | Sprt.ALongMissRunCanDelayButNotPreventGraduationBeforeTheGate, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| observations() off by one | src/layered_map.cpp | killed | Sprt.ALongMissRunCanDelayButNotPreventGraduationBeforeTheGate, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
 | default model legacy | include/strata_core/layered_map.hpp | killed | LayeredMap.AlwaysHitWallNeverPeriodicShippedDefaultsT24, LayeredMap.PeriodicDemotionNeedsContradictingFreeEvidence, Sprt.StructDefaultsAreTheShippedSprtPair |
 | default m0 | include/strata_core/layered_map.hpp | killed | LayeredMap.AlwaysHitWallNeverPeriodicShippedDefaultsT24, Sprt.StructDefaultsAreTheShippedSprtPair, ctest:defaults_match_yaml_and_prereg |
 | default m1 | include/strata_core/layered_map.hpp | killed | Sprt.StructDefaultsAreTheShippedSprtPair, ctest:defaults_match_yaml_and_prereg |
@@ -107,7 +113,7 @@ A mutant that hangs counts as killed (timeout).
 | node evidence_model default | strata/src/mapping_node.cpp | killed | - mapping_node.cpp does not declare evidence_model with the default "sprt" |
 | library m1 against YAML and PREREG | strata_core/include/strata_core/layered_map.hpp | killed | - grid2d.yaml m1: 0.70 but the library default is 0.65 |
 
-## tests: 239 mutants, 140 killed, 99 survived, 0 build errors
+## tests: 249 mutants, 141 killed, 108 survived, 0 build errors
 
 | mutant | where | result | killed by (first) |
 |---|---|---|---|
@@ -160,47 +166,47 @@ A mutant that hangs counts as killed (timeout).
 | line 200: 80 -> 81 | EXPECT_EQ(p.n_max_undecided, 80); | killed | 1, Sprt.StructDefaultsAreTheShippedSprtPair |
 | line 201: 4 -> 5 | EXPECT_EQ(LayeredMap(p).sprt().latency, 4); | killed | 1, Sprt.StructDefaultsAreTheShippedSprtPair |
 | line 207: 0.01 -> 0.016 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.01; }))); | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 208: 0.0 -> 0.001 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.0; })), std::invalid_argume | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 209: 0.1 -> 0.15100000000000002 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = -0.1; })), std::invalid_argum | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 210: 0.7 -> 1.0509999999999997 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.7; })), std::invalid_argume | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 211: 0.8 -> 1.201 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.8; })), std::invalid_argume | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 208: 0.0 -> 0.001 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.0; })), std::invalid_argument); | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 209: 0.1 -> 0.15100000000000002 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = -0.1; })), std::invalid_argument); | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 210: 0.7 -> 1.0509999999999997 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.7; })), std::invalid_argument);   //  | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 211: 0.8 -> 1.201 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.8; })), std::invalid_argument);   //  | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
 | line 212: 0.99 -> 1.4859999999999998 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m1 = 0.99; }))); | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 213: 1.0 -> 1.501 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m1 = 1.0; })), std::invalid_argume | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 214: 1.5 -> 2.251 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m1 = 1.5; })), std::invalid_argume | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 215: 0.2 -> 0.30100000000000005 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m1 = 0.2; })), std::invalid_argume | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 217: 0.0 -> 0.001 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.0; })), std::invalid_arg | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 218: 0.0 -> 0.001 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.beta = 0.0; })), std::invalid_argu | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 219: 0.01 -> 0.016 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = -0.01; })), std::invalid_a | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 220: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.49; })) | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 220: 0.49 -> 0.736 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.49; })) | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 221: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.5; })), st | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 221: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.5; })), st | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 222: 0.6 -> 0.9009999999999999 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.6; p.beta = 0.5; })), st | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 222: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.6; p.beta = 0.5; })), st | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 230: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-9; })), | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 230: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-9; })),  | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 230: 9 -> 10 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-9; })), | survived (tolerance exponent) |  |
-| line 231: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = std::nextafter(0. | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 231: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = std::nextafter(0. | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 231: 1.0 -> 1.501 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = std::nextafter(0. | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 232: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-6; })), | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 232: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-6; })),  | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 232: 6 -> 7 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-6; })), | survived (tolerance exponent) |  |
-| line 234: 0.1 -> 0.15100000000000002 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.1; p.m1 = 0.1 + 2e-6; })), | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 234: 0.1 -> 0.15100000000000002 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.1; p.m1 = 0.1 + 2e-6; })),  | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 234: 6 -> 7 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.1; p.m1 = 0.1 + 2e-6; })), | survived (tolerance exponent) |  |
-| line 235: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 2e-5; }) | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 235: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 2e-5; }) | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 235: 5 -> 6 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 2e-5; }) | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 236: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-4; }) | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 236: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-4; }) | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 236: 4 -> 5 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-4; }) | survived (tolerance exponent) |  |
+| line 213: 1.0 -> 1.501 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m1 = 1.0; })), std::invalid_argument); | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 214: 1.5 -> 2.251 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m1 = 1.5; })), std::invalid_argument); | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 215: 0.2 -> 0.30100000000000005 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m1 = 0.2; })), std::invalid_argument);   //  | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 217: 0.0 -> 0.001 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.0; })), std::invalid_argument); | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 218: 0.0 -> 0.001 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.beta = 0.0; })), std::invalid_argument); | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 219: 0.01 -> 0.016 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = -0.01; })), std::invalid_argument); | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 220: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.49; }))); | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 220: 0.49 -> 0.736 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.49; }))); | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 221: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.5; })), std::invalid | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 221: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.5; p.beta = 0.5; })), std::invalid | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 222: 0.6 -> 0.9009999999999999 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.6; p.beta = 0.5; })), std::invalid | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 222: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.alpha = 0.6; p.beta = 0.5; })), std::invalid | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 230: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-9; })), std::inval | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 230: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-9; })), std::inval | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 230: 9 -> 10 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-9; })), std::inval | survived (tolerance exponent) |  |
+| line 231: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = std::nextafter(0.5, 1.0); } | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 231: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = std::nextafter(0.5, 1.0); } | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 231: 1.0 -> 1.501 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = std::nextafter(0.5, 1.0); } | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 232: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-6; })), std::inval | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 232: 0.5 -> 0.751 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-6; })), std::inval | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 232: 6 -> 7 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-6; })), std::inval | survived (tolerance exponent) |  |
+| line 234: 0.1 -> 0.15100000000000002 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.1; p.m1 = 0.1 + 2e-6; })), std::inval | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 234: 0.1 -> 0.15100000000000002 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.1; p.m1 = 0.1 + 2e-6; })), std::inval | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 234: 6 -> 7 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.1; p.m1 = 0.1 + 2e-6; })), std::inval | survived (tolerance exponent) |  |
+| line 235: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 2e-5; })));   // 1 | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 235: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 2e-5; })));   // 1 | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 235: 5 -> 6 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 2e-5; })));   // 1 | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 236: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-4; })));   // 2 | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 236: 0.5 -> 0.751 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-4; })));   // 2 | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 236: 4 -> 5 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.m0 = 0.5; p.m1 = 0.5 + 1e-4; })));   // 2 | survived (tolerance exponent) |  |
 | line 238: 0 -> 1 | EXPECT_NO_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.n_max_undecided = 0; }))); | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 239: 1 -> 2 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.n_max_undecided = -1; })), std::in | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
-| line 243: 6 -> 7 | EXPECT_THROW(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = A - 1e-6; })), std | survived (tolerance exponent) |  |
-| line 245: 6.0 -> 9.001 | EXPECT_NEAR(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = 6.0; })).sprt().cei | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 245: 6.0 -> 9.001 | EXPECT_NEAR(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = 6.0; })).sprt().cei | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
-| line 245: 0 -> 1 | EXPECT_NEAR(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = 6.0; })).sprt().cei | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 239: 1 -> 2 | EXPECT_THROW(LayeredMap(bad([](LayeredMapParams& p) { p.n_max_undecided = -1; })), std::invalid_argu | survived (input value: the mutant is still invalid (or still valid), the boundary cases are separate lines) |  |
+| line 243: 6 -> 7 | EXPECT_THROW(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = A - 1e-6; })), std::invalid_ | survived (tolerance exponent) |  |
+| line 245: 6.0 -> 9.001 | EXPECT_NEAR(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = 6.0; })).sprt().ceiling, 6.0, | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 245: 6.0 -> 9.001 | EXPECT_NEAR(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = 6.0; })).sprt().ceiling, 6.0, | killed | 1, Sprt.ValidationRejectsEachBadInputOnBothSides |
+| line 245: 0 -> 1 | EXPECT_NEAR(LayeredMap(bad([&](LayeredMapParams& p) { p.sprt_ceiling = 6.0; })).sprt().ceiling, 6.0, | survived (tolerance of an EXPECT_NEAR widened) |  |
 | line 265: 12 -> 13 | EXPECT_EQ(d.latency, static_cast<int>(std::ceil(d.A / d.l_hit - 1e-12))) | survived (tolerance exponent) |  |
 | line 271: 7 -> 8 | EXPECT_FALSE(m.isStatic(7)) << "window " << w << " case " << c.m0 << "/" << c.m1; | survived (cell id: the same cell is asserted on in other lines) |  |
 | line 273: 7 -> 8 | EXPECT_TRUE(m.isStatic(7)) << "window " << w << " case " << c.m0 << "/" << c.m1; | killed | 1, Sprt.AlwaysHitWallGraduatesAtTheDerivedWindowAndNeverEarlier |
@@ -217,12 +223,12 @@ A mutant that hangs counts as killed (timeout).
 | line 303: 3 -> 4 | EXPECT_EQ(m.observations(3), 22); | killed | 1, Sprt.ALongMissRunCanDelayButNotPreventGraduationBeforeTheGate |
 | line 303: 22 -> 23 | EXPECT_EQ(m.observations(3), 22); | killed | 1, Sprt.ALongMissRunCanDelayButNotPreventGraduationBeforeTheGate |
 | line 312: 20000 -> 20001 | ASSERT_GT(h.histories, 20000); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 314: 0.01 -> 0.016 | EXPECT_LE(wilsonUpper(h.ever_static, h.histories), 0.01) << h.ever_static << " of " << h.h | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 315: 0 -> 1 | EXPECT_GT(h.ever_static, 0);                                 // the test can see graduatio | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 320: 0.002 -> 0.004 | EXPECT_LE(wilsonUpper(h.ever_static, h.histories), 0.002) << h.ever_static << " of " << h. | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 326: 0.01 -> 0.016 | EXPECT_LE(wilsonUpper(h.ever_static, h.histories), 0.01) << h.ever_static << " of " << h.h | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 333: 0.01 -> 0.016 | EXPECT_GT(wilsonLower(h.ever_static, h.histories), 0.01) << h.ever_static << " of " << h.h | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 348: 4.5 -> 6.751 | EXPECT_NEAR(mc, exact, 4.5 * se) << "gate " << gate << " m = " << m << " exact " << exact | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 314: 0.01 -> 0.016 | EXPECT_LE(wilsonUpper(h.ever_static, h.histories), 0.01) << h.ever_static << " of " << h.histories < | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 315: 0 -> 1 | EXPECT_GT(h.ever_static, 0);                                 // the test can see graduations at all | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 320: 0.002 -> 0.004 | EXPECT_LE(wilsonUpper(h.ever_static, h.histories), 0.002) << h.ever_static << " of " << h.histories; | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 326: 0.01 -> 0.016 | EXPECT_LE(wilsonUpper(h.ever_static, h.histories), 0.01) << h.ever_static << " of " << h.histories; | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 333: 0.01 -> 0.016 | EXPECT_GT(wilsonLower(h.ever_static, h.histories), 0.01) << h.ever_static << " of " << h.histories; | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 348: 4.5 -> 6.751 | EXPECT_NEAR(mc, exact, 4.5 * se) << "gate " << gate << " m = " << m << " exact " << exact << " mc "  | survived (tolerance of an EXPECT_NEAR widened) |  |
 | line 357: 0.025 -> 0.038500000000000006 | EXPECT_NEAR(ex, w, 0.025) << "m = " << m << " exact " << ex << " wald " << w; | survived (tolerance of an EXPECT_NEAR widened) |  |
 | line 360: 0.20 -> 0.30100000000000005 | EXPECT_LE(exactOcGraduate(0.20, d), waldOc(0.20, 0.20, 0.70, 0.01, 0.01)); | killed | 1, Sprt.ExactOcAgainstWaldDiffersByTheOvershootOnly |
 | line 360: 0.20 -> 0.30100000000000005 | EXPECT_LE(exactOcGraduate(0.20, d), waldOc(0.20, 0.20, 0.70, 0.01, 0.01)); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
@@ -256,98 +262,108 @@ A mutant that hangs counts as killed (timeout).
 | line 373: 9 -> 10 | EXPECT_NEAR(waldOc(0.70, 0.20, 0.70, 0.01, 0.01), 0.99, 1e-9); | survived (tolerance exponent) |  |
 | line 385: 5 -> 6 | EXPECT_EQ(m.classify(5), CellClass::Transient) << "T=" << T << " n=" << n; | killed | 1, Sprt.AllMissCellIsKeptUntilTouchedWindowTAndErasedExactlyThen |
 | line 389: 5 -> 6 | EXPECT_EQ(m.classify(5), CellClass::Unknown); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 411: 9 -> 10 | EXPECT_EQ(m.classify(9), on_floor ? CellClass::Unknown : CellClass::Transient) << "window  | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 411: 1 -> 2 | EXPECT_EQ(m.classify(9), on_floor ? CellClass::Unknown : CellClass::Transient) << "window | survived (literal in the failure message, not in an assertion) |  |
-| line 414: 9 -> 10 | EXPECT_EQ(m.classify(9), CellClass::Unknown); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 415: 9 -> 10 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)), 1e-12);        // l w | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 415: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)), 1e-12);        // l w | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 415: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)), 1e-12);        // l w | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 415: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)), 1e-12);        // l w | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 418: 9 -> 10 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-(m.sprt().B + m.sprt().l_hit))), 1e | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 418: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-(m.sprt().B + m.sprt().l_hit))), 1e | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 418: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-(m.sprt().B + m.sprt().l_hit))), 1e | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 418: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-(m.sprt().B + m.sprt().l_hit))), 1e | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 422: 9 -> 10 | EXPECT_EQ(m.classify(9), CellClass::Periodic); | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
-| line 423: 9 -> 10 | EXPECT_FALSE(m.isStatic(9)); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 434: 2 -> 3 | EXPECT_GT(m.periodicProb(2), 0.99); | killed | 1, Sprt.RejectionAlsoDropsThePeriodicityHistoryOfTheCell |
-| line 434: 0.99 -> 1.4859999999999998 | EXPECT_GT(m.periodicProb(2), 0.99); | killed | 1, Sprt.RejectionAlsoDropsThePeriodicityHistoryOfTheCell |
-| line 443: 2 -> 3 | EXPECT_EQ(m.observations(2), 1);                                // a new history | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
-| line 443: 1 -> 2 | EXPECT_EQ(m.observations(2), 1);                                // a new history | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
-| line 444: 2 -> 3 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
-| line 444: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
-| line 444: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
-| line 444: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 446: 2 -> 3 | EXPECT_TRUE(m.isStatic(2));                                     // graduates after the der | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
-| line 447: 2 -> 3 | EXPECT_EQ(m.observations(2), m.sprt().latency); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
-| line 457: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)); | killed | 1, Sprt.GraduatedCellIsDemotedByTheReverseTestAfterTheDerivedMissCount |
-| line 474: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
-| line 475: 4 -> 5 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
-| line 475: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
-| line 475: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
-| line 475: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 477: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)) << "miss " << k - 1; | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
-| line 477: 1 -> 2 | ASSERT_TRUE(m.isStatic(4)) << "miss " << k - 1; | survived (literal in the failure message, not in an assertion) |  |
-| line 480: 4 -> 5 | EXPECT_FALSE(m.isStatic(4)); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 498: 6 -> 7 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | killed | 1, Sprt.PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone |
-| line 498: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | killed | 1, Sprt.PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone |
-| line 498: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | killed | 1, Sprt.PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone |
-| line 498: 9 -> 10 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 498: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | survived (logistic constant inside the expected value) |  |
-| line 499: 6 -> 7 | EXPECT_FALSE(m.isStatic(6)) << "window " << (w + 1); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 499: 1 -> 2 | EXPECT_FALSE(m.isStatic(6)) << "window " << (w + 1); | survived (literal in the failure message, not in an assertion) |  |
-| line 508: 100 -> 101 | EXPECT_GT(checked, 100); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 528: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)) << "cycle " << cycle; | killed | 1, Sprt.ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever |
-| line 532: 4 -> 5 | EXPECT_FALSE(m.isStatic(4));                                       // the fifth | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 533: 4 -> 5 | EXPECT_NEAR(m.occupancyProb(4), 0.5, 1e-12);                       // restarted at l = 0 | killed | 1, Sprt.ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever |
-| line 533: 0.5 -> 0.751 | EXPECT_NEAR(m.occupancyProb(4), 0.5, 1e-12);                       // restarted at l = 0 | killed | 1, Sprt.ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever |
-| line 533: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(4), 0.5, 1e-12);                       // restarted at l = 0 | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 540: 4 -> 5 | ASSERT_FALSE(m.isStatic(4)); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 541: 4 -> 5 | ASSERT_EQ(m.classify(4), CellClass::Transient); | killed | 1, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain |
-| line 543: 4 -> 5 | EXPECT_TRUE(m.isStatic(4)); | killed | 1, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain |
-| line 561: 6 -> 7 | EXPECT_EQ(m.classify(6), CellClass::Periodic); | killed | 1, Sprt.DoorGraduatesEarlyAndPeriodicityThenDemotesIt |
-| line 562: 6 -> 7 | EXPECT_FALSE(m.isStatic(6)); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 580: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Transient) << "n = " << n; | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
-| line 583: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Intermittent); | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
-| line 586: 8 -> 9 | EXPECT_FALSE(m.isStatic(8)); | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 588: 8 -> 9 | EXPECT_TRUE(m.isStatic(8)); | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
-| line 589: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Static);           // Static wins over Intermittent | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
-| line 596: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Transient); | killed | 1, Sprt.NMaxZeroNeverReadsOutIntermittent |
-| line 606: 6 -> 7 | ASSERT_GE(m.observations(6), 48); | killed | 1, Sprt.PeriodicWinsOverIntermittent |
-| line 606: 48 -> 49 | ASSERT_GE(m.observations(6), 48); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 607: 6 -> 7 | EXPECT_EQ(m.classify(6), CellClass::Periodic); | killed | 1, Sprt.PeriodicWinsOverIntermittent |
-| line 628: 0.5 -> 0.751 | EXPECT_GT(b.layered().occupancyProb(c), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 632: 50 -> 51 | EXPECT_EQ(g.data[c], 50); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
-| line 633: 3 -> 4 | ASSERT_LT(b.layered().occupancyProb(gridCellId(gm, 3, 0)), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 633: 0 -> 1 | ASSERT_LT(b.layered().occupancyProb(gridCellId(gm, 3, 0)), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 633: 0.5 -> 0.751 | ASSERT_LT(b.layered().occupancyProb(gridCellId(gm, 3, 0)), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
-| line 634: 3 -> 4 | ASSERT_EQ(b.layered().classify(gridCellId(gm, 3, 0)), CellClass::Intermittent); | survived (cell coordinate or exponent inside an expression) |  |
-| line 634: 0 -> 1 | ASSERT_EQ(b.layered().classify(gridCellId(gm, 3, 0)), CellClass::Intermittent); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
-| line 635: 3 -> 4 | EXPECT_EQ(g.data[gridCellId(gm, 3, 0)], 0); | survived (cell coordinate or exponent inside an expression) |  |
-| line 635: 0 -> 1 | EXPECT_EQ(g.data[gridCellId(gm, 3, 0)], 0); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
-| line 635: 0 -> 1 | EXPECT_EQ(g.data[gridCellId(gm, 3, 0)], 0); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
-| line 643: 1 -> 2 | EXPECT_EQ(m.occupancyProb(1), 0.0);                                    // unknown cell | survived (cell id: the same cell is asserted on in other lines) |  |
-| line 643: 0.0 -> 0.001 | EXPECT_EQ(m.occupancyProb(1), 0.0);                                    // unknown cell | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 645: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 645: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 645: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 645: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 647: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 647: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 647: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 647: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 649: 1 -> 2 | ASSERT_TRUE(m.isStatic(1)); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 650: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 650: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 650: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
-| line 650: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 656: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.HitWinsOverMissInTheSameWindow |
-| line 656: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.HitWinsOverMissInTheSameWindow |
-| line 656: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.HitWinsOverMissInTheSameWindow |
-| line 656: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 663: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate |
-| line 663: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate |
-| line 663: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate |
-| line 663: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
-| line 717: 1 -> 2 | EXPECT_TRUE(m.isStatic(1));                                            // v0.1: window 3 | killed | 1, Sprt.LegacyIsStillAvailableByName |
-| line 718: 0 -> 1 | EXPECT_EQ(m.sprt().latency, 0); | killed | 1, Sprt.LegacyIsStillAvailableByName |
+| line 409: 9 -> 10 | EXPECT_GE(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)) - 1e-12) << "window " << (w + 1); | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
+| line 409: 1.0 -> 1.501 | EXPECT_GE(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)) - 1e-12) << "window " << (w + 1); | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
+| line 409: 1.0 -> 1.501 | EXPECT_GE(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)) - 1e-12) << "window " << (w + 1); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 409: 12 -> 13 | EXPECT_GE(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)) - 1e-12) << "window " << (w + 1); | survived (tolerance exponent) |  |
+| line 409: 1 -> 2 | EXPECT_GE(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)) - 1e-12) << "window " << (w + 1); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 415: 9 -> 10 | EXPECT_EQ(m.classify(9), CellClass::Unknown) << "window " << (w + 1); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 415: 1 -> 2 | EXPECT_EQ(m.classify(9), CellClass::Unknown) << "window " << (w + 1); | survived (literal in the failure message, not in an assertion) |  |
+| line 424: 0 -> 1 | EXPECT_GT(candidate_unknown_checks, 0);                      // the branch was reached, not skipped | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 425: 9 -> 10 | EXPECT_EQ(m.classify(9), CellClass::Periodic); | killed | 1, Sprt.DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic |
+| line 426: 9 -> 10 | EXPECT_FALSE(m.isStatic(9)); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 437: 2 -> 3 | EXPECT_GT(m.periodicProb(2), 0.99); | killed | 1, Sprt.RejectionAlsoDropsThePeriodicityHistoryOfTheCell |
+| line 437: 0.99 -> 1.4859999999999998 | EXPECT_GT(m.periodicProb(2), 0.99); | killed | 1, Sprt.RejectionAlsoDropsThePeriodicityHistoryOfTheCell |
+| line 446: 2 -> 3 | EXPECT_EQ(m.observations(2), 1);                                // a new history | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| line 446: 1 -> 2 | EXPECT_EQ(m.observations(2), 1);                                // a new history | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| line 447: 2 -> 3 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| line 447: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| line 447: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| line 447: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(2), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 449: 2 -> 3 | EXPECT_TRUE(m.isStatic(2));                                     // graduates after the derived laten | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| line 450: 2 -> 3 | EXPECT_EQ(m.observations(2), m.sprt().latency); | killed | 1, Sprt.RejectedCellIsRecreatedByTheNextHitAndStartsAFreshHistory |
+| line 460: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)); | killed | 1, Sprt.GraduatedCellIsDemotedByTheReverseTestAfterTheDerivedMissCount |
+| line 477: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
+| line 478: 4 -> 5 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
+| line 478: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
+| line 478: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
+| line 478: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 480: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)) << "miss " << k - 1; | killed | 1, Sprt.GraduationRestartsAtTheCeilingEvenWhenTheCellGraduatesBelowIt |
+| line 480: 1 -> 2 | ASSERT_TRUE(m.isStatic(4)) << "miss " << k - 1; | survived (literal in the failure message, not in an assertion) |  |
+| line 483: 4 -> 5 | EXPECT_FALSE(m.isStatic(4)); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 502: 6 -> 7 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | killed | 1, Sprt.PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone |
+| line 502: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | killed | 1, Sprt.PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone |
+| line 502: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | killed | 1, Sprt.PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone |
+| line 502: 9 -> 10 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 502: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1); | survived (logistic constant inside the expected value) |  |
+| line 503: 6 -> 7 | EXPECT_FALSE(m.isStatic(6)) << "window " << (w + 1); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 503: 1 -> 2 | EXPECT_FALSE(m.isStatic(6)) << "window " << (w + 1); | survived (literal in the failure message, not in an assertion) |  |
+| line 512: 100 -> 101 | EXPECT_GT(checked, 100); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 532: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)) << "cycle " << cycle; | killed | 1, Sprt.ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever |
+| line 536: 4 -> 5 | EXPECT_FALSE(m.isStatic(4));                                       // the fifth | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 537: 4 -> 5 | EXPECT_NEAR(m.occupancyProb(4), 0.5, 1e-12);                       // restarted at l = 0 | killed | 1, Sprt.ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever |
+| line 537: 0.5 -> 0.751 | EXPECT_NEAR(m.occupancyProb(4), 0.5, 1e-12);                       // restarted at l = 0 | killed | 1, Sprt.ShippedPairNeedsFiveAllMissWindowsToDemoteAndOneMissNever |
+| line 537: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(4), 0.5, 1e-12);                       // restarted at l = 0 | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 544: 4 -> 5 | ASSERT_FALSE(m.isStatic(4)); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 545: 4 -> 5 | ASSERT_EQ(m.classify(4), CellClass::Transient); | killed | 1, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain |
+| line 547: 4 -> 5 | EXPECT_TRUE(m.isStatic(4)); | killed | 1, Sprt.DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain |
+| line 557: 4 -> 5 | ASSERT_TRUE(m.isStatic(4)); | killed | 1, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
+| line 559: 4 -> 5 | ASSERT_FALSE(m.isStatic(4)); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 560: 4 -> 5 | EXPECT_EQ(m.observations(4), 0); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 560: 0 -> 1 | EXPECT_EQ(m.observations(4), 0); | killed | 1, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
+| line 561: 4 -> 5 | EXPECT_EQ(m.classify(4), CellClass::Transient); | killed | 1, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
+| line 563: 4 -> 5 | EXPECT_EQ(m.observations(4), 1); | killed | 1, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
+| line 563: 1 -> 2 | EXPECT_EQ(m.observations(4), 1); | killed | 1, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
+| line 564: 4 -> 5 | EXPECT_EQ(m.classify(4), CellClass::Transient); | killed | 1, Sprt.DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce |
+| line 568: 4 -> 5 | ASSERT_LT(m.observations(4), T); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 569: 4 -> 5 | EXPECT_LT(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().B)));   // below sigma(B): not floored | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 569: 1.0 -> 1.501 | EXPECT_LT(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().B)));   // below sigma(B): not floored | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 569: 1.0 -> 1.501 | EXPECT_LT(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().B)));   // below sigma(B): not floored | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 570: 4 -> 5 | EXPECT_NE(m.classify(4), CellClass::Intermittent); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 588: 6 -> 7 | EXPECT_EQ(m.classify(6), CellClass::Periodic); | killed | 1, Sprt.DoorGraduatesEarlyAndPeriodicityThenDemotesIt |
+| line 589: 6 -> 7 | EXPECT_FALSE(m.isStatic(6)); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 607: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Transient) << "n = " << n; | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
+| line 610: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Intermittent); | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
+| line 613: 8 -> 9 | EXPECT_FALSE(m.isStatic(8)); | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 615: 8 -> 9 | EXPECT_TRUE(m.isStatic(8)); | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
+| line 616: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Static);           // Static wins over Intermittent | killed | 1, Sprt.UndecidedCellIsIntermittentFromNMaxOnAndStillCanGraduate |
+| line 623: 8 -> 9 | EXPECT_EQ(m.classify(8), CellClass::Transient); | killed | 1, Sprt.NMaxZeroNeverReadsOutIntermittent |
+| line 633: 6 -> 7 | ASSERT_GE(m.observations(6), 48); | killed | 1, Sprt.PeriodicWinsOverIntermittent |
+| line 633: 48 -> 49 | ASSERT_GE(m.observations(6), 48); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 634: 6 -> 7 | EXPECT_EQ(m.classify(6), CellClass::Periodic); | killed | 1, Sprt.PeriodicWinsOverIntermittent |
+| line 655: 0.5 -> 0.751 | EXPECT_GT(b.layered().occupancyProb(c), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 659: 50 -> 51 | EXPECT_EQ(g.data[c], 50); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
+| line 660: 3 -> 4 | ASSERT_LT(b.layered().occupancyProb(gridCellId(gm, 3, 0)), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 660: 0 -> 1 | ASSERT_LT(b.layered().occupancyProb(gridCellId(gm, 3, 0)), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 660: 0.5 -> 0.751 | ASSERT_LT(b.layered().occupancyProb(gridCellId(gm, 3, 0)), 0.5); | survived (one-sided bound moved away from the data: a looser bound passes by design) |  |
+| line 661: 3 -> 4 | ASSERT_EQ(b.layered().classify(gridCellId(gm, 3, 0)), CellClass::Intermittent); | survived (cell coordinate or exponent inside an expression) |  |
+| line 661: 0 -> 1 | ASSERT_EQ(b.layered().classify(gridCellId(gm, 3, 0)), CellClass::Intermittent); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
+| line 662: 3 -> 4 | EXPECT_EQ(g.data[gridCellId(gm, 3, 0)], 0); | survived (cell coordinate or exponent inside an expression) |  |
+| line 662: 0 -> 1 | EXPECT_EQ(g.data[gridCellId(gm, 3, 0)], 0); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
+| line 662: 0 -> 1 | EXPECT_EQ(g.data[gridCellId(gm, 3, 0)], 0); | killed | 1, Sprt.IntermittentCellIsRenderedLikeTransientInTheGridAndCounted |
+| line 670: 1 -> 2 | EXPECT_EQ(m.occupancyProb(1), 0.0);                                    // unknown cell | survived (cell id: the same cell is asserted on in other lines) |  |
+| line 670: 0.0 -> 0.001 | EXPECT_EQ(m.occupancyProb(1), 0.0);                                    // unknown cell | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 672: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 672: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 672: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 672: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.l_hit)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 674: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 674: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 674: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 674: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-(d.l_hit + d.l_miss))), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 676: 1 -> 2 | ASSERT_TRUE(m.isStatic(1)); | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 677: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted at the ce | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 677: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted at the ce | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 677: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted at the ce | killed | 1, Sprt.OccupancyProbIsTheLogisticOfTheStatistic |
+| line 677: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-d.ceiling)), 1e-12);   // restarted at the ce | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 683: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.HitWinsOverMissInTheSameWindow |
+| line 683: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.HitWinsOverMissInTheSameWindow |
+| line 683: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | killed | 1, Sprt.HitWinsOverMissInTheSameWindow |
+| line 683: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().l_hit)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 690: 1 -> 2 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate |
+| line 690: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate |
+| line 690: 1.0 -> 1.501 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | killed | 1, Sprt.CeilingCapsTheStatisticOfAnUngraduatedPeriodicCandidate |
+| line 690: 12 -> 13 | EXPECT_NEAR(m.occupancyProb(1), 1.0 / (1.0 + std::exp(-m.sprt().ceiling)), 1e-12); | survived (tolerance of an EXPECT_NEAR widened) |  |
+| line 744: 1 -> 2 | EXPECT_TRUE(m.isStatic(1));                                            // v0.1: window 3 | killed | 1, Sprt.LegacyIsStillAvailableByName |
+| line 745: 0 -> 1 | EXPECT_EQ(m.sprt().latency, 0); | killed | 1, Sprt.LegacyIsStillAvailableByName |
 
