@@ -209,13 +209,15 @@ inline Pose3 readBoreasCalib(const std::string& path) {
   return p;
 }
 
-// The calibration file T_applanix_lidar.txt, read against lidar_poses.csv of a real session (results_p3/logs/validate_boreas_*.log):
-// the translation is the position of the lidar in the applanix frame (0, 0, +0.13), but the rotation block is the INVERSE of the
-// rotation of the lidar frame in the applanix frame (the file says +42.6 degrees about up, the heading of lidar_poses.csv is the
-// applanix heading minus 42.6 degrees). The pose of the lidar in the applanix frame is therefore {file rotation^-1, file translation}.
-// This holds for a calibration whose translation is a pure z offset (as here); the validator checks it on every session it reads.
-inline Pose3 lidarInApplanix(const Pose3& file) {
-  Pose3 p; p.q = file.q.inverse().normalized(); p.t = file.t; return p;
+// The lidar pose from the applanix pose, in the convention of lidar_poses.csv (the published ground truth of the lidar frame). Read
+// against a real session on its first 10 frames (results_p3/logs/validate_boreas_*.log): with R_f the rotation block of
+// T_applanix_lidar.txt (+42.6 degrees about up in the file),
+//   R_lidar = R_f^-1 * R_applanix     (the yaw shift acts on the world side: agrees to 0.001 degrees)
+//   t_lidar = t_applanix + t_f        (the file translation is a pure z offset, added in the world frame: agrees to 6 mm)
+// The physical composition R_applanix * R_f^-1 differs from this by up to a degree at road tilt (0.9 m at 50 m); the dataset's own
+// poses are used so that the maps are in the frame everybody evaluates against. The validator checks the agreement on every session.
+inline Pose3 lidarPoseFromApplanix(const Pose3& pa, const Pose3& calib_file) {
+  Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t + calib_file.t; return p;
 }
 
 inline Pose3 compose(const Pose3& a, const Pose3& b) {      // a * b
@@ -272,14 +274,14 @@ struct BoreasConvertReport {
 
 // Places one sweep in the common frame. Each point uses the pose at (frame_time + t_i + dt) (deskew). Returns false
 // (counted) if the pose at the frame time is missing. The frame origin is the lidar position at frame_time.
-inline bool convertBoreasScan(const BoreasScan& s, double frame_time, const PoseTrack3& applanix, const Pose3& T_app_lidar,
+inline bool convertBoreasScan(const BoreasScan& s, double frame_time, const PoseTrack3& applanix, const Pose3& calib_file,
                               const Pose3& to_common, const BoreasConvertOptions& opt, std::uint32_t group, Frame& fr,
                               BoreasConvertReport& rep) {
   ++rep.scans;
   rep.points_in += s.points; rep.points_nonfinite += s.dropped_nonfinite;
   Pose3 pa0;
   if (!applanix.at(frame_time + opt.dt, pa0, opt.max_gap_s)) { ++rep.scans_dropped_no_pose; rep.points_no_pose += s.size(); return false; }
-  const Pose3 l0 = compose(to_common, compose(pa0, T_app_lidar));
+  const Pose3 l0 = compose(to_common, lidarPoseFromApplanix(pa0, calib_file));
   fr = Frame(); fr.group = group; fr.origin = l0.t;
   fr.xyz.reserve(s.xyz.size());
   for (std::size_t i = 0; i < s.size(); ++i) {
@@ -288,7 +290,7 @@ inline bool convertBoreasScan(const BoreasScan& s, double frame_time, const Pose
     if (r < opt.r_min || r > opt.r_max) { ++rep.points_out_of_range; continue; }
     Pose3 pa;
     if (!applanix.at(frame_time + static_cast<double>(s.t[i]) + opt.dt, pa, opt.max_gap_s)) { ++rep.points_no_pose; continue; }
-    const Pose3 lp = compose(to_common, compose(pa, T_app_lidar));
+    const Pose3 lp = compose(to_common, lidarPoseFromApplanix(pa, calib_file));
     const Eigen::Vector3d w = lp.t + lp.q * Eigen::Vector3d(x, y, z);
     const float v[3] = {static_cast<float>(w.x()), static_cast<float>(w.y()), static_cast<float>(w.z())};
     fr.xyz.insert(fr.xyz.end(), v, v + 3);

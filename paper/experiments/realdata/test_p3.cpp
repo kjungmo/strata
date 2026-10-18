@@ -497,11 +497,21 @@ TEST(P3Boreas, RotationConventionAndCalibration) {
   const Pose3 T = readBoreasCalib(tmpPath("T3.txt"));
   EXPECT_NEAR(T.t.z(), 0.13, 1e-12); EXPECT_NEAR(T.t.x(), 0.0, 1e-12);
   EXPECT_NEAR((T.q * Eigen::Vector3d::UnitX() - Eigen::Vector3d(0.7360555651, 0.6769211217, 0)).norm(), 0.0, 1e-8);
-  // the pose of the lidar in the applanix frame: the file translation, the inverse of the file rotation (see lidarInApplanix)
-  const Pose3 L = lidarInApplanix(T);
-  EXPECT_NEAR((L.t - T.t).norm(), 0.0, 1e-15);
-  EXPECT_NEAR((L.q * Eigen::Vector3d::UnitX() - Eigen::Vector3d(0.7360555651, -0.6769211217, 0)).norm(), 0.0, 1e-8);      // yaw -42.6 degrees
-  EXPECT_NEAR(compose(T, L).q.angularDistance(Eigen::Quaterniond::Identity()), 0.0, 1e-12);
+  // the lidar pose from the applanix pose: yaw shift on the world side, translation added in the world frame (see lidarPoseFromApplanix)
+  BoreasPoseRow tilt; tilt.roll = 0.1; tilt.pitch = -0.05; tilt.heading = 1.0;
+  Pose3 pa = poseOf(tilt); pa.t = Eigen::Vector3d(10, 20, 30);
+  const Pose3 L = lidarPoseFromApplanix(pa, T);
+  const double th = std::atan2(0.6769211217083995757, 0.7360555651493132512);
+  const Eigen::Matrix3d expect_R = Eigen::AngleAxisd(-th, Eigen::Vector3d::UnitZ()).toRotationMatrix() * pa.q.toRotationMatrix();
+  EXPECT_NEAR((L.q.toRotationMatrix() - expect_R).norm(), 0.0, 1e-12);
+  EXPECT_NEAR((L.t - Eigen::Vector3d(10, 20, 30.13)).norm(), 0.0, 1e-12);                                // not rotated by the tilt
+  // not the physical composition R_applanix * R_f^-1: at this tilt it differs by more than a degree
+  EXPECT_GT(L.q.angularDistance(Eigen::Quaterniond(pa.q.toRotationMatrix() * T.q.inverse().toRotationMatrix())), 0.02);
+  // without tilt the two agree, and the yaw is the applanix yaw minus 42.6 degrees
+  BoreasPoseRow flat; flat.heading = 1.0;
+  const Pose3 Lf = lidarPoseFromApplanix(poseOf(flat), T);
+  const Eigen::Vector3d fwd = Lf.q * Eigen::Vector3d::UnitX();
+  EXPECT_NEAR(std::atan2(fwd.y(), fwd.x()), 1.0 - th, 1e-12);
   writeText(tmpPath("T4.txt"), "1 0 0 1\n0 1 0 2\n0 0 1 3\n0 0 0 1\n");
   EXPECT_NEAR(readBoreasCalib(tmpPath("T4.txt")).t.y(), 2.0, 1e-12);
   writeText(tmpPath("T5.txt"), "1 0 0 1\n0 1 0 2\n0 0 1 3\n0 0 1 1\n");

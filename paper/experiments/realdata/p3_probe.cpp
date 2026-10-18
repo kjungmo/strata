@@ -224,13 +224,13 @@ int cmdBoreasValidate(const std::map<std::string, std::string>& a) {
   GeoOrigin org;
   const auto gps = readBoreasPoseCsv(s.dir + "/applanix/gps_post_process.csv", 1.0, t_first - 0.5, t_last_wanted + 0.5, &org);
   const auto lp = readBoreasPoseCsv(s.dir + "/applanix/lidar_poses.csv", 1e-6, t_first - 0.01, t_last_wanted + 0.01);
-  const Pose3 T = lidarInApplanix(readBoreasCalib(s.dir + "/calib/T_applanix_lidar.txt"));
+  const Pose3 T = readBoreasCalib(s.dir + "/calib/T_applanix_lidar.txt");
   v.check(org.valid, "gps_post_process.csv has no latitude and longitude");
   v.check(gps.size() > 10 * n, "too few GPS rows in the window");
   v.check(lp.size() >= n, "lidar_poses.csv has fewer rows than frames in the window");
   const PoseTrack3 track = trackOf(gps);
   std::cout << "origin_lat_rad=" << org.lat << " origin_lon_rad=" << org.lon << " gps_rows_in_window=" << gps.size() << " lidar_pose_rows_in_window=" << lp.size() << "\n";
-  std::cout << "lidar in applanix (inverse of the file rotation) t=(" << T.t.transpose() << ") yaw_deg=" << std::atan2(2 * (T.q.w() * T.q.z() + T.q.x() * T.q.y()), 1 - 2 * (T.q.y() * T.q.y() + T.q.z() * T.q.z())) * 180.0 / M_PI << "\n";
+  std::cout << "T_applanix_lidar.txt t=(" << T.t.transpose() << ") yaw_deg=" << std::atan2(2 * (T.q.w() * T.q.z() + T.q.x() * T.q.y()), 1 - 2 * (T.q.y() * T.q.y() + T.q.z() * T.q.z())) * 180.0 / M_PI << "\n";
   // pose convention check: GPS (interpolated) times calibration against the lidar_poses row of the same frame
   double worst_pos = 0, worst_rot_deg = 0;
   for (std::size_t k = 0; k < std::min(n, s.frames.size()); ++k) {
@@ -241,7 +241,7 @@ int cmdBoreasValidate(const std::map<std::string, std::string>& a) {
     Pose3 pa;
     v.check(track.at(ft, pa, 0.05), s.frames[k] + ": no GPS bracket at the frame time");
     if (!track.at(ft, pa, 0.05)) continue;
-    const Pose3 lidar = compose(pa, T), ref = poseOf(*row);
+    const Pose3 lidar = lidarPoseFromApplanix(pa, T), ref = poseOf(*row);
     worst_pos = std::max(worst_pos, (lidar.t - ref.t).norm());
     worst_rot_deg = std::max(worst_rot_deg, lidar.q.angularDistance(ref.q) * 180.0 / M_PI);
   }
@@ -340,7 +340,7 @@ int cmdBoreasConvert(const std::map<std::string, std::string>& a) {
   const auto gps = readBoreasPoseCsv(s.dir + "/applanix/gps_post_process.csv", 1.0, tf - 0.5, tl + 0.5, &org);
   readBoreasPoseCsv(ref.dir + "/applanix/gps_post_process.csv", 1.0, 1e300, -1e300, &refo);
   const PoseTrack3 track = trackOf(gps);
-  const Pose3 T = lidarInApplanix(readBoreasCalib(s.dir + "/calib/T_applanix_lidar.txt"));
+  const Pose3 T = readBoreasCalib(s.dir + "/calib/T_applanix_lidar.txt");
   const Pose3 to_common = sessionToReference(refo, org, zoff);
   CacheWriter w(need(a, "out"), 3);
   BoreasConvertReport rep; Frame fr;
