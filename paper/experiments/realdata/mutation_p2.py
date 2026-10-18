@@ -138,6 +138,9 @@ DEFAULTS = [
     ("node", "strata/src/mapping_node.cpp", 'declare_parameter<double>("m0", def.m0)', 'declare_parameter<double>("m0", 0.2)', "node m0 from a literal"),
     ("node", "strata/src/mapping_node.cpp", 'declare_parameter<std::string>("evidence_model", "sprt")', 'declare_parameter<std::string>("evidence_model", "legacy")', "node evidence_model default"),
     ("header", "strata_core/include/strata_core/layered_map.hpp", "double m1{0.70};", "double m1{0.65};", "library m1 against YAML and PREREG"),
+    ("status", "strata/include/strata/evidence_status.hpp", 'kEvidenceProvisional = "provisional (PREREG not frozen: G1 failed)"', 'kEvidenceProvisional = "measured"', "diagnostics read-out loses the provisional note while PREREG is not frozen"),
+    ("status", "strata/include/strata/evidence_status.hpp", 'kEvidenceProvisional = "provisional (PREREG not frozen: G1 failed)"', 'kEvidenceProvisional = "provisional (PREREG not frozen: G2 failed)"', "provisional note names the wrong gate"),
+    ("node", "strata/src/mapping_node.cpp", '#include "strata/evidence_status.hpp"\n', '', "node stops using evidence_status.hpp"),
 ]
 
 
@@ -169,7 +172,8 @@ def setup(scr, jobs):
     if os.path.exists(scr):
         shutil.rmtree(scr)
     os.makedirs(scr)
-    for rel in ("strata_core", "strata/params", "strata/src/mapping_node.cpp", "paper/experiments/realdata/PREREG.json"):
+    for rel in ("strata_core", "strata/params", "strata/src/mapping_node.cpp", "strata/include/strata/evidence_status.hpp",
+                "paper/experiments/realdata/PREREG.json"):
         src = os.path.join(REPO, rel)
         dst = os.path.join(scr, rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)

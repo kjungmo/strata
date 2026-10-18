@@ -354,6 +354,10 @@ def lil_metrics(d, res, origin=-30.0, nmin=5, bands=(0.0, 0.15, 0.30, 0.65, 1.00
         out[name] = {"k": k, "n": m, "rate": (k / m if m else float("nan")), "wilson95": [lo, hi], "tile_bootstrap95": [blo, bhi]}
 
     block(clutter, ver == VERDICTS["static"], "false_static_on_clutter")
+    # Amendment 5 of PREREG_P3.md: the unit of the alpha test is the CELL, ever-Static = Static at the close of any window
+    # (first_static >= 0). false_static_on_clutter above is Static at the END of the run; the two differ because a Static cell
+    # can be demoted and rejected later, and a rejected cell is erased and starts a new history.
+    block(clutter, d["first_static"] >= 0, "ever_static_on_clutter")
     block(clutter, ver == VERDICTS["undecided"], "clutter_undecided")
     block(clutter, ver == VERDICTS["rejected"], "clutter_rejected")
     block(structure, ver == VERDICTS["rejected"], "false_reject_on_wall_runs")

@@ -88,7 +88,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
 cell id, and is unit-tested with gtest **without ROS or PCL** (113 gtests across 12
-suites, plus 64 node tests). rclcpp, tf2, and PCL live only in the ROS node
+suites, plus 71 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
 
@@ -170,7 +170,7 @@ cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 #    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 64 node gtests; the 113 engine
+colcon test --packages-select strata      # the 71 node gtests; the 113 engine
 colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 

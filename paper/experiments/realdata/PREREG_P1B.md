@@ -357,3 +357,12 @@ This amendment changes no definition, threshold or rule of Amendments 2 to 4 and
    exploratory output that was written before its script or option was committed.
 4. **Provenance rule extended to scripts.** An exploratory or measurement script (`explore_*.sh`, `explore_*.py`, `reproduce_*.sh` stages, analysis scripts) runs only from committed code: from a clean
    committed tree or from a `git archive` copy of a commit, and the output records that commit. An exploratory output whose script is not yet committed is not kept; it is re-run after the commit.
+
+## Amendment 6 (2026-10-18, after the fourth Opus review of phase 1; committed before the re-run of the W = 15 replay)
+
+Review finding 2: the shipped defaults (0.20, 0.70, 80) are the conditional values of `PREREG.md` (2D section), and that file says "Conditional values, NOT A FREEZE ... no engine default may take them from here". This amendment records the state; it does not waive the gate.
+
+1. **Fact.** `LayeredMapParams`, both YAMLs and `check_defaults.py` ship the conditional pair. Gate G1 failed on all three calibration sequences (`PREREG.md`, 2D reasons). `PREREG.md` is written by `freeze_prereg.py` and is not edited by hand; its sentence stays as written.
+2. **No waiver is recorded here.** Only the lead can waive a failed gate (section 1 of this file). Until the lead records a waiver and cites it from `PREREG.md`, the defaults are **provisional** and every place that reports them must say so.
+3. **What changed.** The node reports it at run time. The message of the `<node>: evidence model` status and the value of `evidence_calibration` on `/diagnostics` carry `provisional (PREREG not frozen: G1 failed)` for `sprt` with any calibration label except `user`; `evidence_model: legacy` states no pair and carries no note. The text is `kEvidenceProvisional` in `strata/include/strata/evidence_status.hpp`; the start-up log line shows the same message. `check_defaults.py` (CTest `defaults_match_yaml_and_prereg`) fails if the note is present while `PREREG.json` marks the 2D pair FROZEN, or absent while it does not. SPEC 3.2a and its parameter table say so.
+4. **Open item for the lead.** Either record a waiver of the G1 failure and cite it from `PREREG.md`, which removes the note (the check then requires its removal), or keep the defaults provisional. The wording of the note changes nothing else: the pair, the engine and every number stay as committed.

@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <stdexcept>
 #include <thread>
+#include <utility>
+#include "strata/evidence_status.hpp"
 #include "strata/map_writer.hpp"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -150,32 +152,9 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
 }
 
 void MappingNode::buildEvidenceStatus(const strata_core::LayeredMapParams& p) {
-  auto num = [](double v) { char b[32]; std::snprintf(b, sizeof(b), "%.4g", v); return std::string(b); };
-  evidence_values_.clear();
-  evidence_values_.emplace_back("evidence_model", evidence_model_);
-  if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
-    const strata_core::SprtDerived d = strata_core::deriveSprt(p);
-    evidence_values_.emplace_back("m0", num(p.m0));
-    evidence_values_.emplace_back("m1", num(p.m1));
-    evidence_values_.emplace_back("alpha", num(p.alpha));
-    evidence_values_.emplace_back("beta", num(p.beta));
-    evidence_values_.emplace_back("windows_to_graduate_always_hit", std::to_string(d.latency));
-    evidence_values_.emplace_back("all_miss_windows_to_demote", std::to_string(d.demote_misses));
-    evidence_values_.emplace_back("n_max_undecided", std::to_string(p.n_max_undecided));
-    evidence_message_ = "sprt: clutter m0=" + num(p.m0) + ", structure m1=" + num(p.m1) + ", alpha=" + num(p.alpha) +
-        ", beta=" + num(p.beta) + "; an always-hit cell graduates after " + std::to_string(d.latency) +
-        " windows; the error rates hold for independent windows";
-  } else {
-    evidence_values_.emplace_back("min_observations", std::to_string(p.min_observations));
-    evidence_message_ = "legacy (v0.1 arithmetic): a cell graduates once its smoothed log-odds reach graduate_prob after "
-        "min_observations=" + std::to_string(p.min_observations) + " windows; no error rate is stated";
-  }
-  evidence_values_.emplace_back("evidence_calibration", evidence_calibration_);
-  if (p.evidence_model == strata_core::EvidenceModel::Sprt && evidence_calibration_ == "fallback_2d_pair" &&
-      backend_ != "grid2d") {
-    evidence_message_ = "NOT calibrated for " + backend_ + " (fallback: the 2D pair); on single-pass 3D data most "
-        "structure stays undecided; " + evidence_message_;
-  }
+  EvidenceStatus s = evidenceStatus(p, evidence_model_, evidence_calibration_, backend_);   // evidence_status.hpp
+  evidence_message_ = std::move(s.message);
+  evidence_values_ = std::move(s.values);
 }
 
 void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {

@@ -140,6 +140,23 @@ Out engineReplay(const Cell& c, const LayeredMapParams& p) {
   return {'U', n};
 }
 
+// The same cell through the real engine, fed to the END of its sequence. A rejected cell is erased
+// (LayeredMap drops it), the next observation creates it again with a new history, as the deployed node
+// does. Returns true if the cell was Static at any window. engineReplay above stops at the first decision
+// and so reports the FIRST HISTORY of the cell; this reports the CELL.
+bool everStatic(const Cell& c, const LayeredMapParams& p) {
+  LayeredMap m(p);
+  bool ever = false;
+  for (const auto& r : c.runs) {
+    for (int k = 0; k < r.second; ++k) {
+      if (r.first) m.observeHit(0); else m.observeMiss(0);
+      m.tick();
+      if (m.isStatic(0)) ever = true;
+    }
+  }
+  return ever;
+}
+
 // The advisor's replay function (sprt_replay2.replay_gate): clamp to [B, A + 2 l_hit] at every
 // window, graduate at l >= A, reject at l <= B once n >= T. pre_floor: false = no lower clamp
 // before the gate (the engine's rule), true = floor at B always.
@@ -499,7 +516,10 @@ TEST(ReplayP1, ShippedPairOnTheOneSecondCalibrationSequences) {
   rep << "Realised rates of the shipped pair (m0 0.20, m1 0.70, alpha = beta = 0.01) on the W = 15 calibration sequences\n"
       << "(LILocBench, 0.05 m, 1.0 s windows). Structure: static_0, label structure, all N >= 1 (n=" << st.size()
       << "). Clutter: dynamics_0, label free with H >= 1 (n=" << cl.size() << ").\n"
-      << "Bound under independent windows: P(clutter at m0 graduates) <= exp(-A) = alpha/(1-beta) = 0.0101 (about alpha) per history.\n\n";
+      << "Bound under independent windows: P(clutter at m0 graduates) <= exp(-A) = alpha/(1-beta) = 0.0101 (about alpha) per history.\n"
+      << "UNIT of the rows 'pure rule' and 'shipped rule': the FIRST HISTORY / FIRST DECISION of each cell (the replay stops at the first S or R).\n"
+      << "UNIT of the rows under 'whole sequence': the CELL (the replay runs to the end of the sequence; a rejected cell is erased and the next\n"
+      << "observation starts a new history); ever-Static = the cell was Static at any window. The units differ: read the second for per-cell rates.\n\n";
   for (int gate : {1, 24}) {
     const Row s = run(st, 0.20, 0.70, 0.01, 0.01, gate, false, true), c = run(cl, 0.20, 0.70, 0.01, 0.01, gate, false, true);
     EXPECT_EQ(s.mismatches + c.mismatches, 0);
@@ -512,6 +532,45 @@ TEST(ReplayP1, ShippedPairOnTheOneSecondCalibrationSequences) {
     EXPECT_LE(double(c.nS_le) / c.n_le, 0.01) << "gate " << gate;
     EXPECT_GT(c.nS_gt, 0);
   }
+  // Whole sequence, per cell (review finding 1). Three engine configurations, one cell per map:
+  //   A  periodicity off, gate T = 24, n_max_undecided 0   (the 'shipped rule' engine above, run to the end)
+  //   B  periodicity on, n_max_undecided 0                 (the node's periodicity, no Intermittent cut)
+  //   C  the library defaults as the node ships them       (periodicity on, n_max_undecided 80)
+  struct Cfg { const char* name; LayeredMapParams p; };
+  LayeredMapParams pa = Sp(0.20, 0.70, 0.01, 0.01, 24);
+  LayeredMapParams pb; pb.layer_interval = 1; pb.n_max_undecided = 0; pb.enable_periodicity = true;
+  LayeredMapParams pc; pc.layer_interval = 1;
+  ASSERT_TRUE(pc.enable_periodicity);
+  ASSERT_EQ(pc.n_max_undecided, 80);
+  rep << "\nwhole sequence, per cell (unit: the cell)\n";
+  const Cfg cfgs[] = {{"A periodicity off, T = 24, n_max_undecided 0", pa}, {"B periodicity on, n_max_undecided 0", pb},
+                      {"C library defaults (periodicity on, n_max_undecided 80)", pc}};
+  double ever_le[3] = {0, 0, 0};
+  int gi = 0;
+  for (const Cfg& g : cfgs) {
+    long n = 0, ev = 0, nle = 0, evle = 0, ngt = 0, evgt = 0, sn = 0, sev = 0;
+    for (const Cell& c : cl) {
+      const bool le = static_cast<double>(c.H) / c.N <= 0.20, e = everStatic(c, g.p);
+      ++n; ev += e; (le ? nle : ngt)++; (le ? evle : evgt) += e;
+    }
+    for (const Cell& c : st) { ++sn; sev += everStatic(c, g.p); }
+    rep << "  " << g.name << "\n"
+        << "    clutter ever-Static " << double(ev) / n << " (n=" << n << ")  at H/N <= m0 " << double(evle) / nle << " (n=" << nle
+        << ")  above m0 " << double(evgt) / ngt << " (n=" << ngt << ")\n"
+        << "    structure ever-Static " << double(sev) / sn << " (n=" << sn << ")\n";
+    EXPECT_EQ(nle, 22273) << g.name;   // the populations of the first-decision rows above
+    EXPECT_EQ(ngt, 1823) << g.name;
+    EXPECT_EQ(sn, 11027) << g.name;
+    ever_le[gi++] = double(evle) / nle;
+  }
+  EXPECT_LE(ever_le[1], ever_le[0]);     // periodicity can only remove Static cells here
+  EXPECT_EQ(ever_le[1], ever_le[2]);     // n_max_undecided 80 does not change the ever-Static count on these sequences
+  // The per-cell rate of the population the bound is stated for is NOT below alpha, although the
+  // first-history rate is (0.0040): the SPEC quotes both. Pinned so a change of engine shows here.
+  EXPECT_GT(ever_le[0], 0.01) << "per-cell ever-Static at H/N <= m0, periodicity off";
+  EXPECT_GT(ever_le[1], 0.01) << "per-cell ever-Static at H/N <= m0, periodicity on";
+  EXPECT_LT(ever_le[0], 0.03);
+  EXPECT_LT(ever_le[1], 0.03);
   if (const char* out = std::getenv("STRATA_REPLAY_W15_OUT")) {
     std::ofstream o(out);
     o << rep.str();

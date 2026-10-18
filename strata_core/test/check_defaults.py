@@ -15,7 +15,10 @@ Checks, with no ROS and no YAML library:
   4. the node declares each evidence parameter from the library default (def.m0 ...), not from a
      second literal, and reads evidence_calibration;
   5. every parameter the node declares is in each shipped YAML (except the other backend's), and every
-     YAML key is declared by the node.
+     YAML key is declared by the node;
+  6. the /diagnostics status (strata/include/strata/evidence_status.hpp) carries the note "provisional
+     (PREREG not frozen: G1 failed)" exactly while PREREG.json marks the 2D pair not frozen, and the node
+     builds its status with that function.
 Exits 1 and prints every difference when one is found.
 """
 import json
@@ -118,6 +121,17 @@ def main(root):
             problems.append(f'mapping_node.cpp does not declare "{k}" from the library default def.{k}')
     if 'declare_parameter<std::string>("evidence_model", "sprt")' not in node:
         problems.append('mapping_node.cpp does not declare evidence_model with the default "sprt"')
+    # 6. the /diagnostics read-out says what PREREG.json says: while the 2D pair is not frozen the status carries the
+    #    provisional note (evidence_status.hpp); once it is frozen the note must go. The node uses evidenceStatus().
+    status_hpp = (root / 'strata/include/strata/evidence_status.hpp').read_text()
+    note = 'provisional (PREREG not frozen: G1 failed)'
+    has_note = ('kEvidenceProvisional = "%s"' % note) in status_hpp
+    if g2s == 'not frozen' and not has_note:
+        problems.append('PREREG.json says the 2D pair is not frozen, but evidence_status.hpp has no kEvidenceProvisional = "%s"' % note)
+    if g2s != 'not frozen' and has_note:
+        problems.append('PREREG.json says the 2D pair is frozen, but evidence_status.hpp still says "%s"' % note)
+    if 'evidenceStatus(' not in node or 'strata/evidence_status.hpp' not in node:
+        problems.append('mapping_node.cpp does not build the evidence status with evidenceStatus() of evidence_status.hpp')
     # 5. no parameter the node declares is missing from a shipped YAML (a deleted line would otherwise
     #    pass the binding check, which only reads the keys the YAML has)
     declared = set(re.findall(r'declare_parameter<[\w:]+>\("(\w+)"', node))

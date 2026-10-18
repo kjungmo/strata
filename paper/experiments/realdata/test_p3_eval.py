@@ -313,7 +313,8 @@ class TestLilMetrics(unittest.TestCase):
         for i in range(40):
             v = "static" if i < 4 else ("undecided" if i < 10 else "rejected")
             h = 5 if i < 4 else 1                              # the static ones have hit rate 0.5, the others 0.1
-            rows.append((ev.REF_FREE, 100 + i, 400, 10, h, v, -1))
+            fs = 5 if i < 4 else (7 if i in (20, 21) else -1)  # two cells were Static at some window and rejected later
+            rows.append((ev.REF_FREE, 100 + i, 400, 10, h, v, fs))
         # excluded: clutter with n < nmin, a free cell never hit (h = 0), a near-wall free cell that is static
         rows.append((ev.REF_FREE, 300, 400, 4, 2, "static", -1))
         rows.append((ev.REF_FREE, 301, 400, 10, 0, "static", -1))
@@ -328,6 +329,10 @@ class TestLilMetrics(unittest.TestCase):
         c = m["false_static_on_clutter"]
         self.assertEqual((c["k"], c["n"]), (4, 40))
         self.assertAlmostEqual(c["rate"], 0.1)
+        # unit of the alpha test (Amendment 5): the cell, Static at any window: 4 Static at the end + 2 rejected after being Static
+        e = m["ever_static_on_clutter"]
+        self.assertEqual((e["k"], e["n"]), (6, 40))
+        self.assertAlmostEqual(e["rate"], 0.15)
         self.assertEqual(m["clutter_undecided"]["k"], 6)
         self.assertEqual(m["clutter_rejected"]["k"], 30)
         w = m["false_reject_on_wall_runs"]

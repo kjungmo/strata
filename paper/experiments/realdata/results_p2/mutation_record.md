@@ -367,3 +367,9 @@ path; the door test now kills it.
 | line 744: 1 -> 2 | EXPECT_TRUE(m.isStatic(1));                                            // v0.1: window 3 | killed | 1, Sprt.LegacyIsStillAvailableByName |
 | line 745: 0 -> 1 | EXPECT_EQ(m.sprt().latency, 0); | killed | 1, Sprt.LegacyIsStillAvailableByName |
 
+
+## Addendum (2026-10-18, review finding 2): defaults sweep for the diagnostics note
+
+Three mutants were added to the `defaults` sweep of `mutation_p2.py` (`check_defaults.py` check 6) and the sweep was re-run at this head: 21 of 21 killed.
+The three: the provisional note loses its text while `PREREG.json` says not frozen; the note names the wrong gate; `mapping_node.cpp` stops including `evidence_status.hpp`.
+Ten mutants of `strata/include/strata/evidence_status.hpp` (user and legacy also provisional, never provisional, value or message without the note, note at the end, uncalibrated text on the wrong backend or label, `m1` value, `n_max_undecided` dropped) were run against `strata/test/test_evidence_status.cpp`: 10 of 10 killed (two survivors of the first draft, the `m1` value and the uncalibrated text on `grid2d`, got their assertions).

@@ -285,7 +285,8 @@ equal priors on the two hypotheses. It is not a calibrated occupancy.
 The pair is the one measured on LILocBench (2D, 0.05 m, 1.0 s windows = 15 scans at
 15 Hz) by `paper/experiments/realdata`; `PREREG.md` marks it **not frozen** (the wall
 thickness gate G1 failed on all three calibration sequences), so the defaults are
-provisional. The CTest `defaults_match_yaml_and_prereg` (`strata_core/test/check_defaults.py`) fails if
+provisional. The node says so on `/diagnostics` ("provisional (PREREG not frozen: G1 failed)" in the
+message of the evidence status and in the value of `evidence_calibration`). The CTest `defaults_match_yaml_and_prereg` (`strata_core/test/check_defaults.py`) fails if
 `PREREG.json`, the library defaults and both shipped YAMLs disagree.
 
 **What the error rates mean, and what they do not.**
@@ -297,12 +298,24 @@ provisional. The CTest `defaults_match_yaml_and_prereg` (`strata_core/test/check
   per-history rate on the engine is 0.035, 3.5 times `alpha` (0.0056 at 0, 0.014 at 0.10,
   0.061 at 0.35; `results/e7_autocorr.csv`); a bare random walk floored at `B` without
   rejection, the first reading, gives 13 times at the pair (0.15, 0.65).
-- *The realised rate on real clutter is lower than the bound only because most clutter
-  lies far below `m0`.* On the W = 15 calibration sequences the shipped rule graduates
-  0.40 % of the clutter cells whose observed rate is at most `m0` (n = 22,273), 22.3 %
-  of those above `m0` (n = 1,823), and 2.06 % of all (n = 24,096); it graduates 89.6 %
-  of the structure cells and rejects 1.4 % (`paper/experiments/realdata/results_p2/replay_shipped_pair_W15.txt`).
-  Walking people who linger belong to the 22.3 %: no hit-rate test tells them from a
+- *Realised rates on real clutter: below the bound per first history, above it per cell.*
+  The first-history rate is lower than the bound only because most clutter lies far below
+  `m0`. Two units give two numbers
+  (`paper/experiments/realdata/results_p2/replay_shipped_pair_W15.txt`, W = 15 calibration
+  sequences; clutter cells: n = 24,096, of which n = 22,273 at or below `m0` and n = 1,823 above):
+  - *First history* (the unit of the bound; the replay stops at the first Static or Rejected
+    verdict of each cell). The shipped rule graduates 0.40 % of the clutter cells whose
+    observed rate is at most `m0`, 22.3 % of those above `m0`, and 2.06 % of all; it graduates
+    89.6 % of the structure cells and rejects 1.4 %. This figure is below `alpha`.
+  - *Per cell* (the replay runs the whole sequence of each cell; the engine erases a rejected
+    cell, and the next observation creates it again with a new history; ever-Static means the
+    cell was Static at any window). With periodicity off: 1.64 % at or below `m0`, 33.8 % above,
+    4.07 % of all clutter cells. With periodicity on, as the node ships it: 1.51 %, 30.5 %,
+    3.71 %. Structure cells, periodicity on: 90.7 % ever-Static. **The per-cell figure at or below
+    `m0` is above `alpha = 0.01`**: every new history is a new chance to graduate.
+  - Read the per-cell figure when you count wrongly graduated cells on a map. "Lower than the
+    bound" holds per first history, not per cell.
+  Walking people who linger belong to the cells above `m0`: no hit-rate test tells them from a
   wall.
 - *Wall thickening.* Free cells next to a wall graduate at 6 % to 10 % (edge noise; pair
   (0.15, 0.65), `replay_advisory_table.txt`, controls). A localiser matching against the
@@ -513,7 +526,7 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `beta` | `0.01` | P(structure at `m1` is rejected), independent windows |
 | `n_max_undecided` | `80` | touched windows after which an undecided, non-periodic cell reads Intermittent; `0` never |
 | `sprt_ceiling` | derived, `A + 2 l_hit` | library only: upper clamp of the statistic (NaN derives it); not a node parameter |
-| `evidence_calibration` | `measured_2d` for `grid2d`, `fallback_2d_pair` for `voxel3d` (the shipped YAMLs say so, and so does the node when the key is missing; `measured_2d` on another backend is reported as `fallback_2d_pair`) | node only: states where `(m0, m1)` come from: `measured_2d`, `fallback_2d_pair` (not calibrated for this backend; logs a warning and says so on `/diagnostics`) or `user` |
+| `evidence_calibration` | `measured_2d` for `grid2d`, `fallback_2d_pair` for `voxel3d` (the shipped YAMLs say so, and so does the node when the key is missing; `measured_2d` on another backend is reported as `fallback_2d_pair`) | node only: states where `(m0, m1)` come from: `measured_2d`, `fallback_2d_pair` (not calibrated for this backend; logs a warning and says so on `/diagnostics`) or `user` ; while `PREREG.md` marks the 2D pair not frozen, the message and the value of `evidence_calibration` on `/diagnostics` also carry `provisional (PREREG not frozen: G1 failed)` (every value except `user`; `evidence_model: legacy` states no pair) |
 
 With `sprt` the nine keys `l_hit` to `prune_prob` below are ignored. With `legacy`
 `m0` to `n_max_undecided` are ignored (and not validated). The node refuses to start
@@ -641,7 +654,7 @@ CTest `defaults_match_yaml_and_prereg`:
   truncation table; the advisory empirical table replayed through `LayeredMap` on the
   committed phase 1 run sequences to ±0.002 (`paper/experiments/realdata/run_replay_p2.sh`);
   the in-sample KITTI 00 replay; the realised rates of the shipped pair on the 1.0 s
-  sequences.
+  sequences, per first history and per cell (whole sequence, three engine settings).
 - **Grid2DBackend** (10): a hit marks the endpoint and clears the ray; repeated
   hits graduate; occupancy-grid render (100 static, 50 transient, 0 free, -1
   unknown); a cleared cell stays free after pruning; a freed transient reads
@@ -656,7 +669,7 @@ CTest `defaults_match_yaml_and_prereg`:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **64 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **71 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
@@ -714,6 +727,17 @@ of `input_status.hpp` (every comparison, every count, time and frame used in a
 message, the tally updates and the text rules) were run against it: 96 fail
 it, 2 are equivalent (the streak and the failure total are equal while nothing
 has integrated; a space is already a space).
+
+`test_evidence_status` (7) covers the `/diagnostics` status of the evidence model
+(`evidence_status.hpp`), one test per row of the table in that header: `grid2d` with
+`measured_2d` starts the message with `provisional (PREREG not frozen: G1 failed)` and
+carries it in the value of `evidence_calibration`; `voxel3d` with `fallback_2d_pair`
+says `NOT calibrated for voxel3d` first and then the provisional note; the fallback
+label on `grid2d` is provisional but not called uncalibrated; `user` and `legacy` carry
+no note; every value (`m0`, `m1`, `alpha`, `beta`, the two derived window counts,
+`n_max_undecided`) and the order of the values are pinned. 10 mutants of the header
+were run against it and all fail it; `check_defaults.py` fails if the note is present
+while `PREREG.json` says the 2D pair is frozen, or absent while it says it is not.
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the
@@ -850,7 +874,7 @@ cmake --build build/core -j
 ```bash
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 64 node gtests (the engine gtests run in the step above)
+colcon test --packages-select strata      # the 71 node gtests (the engine gtests run in the step above)
 colcon test-result --verbose
 ```
 
