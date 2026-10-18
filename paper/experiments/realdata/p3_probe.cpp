@@ -434,7 +434,7 @@ int cmdLilValidate(const std::map<std::string, std::string>& a) {
   std::cout << "gt_poses=" << gt.size() << " gt_span=[" << gt.t0() << "," << gt.t1() << "] messages_read=" << messages << "\n";
   if (!v.ok) return finishValidate(v, "lilocbench");
   ConvertOptions co; co.deskew = true; co.anchor = Anchor::Start; co.time_offset_s = dt;
-  ConvertReport rep; std::vector<Frame> frames;
+  ConvertReport rep; std::vector<Frame> frames; std::size_t pairs_before_gt = 0;
   for (std::size_t k = 0; k < n; ++k) {
     const ScanRecord& f = front[k]; const ScanRecord& r = rear[k];
     const std::size_t before = frames.size();
@@ -444,8 +444,12 @@ int cmdLilValidate(const std::map<std::string, std::string>& a) {
               << " angle_min=" << f.msg.angle_min << " time_increment=" << f.msg.time_increment << " frames_made=" << frames.size() - before << "\n";
     v.check(f.msg.ranges.size() == 811 && r.msg.ranges.size() == 811, "pair " + std::to_string(k) + ": not 811 beams (the sensor of the calibration sequences)");
     v.check(std::fabs(f.stamp - r.stamp) <= 0.05, "pair " + std::to_string(k) + ": front/rear stamp skew above 0.05 s");
-    v.check(frames.size() - before == 2, "pair " + std::to_string(k) + ": a scan was dropped (no GT pose)");
+    // a scan before the first ground-truth pose has no pose by the data, not by the reader (the conversion drops and counts it)
+    const std::size_t expected = (f.stamp + dt >= gt.t0() ? 1u : 0u) + (r.stamp + dt >= gt.t0() ? 1u : 0u);
+    if (expected < 2) ++pairs_before_gt;
+    v.check(frames.size() - before == expected, "pair " + std::to_string(k) + ": a scan was dropped although the ground truth covers it");
   }
+  std::cout << "pairs_with_a_scan_before_the_first_gt_pose=" << pairs_before_gt << "\n";
   std::cout << "extrinsics front=(" << fext[0].x << "," << fext[0].y << "," << fext[0].yaw << ") rear=(" << rext[0].x << "," << rext[0].y << "," << rext[0].yaw << ") beams_used=" << rep.beams_used << " invalid=" << rep.beams_invalid << " no_pose=" << rep.beams_no_pose << "\n";
   v.check(std::fabs(fext[0].x - 0.3046) < 1e-3 && std::fabs(rext[0].x + 0.3027) < 1e-3, "extrinsics differ from those of the calibration sequences");
   return finishValidate(v, "lilocbench");

@@ -708,6 +708,86 @@ TEST(P3Sprt, DriverRecordsTheGraduationWindow) {
 }
 
 // ------------------------------------------------------------------- the command line tool ----------
+// ---- a tiny ROS 1 bag writer (uncompressed chunk) for the lil-validate tests ----
+std::string le32(std::uint32_t v) { return std::string(reinterpret_cast<const char*>(&v), 4); }
+template <class T> std::string rawBytes(T v) { return std::string(reinterpret_cast<const char*>(&v), sizeof v); }
+std::string bagField(const std::string& name, const std::string& value) { return le32(static_cast<std::uint32_t>(name.size() + 1 + value.size())) + name + "=" + value; }
+std::string bagRec(const std::string& header, const std::string& data) { return le32(header.size()) + header + le32(data.size()) + data; }
+std::string rosStr(const std::string& s) { return le32(s.size()) + s; }
+std::string laserBytes(double stamp, std::size_t beams) {
+  const std::uint32_t sec = static_cast<std::uint32_t>(stamp), nsec = static_cast<std::uint32_t>((stamp - sec) * 1e9);
+  std::string b = le32(7) + le32(sec) + le32(nsec) + rosStr("scan_front_link");
+  for (float v : {-2.3562f, 2.3557f, 0.005817f, 0.000062f, 0.0667f, 0.05f, 100.0f}) b += rawBytes(v);
+  b += le32(beams);
+  for (std::size_t i = 0; i < beams; ++i) b += rawBytes(3.0f);
+  b += le32(0);
+  return b;
+}
+std::string tfBytes(const std::string& parent, const std::string& child, double x, double y, double qz, double qw) {
+  std::string b = le32(1) + le32(1) + le32(5) + le32(0) + rosStr(parent) + rosStr(child);
+  for (double v : {x, y, 0.0, 0.0, 0.0, qz, qw}) b += rawBytes(v);
+  return b;
+}
+std::string connRecord(std::uint32_t id, const std::string& topic, const std::string& type) {
+  return bagRec(bagField("op", std::string(1, '\x07')) + bagField("conn", le32(id)) + bagField("topic", topic),
+                bagField("topic", topic) + bagField("type", type) + bagField("md5sum", "x") + bagField("message_definition", "x"));
+}
+std::string msgRecord(std::uint32_t id, double stamp, const std::string& data) {
+  const std::uint32_t sec = static_cast<std::uint32_t>(stamp), nsec = static_cast<std::uint32_t>((stamp - sec) * 1e9);
+  return bagRec(bagField("op", std::string(1, '\x02')) + bagField("conn", le32(id)) + bagField("time", le32(sec) + le32(nsec)), data);
+}
+// pairs scan pairs, front at 100 + 0.0667 k, rear at front + rear_lag; sensor extrinsics of the calibration sequences
+void writeLilBag(const std::string& path, int pairs, double rear_lag, std::size_t beams = 811) {
+  std::string chunk = connRecord(0, "/laser_scan_front/scan", "sensor_msgs/LaserScan") + connRecord(1, "/laser_scan_rear/scan", "sensor_msgs/LaserScan") +
+                      connRecord(2, "/tf", "tf2_msgs/TFMessage");
+  chunk += msgRecord(2, 99.9, tfBytes("base_link", "scan_front_link", 0.3046, -0.0060, 0.0048, 0.99999));
+  chunk += msgRecord(2, 99.9, tfBytes("base_link", "scan_rear_link", -0.3027, -0.0016, 1.0, -0.0027));
+  for (int k = 0; k < pairs; ++k) {
+    const double f = 100.0 + 0.0667 * k;
+    chunk += msgRecord(0, f, laserBytes(f, beams));
+    chunk += msgRecord(1, f + rear_lag, laserBytes(f + rear_lag, beams));
+  }
+  std::string out = "#ROSBAG V2.0\n";
+  out += bagRec(bagField("op", std::string(1, '\x03')) + bagField("index_pos", rawBytes<std::uint64_t>(0)) + bagField("conn_count", le32(3)) + bagField("chunk_count", le32(1)), std::string(40, ' '));
+  out += bagRec(bagField("op", std::string(1, '\x05')) + bagField("compression", "none") + bagField("size", le32(chunk.size())), chunk);
+  std::ofstream(path, std::ios::binary) << out;
+}
+void writeGt(const std::string& path, double t0, double t1) {
+  std::ofstream g(path);
+  g.precision(15);
+  for (double t = t0; t <= t1 + 1e-9; t += 0.05) g << t << " " << (t - 100.0) * 0.5 << " 0 0 0 0 0 1\n";
+}
+
+TEST(P3Probe, LilValidateOnASyntheticBag) {
+  writeLilBag(tmpPath("v1.bag"), 12, 0.017);
+  writeGt(tmpPath("v1_gt.txt"), 100.2, 101.2);                   // starts after the first three pairs
+  std::string out;
+  EXPECT_EQ(runProbe("lil-validate --bag " + tmpPath("v1.bag") + " --gt " + tmpPath("v1_gt.txt") + " --n 10 --time-offset 0", &out), 0) << out;
+  EXPECT_NE(out.find("VERDICT lilocbench reader OK"), std::string::npos);
+  EXPECT_NE(out.find("pairs_with_a_scan_before_the_first_gt_pose=3"), std::string::npos) << out;
+  EXPECT_NE(out.find("beams=811/811"), std::string::npos);
+  // the offset moves the time used for the pose: with +0.1 s one more pair is before the track start... and with -0.1 s one fewer
+  EXPECT_EQ(runProbe("lil-validate --bag " + tmpPath("v1.bag") + " --gt " + tmpPath("v1_gt.txt") + " --n 10 --time-offset -0.1", &out), 0) << out;
+  EXPECT_NE(out.find("pairs_with_a_scan_before_the_first_gt_pose=5"), std::string::npos) << out;
+  // a track that ends inside the first 10 pairs: scans dropped although the ground truth should cover them
+  writeGt(tmpPath("v1_gt2.txt"), 100.0, 100.3);
+  EXPECT_EQ(runProbe("lil-validate --bag " + tmpPath("v1.bag") + " --gt " + tmpPath("v1_gt2.txt") + " --n 10 --time-offset 0", &out), 3) << out;
+  EXPECT_NE(out.find("a scan was dropped although the ground truth covers it"), std::string::npos);
+  // a front/rear skew of 0.06 s is above the 0.05 s bound
+  writeLilBag(tmpPath("v2.bag"), 12, 0.06);
+  writeGt(tmpPath("v2_gt.txt"), 99.0, 102.0);
+  EXPECT_EQ(runProbe("lil-validate --bag " + tmpPath("v2.bag") + " --gt " + tmpPath("v2_gt.txt") + " --n 10 --time-offset 0", &out), 3) << out;
+  EXPECT_NE(out.find("skew above 0.05 s"), std::string::npos);
+  // a different beam count is not the sensor of the calibration sequences
+  writeLilBag(tmpPath("v3.bag"), 12, 0.017, 400);
+  EXPECT_EQ(runProbe("lil-validate --bag " + tmpPath("v3.bag") + " --gt " + tmpPath("v2_gt.txt") + " --n 10 --time-offset 0", &out), 3) << out;
+  EXPECT_NE(out.find("not 811 beams"), std::string::npos);
+  // fewer pairs than asked for, and a missing file
+  EXPECT_EQ(runProbe("lil-validate --bag " + tmpPath("v1.bag") + " --gt " + tmpPath("v1_gt.txt") + " --n 40 --time-offset 0", &out), 3) << out;
+  EXPECT_NE(runProbe("lil-validate --bag " + tmpPath("nope.bag") + " --gt " + tmpPath("v1_gt.txt"), &out), 0);
+}
+
+
 
 TEST(P3Probe, ArmsListsFiveArmsAndTheExtras) {
   std::string out;
