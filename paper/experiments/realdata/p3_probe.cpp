@@ -216,6 +216,18 @@ BoreasSession loadSession(const std::string& dir) {
   return s;
 }
 
+// The points of one sweep in the world with ONE pose (no deskew), range window [r_min, r_max] in the lidar frame.
+static std::vector<Eigen::Vector3d> worldPointsOf(const BoreasScan& sc, const Pose3& pose, double r_min, double r_max) {
+  std::vector<Eigen::Vector3d> o;
+  for (std::size_t i = 0; i < sc.size(); ++i) {
+    const Eigen::Vector3d p(sc.xyz[3 * i], sc.xyz[3 * i + 1], sc.xyz[3 * i + 2]);
+    const double r = p.norm();
+    if (r < r_min || r > r_max) continue;
+    o.push_back(pose.t + pose.q * p);
+  }
+  return o;
+}
+
 int cmdBoreasValidate(const std::map<std::string, std::string>& a) {
   const BoreasSession s = loadSession(need(a, "seq"));
   const std::size_t n = std::stoul(opt(a, "n", "10"));
@@ -280,6 +292,41 @@ int cmdBoreasValidate(const std::map<std::string, std::string>& a) {
     v.check(ok, s.frames[k] + ": no pose for the conversion");
   }
   std::cout << "converted: scans=" << rep.scans << " dropped_no_pose=" << rep.scans_dropped_no_pose << " points_used=" << rep.points_used << " out_of_range=" << rep.points_out_of_range << " no_pose=" << rep.points_no_pose << "\n";
+  // Frame consistency (PREREG_P3.md Amendment 4): the first and the last of the N frames, one pose each, no deskew. A test of the rotation
+  // convention that does not rely on the two pose files being parsed alike.
+  if (std::min(n, s.frames.size()) >= 2) {
+    const std::size_t k0 = 0, k1 = std::min(n, s.frames.size()) - 1;
+    const double f0 = boreasFrameTime(s.frames[k0]), f1 = boreasFrameTime(s.frames[k1]);
+    const auto r0 = std::find_if(lp.begin(), lp.end(), [&](const BoreasPoseRow& r) { return std::fabs(r.t - f0) < 1e-6; });
+    const auto r1 = std::find_if(lp.begin(), lp.end(), [&](const BoreasPoseRow& r) { return std::fabs(r.t - f1) < 1e-6; });
+    Pose3 g0, g1;
+    const bool have = r0 != lp.end() && r1 != lp.end() && track.at(f0, g0, 0.05) && track.at(f1, g1, 0.05);
+    v.check(have, "frame consistency: a pose is missing for the first or the last frame");
+    if (have) {
+      const BoreasScan s0 = parseBoreasBin(readFileBytes(s.dir + "/lidar/" + s.frames[k0]), s.frames[k0]);
+      const BoreasScan s1 = parseBoreasBin(readFileBytes(s.dir + "/lidar/" + s.frames[k1]), s.frames[k1]);
+      const double move = (poseOf(*r1).t - poseOf(*r0).t).norm();
+      std::cout << "frame_consistency: frames " << k0 << " and " << k1 << " moved " << move << " m between them (lidar_poses.csv)\n";
+      v.check(move > 1.0, "frame consistency: the vehicle moved less than 1 m between the two frames (the test needs motion)");
+      auto flipped = [](Pose3 q) { q.q = q.q.inverse(); return q; };
+      const struct { const char* name; Pose3 p0, p1; } srcs[] = {
+          {"lidar_poses.csv", poseOf(*r0), poseOf(*r1)},
+          {"gps_x_calibration", lidarPoseFromApplanix(g0, T), lidarPoseFromApplanix(g1, T)},
+          {"contrast_transposed_rotation", flipped(poseOf(*r0)), flipped(poseOf(*r1))}};
+      double share01[3] = {0, 0, 0};
+      for (int i = 0; i < 3; ++i) {
+        const auto w0 = worldPointsOf(s0, srcs[i].p0, 3.0, 50.0), w1 = worldPointsOf(s1, srcs[i].p1, 3.0, 50.0);
+        const FrameConsistency c1 = frameConsistency(w0, w1, 0.1), c3 = frameConsistency(w0, w1, 0.3);
+        share01[i] = c1.share_near;
+        std::cout << "frame_consistency," << srcs[i].name << ",points=" << c1.points_b << ",in_0.1m=" << c1.share_in << ",near_0.1m=" << c1.share_near << ",in_0.3m=" << c3.share_in << ",near_0.3m=" << c3.share_near << "\n";
+        if (i < 2) {
+          v.check(c1.share_near >= kFrameShare01Min, std::string("frame consistency (") + srcs[i].name + "): share near at 0.1 m below " + std::to_string(kFrameShare01Min));
+          v.check(c3.share_near >= kFrameShare03Min, std::string("frame consistency (") + srcs[i].name + "): share near at 0.3 m below " + std::to_string(kFrameShare03Min));
+        }
+      }
+      v.check(share01[0] - share01[2] >= kFrameContrastMin, "frame consistency: the transposed rotation is not worse by 0.10 at 0.1 m (the test does not discriminate)");
+    }
+  }
   return finishValidate(v, "boreas");
 }
 
@@ -291,7 +338,7 @@ int cmdBoreasOverlap(const std::map<std::string, std::string>& a) {
   if (dirs.size() < 2) fail("arguments", "--seqs needs at least two sequence directories (comma separated; the first is the reference)");
   std::vector<BoreasSession> ss; std::vector<GeoOrigin> org(dirs.size()); std::vector<std::vector<BoreasPoseRow>> poses(dirs.size());
   std::vector<std::vector<Eigen::Vector2d>> xy(dirs.size());
-  bool enu_ok = true;
+  bool enu_ok = true, conv_ok = true;
   for (std::size_t i = 0; i < dirs.size(); ++i) {
     ss.push_back(loadSession(dirs[i]));
     const double t0 = boreasFrameTime(ss[i].frames.front()), t1 = boreasFrameTime(ss[i].frames.back());
@@ -310,6 +357,13 @@ int cmdBoreasOverlap(const std::map<std::string, std::string>& a) {
     std::cout << "enu_check," << ss[i].id << ",rows=" << ea.rows << ",worst_horizontal_diff_m=" << ea.worst_m << ",mean_dx_m=" << ea.mean_dx_m << ",mean_dy_m=" << ea.mean_dy_m
               << ",first_row_geodetic_enu_at_reference=(" << first.x() << "|" << first.y() << "),limit_m=" << kEnuAgreementTolM << "," << (ok ? "ok" : "FAIL") << "\n";
     if (!ok) enu_ok = false;
+    // rotation convention (PREREG_P3.md Amendment 4): the forward axis of rotationOf follows the GPS velocity, and its yaw rate is the gyro
+    const PoseConventionCheck pc = poseConventionCheck(gps);
+    const std::string why = poseConventionVerdict(pc);
+    std::cout << "pose_convention," << ss[i].id << ",rows=" << pc.rows << ",moving_rows=" << pc.moving << ",forward_minus_velocity_deg_p10/p50/p90=" << pc.dev_p10 << "|" << pc.dev_p50 << "|" << pc.dev_p90
+              << ",worst_quadrant_median_deg=" << pc.quad_median_worst << ",quadrant_rows=" << pc.quad_rows[0] << "|" << pc.quad_rows[1] << "|" << pc.quad_rows[2] << "|" << pc.quad_rows[3]
+              << ",gyro_corr=" << pc.gyro_corr << ",gyro_rows=" << pc.gyro_rows << ",limits_deg=" << kForwardAxisTolDeg << ",gyro_min=" << kGyroCorrMin << "," << (why.empty() ? "ok" : "FAIL: " + why) << "\n";
+    if (!why.empty()) conv_ok = false;
     for (const auto& r : poses[i]) xy[i].emplace_back(r.east, r.north);
   }
   bool overlap_ok = true;
@@ -326,8 +380,9 @@ int cmdBoreasOverlap(const std::map<std::string, std::string>& a) {
     const AltitudeDifference d = altitudeDifference(poses[i], poses[j], 3.0);
     std::cout << "altitude," << ss[i].id << "," << ss[j].id << "," << d.pairs << "," << d.median << "," << d.p10 << "," << d.p90 << "\n";
   }
-  const bool pass = overlap_ok && enu_ok;
-  std::cout << "VERDICT boreas shared frame and tile overlap " << (pass ? "PASS" : "FAIL") << " (enu agreement of every session: " << (enu_ok ? "ok" : "FAIL") << "; tile overlap: " << (overlap_ok ? "ok" : "FAIL") << ")\n";
+  const bool pass = overlap_ok && enu_ok && conv_ok;
+  std::cout << "VERDICT boreas shared frame and tile overlap " << (pass ? "PASS" : "FAIL") << " (enu agreement of every session: " << (enu_ok ? "ok" : "FAIL") << "; tile overlap: " << (overlap_ok ? "ok" : "FAIL")
+            << "; rotation convention of every session: " << (conv_ok ? "ok" : "FAIL") << ")\n";
   return pass ? 0 : 3;
 }
 

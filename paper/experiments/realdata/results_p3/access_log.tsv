@@ -242,3 +242,9 @@ time	step	commit	uncommitted_files	path	open_calls
 2026-10-18T14:19:25+09:00	boreas_overlap	5626dd0e8f6902d24fdbb2eca65301da168cc7dc	0	/home/cona/datasets/strata/boreas/boreas-2021-06-17-17-52/applanix/gps_post_process.csv	1
 2026-10-18T14:19:25+09:00	boreas_overlap	5626dd0e8f6902d24fdbb2eca65301da168cc7dc	0	/home/cona/datasets/strata/boreas/boreas-2021-06-17-17-52/applanix/lidar_poses.csv	1
 2026-10-18T14:19:25+09:00	boreas_overlap	5626dd0e8f6902d24fdbb2eca65301da168cc7dc	0	/home/cona/datasets/strata/boreas/boreas-2021-06-17-17-52/lidar	1
+2026-10-18T14:40:40+09:00	r2_explore_pose	e879018ac030d46d9173040d3f44e62dae6ad88d	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/applanix/gps_post_process.csv	1
+2026-10-18T14:40:40+09:00	r2_explore_pose	e879018ac030d46d9173040d3f44e62dae6ad88d	0	/home/cona/datasets/strata/boreas/boreas-2020-11-26-13-58/lidar	1
+2026-10-18T14:40:40+09:00	r2_explore_pose	e879018ac030d46d9173040d3f44e62dae6ad88d	0	/home/cona/datasets/strata/boreas/boreas-2021-04-08-12-44/applanix/gps_post_process.csv	1
+2026-10-18T14:40:40+09:00	r2_explore_pose	e879018ac030d46d9173040d3f44e62dae6ad88d	0	/home/cona/datasets/strata/boreas/boreas-2021-04-08-12-44/lidar	1
+2026-10-18T14:40:40+09:00	r2_explore_pose	e879018ac030d46d9173040d3f44e62dae6ad88d	0	/home/cona/datasets/strata/boreas/boreas-2021-06-17-17-52/applanix/gps_post_process.csv	1
+2026-10-18T14:40:40+09:00	r2_explore_pose	e879018ac030d46d9173040d3f44e62dae6ad88d	0	/home/cona/datasets/strata/boreas/boreas-2021-06-17-17-52/lidar	1

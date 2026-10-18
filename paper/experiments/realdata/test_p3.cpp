@@ -530,35 +530,51 @@ TEST(P3Boreas, PoseCsvWindowOriginAndTimeScale) {
 }
 
 TEST(P3Boreas, RotationConventionAndCalibration) {
+  // PREREG_P3.md Amendment 4: the rotation block (applanix to ENU) is (Rz(heading) Ry(pitch) Rx(roll))^T, the pyboreas yawPitchRollToRot.
+  // Heading is clockwise from north; the applanix forward axis is +y.
   BoreasPoseRow r; r.heading = M_PI / 2;
-  EXPECT_NEAR((rotationOf(r) * Eigen::Vector3d::UnitX() - Eigen::Vector3d::UnitY()).norm(), 0.0, 1e-12);       // heading is yaw about up, counter-clockwise
-  r = BoreasPoseRow(); r.pitch = 0.1;                                                                         // pitch about y: x tilts toward -z for positive pitch
-  EXPECT_LT((rotationOf(r) * Eigen::Vector3d::UnitX()).z(), 0.0);
-  r = BoreasPoseRow(); r.roll = 0.1;                                                                          // roll about x: y tilts toward +z
-  EXPECT_GT((rotationOf(r) * Eigen::Vector3d::UnitY()).z(), 0.0);
-  r = BoreasPoseRow(); r.roll = 0.3; r.pitch = -0.2; r.heading = 1.1;                                        // order Rz Ry Rx
-  const Eigen::Matrix3d expect = (Eigen::AngleAxisd(1.1, Eigen::Vector3d::UnitZ()) * Eigen::AngleAxisd(-0.2, Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(0.3, Eigen::Vector3d::UnitX())).toRotationMatrix();
+  EXPECT_NEAR((rotationOf(r) * Eigen::Vector3d::UnitY() - Eigen::Vector3d::UnitX()).norm(), 0.0, 1e-12);       // heading 90 degrees: forward is east
+  EXPECT_NEAR((rotationOf(r) * Eigen::Vector3d::UnitX() - Eigen::Vector3d(0, -1, 0)).norm(), 0.0, 1e-12);      // right is south
+  r = BoreasPoseRow();
+  EXPECT_NEAR((rotationOf(r) * Eigen::Vector3d::UnitY() - Eigen::Vector3d::UnitY()).norm(), 0.0, 1e-12);       // heading 0: forward is north
+  r.heading = 0.3;                                                                                           // heading grows clockwise
+  { const Eigen::Vector3d f = rotationOf(r) * Eigen::Vector3d::UnitY(); EXPECT_NEAR(std::atan2(f.y(), f.x()), M_PI / 2 - 0.3, 1e-12); }
+  r = BoreasPoseRow(); r.pitch = 0.1;                                                                         // pitch (about y): the x axis rises for positive pitch
+  EXPECT_GT((rotationOf(r) * Eigen::Vector3d::UnitX()).z(), 0.0);
+  r = BoreasPoseRow(); r.roll = 0.1;                                                                          // roll (about x): the y axis falls for positive roll
+  EXPECT_LT((rotationOf(r) * Eigen::Vector3d::UnitY()).z(), 0.0);
+  r = BoreasPoseRow(); r.roll = 0.3; r.pitch = -0.2; r.heading = 1.1;                                        // order: the transpose of Rz Ry Rx
+  const Eigen::Matrix3d expect = (Eigen::AngleAxisd(1.1, Eigen::Vector3d::UnitZ()) * Eigen::AngleAxisd(-0.2, Eigen::Vector3d::UnitY()) * Eigen::AngleAxisd(0.3, Eigen::Vector3d::UnitX())).toRotationMatrix().transpose();
   EXPECT_NEAR((rotationOf(r).toRotationMatrix() - expect).norm(), 0.0, 1e-12);
+  // the matrix written out as pyboreas builds it: Rr * Rp * Ry with the passive matrices
+  {
+    const double y = 1.1, pt = -0.2, rl = 0.3;
+    Eigen::Matrix3d Rr, Rp, Ry;
+    Rr << 1, 0, 0, 0, std::cos(rl), std::sin(rl), 0, -std::sin(rl), std::cos(rl);
+    Rp << std::cos(pt), 0, -std::sin(pt), 0, 1, 0, std::sin(pt), 0, std::cos(pt);
+    Ry << std::cos(y), std::sin(y), 0, -std::sin(y), std::cos(y), 0, 0, 0, 1;
+    EXPECT_NEAR((rotationOf(r).toRotationMatrix() - Rr * Rp * Ry).norm(), 0.0, 1e-12);
+  }
   // the calibration of a real session: yaw +42.6 degrees, z 0.13
   writeText(tmpPath("T3.txt"), "7.360555651493132512e-01 -6.769211217083995757e-01 0 0\n6.769211217083995757e-01 7.360555651493132512e-01 0 0\n0 0 1 1.3e-01\n");
   const Pose3 T = readBoreasCalib(tmpPath("T3.txt"));
   EXPECT_NEAR(T.t.z(), 0.13, 1e-12); EXPECT_NEAR(T.t.x(), 0.0, 1e-12);
   EXPECT_NEAR((T.q * Eigen::Vector3d::UnitX() - Eigen::Vector3d(0.7360555651, 0.6769211217, 0)).norm(), 0.0, 1e-8);
-  // the lidar pose from the applanix pose: yaw shift on the world side, translation added in the world frame (see lidarPoseFromApplanix)
+  // the lidar pose from the applanix pose: the ordinary composition (Amendment 4): R = R_a R_f, t = t_a + R_a t_f
   BoreasPoseRow tilt; tilt.roll = 0.1; tilt.pitch = -0.05; tilt.heading = 1.0;
   Pose3 pa = poseOf(tilt); pa.t = Eigen::Vector3d(10, 20, 30);
   const Pose3 L = lidarPoseFromApplanix(pa, T);
   const double th = std::atan2(0.6769211217083995757, 0.7360555651493132512);
-  const Eigen::Matrix3d expect_R = Eigen::AngleAxisd(-th, Eigen::Vector3d::UnitZ()).toRotationMatrix() * pa.q.toRotationMatrix();
-  EXPECT_NEAR((L.q.toRotationMatrix() - expect_R).norm(), 0.0, 1e-12);
-  EXPECT_NEAR((L.t - Eigen::Vector3d(10, 20, 30.13)).norm(), 0.0, 1e-12);                                // not rotated by the tilt
-  // not the physical composition R_applanix * R_f^-1: at this tilt it differs by more than a degree
-  EXPECT_GT(L.q.angularDistance(Eigen::Quaterniond(pa.q.toRotationMatrix() * T.q.inverse().toRotationMatrix())), 0.02);
-  // without tilt the two agree, and the yaw is the applanix yaw minus 42.6 degrees
+  EXPECT_NEAR((L.q.toRotationMatrix() - pa.q.toRotationMatrix() * T.q.toRotationMatrix()).norm(), 0.0, 1e-12);
+  EXPECT_NEAR((L.t - (Eigen::Vector3d(10, 20, 30) + pa.q * Eigen::Vector3d(0, 0, 0.13))).norm(), 0.0, 1e-12);      // the offset is rotated by the tilt
+  EXPECT_GT((L.t - Eigen::Vector3d(10, 20, 30.13)).norm(), 1e-4);                                                    // and so differs from a world-frame z offset
+  // the pre-amendment composition R_f^-1 R_a is another rotation at this tilt and also at zero tilt
+  EXPECT_GT(L.q.angularDistance(Eigen::Quaterniond(T.q.inverse().toRotationMatrix() * pa.q.toRotationMatrix())), 0.02);
+  // without tilt: the lidar x axis is the applanix x axis turned by +42.6 degrees about up, in the applanix frame (heading grows clockwise)
   BoreasPoseRow flat; flat.heading = 1.0;
   const Pose3 Lf = lidarPoseFromApplanix(poseOf(flat), T);
   const Eigen::Vector3d fwd = Lf.q * Eigen::Vector3d::UnitX();
-  EXPECT_NEAR(std::atan2(fwd.y(), fwd.x()), 1.0 - th, 1e-12);
+  EXPECT_NEAR(std::atan2(fwd.y(), fwd.x()), -1.0 + th, 1e-12);
   writeText(tmpPath("T4.txt"), "1 0 0 1\n0 1 0 2\n0 0 1 3\n0 0 0 1\n");
   EXPECT_NEAR(readBoreasCalib(tmpPath("T4.txt")).t.y(), 2.0, 1e-12);
   writeText(tmpPath("T5.txt"), "1 0 0 1\n0 1 0 2\n0 0 1 3\n0 0 1 1\n");
@@ -583,6 +599,90 @@ TEST(P3Boreas, RotationConventionAndCalibration) {
   const Pose3 d = compose(a, b);
   EXPECT_NEAR((d.q * Eigen::Vector3d::UnitX() - a.q * (b.q * Eigen::Vector3d::UnitX())).norm(), 0.0, 1e-12);
   EXPECT_GT((d.q * Eigen::Vector3d::UnitX() - b.q * (a.q * Eigen::Vector3d::UnitX())).norm(), 0.5);      // the other order gives another vector
+}
+
+// Pose rows of a vehicle that drives along the azimuth az (degrees, counter-clockwise from east) with the forward axis (+y) on it, plus a constant offset.
+static std::vector<BoreasPoseRow> drivingRows(const std::vector<double>& az_deg, double offset_deg, double speed, double dt, bool clockwise_heading = true) {
+  std::vector<BoreasPoseRow> o;
+  for (std::size_t i = 0; i < az_deg.size(); ++i) {
+    BoreasPoseRow r; r.t = 100.0 + i * dt;
+    const double az = az_deg[i] * M_PI / 180.0, vaz = (az_deg[i] - offset_deg) * M_PI / 180.0;
+    r.heading = clockwise_heading ? M_PI / 2 - az : az - M_PI / 2;      // the wrong sign convention is the counter-clockwise one
+    r.vel_east = speed * std::cos(vaz); r.vel_north = speed * std::sin(vaz);
+    if (i > 0) { const double d = (az_deg[i] - az_deg[i - 1]) * M_PI / 180.0; r.angvel_z = d / dt; } else r.angvel_z = 0.0;
+    o.push_back(r);
+  }
+  return o;
+}
+
+TEST(P3Boreas, PoseConventionCheckAcceptsTheTrueConventionAndRejectsTheTransposedOne) {
+  std::vector<double> az;                                                  // swings through all four heading quadrants, 4000 rows at 200 Hz, with a varying yaw rate
+  for (int i = 0; i < 4000; ++i) az.push_back(170.0 * std::sin(2.0 * M_PI * i / 3000.0));
+  const auto good = drivingRows(az, 2.0, 8.0, 0.005);
+  const PoseConventionCheck c = poseConventionCheck(good);
+  EXPECT_EQ(c.moving, 4000u);
+  EXPECT_NEAR(c.dev_p50, 2.0, 1e-6);                                       // the forward axis leads the velocity by the 2 degree offset
+  EXPECT_NEAR(c.gyro_corr, 1.0, 1e-3);
+  EXPECT_EQ(poseConventionVerdict(c), "");
+  // rows written with the counter-clockwise heading (the pre-amendment reading): the forward axis is 2 x the heading error away
+  const PoseConventionCheck bad = poseConventionCheck(drivingRows(az, 2.0, 8.0, 0.005, false));
+  EXPECT_NE(poseConventionVerdict(bad), "");
+  EXPECT_LT(bad.gyro_corr, 0.0);                                           // the yaw rate also has the wrong sign
+  // slow rows are not used; a stationary log fails the row count instead of passing
+  EXPECT_NE(poseConventionVerdict(poseConventionCheck(drivingRows(az, 2.0, 1.0, 0.005))), "");
+  // one wrong gyro sign alone is caught
+  auto flipped = good; for (auto& r : flipped) r.angvel_z = -r.angvel_z;
+  EXPECT_NE(poseConventionVerdict(poseConventionCheck(flipped)), "");
+  // an offset of 10 degrees is outside the 4 degree limit
+  EXPECT_NE(poseConventionVerdict(poseConventionCheck(drivingRows(az, 10.0, 8.0, 0.005))), "");
+  // a log without velocity columns cannot pass
+  auto novel = good; for (auto& r : novel) r.vel_east = std::nan("");
+  EXPECT_NE(poseConventionVerdict(poseConventionCheck(novel)), "");
+  // the quadrant rule: a drive that points the right way in three quadrants and 20 degrees off in the fourth is rejected
+  auto skew = good; for (auto& r : skew) { const double az_r = M_PI / 2 - r.heading; if (std::cos(az_r) > 0.7071 && std::sin(az_r) > -0.7071 && std::sin(az_r) < 0.7071) r.vel_north += 3.0; }
+  EXPECT_NE(poseConventionVerdict(poseConventionCheck(skew)), "");
+}
+
+TEST(P3Boreas, PoseCsvReadsVelocityAndGyroColumnsWhenPresent) {
+  writeText(tmpPath("g1.csv"), "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z\n1,1,2,3,4,5,6,0.1,0.2,0.3,0.4\n");
+  const auto rows = readBoreasPoseCsv(tmpPath("g1.csv"), 1.0, 0, 10);
+  ASSERT_EQ(rows.size(), 1u);
+  EXPECT_DOUBLE_EQ(rows[0].vel_east, 4.0); EXPECT_DOUBLE_EQ(rows[0].vel_north, 5.0); EXPECT_DOUBLE_EQ(rows[0].angvel_z, 0.4);
+  EXPECT_DOUBLE_EQ(rows[0].heading, 0.3); EXPECT_DOUBLE_EQ(rows[0].roll, 0.1);
+  writeText(tmpPath("g2.csv"), "GPSTime,easting,northing,altitude,roll,pitch,heading\n1,1,2,3,0.1,0.2,0.3\n");
+  EXPECT_FALSE(std::isfinite(readBoreasPoseCsv(tmpPath("g2.csv"), 1.0, 0, 10)[0].vel_east));      // lidar_poses.csv has no velocity
+}
+
+TEST(P3Boreas, FrameConsistencyFollowsTheTrueRotationAndNotTheTransposedOne) {
+  // a room seen from two places: the vehicle drives 2.5 m while turning 20 degrees, with tilt; the same walls are seen from both poses.
+  std::mt19937 g(5);
+  std::uniform_real_distribution<double> U(-1.0, 1.0);
+  std::vector<Eigen::Vector3d> world;                                       // wall points of a 20 m x 20 m room, 0.05 m grain
+  for (int i = 0; i < 6000; ++i) {
+    const double u = 10.0 * U(g), h = 3.0 * (U(g) + 1.0) / 2.0;
+    switch (i % 4) { case 0: world.emplace_back(u, 10, h); break; case 1: world.emplace_back(u, -10, h); break; case 2: world.emplace_back(10, u, h); break; default: world.emplace_back(-10, u, h); }
+  }
+  BoreasPoseRow ra, rb;
+  ra.east = 0; ra.north = 0; ra.heading = 0.4; ra.roll = 0.05; ra.pitch = -0.03;
+  rb.east = 1.8; rb.north = 1.7; rb.heading = 0.4 + 0.35; rb.roll = -0.04; rb.pitch = 0.05;
+  const Pose3 A = poseOf(ra), B = poseOf(rb);
+  auto seen = [&](const Pose3& P) { std::vector<Eigen::Vector3d> o; for (const auto& w : world) o.push_back(P.q.inverse() * (w - P.t)); return o; };
+  const auto la = seen(A), lb = seen(B);                                    // lidar-frame points (here the lidar frame is the applanix frame)
+  auto place = [&](const std::vector<Eigen::Vector3d>& l, const Pose3& P) { std::vector<Eigen::Vector3d> o; for (const auto& p : l) o.push_back(P.t + P.q * p); return o; };
+  const FrameConsistency right = frameConsistency(place(la, A), place(lb, B), 0.1);
+  EXPECT_GT(right.share_near, 0.99);
+  auto flip = [](Pose3 p) { p.q = p.q.inverse(); return p; };
+  const FrameConsistency wrong = frameConsistency(place(la, flip(A)), place(lb, flip(B)), 0.1);
+  EXPECT_LT(wrong.share_near, 0.5);
+  EXPECT_LT(wrong.share_in, right.share_in);
+  EXPECT_EQ(right.points_b, lb.size());
+  // exact versus near: a shift of one voxel is near but not in
+  std::vector<Eigen::Vector3d> a1 = {{0.05, 0.05, 0.05}}, b1 = {{0.15, 0.05, 0.05}};
+  EXPECT_DOUBLE_EQ(frameConsistency(a1, b1, 0.1).share_in, 0.0);
+  EXPECT_DOUBLE_EQ(frameConsistency(a1, b1, 0.1).share_near, 1.0);
+  b1 = {{0.25, 0.05, 0.05}};
+  EXPECT_DOUBLE_EQ(frameConsistency(a1, b1, 0.1).share_near, 0.0);
+  EXPECT_DOUBLE_EQ(frameConsistency(a1, {}, 0.1).share_near, 0.0);
 }
 
 TEST(P3Boreas, GeodesyAndTheCommonFrame) {
@@ -1052,8 +1152,13 @@ TEST(P3Probe, StaticExportIndependentAndCumulative) {
 // (east0, north0) of that frame and its GPS rows carry latitude and longitude consistent with the shared-frame coordinates. lon_scale
 // distorts the longitude (an inconsistent file); alt_offset raises the altitude columns; gps_time_shift moves the GPS rows in time (no row in the window); own_frame_error_m writes the files as if
 // measured from the session's own first row (the premise of the old common frame): files in (east - east0, north - north0).
+// Amendment 4: the drive is a real one in the sense of the checks. The applanix forward axis (+y) follows the velocity (east): heading is 90 degrees
+// (clockwise from north) plus a small oscillation, angvel_z is minus its derivative, and the lidar frames show ONE fixed world from the lidar_poses.csv pose
+// of each frame. convention = 1 writes a heading of -90 degrees (the forward axis points west while the car drives east: what the counter-clockwise
+// reading of the angles would call a valid file); render_wrong shows the world through the transposed rotation (frames of the moving car do not fall on each other); gyro_flip writes angvel_z with the wrong sign; vel_off_deg turns the velocity columns.
 std::string makeBoreasSession(const std::string& id, double lat0, double lon_ref, double t0_us, double speed = 10.0, double lp_shift = 0.0, double lon_scale = 1.0,
-                              double east0 = 0.0, double north0 = 0.0, double alt_offset = 0.0, bool own_frame_files = false, double gps_time_shift = 0.0) {
+                              double east0 = 0.0, double north0 = 0.0, double alt_offset = 0.0, bool own_frame_files = false, double gps_time_shift = 0.0,
+                              int convention = 0, bool gyro_flip = false, double vel_off_deg = 0.0, bool render_wrong = false) {
   const double e2 = kWgs84F * (2 - kWgs84F), s = std::sin(lat0), N = kWgs84A / std::sqrt(1 - e2 * s * s);
   const double M = kWgs84A * (1 - e2) / std::pow(1 - e2 * s * s, 1.5);
   const std::string d = tmpPath(id);
@@ -1063,23 +1168,38 @@ std::string makeBoreasSession(const std::string& id, double lat0, double lon_ref
   const double fe = own_frame_files ? east0 : 0.0, fn = own_frame_files ? north0 : 0.0;          // what to subtract from the shared-frame coordinates in the files
   std::string gps = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x,accelz,accely,accelx,latitude,longitude\n";
   std::string lp = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x\n";
+  const double h0 = convention == 1 ? -M_PI / 2 : M_PI / 2, amp = 0.01, w = 2.0 * M_PI * 0.5;       // heading: 90 degrees plus 0.57 degrees at 0.5 Hz
+  auto heading = [&](double t) { return h0 + amp * std::sin(w * (t - tstart)); };
+  auto gyro = [&](double t) { return (gyro_flip ? 1.0 : -1.0) * amp * w * std::cos(w * (t - tstart)); };       // counter-clockwise yaw rate = minus d(heading)/dt
   for (int i = 0; i < 1000; ++i) {                                                  // 200 Hz GPS
-    const double x = speed * 0.005 * i;
+    const double x = speed * 0.005 * i, t = tstart + 0.005 * i;
+    const double vo = vel_off_deg * M_PI / 180.0;
     std::ostringstream l; l.precision(15);
-    l << tstart + gps_time_shift + 0.005 * i << "," << east0 + x - fe << "," << north0 - fn << "," << alt_offset << ",10,0,0,0,0,0,0,0,0,0,0,0," << lat0 + north0 / M << ","
-      << lon_ref + lon_scale * (east0 + x) / (N * std::cos(lat0)) << "\n";
+    l << t + gps_time_shift << "," << east0 + x - fe << "," << north0 - fn << "," << alt_offset << "," << speed * std::cos(vo) << "," << speed * std::sin(vo) << ",0,0,0," << heading(t) << ","
+      << gyro(t) << ",0,0,0,0,0," << lat0 + north0 / M << "," << lon_ref + lon_scale * (east0 + x) / (N * std::cos(lat0)) << "\n";
     gps += l.str();
   }
+  std::vector<Eigen::Vector3d> world;                                               // one fixed world: 12000 points in a box around the drive
+  { std::mt19937 gw(77); std::uniform_real_distribution<double> uw(0.0, 1.0);
+    for (int i = 0; i < 12000; ++i) world.emplace_back(east0 - fe + (-10.0 + 80.0 * uw(gw)) + speed * 1.0, north0 - fn + 50.0 * (uw(gw) - 0.5), alt_offset + 4.0 * (uw(gw) - 0.5) + 0.13); }
   for (int k = 0; k < 12; ++k) {
     const long long us = static_cast<long long>(t0_us) + 100000LL * k;
     char nm[64]; std::snprintf(nm, sizeof nm, "%lld.bin", us);
     std::vector<std::array<float, 6>> pts;
-    std::mt19937 g(k + 1); std::uniform_real_distribution<float> u(-1.f, 1.f);
-    for (int i = 0; i < 4000; ++i) pts.push_back({u(g) * 30.f, u(g) * 30.f, u(g) * 2.f, float(i % 200), float(i % 128), -0.05f + 0.1f * float(i) / 4000.f});
+    const double ft = us * 1e-6, h = heading(ft);
+    const Eigen::Vector3d tl(east0 - fe + speed * (ft - tstart) + lp_shift, north0 - fn, 0.13 + alt_offset);            // the lidar position written to lidar_poses.csv
+    const Eigen::Matrix3d R = Eigen::AngleAxisd(-h, Eigen::Vector3d::UnitZ()).toRotationMatrix();                       // applanix to ENU, flat: Rz(-heading)
+    std::size_t i = 0;
+    for (const auto& wp : world) {
+      const Eigen::Vector3d pl = (render_wrong ? R : Eigen::Matrix3d(R.transpose())) * (wp - tl);
+      const double r = pl.norm();
+      if (r < 2.9 || r > 49.0) continue;
+      pts.push_back({float(pl.x()), float(pl.y()), float(pl.z()), float(i % 200), float(i % 128), -0.05f + 0.1f * float(i) / 12000.f}); ++i;
+    }
     const auto b = binOf(pts);
     std::ofstream(d + "/lidar/" + nm, std::ios::binary).write(reinterpret_cast<const char*>(b.data()), b.size());
     std::ostringstream l; l.precision(15);
-    l << us << "," << east0 - fe + speed * (us * 1e-6 - tstart) + lp_shift << "," << north0 - fn << "," << 0.13 + alt_offset << ",10,0,0,0,0,0,0,0,0\n";
+    l << us << "," << tl.x() << "," << tl.y() << "," << tl.z() << ",10,0,0,0,0," << h << ",0,0,0\n";
     lp += l.str();
   }
   writeText(d + "/applanix/gps_post_process.csv", gps);
@@ -1128,6 +1248,8 @@ TEST(P3Probe, BoreasValidateOverlapAndConvertOnSyntheticSessions) {
   std::string out;
   EXPECT_EQ(runProbe("boreas-validate --seq " + a + " --ref " + a + " --n 5", &out), 0) << out;
   EXPECT_NE(out.find("VERDICT boreas reader OK"), std::string::npos);
+  EXPECT_NE(out.find("frame_consistency,lidar_poses.csv,"), std::string::npos) << out;           // Amendment 4: two frames of the moving car fall on each other
+  EXPECT_NE(out.find("frame_consistency,contrast_transposed_rotation,"), std::string::npos) << out;
   EXPECT_NE(out.find("layout_ok"), std::string::npos);
   EXPECT_NE(out.find("enu_from_latlon_vs_files"), std::string::npos);
   // the validator checks a session that does NOT start at the reference origin, against the reference origin (the gap of the old validator)
@@ -1230,6 +1352,28 @@ TEST(P3Probe, BoreasGateAndValidatorFailures) {
   EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + t, &out), 3) << out;
   EXPECT_NE(out.find("enu_check,bsGT,rows=0,"), std::string::npos) << out;
   EXPECT_NE(out.find("enu agreement of every session: FAIL"), std::string::npos) << out;
+  // Amendment 4: the rotation convention is gated on every session, on the pose files alone (overlap) and on two frames of the moving car (validate)
+  {
+    const std::string cc = makeBoreasSession("bsGCC", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 1);
+    EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + cc, &out), 3) << out;
+    EXPECT_NE(out.find("pose_convention,bsGCC,"), std::string::npos) << out;
+    EXPECT_NE(out.find("FAIL: the forward axis does not follow the velocity"), std::string::npos) << out;
+    EXPECT_NE(out.find("rotation convention of every session: FAIL"), std::string::npos) << out;
+    EXPECT_NE(out.find("enu agreement of every session: ok"), std::string::npos) << out;                          // only the convention refuses
+    const std::string gf = makeBoreasSession("bsGGF", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 0, true);
+    EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + gf, &out), 3) << out;
+    EXPECT_NE(out.find("FAIL: the yaw rate of the rotation does not follow the gyro"), std::string::npos) << out;
+    const std::string vo = makeBoreasSession("bsGVO", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 0, false, 10.0);
+    EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + vo, &out), 3) << out;
+    EXPECT_NE(out.find("FAIL: the forward axis does not follow the velocity"), std::string::npos) << out;
+    EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + a, &out), 0) << out;
+    EXPECT_NE(out.find("pose_convention,bsGA,"), std::string::npos) << out;
+    EXPECT_NE(out.find(",ok\n"), std::string::npos) << out;
+    const std::string rw = makeBoreasSession("bsGRW", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 0, false, 0.0, true);
+    EXPECT_EQ(runProbe("boreas-validate --seq " + rw + " --ref " + a + " --n 5", &out), 3) << out;
+    EXPECT_NE(out.find("frame consistency (lidar_poses.csv): share near at 0.1 m below"), std::string::npos) << out;
+    EXPECT_NE(out.find("frame_consistency,contrast_transposed_rotation,"), std::string::npos) << out;
+  }
   const std::string h = makeBoreasSession("bsGH", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.5);
   EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + h, &out), 0) << out;
   EXPECT_NE(out.find("altitude,bsGA,bsGH,12,0.5,0.5,0.5"), std::string::npos) << out;

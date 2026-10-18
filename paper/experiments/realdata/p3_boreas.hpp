@@ -4,8 +4,10 @@
 //     (one row per lidar frame, microseconds): east, north, up in the ENU frame whose origin is the first GPS row of the session
 //   * calib/T_applanix_lidar.txt: a point in the lidar frame maps to the applanix frame
 //   * the common frame: the ENU frame of a reference session, built from the latitude and longitude of each session's origin
-// Conventions were read from the first rows of a real session (results_p3/access, boreas_peek*): heading is the yaw of the
-// applanix frame about up, counter-clockwise from east; the lidar pose is the applanix pose times T_applanix_lidar.
+// Conventions (PREREG_P3.md Amendment 4, which replaces the reading of the first rows that Amendment 3 and section 8.1 rest on):
+// roll, pitch and heading are the angles of the pyboreas yawPitchRollToRot, a PASSIVE (transposed) Euler sequence: the rotation
+// block that maps applanix coordinates to ENU is (Rz(heading) Ry(pitch) Rx(roll))^T. Heading is clockwise from north, the applanix
+// forward axis is +y, and the lidar pose is the applanix pose times T_applanix_lidar (an ordinary composition).
 #pragma once
 #include <algorithm>
 #include <cmath>
@@ -117,7 +119,9 @@ inline std::string layoutVerdict(const BoreasLayoutStats& s) {
 // ---------------------------------------------------------------------------- pose CSVs ----------
 
 // lat and lon (radians) are NaN when the file has no such columns.
-struct BoreasPoseRow { double t{0}; double east{0}, north{0}, up{0}, roll{0}, pitch{0}, heading{0}; double lat{std::nan("")}, lon{std::nan("")}; };
+// vel_east, vel_north (m/s) and angvel_z (rad/s, counter-clockwise) are NaN when the file has no such columns (only gps_post_process.csv has them).
+struct BoreasPoseRow { double t{0}; double east{0}, north{0}, up{0}, roll{0}, pitch{0}, heading{0}; double lat{std::nan("")}, lon{std::nan("")};
+                       double vel_east{std::nan("")}, vel_north{std::nan("")}, angvel_z{std::nan("")}; };
 // lat and lon in radians; east and north: the file coordinates of the same (first) row.
 struct GeoOrigin { double lat{0}, lon{0}; bool valid{false}; double east{0}, north{0}; };
 
@@ -150,7 +154,8 @@ inline std::vector<BoreasPoseRow> readBoreasPoseCsv(const std::string& path, dou
   const auto header = csvdetail::splitCsv(line);
   const int ct = csvdetail::colOf(header, "GPSTime"), ce = csvdetail::colOf(header, "easting"), cn = csvdetail::colOf(header, "northing"),
             cu = csvdetail::colOf(header, "altitude"), cr = csvdetail::colOf(header, "roll"), cp = csvdetail::colOf(header, "pitch"),
-            ch = csvdetail::colOf(header, "heading"), clat = csvdetail::colOf(header, "latitude"), clon = csvdetail::colOf(header, "longitude");
+            ch = csvdetail::colOf(header, "heading"), clat = csvdetail::colOf(header, "latitude"), clon = csvdetail::colOf(header, "longitude"),
+            cve = csvdetail::colOf(header, "vel_east"), cvn = csvdetail::colOf(header, "vel_north"), cav = csvdetail::colOf(header, "angvel_z");
   if (ct < 0 || ce < 0 || cn < 0 || cu < 0 || cr < 0 || cp < 0 || ch < 0) fail(path, "header lacks GPSTime, easting, northing, altitude, roll, pitch or heading");
   const std::size_t need = static_cast<std::size_t>(std::max({ct, ce, cn, cu, cr, cp, ch, clat, clon})) + 1;
   std::vector<BoreasPoseRow> rows;
@@ -178,17 +183,22 @@ inline std::vector<BoreasPoseRow> readBoreasPoseCsv(const std::string& path, dou
     r.east = std::strtod(c[ce].c_str(), nullptr); r.north = std::strtod(c[cn].c_str(), nullptr); r.up = std::strtod(c[cu].c_str(), nullptr);
     r.roll = std::strtod(c[cr].c_str(), nullptr); r.pitch = std::strtod(c[cp].c_str(), nullptr); r.heading = std::strtod(c[ch].c_str(), nullptr);
     if (clat >= 0 && clon >= 0) { r.lat = std::strtod(c[clat].c_str(), nullptr); r.lon = std::strtod(c[clon].c_str(), nullptr); }
+    if (cve >= 0 && cvn >= 0 && cav >= 0 && c.size() > static_cast<std::size_t>(std::max({cve, cvn, cav}))) {
+      r.vel_east = std::strtod(c[cve].c_str(), nullptr); r.vel_north = std::strtod(c[cvn].c_str(), nullptr); r.angvel_z = std::strtod(c[cav].c_str(), nullptr);
+    }
     if (!std::isfinite(r.east + r.north + r.up + r.roll + r.pitch + r.heading)) fail(path, "line " + std::to_string(ln) + ": non-finite value");
     rows.push_back(r);
   }
   return rows;
 }
 
-// Rotation of a Boreas pose row: yaw (heading) about z, then pitch about y, then roll about x (Rz Ry Rx).
+// Rotation of a Boreas pose row, applanix coordinates to ENU: the TRANSPOSE of yaw (heading) about z, then pitch about y, then roll
+// about x, that is (Rz Ry Rx)^T, the pyboreas yawPitchRollToRot (PREREG_P3.md Amendment 4). Heading is clockwise from north.
+// Wrong before Amendment 4: it returned Rz Ry Rx itself.
 inline Eigen::Quaterniond rotationOf(const BoreasPoseRow& r) {
   return Eigen::Quaterniond(Eigen::AngleAxisd(r.heading, Eigen::Vector3d::UnitZ()) *
                             Eigen::AngleAxisd(r.pitch, Eigen::Vector3d::UnitY()) *
-                            Eigen::AngleAxisd(r.roll, Eigen::Vector3d::UnitX()));
+                            Eigen::AngleAxisd(r.roll, Eigen::Vector3d::UnitX())).inverse();
 }
 inline Pose3 poseOf(const BoreasPoseRow& r) {
   Pose3 p; p.t = Eigen::Vector3d(r.east, r.north, r.up); p.q = rotationOf(r).normalized(); return p;
@@ -215,20 +225,115 @@ inline Pose3 readBoreasCalib(const std::string& path) {
   return p;
 }
 
-// The lidar pose from the applanix pose, in the convention of lidar_poses.csv (the published ground truth of the lidar frame). Read
-// against a real session on its first 10 frames (results_p3/logs/validate_boreas_*.log): with R_f the rotation block of
-// T_applanix_lidar.txt (+42.6 degrees about up in the file),
-//   R_lidar = R_f^-1 * R_applanix     (the yaw shift acts on the world side: agrees to 0.001 degrees)
-//   t_lidar = t_applanix + t_f        (the file translation is a pure z offset, added in the world frame: agrees to 6 mm)
-// The physical composition R_applanix * R_f^-1 differs from this by up to a degree at road tilt (0.9 m at 50 m); the dataset's own
-// poses are used so that the maps are in the frame everybody evaluates against. The validator checks the agreement on every session.
+// The lidar pose from the applanix pose: the ordinary composition with T_applanix_lidar.txt (a point in the lidar frame maps to the
+// applanix frame), with the rotations of rotationOf (PREREG_P3.md Amendment 4; it replaces the world-side yaw shift that was fitted
+// to the transposed reading of the angles):
+//   R_lidar = R_applanix * R_f          t_lidar = t_applanix + R_applanix * t_f
+// The validator checks the agreement with lidar_poses.csv on every session, and the frame-consistency check of boreas-validate
+// checks that two frames of the moving vehicle fall on each other (a test that does not parse both files with the same function).
 inline Pose3 lidarPoseFromApplanix(const Pose3& pa, const Pose3& calib_file) {
-  Pose3 p; p.q = (calib_file.q.inverse() * pa.q).normalized(); p.t = pa.t + calib_file.t; return p;
+  Pose3 p; p.q = (pa.q * calib_file.q).normalized(); p.t = pa.t + pa.q * calib_file.t; return p;
 }
 
 inline Pose3 compose(const Pose3& a, const Pose3& b) {      // a * b
   Pose3 o; o.q = (a.q * b.q).normalized(); o.t = a.t + a.q * b.t; return o;
 }
+
+// ------------------------------------------------------------------- pose convention checks ----------
+// Pose-only (no lidar content). They test rotationOf against the motion of the vehicle, so they do not depend on the lidar_poses.csv
+// parser. The applanix forward axis is +y; the velocity of the post-processed GPS follows it; the yaw rate of rotationOf is the gyro.
+
+inline double wrapDeg(double d) { d = std::fmod(d + 180.0, 360.0); if (d < 0) d += 360.0; return d - 180.0; }
+
+struct PoseConventionCheck {
+  std::size_t rows{0}, moving{0};
+  double dev_p10{std::nan("")}, dev_p50{std::nan("")}, dev_p90{std::nan("")};   // degrees: azimuth of R*(0,1,0) minus azimuth of the velocity
+  double quad_median_worst{std::nan("")};                                       // largest |median deviation| over the four heading quadrants
+  std::size_t quad_rows[4]{0, 0, 0, 0};
+  double gyro_corr{std::nan("")};                                               // correlation of d(azimuth)/dt with angvel_z (should be +1)
+  std::size_t gyro_rows{0};
+};
+inline double pctOf(std::vector<double> v, double f) {
+  if (v.empty()) return std::nan("");
+  std::sort(v.begin(), v.end());
+  return v[std::min(v.size() - 1, static_cast<std::size_t>(f * (v.size() - 1) + 0.5))];
+}
+inline PoseConventionCheck poseConventionCheck(const std::vector<BoreasPoseRow>& rows, double min_speed = 3.0) {
+  PoseConventionCheck o; o.rows = rows.size();
+  std::vector<double> dev, quad[4];
+  std::vector<double> rate, gyro;
+  double prev_az = std::nan(""), prev_t = 0;
+  for (const auto& r : rows) {
+    if (!std::isfinite(r.vel_east) || !std::isfinite(r.vel_north) || !std::isfinite(r.angvel_z)) { prev_az = std::nan(""); continue; }
+    const Eigen::Vector3d f = rotationOf(r) * Eigen::Vector3d::UnitY();
+    const double az = std::atan2(f.y(), f.x()) * 180.0 / M_PI;
+    const bool moving = std::hypot(r.vel_east, r.vel_north) > min_speed;
+    if (moving) {
+      const double d = wrapDeg(az - std::atan2(r.vel_north, r.vel_east) * 180.0 / M_PI);
+      dev.push_back(d);
+      const int q = std::min(3, static_cast<int>((az + 180.0) / 90.0));
+      quad[q < 0 ? 0 : q].push_back(d);
+      if (std::isfinite(prev_az) && r.t - prev_t > 0 && r.t - prev_t < 0.02) { rate.push_back(wrapDeg(az - prev_az) / (r.t - prev_t) * M_PI / 180.0); gyro.push_back(r.angvel_z); }
+    }
+    prev_az = moving ? az : std::nan(""); prev_t = r.t;
+  }
+  o.moving = dev.size();
+  o.dev_p10 = pctOf(dev, 0.1); o.dev_p50 = pctOf(dev, 0.5); o.dev_p90 = pctOf(dev, 0.9);
+  o.quad_median_worst = 0;
+  for (int q = 0; q < 4; ++q) {
+    o.quad_rows[q] = quad[q].size();
+    if (quad[q].size() >= 200) o.quad_median_worst = std::max(o.quad_median_worst, std::fabs(pctOf(quad[q], 0.5)));
+  }
+  o.gyro_rows = rate.size();
+  if (rate.size() > 10) {
+    double mr = 0, mg = 0; for (std::size_t i = 0; i < rate.size(); ++i) { mr += rate[i]; mg += gyro[i]; }
+    mr /= rate.size(); mg /= rate.size();
+    double srr = 0, sgg = 0, srg = 0;
+    for (std::size_t i = 0; i < rate.size(); ++i) { srr += (rate[i] - mr) * (rate[i] - mr); sgg += (gyro[i] - mg) * (gyro[i] - mg); srg += (rate[i] - mr) * (gyro[i] - mg); }
+    if (srr > 0 && sgg > 0) o.gyro_corr = srg / std::sqrt(srr * sgg);
+  }
+  return o;
+}
+// PREREG_P3.md Amendment 4: the forward axis follows the velocity within kForwardAxisTolDeg (10th to 90th percentile, and the median of
+// every heading quadrant that holds at least 200 moving rows), and the yaw rate of the rotation correlates with the gyro at +0.99 or better.
+constexpr double kForwardAxisTolDeg = 4.0, kGyroCorrMin = 0.99;
+inline std::string poseConventionVerdict(const PoseConventionCheck& c) {
+  if (c.moving < 500) return "fewer than 500 rows above the speed limit";
+  if (!(std::fabs(c.dev_p10) <= kForwardAxisTolDeg && std::fabs(c.dev_p90) <= kForwardAxisTolDeg)) return "the forward axis does not follow the velocity";
+  if (!(c.quad_median_worst <= kForwardAxisTolDeg)) return "the forward axis does not follow the velocity in every heading quadrant";
+  if (!(c.gyro_corr >= kGyroCorrMin)) return "the yaw rate of the rotation does not follow the gyro (sign or scale)";
+  return "";
+}
+
+// Frame consistency: two frames of the MOVING vehicle, placed in the world with one pose each (no deskew), must fall on each other.
+// Share of the points of B that lie in, or next to (26 neighbours), an occupied voxel of A.
+struct FrameConsistency { std::size_t points_b{0}; double share_in{0}, share_near{0}; };
+inline FrameConsistency frameConsistency(const std::vector<Eigen::Vector3d>& a, const std::vector<Eigen::Vector3d>& b, double res) {
+  auto key = [&](const Eigen::Vector3d& p, int dx, int dy, int dz) -> std::uint64_t {
+    const std::int64_t ix = static_cast<std::int64_t>(std::floor(p.x() / res)) + dx, iy = static_cast<std::int64_t>(std::floor(p.y() / res)) + dy, iz = static_cast<std::int64_t>(std::floor(p.z() / res)) + dz;
+    constexpr std::int64_t off = 1 << 20, lim = 1 << 21;
+    if (ix + off < 0 || ix + off >= lim || iy + off < 0 || iy + off >= lim || iz + off < 0 || iz + off >= lim) fail("frame consistency", "voxel index out of range");
+    return (static_cast<std::uint64_t>(ix + off) << 42) | (static_cast<std::uint64_t>(iy + off) << 21) | static_cast<std::uint64_t>(iz + off);
+  };
+  std::vector<std::uint64_t> occ; occ.reserve(a.size());
+  for (const auto& p : a) occ.push_back(key(p, 0, 0, 0));
+  std::sort(occ.begin(), occ.end()); occ.erase(std::unique(occ.begin(), occ.end()), occ.end());
+  auto has = [&](std::uint64_t k) { return std::binary_search(occ.begin(), occ.end(), k); };
+  FrameConsistency o; o.points_b = b.size();
+  std::size_t in = 0, near = 0;
+  for (const auto& p : b) {
+    if (has(key(p, 0, 0, 0))) { ++in; ++near; continue; }
+    bool n = false;
+    for (int dx = -1; dx <= 1 && !n; ++dx) for (int dy = -1; dy <= 1 && !n; ++dy) for (int dz = -1; dz <= 1 && !n; ++dz) if ((dx || dy || dz) && has(key(p, dx, dy, dz))) n = true;
+    if (n) ++near;
+  }
+  if (!b.empty()) { o.share_in = double(in) / b.size(); o.share_near = double(near) / b.size(); }
+  return o;
+}
+// PREREG_P3.md Amendment 4: on the first and the tenth frame, no deskew, 3 m to 50 m, with the pose of each source (GPS times calibration,
+// lidar_poses.csv): at least 0.70 of the points within one 0.1 m voxel and at least 0.92 within one 0.3 m voxel; and the transposed
+// (pre-amendment) rotation must score at least 0.10 lower at 0.1 m, so that the test would have failed on the fault.
+constexpr double kFrameShare01Min = 0.70, kFrameShare03Min = 0.92, kFrameContrastMin = 0.10;
 
 // ---------------------------------------------------------------------------- common frame ----------
 

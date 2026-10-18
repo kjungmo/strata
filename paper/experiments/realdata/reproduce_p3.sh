@@ -124,8 +124,7 @@ stage_validate_readers() {
   # Keble 03: the per-scan zip reader, the GT poses and the extrinsic of calibration/README.md as used for Keble 02
   must step validate_spires_keble03 --traced -- "$P3" spires-validate --zip "$KEBLE/sequences/2024-03-12-keble-college-03/raw/lidar-clouds.zip" \
     --gt "$KEBLE/sequences/2024-03-12-keble-college-03/processed/trajectory/gt-tum.txt" --dt "$dt" --n $n
-  # Boreas: layout by bytes, ranges, pose convention, ENU from latitude and longitude, conversion of the first frames
-  must step validate_boreas_2020 --traced -- "$P3" boreas-validate --seq "$DATA/boreas/boreas-2020-11-26-13-58" --ref "$DATA/boreas/boreas-2020-11-26-13-58" --n $n
+  stage_validate_boreas
   # KTH test sequences
   must step validate_kth_05 --traced -- "$P3" kth-validate --dir "$DATA/kth/05" --n $n
   must step validate_kth_semindoor --traced -- "$P3" kth-validate --dir "$DATA/kth/semindoor" --n $n
@@ -135,7 +134,13 @@ stage_validate_readers() {
   done
 }
 
-# Pose-only gate before any Boreas run (PREREG_P3.md section 5.3): the common frame and the 10 m tile overlap of the three trajectories.
+# Boreas: layout by bytes, ranges, pose agreement with lidar_poses.csv, ENU from latitude and longitude, frame consistency of the first and the tenth
+# frame (PREREG_P3.md Amendment 4), conversion of the first frames. Opens the first 10 frames of boreas-2020-11-26-13-58 only (already opened).
+stage_validate_boreas() {
+  must step validate_boreas_2020 --traced -- "$P3" boreas-validate --seq "$DATA/boreas/boreas-2020-11-26-13-58" --ref "$DATA/boreas/boreas-2020-11-26-13-58" --n 10
+}
+
+# Pose-only gate before any Boreas run (PREREG_P3.md section 5.3 and Amendment 4): the common frame, the 10 m tile overlap of the three trajectories and the rotation convention of every session.
 stage_boreas_gate() {
   must step boreas_overlap --traced -- "$P3" boreas-overlap --seqs "$DATA/boreas/boreas-2020-11-26-13-58,$DATA/boreas/boreas-2021-04-08-12-44,$DATA/boreas/boreas-2021-06-17-17-52"
 }
@@ -306,7 +311,7 @@ stage_statafter() {
 if [ $# -eq 0 ]; then echo "usage: $0 STAGE..."; exit 2; fi
 for st in "$@"; do
   case "$st" in
-    build) stage_build;; check) stage_check;; unit) stage_unit;; validate_readers) stage_validate_readers;;
+    build) stage_build;; check) stage_check;; unit) stage_unit;; validate_readers) stage_validate_readers;; validate_boreas) stage_validate_boreas;;
     boreas_gate) stage_boreas_gate;; smoke_kth) stage_smoke_kth;; smoke_lil) stage_smoke_lil;; smoke_spires) stage_smoke_spires;; smoke_manifest) stage_smoke_manifest;; statafter) stage_statafter;;
     eval_lil) stage_eval_lil;; eval_spires) stage_eval_spires;; eval_kth) stage_eval_kth;; eval_boreas) stage_eval_boreas;;
     *) echo "unknown stage $st"; exit 2;;
