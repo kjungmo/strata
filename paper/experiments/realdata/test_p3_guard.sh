@@ -45,9 +45,9 @@ echo "# data" > "$RD/p3_arms.hpp"
 MSG="uncommitted changes"; expect_refusal "arm table modified" env P3_RUN_EVALUATIONS=1
 git -C "$R" checkout -q -- .
 
-echo "x" > "$RD/stray.txt"
-MSG="uncommitted files in the experiment directory"; expect_refusal "untracked file" env P3_RUN_EVALUATIONS=1
-rm "$RD/stray.txt"
+echo "x" > "$RD/p3_stray.txt"
+MSG="uncommitted files in the experiment directory"; expect_refusal "untracked harness file" env P3_RUN_EVALUATIONS=1
+rm "$RD/p3_stray.txt"
 
 echo "0000" > "$T/build/commit"
 MSG="binary was not built from HEAD"; expect_refusal "stale binary" env P3_RUN_EVALUATIONS=1

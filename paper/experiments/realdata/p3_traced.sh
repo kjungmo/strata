@@ -8,7 +8,8 @@
 #       P3_DATA_PATTERN  regular expression (grep -E) for paths that count as data (default: datasets/strata)
 #       P3_ALLOW_DIRTY   1 = run although the experiment directory has uncommitted files (must be disclosed in the report)
 # The access log is <RESULTS>/access_log.tsv: time, step, commit, uncommitted files, path, number of open calls.
-# A command runs only from committed scripts: the experiment directory (this one, minus the results_* directories, which hold outputs and not code) must be clean. Other agents edit
+# A command runs only from committed scripts: the harness files (p3_*, test_p3*, reproduce_p3.sh, PREREG_P3.md, the shared readers and CMakeLists.txt of this
+# directory) must be clean. Files of other phases in the same directory (results_*, mutation_p2.py, ...) are not part of the harness and do not count. Other agents edit
 # strata_core in the same worktree; that cannot change a script, and binaries are built from a `git archive` copy of a commit by
 # reproduce_p3.sh (stage build), whose step log records the commit. So the check here covers this directory only.
 set -uo pipefail
@@ -18,7 +19,7 @@ PATTERN="${P3_DATA_PATTERN:-datasets/strata}"
 if [ $# -lt 2 ]; then echo "usage: p3_traced.sh STEP cmd [args...]" >&2; exit 2; fi
 step="$1"; shift
 mkdir -p "$RES/access"
-dirty="$(git -C "$HERE" status --porcelain -- . ':(exclude)results_*' | wc -l)"
+dirty="$(git -C "$HERE" status --porcelain -- ':(glob)p3_*' ':(glob)test_p3*' ':(glob)mutation_p3.py' ':(glob)reproduce_p3.sh' ':(glob)data_inputs_p3*' ':(glob)PREREG_P3.md' ':(glob)CMakeLists.txt' ':(glob)realdata_io.hpp' ':(glob)p1b_*' ':(glob)probe_core.hpp' ':(glob)hitrate_probe.cpp' ':(glob)stat_test_split.sh' ':(glob)compare_stat.py' | wc -l)"
 if [ "$dirty" != "0" ] && [ "${P3_ALLOW_DIRTY:-0}" != "1" ]; then
   echo "refusing to run '$step': $dirty uncommitted file(s) in the experiment directory outside results_p3 (commit first; P3_ALLOW_DIRTY=1 overrides and must be disclosed)" >&2
   exit 3

@@ -35,7 +35,7 @@ scrub() {
   s="${s//$OUT/<OUT_DIR>}"; s="${s//$DATA/<DATA_ROOT>}"; s="${s//$BUILD/<BUILD_DIR>}"; s="${s//$RES/<RESULTS_DIR>}"; s="${s//$HERE/<REALDATA_DIR>}"; s="${s//$HOME/\~}"
   printf '%s' "$s"
 }
-tree_dirty() { git -C "$HERE" status --porcelain -- . ':(exclude)results_*' | wc -l; }
+tree_dirty() { git -C "$HERE" status --porcelain -- ':(glob)p3_*' ':(glob)test_p3*' ':(glob)mutation_p3.py' ':(glob)reproduce_p3.sh' ':(glob)data_inputs_p3*' ':(glob)PREREG_P3.md' ':(glob)CMakeLists.txt' ':(glob)realdata_io.hpp' ':(glob)p1b_*' ':(glob)probe_core.hpp' ':(glob)hitrate_probe.cpp' ':(glob)stat_test_split.sh' ':(glob)compare_stat.py' | wc -l; }
 
 # step NAME [--traced] [--input P]... [--output P]... -- cmd...
 #   logs host, load, commit and the command (p3_runlog.py run), and with --traced runs the command under the file-open trace (p3_traced.sh)
