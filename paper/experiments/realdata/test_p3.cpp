@@ -649,6 +649,15 @@ TEST(P3Boreas, DeskewPlacesAStaticPointWhereItIs) {
   EXPECT_NEAR(f2.xyz[0] - f2.xyz[6], 1.0, 1e-3);
 }
 
+TEST(P3Boreas, ConvertRotatesThePointsByThePose) {
+  PoseTrack3 tr;
+  for (int i = 0; i <= 100; ++i) { Pose3 p; p.q = Eigen::Quaterniond(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitZ())); p.t = Eigen::Vector3d(5, 0, 0); tr.add(100.0 + 0.01 * i, p); }
+  BoreasScan sc; sc.points = 1; sc.xyz = {4.f, 0.f, 0.f}; sc.intensity = {1}; sc.ring = {1}; sc.t = {0.f};
+  BoreasConvertOptions co; BoreasConvertReport rep; Frame fr;
+  ASSERT_TRUE(convertBoreasScan(sc, 100.5, tr, Pose3{}, Pose3{}, co, 0, fr, rep));
+  EXPECT_NEAR(fr.xyz[0], 5.0, 1e-5); EXPECT_NEAR(fr.xyz[1], 4.0, 1e-5);          // x axis of the sensor points along world y
+}
+
 TEST(P3Boreas, ConvertRangeWindowTimeOffsetAndMissingPose) {
   PoseTrack3 tr;
   for (int i = 0; i <= 100; ++i) { Pose3 p; tr.add(100.0 + 0.01 * i, p); }
@@ -692,6 +701,12 @@ TEST(P3Boreas, TileOverlap) {
   EXPECT_DOUBLE_EQ(o.share_a_in_b, 0.7); EXPECT_DOUBLE_EQ(o.share_b_in_a, 0.7);
   EXPECT_DOUBLE_EQ(o.share_a_near_b, 0.8);                                          // a's tiles 2..9 have a b tile within one tile
   EXPECT_DOUBLE_EQ(o.share_b_near_a, 0.8);
+  // different sizes: the shares divide by the size of the set they describe
+  std::vector<Eigen::Vector2d> small;
+  for (int i = 0; i < 40; ++i) small.emplace_back(i * 1.0, 0.5);                    // tiles 0..3, all inside a
+  const TileOverlap os = tileOverlap(ha, tileHistogram(small, 10.0));
+  EXPECT_DOUBLE_EQ(os.share_a_in_b, 0.4); EXPECT_DOUBLE_EQ(os.share_b_in_a, 1.0);
+  EXPECT_DOUBLE_EQ(os.share_a_near_b, 0.5); EXPECT_DOUBLE_EQ(os.share_b_near_a, 1.0);
   // negative coordinates floor correctly: -0.1 is tile -1
   const auto hn = tileHistogram({Eigen::Vector2d(-0.1, -0.1), Eigen::Vector2d(0.1, 0.1)}, 10.0);
   EXPECT_EQ(hn.size(), 2u); EXPECT_TRUE(hn.count({-1, -1}));
