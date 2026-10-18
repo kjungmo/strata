@@ -45,7 +45,7 @@ double betaFap(const HarmonicStat& h) {
 }
 
 LayeredMapParams e2Params(double alpha) {  // identical to e2_periodicity.cpp params()
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
   p.layer_interval = 1; p.l_hit = 1.0; p.l_miss = -1.0; p.l_min = -5.0; p.l_max = 5.0;
   p.survival_decay = 1.0; p.graduate_prob = 0.9; p.demote_prob = 0.4;
   p.min_observations = 5; p.prune_prob = 0.05; p.enable_periodicity = true;

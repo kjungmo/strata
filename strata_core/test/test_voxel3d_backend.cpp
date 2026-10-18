@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "strata_core/voxel3d_backend.hpp"
 using namespace strata_core;
-static LayeredMapParams P(){LayeredMapParams p;p.layer_interval=1;p.l_hit=1.0;p.l_miss=-1.0;p.survival_decay=1.0;
+static LayeredMapParams P(){LayeredMapParams p;p.evidence_model=EvidenceModel::Legacy;p.layer_interval=1;p.l_hit=1.0;p.l_miss=-1.0;p.survival_decay=1.0;
   p.graduate_prob=0.85;p.demote_prob=0.4;p.min_observations=3;p.prune_prob=0.05;p.enable_periodicity=false;return p;}
 TEST(Voxel3DBackend, SamePointSameVoxel){ Voxel3DBackend b(0.5,P());
   EXPECT_EQ(b.voxelId({1.1,2.2,3.3}), b.voxelId({1.2,2.1,3.4}));

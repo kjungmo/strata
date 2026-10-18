@@ -3,7 +3,7 @@
 using namespace strata_core;
 TEST(Integration, WallStaticMoverTransientDoorPeriodic) {
   GridMeta m; m.width=40; m.height=40; m.resolution=1.0; m.origin_x=0; m.origin_y=0;
-  LayeredMapParams p; p.layer_interval=1; p.l_hit=1.0; p.l_miss=-1.0; p.survival_decay=1.0;
+  LayeredMapParams p; p.evidence_model=EvidenceModel::Legacy; p.layer_interval=1; p.l_hit=1.0; p.l_miss=-1.0; p.survival_decay=1.0;
   p.graduate_prob=0.9; p.demote_prob=0.4; p.min_observations=5; p.prune_prob=0.05;
   p.enable_periodicity=true; p.periodic_amplitude_min=0.3;
   p.periodicity.period_windows=8; p.periodicity.n_harmonics=3;

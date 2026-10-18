@@ -33,7 +33,7 @@ constexpr int kPeriod = 8;
 constexpr int kHarmonics = 3;
 
 LayeredMapParams params() {
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
   p.layer_interval = 1;
   p.l_hit = 1.0;
   p.l_miss = -1.0;

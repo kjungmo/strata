@@ -25,6 +25,7 @@ cd "${HERE}"   # executables write CSVs to ./results
 "${BUILD}/e2_periodicity"
 "${BUILD}/e3_sensitivity"
 "${BUILD}/e6_default_confusion"   # false Static labels: shipped-default confusion, sweep over m
+"${BUILD}/e7_sprt_oc"             # the sequential test on the engine: operating characteristic, autocorrelation
 
 if [ "${STRATA_SKIP_E4:-0}" = "1" ]; then
   echo "E4 skipped (STRATA_SKIP_E4=1)"

@@ -28,7 +28,7 @@ constexpr double kOcc = 0.6;  // per-window occupied-observation prob for a wall
 constexpr CellId kMoverBase = 100000;
 
 LayeredMapParams base() {
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
   p.layer_interval = 1;
   p.l_hit = 0.85;
   p.l_miss = -0.4;

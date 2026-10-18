@@ -1,11 +1,21 @@
 #pragma once
 #include <cstddef>
+#include <limits>
 #include <unordered_map>
 #include <vector>
 #include "strata_core/types.hpp"
 #include "strata_core/periodicity.hpp"
 namespace strata_core {
-enum class CellClass { Unknown, Transient, Periodic, Static };
+// Intermittent (sprt only): undecided after n_max_undecided touched windows and not
+// Periodic. It is a read-out; the test keeps running and the cell can still graduate.
+enum class CellClass { Unknown, Transient, Periodic, Static, Intermittent };
+// How a cell's evidence is accumulated and when it graduates.
+//   Legacy: the v0.1 rule l <- decay * (l + x), graduate at graduate_prob after
+//           min_observations windows. Reproduced bit for bit; opt in by name.
+//   Sprt:   Wald's sequential probability ratio test on the per-window hit rate.
+//           The user states what to tell apart (m0 < m1) and the two error rates
+//           (alpha, beta); increments and thresholds are derived (SprtDerived).
+enum class EvidenceModel { Legacy, Sprt };
 struct LayeredMapParams {
   int layer_interval{10};
   double l_hit{0.85}; double l_miss{-0.4}; double l_min{-5.0}; double l_max{5.0};
@@ -27,7 +37,44 @@ struct LayeredMapParams {
   // instead of using it at every read-out; false restores the single-read-out rule.
   bool periodic_alpha_spending{true};
   PeriodicityParams periodicity{};
+
+  // ---- evidence_model = Sprt (version 0.2.0) -------------------------------------
+  // Hypotheses on the per-window hit rate of one cell: H0 "clutter", rate <= m0;
+  // H1 "structure", rate >= m1. alpha = P(clutter at m0 graduates), beta = P(structure
+  // at m1 is rejected); both hold for independent windows only (SPEC 3.2a).
+  // Defaults are the measured pair of the phase 1b calibration (LILocBench, 0.05 m,
+  // 1.0 s windows = 15 scans at 15 Hz; paper/experiments/realdata/PREREG.md). They are
+  // PROVISIONAL while PREREG.md reads "NOT FROZEN": test_prereg_defaults ties them to
+  // PREREG.json, so a changed freeze fails the build until they are updated. The same
+  // pair is the shipped 3D default; it is NOT calibrated for 3D (SPEC 3.2a).
+  EvidenceModel evidence_model{EvidenceModel::Sprt};
+  double m0{0.20};
+  double m1{0.70};
+  double alpha{0.01};
+  double beta{0.01};
+  // Cap on the statistic. NaN: derived, A + 2 l_hit (two hit windows of headroom, so a
+  // graduated wall needs a stated number of misses before demotion is considered).
+  double sprt_ceiling{std::numeric_limits<double>::quiet_NaN()};
+  // A cell that is still undecided after this many touched windows and is not Periodic
+  // is read out as Intermittent. 0: never. 80 = the smallest multiple of 16 whose
+  // probability of staying undecided at the zero-drift rate m* is <= 0.03 (PREREG.md).
+  int n_max_undecided{80};
 };
+// Quantities derived once from (m0, m1, alpha, beta) for evidence_model = Sprt.
+struct SprtDerived {
+  double l_hit{0.0};       // ln(m1 / m0), added in a hit window
+  double l_miss{0.0};      // ln((1 - m1) / (1 - m0)), added in a miss window (negative)
+  double A{0.0};           // graduate at l >= A = ln((1 - beta) / alpha)
+  double B{0.0};           // reject at l <= B = ln(beta / (1 - alpha)), once n >= T
+  double ceiling{0.0};     // upper clamp: A + 2 l_hit unless sprt_ceiling is set
+  double demote_level{0.0};  // ceiling - A: the reverse test from the ceiling at level A
+  double m_star{0.0};      // zero-drift hit rate -l_miss / (l_hit - l_miss)
+  int latency{0};          // windows an always-hit cell needs to graduate (summed as the engine sums)
+  int demote_misses{0};    // all-miss windows a graduated cell at the ceiling needs to be demoted
+};
+// Throws std::invalid_argument unless 0 < m0 < m1 < 1, 0 < alpha, beta and
+// alpha + beta < 1 (all finite), and sprt_ceiling is NaN or finite and >= A.
+SprtDerived deriveSprt(const LayeredMapParams& p);
 struct CellEvidence {
   double log_odds{0.0};
   int observations{0};
@@ -73,13 +120,21 @@ class LayeredMap {
   std::vector<CellId> staticCells() const;
   std::vector<CellId> transientCells() const;
   std::vector<CellId> periodicCells() const;
+  std::vector<CellId> intermittentCells() const;
+  // Number of touched windows of a known cell (0 if unknown); read-out for tests and tools.
+  int observations(CellId id) const;
+  // Valid for evidence_model = Sprt; zero-initialised for Legacy.
+  const SprtDerived& sprt() const { return sprt_; }
   int windowCount() const { return window_count_; }
   int integrationCount() const { return integration_count_; }
   std::size_t cellCount() const { return cells_.size(); }
   const LayeredMapParams& params() const { return params_; }
  private:
   static double sigmoid(double x);
+  void endWindowSprt();
   LayeredMapParams params_;
+  SprtDerived sprt_{};
+  bool use_sprt_{false};
   std::unordered_map<CellId, CellEvidence> cells_;
   PeriodicityModel periodicity_;
   WindowObserver* observer_{nullptr};

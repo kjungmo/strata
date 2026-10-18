@@ -31,7 +31,7 @@ constexpr int kRepeats = 15;    // timed runs per config (odd: the median is one
 constexpr int kBytesPerCell = 56;  // evidence 24 + ~32 node, periodicity off
 
 LayeredMapParams params() {
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
   p.layer_interval = 1;
   p.l_hit = 0.85;
   p.l_miss = -0.4;

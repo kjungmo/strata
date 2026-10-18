@@ -1,2 +1,2 @@
 #pragma once
-#define STRATA_CORE_VERSION "0.1.0"
+#define STRATA_CORE_VERSION "0.2.0"

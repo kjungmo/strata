@@ -40,7 +40,7 @@ constexpr unsigned kEvalSeed = 40260928u;    // E5's evaluation base (confusion:
 constexpr unsigned kSweepSeed = 50260928u;   // disjoint from E0-E5 and the unit tests
 
 LayeredMapParams e2Params() {  // identical to e5_trajectory.cpp e2Params()
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
   p.layer_interval = 1; p.l_hit = 1.0; p.l_miss = -1.0; p.l_min = -5.0; p.l_max = 5.0;
   p.survival_decay = 1.0; p.graduate_prob = 0.9; p.demote_prob = 0.4;
   p.min_observations = 5; p.prune_prob = 0.05; p.enable_periodicity = true;
@@ -49,7 +49,7 @@ LayeredMapParams e2Params() {  // identical to e5_trajectory.cpp e2Params()
   return p;
 }
 LayeredMapParams shippedParams() {
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
   p.layer_interval = 1;
   return p;
 }

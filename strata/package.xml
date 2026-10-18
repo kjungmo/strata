@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>strata</name>
-  <version>0.1.0</version>
+  <version>0.2.0</version>
   <description>ROS 2 Humble lifelong mapping node: selectable 2D occupancy or 3D voxel backend, 6-DoF, Bayesian-persistence layered engine, static/periodic/transient layers, save service.</description>
   <maintainer email="kangjmo91@gmail.com">Kang Jung Mo</maintainer>
   <license>Apache-2.0</license>
