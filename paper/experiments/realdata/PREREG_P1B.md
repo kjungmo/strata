@@ -306,3 +306,26 @@ the ones named here is an incident and is reported.
 
 Engine changes; test-split runs; Option C; Boreas; anything with Keble 03 to 05. The advisory replay scripts are
 committed and re-run (they use calibration cell tables only) and compared with the memo at the end.
+
+## Amendment 3 (2026-10-18, after the Opus review of phase 1b; committed before any re-run)
+
+This amendment changes no definition, threshold or rule of Amendment 2 and re-runs no measurement. It corrects wording and records what the review found.
+
+1. **Access evidence (replaces the last sentence of section 4.2 and the comparison wording of section 11).** The stat comparison before and after proves only that no test-split
+   file was modified. Reading a file changes neither `mtime`, `ctime` nor size, and `atime` does not move on this 9p mount with `noatime`: the files that were certainly read in this
+   phase (Keble 02 `lidar-clouds.zip`, `gt-tum.txt`, the TLS `merged-cloud-1cm.pcd`) have identical `atime` in the two records. So the `atime` part of the advice section 7
+   acceptance check cannot be verified on this mount. The evidence that no other test-split file was opened is the step logs and the committed scripts; a search of all committed
+   scripts, logs and exploratory logs finds test-split paths only in the stat scripts. For P3: every measurement step that touches a test-split file runs under
+   `strace -f -e trace=openat,open -o <step>.strace` (or an equivalent file-open trace), the trace is committed next to the step log, and the paper's "only file X was opened"
+   claim cites it.
+2. **`n_max_undecided`.** Section 7 replaced the lead's fixed 64 (L-6) with a rule that gives 80. Exact undecided shares under the engine rule: P(undecided at 64) = 0.0314 for
+   (0.15, 0.65) and 0.0388 for (0.20, 0.70); at 80, 0.0113 and 0.0150. The value that binds P2 is the lead's to record in `LEAD_DECISIONS_P1.md` (80 by the rule, or 64 with the
+   0.039 share reported). Until then the rule's 80 is only the conditional value printed in `PREREG.md`.
+3. **Time base of `dynamics_0`.** Advice section 4 required the time base to be re-examined before stopping on a LIL gate failure. Phase 1b did not do it. The phase 1 offset tables show
+   a per-laser disagreement on `dynamics_0` only (front optimum -0.13 s, rear optimum -0.06 s; `mapping` and `static_0`: both lasers -0.13 s); run B used -0.13 s for all sequences.
+   Report section 13.1 has the table and the reviewer's post hoc numbers. No rule is changed here. The lead decides whether a per-laser offset rule is adopted, as a later
+   dated amendment, committed before the corresponding re-run, and before any gate is waived for `dynamics_0`.
+4. **G1 as a measurement.** The reviewer's post hoc check shows that sqrt(12 lambda_min) in an accepted patch is not robust to off-line points (second surfaces inside "linear" patches),
+   so the G1 failures of 0.17 to 0.19 m do not measure pose smear. G1 and G2 stay exactly as pre-registered and their verdicts stand (2D and 3D not frozen). Replacing G1 would be a
+   second gate change after seeing data; it is the lead's decision and, if taken, an amendment reported with this chronology. A robust-width variant at the 0.10 m limit is only
+   post hoc evidence and is not to be presented as pre-registered.
