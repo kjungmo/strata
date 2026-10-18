@@ -127,8 +127,8 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   p.n_max_undecided = declare_parameter<int>("n_max_undecided", def.n_max_undecided);
   // Where the pair comes from. Without the key, the 2D pair is measured for grid2d only; voxel3d
   // reuses it uncalibrated, so the default for voxel3d is the fallback label (and its warning).
-  evidence_calibration_ = declare_parameter<std::string>(
-      "evidence_calibration", backend_ == "voxel3d" ? "fallback_2d_pair" : "measured_2d");
+  const std::string calibration_default = backend_ == "voxel3d" ? "fallback_2d_pair" : "measured_2d";
+  evidence_calibration_ = declare_parameter<std::string>("evidence_calibration", calibration_default);
   if (evidence_model_ == "sprt") p.evidence_model = strata_core::EvidenceModel::Sprt;
   else if (evidence_model_ == "legacy") p.evidence_model = strata_core::EvidenceModel::Legacy;
   else throw std::invalid_argument("evidence_model must be \"sprt\" or \"legacy\", got \"" + evidence_model_ + "\"");
