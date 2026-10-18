@@ -8,8 +8,10 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
 1. 07:04:10 stat record of every test-split file written; 07:04:53 committed (2db4f2c).
 2. 07:11:31 Amendment 2 committed (d343dad).
 3. 07:22:51 phase 1b code and tests committed (43fa004). First measurement step started 07:23:03 (`gate2d_mapping`).
-4. Later code commits, each before the step that needed it (listed in the report, section 1; the first generated list was empty, see item 18): 571acf6 (07:30:04), d2e2579 (07:30:59),
-   26f7df0 (07:35:53), 475f728 (07:38:59), 7f3c157 (07:41:02), and the commit that carries the results.
+4. Later code commits (listed in the report, section 1; the first generated list was empty, see item 18): 571acf6 (07:30:04), d2e2579 (07:30:59),
+   26f7df0 (07:35:53), 475f728 (07:38:59), 7f3c157 (07:41:02), d759627 (07:52:47, carries the results). **Corrected after the review (item 24): not every step ran on committed code.**
+   The exploratory `gate-spires --labels` (log start 07:41:41) and `spires_measure_r0.1` (07:43:51 to 07:52:34) ran on a binary rebuilt at 07:41 from a tree that held the uncommitted
+   `--labels` option of `p1b_probe.cpp`; that option was first committed in d759627 (07:52:47).
 
 ### Code changes after the first measurement (none changes a number of an earlier step)
 
@@ -23,7 +25,8 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
    (header text, a handful of records, the timestamp range of one scan, the first and last GT line; not a statistic). Commit 26f7df0
    accepts a tail of zero bytes (at most 64 KiB) and still rejects anything else. The step was started again at 07:35:54.
 4. The amendment lists the expected fields as `x y z intensity timestamp ring`; the file has the same fields plus padding. No definition changes.
-5. `gate-spires` got the exploratory option `--labels` (07:44), used only in `results_p1b/exploratory/`; the default path is the pre-registered gate.
+5. `gate-spires` got the exploratory option `--labels` (13 lines of `p1b_probe.cpp`, the only code difference between 7f3c157 and d759627), used only in `results_p1b/exploratory/`; the default path is
+   the pre-registered gate. **Corrected (item 24):** the option existed in the working tree before 07:41:41, not at 07:44, and was committed at 07:52:47 in d759627, after the exploratory step that used it.
 
 ### Things the amendment did not foresee
 
@@ -76,11 +79,32 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
     (the reviewer's own dynamic program gives the same; `ReportGit.test_n_max_numbers_quoted_in_the_report` pins them). The lead records which value binds P2. The implementer does not choose.
 21. **Time base of `dynamics_0` was not examined (finding 4, open for the lead).** The P1 offset tables: front optimum -0.13 s, rear optimum -0.06 s on `dynamics_0` (rear count 8904 at -0.13 s,
     7258 at -0.06 s); both lasers at -0.13 s on `mapping` and `static_0`. In P1 the per-sequence search itself selected -0.09 s for `dynamics_0` (lowest sum at -0.11 s) and run B applied -0.13 s to all three
-    sequences. Reviewer's post hoc numbers (uncommitted, not reproduced by the implementer): robust wall width of the rear laser 0.172 m (`dynamics_0`) against 0.075 m (`static_0`), 0.120 m with the rear
-    frames at -0.06 s; G1 on `dynamics_0` 0.185 m / 485 patches -> 0.140 m / 581 patches; `q_c` (0.05 m, W = 15) 0.1725 -> 0.1707 (pair stays (0.20, 0.70)); `structure@dynamics_0` q10 0.25 -> 0.36; the
-    W = 15 cell table rebuilt at -0.13 s is byte-identical to the run B cache. Consequence: the `dynamics_0` clutter cells may be partly smeared by the rear laser. The lead must settle the rear-laser offset
-    (a per-laser rule, as an amendment, before the re-run) before waiving any gate for `dynamics_0`. Nothing was re-run.
-22. **G1 does not measure pose smear (finding 5, open for the lead, blocks the freeze).** Verdicts stand as pre-registered. The reviewer reproduces G2 exactly and G1 within sampling with independent code,
-    and shows that the G1 statistic is dominated by second surfaces inside "linear" patches (robust core width 0.076 m on `static_0`, 0.063 m on `mapping`, 0.131 m on the run A cache, G1 0.32 m on Keble 02 with good
-    poses). Together with item 7 (G2 cannot see smear) the two gates, as specified, do not test what they claim. A replacement gate is a second gate change after seeing data and the lead's decision; it needs an
+    sequences. The reviewer's post hoc check (own uncommitted code, not reproduced by the implementer, numbers removed from the record in item 26; they must never reach the paper) indicates that the rear laser of
+    `dynamics_0` is smeared at -0.13 s and that the W = 15 cell table rebuilt at -0.13 s is byte-identical to the run B cache. Consequence: the `dynamics_0` clutter cells may be partly smeared by the rear laser.
+    The lead must settle the rear-laser offset (a per-laser rule, as an amendment, before the re-run) before waiving any gate for `dynamics_0`. Nothing was re-run.
+22. **G1 does not measure pose smear (finding 5, open for the lead, blocks the freeze).** Verdicts stand as pre-registered. The reviewer reproduces G2 and G1 (within sampling) with independent code
+    and shows that the G1 statistic is dominated by second surfaces inside "linear" patches, so the G1 failures do not measure pose smear (numbers removed, item 26). Together with item 7 (G2 cannot see smear)
+    the two gates, as specified, do not test what they claim. A replacement gate is a second gate change after seeing data and the lead's decision; it needs an
     amendment with this chronology. Report section 13.3 states it, marked post hoc.
+23. **The Keble 02 clutter class is mostly not clutter (finding 1; open for the lead, matters when G1 is replaced).** The labels match the spec. The support rule of `PREREG_P1B.md` section 4.6
+    asks for one TLS point anywhere in the 1 m column; it does not exclude heights the TLS never reached (section 4.6 says "roofs and areas the TLS never reached are left out"). The implementer's own
+    script `explore_keble_clutter_height.py` (committed; output `results_p1b/exploratory/keble_clutter_height_r0.2_W10_today.txt`) reproduces the reviewer: of 15,864 clutter cells with N >= 5, 10,196
+    (64.3 %) lie more than 0.5 m above the nearest track position (above head height), 5,059 (31.9 %) in the person band (-1.8 to +0.5 m), 609 (3.8 %) below. q90 is 1.0000 in every band.
+    The reviewer's 31.8 % for the person band differs from 31.9 % in the last digit (rounding of the reviewer's script or of the nearest-position rule); no conclusion depends on it. So q_c = 1.0 mostly measures static
+    surfaces that the TLS missed or captured at another time. **The Keble gaps (-0.5333 and -0.4643) must not be cited as evidence that hit rates do not separate in 3D.** The reason line in `PREREG.md`
+    now carries this qualifier (`freeze_prereg.py`; `PREREG.md` and `PREREG.json` regenerated by `reproduce_p1b.sh freeze`, no other value changes). No verdict changes: 3D is branch F because G1 fails and 2D is
+    not frozen. A corrected clutter definition (vertical support, or a height band) would be a further dated amendment, decided by the lead before any 3D re-run. Report section 13.4 is the open item.
+24. **Chronology wording was false in two places (finding 2, corrected in items 4 and 5 above).** An exploratory step ran ahead of its commit: `gate_spires_structure_filter.log` starts 07:41:41, `--labels` was first
+    committed in d759627 at 07:52:47, and `spires_measure_r0.1` (07:43:51) ran on the binary rebuilt from that uncommitted tree. `spires_measure_r0.2` (start 07:40:35) ran on the binary built before it. No number is
+    affected: the reviewer rebuilt at fd08285 and all 8 Keble 02 cell tables are byte-identical to the committed run; the implementer repeated the check for the four `r = 0.1` tables on a binary built from a
+    clean committed tree: see the result line below this item.
+25. **Build provenance (finding 3).** `run_manifest.txt` records `commit=43fa004` for the whole phase, but the steps from `equiv_kth_r0.1` on ran on binaries rebuilt at later commits (571acf6, 26f7df0, then the uncommitted tree
+    of item 24), and no step log recorded the commit of its binary. Nothing is changed retroactively. From now on `reproduce_p1b.sh` writes `COMMIT` and `TREE_STATUS_PORCELAIN_LINES` into every step log, and the `build`
+    stage refuses a tree with uncommitted files outside the results directories (`ALLOW_DIRTY_BUILD=1` overrides and must be disclosed). For P3 the rule is: rebuild only from a clean committed tree.
+26. **R1 hygiene in the report (finding 4).** Sections 13.1 and 13.3 quoted the reviewer's uncommitted numbers next to the pre-registered values, with different baselines (the reviewer's 485 patches and 0.185 m against the
+    gate's 470 and 0.1832 m on `dynamics_0`, which the reviewer reproduced exactly). Those numbers are removed from the report generator; the sections keep a pointer and say that the numbers are post hoc, uncommitted
+    and must never reach the paper. Items 21 and 22 above were rewritten the same way. The reviewer's scripts are not in the repository (`/mnt/d/wsl/strata/review_p1b/` holds data only).
+27. **Two tests failed outside a git checkout (finding 5).** In a `git archive` copy `Report.test_report_smoke` and `ReportGit.test_repo_root_is_the_top_level_not_paper` errored with "not a git repository". Both are now skipped
+    unless the directory is inside a git work tree (`skipUnless`); `make_report_p1b.py` still fails loudly there. Checked in a `git archive` copy: see the result line below.
+28. **Nits (finding 6).** (a) `laser_optima` now reads only rows with `anchor == start` (test added: an `end` row and a `single` row that would win are ignored); the table in report section 13.1 is unchanged in value.
+    (b) `logs/report.log` showed the 08:48 run while the committed report came from about 09:13 without a step log; the report and `PREREG.md` are regenerated through `reproduce_p1b.sh freeze report`, so both logs are current.

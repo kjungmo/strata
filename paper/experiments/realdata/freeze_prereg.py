@@ -150,7 +150,9 @@ def decide_3d(gap_rows, gates, offset_meta, convert_meta, equivalence_text, two_
             out["conditional_miss_definition"] = "refined"
         why = [c for c, p, _ in checks if not p]
         if not (gt >= GAP_RULE) and not (gr >= GAP_RULE):
-            why.append("the gap is below 0.15 under both miss definitions (today %s, refined %s), whatever the checks say" %
+            why.append("the gap is below 0.15 under both miss definitions (today %s, refined %s), whatever the checks say. "
+                       "Caveat (review finding 1, deviations item 23): 64 %% of the Keble 02 clutter cells lie more than 0.5 m above the device, so the "
+                       "clutter class is mostly not walking people and this gap is not evidence that hit rates do not separate in 3D" %
                        (today["gap"] if today else "n/a", refined["gap"] if refined else "n/a"))
         out["reasons"] = why
         if two_d.get("status") == "FROZEN":

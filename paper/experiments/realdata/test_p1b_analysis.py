@@ -15,6 +15,20 @@ import derive_defaults as dd  # noqa: E402
 import freeze_prereg as fp  # noqa: E402
 
 
+def _inside_git_work_tree():
+    """The report smoke test and the repo-root test need a git checkout (a `git archive` copy has none). make_report_p1b.py itself still fails loudly there."""
+    import subprocess
+    here = os.path.dirname(os.path.abspath(__file__))
+    try:
+        r = subprocess.run(["git", "-C", here, "rev-parse", "--is-inside-work-tree"], stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    except OSError:
+        return False
+    return r.returncode == 0 and r.stdout.strip() == b"true"
+
+
+IN_GIT = _inside_git_work_tree()
+
+
 class Rounding(unittest.TestCase):
     def test_toward_each_other_with_boundaries(self):
         self.assertEqual(ab.round_pair(0.6957, 0.1417), (0.15, 0.65))
@@ -263,6 +277,7 @@ class Freeze(unittest.TestCase):
 
 
 class Report(unittest.TestCase):
+    @unittest.skipUnless(IN_GIT, "needs a git checkout (not a git archive copy)")
     def test_report_smoke(self):
         import make_report_p1b as mr
         with tempfile.TemporaryDirectory() as d:
@@ -304,6 +319,7 @@ class ReportGit(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 mr.repo_root(d)
 
+    @unittest.skipUnless(IN_GIT, "needs a git checkout (not a git archive copy)")
     def test_repo_root_is_the_top_level_not_paper(self):
         import make_report_p1b as mr
         here = os.path.dirname(os.path.abspath(__file__))
@@ -320,6 +336,21 @@ class ReportGit(unittest.TestCase):
             self.assertEqual(o["c_front"], ("-0.13", "5"))
             self.assertEqual(o["c_rear"], ("-0.06", "7"))
             self.assertEqual(o["score"], ("-0.13", "14"))
+
+    def test_laser_optima_reads_only_the_start_anchor(self):
+        import make_report_p1b as mr
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "o.csv")
+            with open(p, "w") as f:      # an end row and a single row that would win if the anchor were ignored
+                f.write("anchor,dt_s,c_front,c_rear,score\nend,-0.30,1,1,2\nsingle,-0.20,1,1,2\nstart,-0.13,5,9,14\nstart,-0.06,8,7,15\n")
+            o = mr.laser_optima(p)
+            self.assertEqual(o["c_front"], ("-0.13", "5"))
+            self.assertEqual(o["c_rear"], ("-0.06", "7"))
+            self.assertEqual(o["score"], ("-0.13", "14"))
+
+    def test_freeze_reason_carries_the_clutter_height_caveat(self):
+        src = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "freeze_prereg.py")).read()
+        self.assertIn("not evidence that hit rates do not separate in 3D", src)
 
     def test_n_max_numbers_quoted_in_the_report(self):
         import derive_defaults as dd

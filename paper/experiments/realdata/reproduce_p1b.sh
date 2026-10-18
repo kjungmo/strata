@@ -33,6 +33,8 @@ step() {   # step NAME cmd...: logs start, end, load, return code; stops the scr
   local name="$1"; shift
   local log="$RES/logs/$name.log"
   { echo "STEP $name"; echo "START $(stamp) host=$(hostname) load=$(cut -d' ' -f1-3 /proc/loadavg) cores=$(nproc)";
+    echo "COMMIT $(git -C "$HERE" rev-parse HEAD)"
+    echo "TREE_STATUS_PORCELAIN_LINES $(git -C "$HERE" status --porcelain | wc -l) (outside results: $(git -C "$HERE" status --porcelain -- . ':(exclude)results_p1b' ':(exclude)results_p1' | wc -l))"
     echo "CMD $(scrub "$*")"; } > "$log"
   ( ulimit -v "${MEM_LIMIT_KB:-6000000}"; exec nice -n 19 "$@" ) 2>&1 | sed "s|$HOME|~|g; s|$OUT|<OUT_DIR>|g" >> "$log"
   local rc=${PIPESTATUS[0]}
@@ -42,7 +44,11 @@ step() {   # step NAME cmd...: logs start, end, load, return code; stops the scr
 }
 keepmeta() { cp "$@" "$RES/meta/"; }
 
-stage_build() {
+stage_build() {   # builds only from a clean committed tree, so the commit in every step log is the commit of the binary
+  local dirty; dirty="$(git -C "$HERE" status --porcelain -- . ':(exclude)results_p1b' ':(exclude)results_p1' | wc -l)"
+  if [ "$dirty" != "0" ] && [ "${ALLOW_DIRTY_BUILD:-0}" != "1" ]; then
+    echo "refusing to build: $dirty uncommitted file(s) outside the results directories (commit first; ALLOW_DIRTY_BUILD=1 overrides and must be disclosed)"; exit 3
+  fi
   step build_configure cmake -S "$HERE/.." -B "$BUILD" -DCMAKE_BUILD_TYPE=Release
   step build_make cmake --build "$BUILD" -j4 --target hitrate_probe p1b_probe
 }

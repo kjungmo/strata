@@ -329,3 +329,15 @@ This amendment changes no definition, threshold or rule of Amendment 2 and re-ru
    so the G1 failures of 0.17 to 0.19 m do not measure pose smear. G1 and G2 stay exactly as pre-registered and their verdicts stand (2D and 3D not frozen). Replacing G1 would be a
    second gate change after seeing data; it is the lead's decision and, if taken, an amendment reported with this chronology. A robust-width variant at the 0.10 m limit is only
    post hoc evidence and is not to be presented as pre-registered.
+
+## Amendment 4 (2026-10-18, after the second Opus review of phase 1b; committed before any re-run)
+
+This amendment changes no definition, threshold or rule of Amendments 2 and 3 and re-runs no measurement (the only run is a byte-identity check of existing Keble 02 tables, `deviations.md` item 24).
+
+1. **Support rule of the clutter class (section 4.6) is weaker than its stated purpose.** It asks for one TLS point anywhere in the 1 m column; it does not exclude heights the TLS never reached. On Keble 02 (0.2 m, W = 10, today's miss)
+   64.3 % of the clutter cells with N >= 5 lie more than 0.5 m above the device (`explore_keble_clutter_height.py`), so the class is mostly not walking people. The Keble gaps must not be cited as evidence that hit rates do not
+   separate in 3D. No rule is changed here. A corrected definition (vertical support or a height band) is a further dated amendment, decided by the lead before any 3D re-run. The reason line of `PREREG.md` carries the qualifier.
+2. **Provenance rule for P3 and later.** Every step log records `git rev-parse HEAD` and the `git status --porcelain` line count; binaries are built only from a clean committed tree. The chronology of this phase is corrected in
+   `deviations.md` items 4, 5 and 24: two exploratory/measurement steps ran on an uncommitted `--labels` option; no number depends on it.
+3. **Reviewer's post hoc numbers are not part of the record.** Numbers from uncommitted reviewer code (Amendment 3 items 3 and 4, report sections 13.1 and 13.3) are named in words only and never reach the paper.
+
