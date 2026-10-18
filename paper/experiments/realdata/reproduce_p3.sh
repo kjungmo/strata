@@ -4,7 +4,7 @@
 #
 # usage: reproduce_p3.sh STAGE...
 #   Stages that never open a test-split file:
-#     build  check  unit  smoke_kth  smoke_lil
+#     build  check  unit  smoke_kth  smoke_lil  smoke_spires
 #   Stages that open test-split files for the first N records only (reader validation, logged under file-open traces):
 #     validate_readers
 #   Stages that stat test-split files:
@@ -165,6 +165,20 @@ stage_smoke_lil() {
   done
 }
 
+# Keble 02 is CALIBRATION data (Amendment 2 of PREREG_P1B). Engine cost and the counts path of the Spires evaluation on the pinned engine
+# (PREREG_P3.md Amendment 3 item 16.4); in-sample, not results.
+stage_smoke_spires() {
+  local cal="${P1B_DIR:-/mnt/d/wsl/strata/p1b}" d="$OUT/smoke_spires"; mkdir -p "$d"
+  local cfg
+  for cfg in "shipped_v0_1 0" "sprt 1"; do
+    set -- $cfg
+    MEM_LIMIT_KB=9000000 must step "smoke_spires_keble02_$1_p$2" -- "$P3" arm-eval --cache "$cal/cache_keble02.bin" --labels "$cal/labels_keble02_r0.2.bin" --arm "$1" --res 0.2 --window 10 \
+      --periodicity "$2" --format counts --out "$d/counts_$1_p$2.csv" --meta "$d/counts_$1_p$2.meta"
+    must step "smoke_spires_eval_$1_p$2" -- bash -c "python3 -I '$HERE/p3_eval.py' spires --counts '$d/counts_$1_p$2.csv' --latency '$d/counts_$1_p$2.csv.latency' > '$RES/smoke_spires_keble02_$1_p$2.json'"
+    cp "$d/counts_$1_p$2.meta" "$RES/meta_smoke_spires_keble02_$1_p$2.meta"
+  done
+}
+
 # --------------------------------------------------------------------------------- test evaluations ------
 guard_eval() {
   if [ "${P3_RUN_EVALUATIONS:-0}" != "1" ]; then echo "refusing: test evaluations need P3_RUN_EVALUATIONS=1 (set after the review of PREREG_P3.md)"; exit 4; fi
@@ -293,7 +307,7 @@ if [ $# -eq 0 ]; then echo "usage: $0 STAGE..."; exit 2; fi
 for st in "$@"; do
   case "$st" in
     build) stage_build;; check) stage_check;; unit) stage_unit;; validate_readers) stage_validate_readers;;
-    boreas_gate) stage_boreas_gate;; smoke_kth) stage_smoke_kth;; smoke_lil) stage_smoke_lil;; smoke_manifest) stage_smoke_manifest;; statafter) stage_statafter;;
+    boreas_gate) stage_boreas_gate;; smoke_kth) stage_smoke_kth;; smoke_lil) stage_smoke_lil;; smoke_spires) stage_smoke_spires;; smoke_manifest) stage_smoke_manifest;; statafter) stage_statafter;;
     eval_lil) stage_eval_lil;; eval_spires) stage_eval_spires;; eval_kth) stage_eval_kth;; eval_boreas) stage_eval_boreas;;
     *) echo "unknown stage $st"; exit 2;;
   esac
