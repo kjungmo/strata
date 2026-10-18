@@ -341,3 +341,19 @@ This amendment changes no definition, threshold or rule of Amendments 2 and 3 an
    `deviations.md` items 4, 5 and 24: two exploratory/measurement steps ran on an uncommitted `--labels` option; no number depends on it.
 3. **Reviewer's post hoc numbers are not part of the record.** Numbers from uncommitted reviewer code (Amendment 3 items 3 and 4, report sections 13.1 and 13.3) are named in words only and never reach the paper.
 
+
+## Amendment 5 (2026-10-18, after the third Opus review of phase 1b; committed before the byte-identity re-runs and before the regeneration of PREREG.md and the report)
+
+This amendment changes no definition, threshold or rule of Amendments 2 to 4 and no number. It completes the chronology and widens the provenance rule.
+
+1. **Pair at both interval ends (section 1) is now printed.** The rule of section 1 existed but no generator applied it. `pair_ends.py` computes, from the block-bootstrap interval ends, the pair
+   (`ceil_0.05` of the `q_c` end, `floor_0.05` of the `q_s` end) at the low and at the high end. `freeze_prereg.py` prints it under the conditional table and under the freeze table whenever an
+   interval crosses a 0.05 boundary, and `make_report_p1b.py` adds the column `pair at interval ends (low / high)` to every gap table. The frozen pair and the conditional pair do not change; they stay the
+   pair of the point estimates. For the shipped 2D row the ends are (0.20, 0.65) and (0.30, 0.75); the lead may waive a gate and take (0.20, 0.70) only with this range in view.
+2. **Clean-tree rule (Amendment 4 item 2) covers the whole repository.** `p1b_probe` and `hitrate_probe` link `strata_core`, which `paper/experiments/CMakeLists.txt` builds from `../../strata_core`.
+   `reproduce_p1b.sh` now counts uncommitted files with `git status --porcelain -- ':(top)'` minus the two result directories, in the `build` stage, in the `TREE_STATUS_PORCELAIN_LINES` line of every
+   step log and in `run_manifest.txt`. `test_reproduce_tree_check.sh` fails against the earlier check.
+3. **Chronology (replaces the count in Amendment 4 item 2).** The sentence "two exploratory/measurement steps ran on an uncommitted `--labels` option" was incomplete. `deviations.md` item 24 lists every
+   exploratory output that was written before its script or option was committed.
+4. **Provenance rule extended to scripts.** An exploratory or measurement script (`explore_*.sh`, `explore_*.py`, `reproduce_*.sh` stages, analysis scripts) runs only from committed code: from a clean
+   committed tree or from a `git archive` copy of a commit, and the output records that commit. An exploratory output whose script is not yet committed is not kept; it is re-run after the commit.
