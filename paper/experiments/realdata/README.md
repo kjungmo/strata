@@ -77,3 +77,22 @@ Read `PREREG_P1B.md` (definitions, committed before any phase 1b measurement), t
     python3 -I analyze_p1b.py --data-dir /mnt/d/wsl/strata/p1b --old-meta-dir results_p1/meta --meta-dir results_p1b/meta --out-dir results_p1b
     python3 -I freeze_prereg.py --results-dir results_p1b --out-dir . --commit <hash>
     python3 -I make_report_p1b.py --results-dir results_p1b --prereg-dir . --out results_p1b/P1B_REPORT.md
+
+## Phase 2: the engine (`strata_core` 0.2.0)
+
+The engine change itself is in `strata_core/` (`evidence_model = legacy | sprt`, SPEC section 3.2a). These files check it
+against the numbers of this directory. None of them reads a test-split file.
+
+| File | Role |
+|---|---|
+| `../check_legacy_equivalence.sh` | runs E0-E3, E5, E6 (which name `evidence_model = legacy`) and compares the 19 CSVs they write with the committed ones, byte for byte |
+| `../src/e7_sprt_oc.cpp`, `../results/e7_*.csv` | E7: operating characteristic on the engine against the exact lattice value and Wald's closed form; per-history error rate under lag-1 autocorrelation |
+| `check_e7_libcxx.sh`, `results_p2/e7_libcxx.txt` | E7 built with clang++ and libc++ is byte-identical to the GCC build |
+| `../../../strata_core/test/test_replay_p1.cpp`, `run_replay_p2.sh` | replay of the advisory table (P1_DECISION_ADVICE section 1) through `LayeredMap` on the phase 1 run sequences, with the input checksums (`results_p2/replay_inputs*.sha256`); outputs `results_p2/replay_advisory_table.txt`, `replay_kitti.txt`, `replay_shipped_pair_W15.txt`, log `replay_run.log` |
+| `mutation_p2.py`, `results_p2/mutation_record.md` | mutation evidence for the phase 2 tests |
+| `../../../strata_core/test/check_defaults.py` | the library defaults, both shipped YAMLs, the node and `PREREG.json` state the same defaults |
+
+The shipped defaults (`m0 = 0.20`, `m1 = 0.70`, `alpha = beta = 0.01`, `n_max_undecided = 80`) are the conditional values of `PREREG.json`
+for the 2D backend, because `PREREG.md` reads NOT FROZEN (G1 failed on all three calibration sequences); 3D uses the same pair as a
+fallback. Freezing a different pair means editing `PREREG.json`, the library defaults, the two YAMLs and the node default in one commit:
+the CTest `defaults_match_yaml_and_prereg` fails until all agree.
