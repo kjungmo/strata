@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "6.21 5.36 4.14 5/868 1258965",
+  "loadavg": "3.86 2.78 3.30 7/861 1297943",
   "meminfo": {
-   "MemAvailable": "10112808 kB",
+   "MemAvailable": "10036752 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31938712 kB"
+   "SwapFree": "31940868 kB"
   },
-  "time": "2026-10-18T16:09:22+0900",
+  "time": "2026-10-18T16:25:55+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "97.1  7044 lever_new",
-   "97.1  7076 lever_new",
-   "97.1  6980 lever_new",
-   "97.1  6944 lever_new",
-   "15.9 106452 python3"
+   " 100 19224 lever_final2",
+   " 100 19080 lever_final2",
+   " 100 19256 lever_final2",
+   " 100 19260 lever_final2",
+   "16.0 102680 python3"
   ]
  },
  "argv": [
@@ -28,26 +28,26 @@
   "test_p3"
  ],
  "before": {
-  "loadavg": "5.62 5.00 3.93 6/875 1258503",
+  "loadavg": "1.47 2.30 3.20 6/866 1297589",
   "meminfo": {
-   "MemAvailable": "10148184 kB",
+   "MemAvailable": "9665880 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31938312 kB"
+   "SwapFree": "31940800 kB"
   },
-  "time": "2026-10-18T16:08:21+0900",
+  "time": "2026-10-18T16:24:55+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.8 19072 lever_new",
-   "99.8 19288 lever_new",
-   "99.7 19320 lever_new",
-   "99.7 19256 lever_new",
-   "15.6 99152 python3"
+   " 100 463864 cc1plus",
+   "15.7 95440 python3",
+   "15.2 81184 python3",
+   " 8.3 85272 fusion_node_mai",
+   " 7.6 82284 fusion_node_mai"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "040b5ece1f819ebaf00f965f4ec3e035a36d0d3a",
-  "commit": "040b5ece1f819ebaf00f965f4ec3e035a36d0d3a",
+  "binary_commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
+  "commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
@@ -60,6 +60,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 60.996,
+ "seconds": 59.627,
  "step": "build_make"
 }

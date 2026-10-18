@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "6.10 5.41 4.20 7/851 1259461",
+  "loadavg": "4.99 3.22 3.43 7/834 1298404",
   "meminfo": {
-   "MemAvailable": "10138700 kB",
+   "MemAvailable": "10098616 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31938712 kB"
+   "SwapFree": "31941020 kB"
   },
-  "time": "2026-10-18T16:10:01+0900",
+  "time": "2026-10-18T16:26:33+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.8  6988 lever_new",
-   "99.8  7020 lever_new",
-   "99.8  4172 lever_new",
-   "99.7  6980 lever_new",
-   "16.0 111028 python3"
+   "99.6 19192 lever_final2",
+   "99.5 19256 lever_final2",
+   "99.4 19228 lever_final2",
+   "16.0 107372 python3",
+   "15.3 81788 python3"
   ]
  },
  "argv": [
@@ -22,26 +22,26 @@
   "cd '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata' && python3 -I -m unittest discover -s . -p 'test_p3*.py'"
  ],
  "before": {
-  "loadavg": "6.02 5.39 4.19 5/872 1259337",
+  "loadavg": "4.90 3.17 3.41 8/845 1298321",
   "meminfo": {
-   "MemAvailable": "10203724 kB",
+   "MemAvailable": "10190560 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31938712 kB"
+   "SwapFree": "31941020 kB"
   },
-  "time": "2026-10-18T16:09:56+0900",
+  "time": "2026-10-18T16:26:28+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.6  7044 lever_new",
-   "99.6  7088 lever_new",
-   "99.6  6956 lever_new",
-   "99.5  6980 lever_new",
-   "16.0 110436 python3"
+   "99.5 19076 lever_final2",
+   "99.4  9220 lever_final2",
+   "99.4 19256 lever_final2",
+   "99.3 19164 lever_final2",
+   "16.0 106776 python3"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "040b5ece1f819ebaf00f965f4ec3e035a36d0d3a",
-  "commit": "040b5ece1f819ebaf00f965f4ec3e035a36d0d3a",
+  "binary_commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
+  "commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
@@ -54,6 +54,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 5.11,
+ "seconds": 5.038,
  "step": "unit_py"
 }

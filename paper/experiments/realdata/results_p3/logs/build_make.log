@@ -1,16 +1,16 @@
 STEP build_make
-START 2026-10-18T16:08:21+09:00 host=DESKTOP-KCD7BRS load=5.62 5.00 3.93 cores=12
-COMMIT 040b5ece1f819ebaf00f965f4ec3e035a36d0d3a
+START 2026-10-18T16:24:55+09:00 host=DESKTOP-KCD7BRS load=1.47 2.30 3.20 cores=12
+COMMIT 6b654580eb8c4646d923f7f35a20fc1ff0c97926
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT 040b5ece1f819ebaf00f965f4ec3e035a36d0d3a
+BINARY_COMMIT 6b654580eb8c4646d923f7f35a20fc1ff0c97926
 STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
 STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
 CMD cmake --build <BUILD_DIR>/build -j4 --target p3_probe hitrate_probe p1b_probe test_p3
 Scanning dependencies of target strata_core
-[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
-[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
+[ 25%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
+[ 25%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
+[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/periodicity.cpp.o
 [ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
-[ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/periodicity.cpp.o
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp: In function ‘bool strata_core::worldToGrid(const strata_core::GridMeta&, double, double, int&, int&)’:
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp:6:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
     6 |   if(fx<0.0||fy<0.0) return false; gx=static_cast<int>(fx); gy=static_cast<int>(fy);
@@ -46,4 +46,4 @@ Scanning dependencies of target test_p3
 [100%] Linking CXX executable test_p3
 [100%] Built target test_p3
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/build_make.json rc=0
-END 2026-10-18T16:09:22+09:00 rc=0 load=6.21 5.36 4.14
+END 2026-10-18T16:25:55+09:00 rc=0 load=3.86 2.78 3.30
