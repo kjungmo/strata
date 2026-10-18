@@ -320,3 +320,59 @@ Section 4 said every step record lists the size and sha256 of its outputs. The s
 * A step that fails keeps its log and trace as `*.attempt-<time>.*` when it is repeated.
 
 The KTH stage also exports the policy `all` once per condition (with the first arm) as the identity check of section 5.2.
+
+## 16. Amendment 3 (2026-10-18, before any evaluation): review findings on the harness
+
+Written and committed before any test evaluation. No arm, label, window, resolution or metric of another dataset changes. It resolves the six findings of the Opus review of the harness. Where it says "replaces", the earlier text stays in the file as written and this section is the binding one.
+No evaluation stage has run (`results_p3/eval_start.txt` does not exist). The only runs of an arm on test data are the feasibility probe on 10 frames (item 16.6).
+
+### 16.1 Boreas common frame (finding 1). Replaces section 8.1 "Common frame" and "Vertical level", and the premise of section 8.2
+
+* **Fault.** Section 8.1 assumed that the ENU origin of every session is the first row of its own `gps_post_process.csv`, and moved each session by the geodetic difference of those origins. The easting and northing of all three sessions are already measured from ONE
+  origin, the first row of the 2020-11-26 session. The first rows of the other sessions are not at zero: 2021-04-08 at (-4.302, -0.149) m and 2021-06-17 at (-0.450, 0.821) m (gate log, `first_row_east,north`). The old frame therefore moved those sessions a second time, by 4.3 m and 0.94 m.
+  The old gate passed only because its near-tile rule tolerates a shift of one tile. Exact-tile shares in the old log were 0.69 and 0.67 in the common frame and 0.84 and 0.80 in raw file coordinates (`results_p3/logs/boreas_overlap.attempt-20261018T133559.log`, kept). The old validator checked the ENU premise on the reference session only, whose first row is (0, 0).
+* **Rule.** The common frame is the frame of the files: the map from a session to the common frame is the identity (`commonFrame`). No session is moved horizontally.
+* **Premise check, every session.** For every GPS row of the slice (window of the frames plus or minus 1 s), the geodetic ENU of its latitude and longitude at the REFERENCE origin (the first GPS row of 2020-11-26-13-58) must agree with the easting and northing of the file within **0.10 m**
+  (horizontal distance, worst row). `boreas-overlap` checks it for all sessions and fails the gate if one session fails; `boreas-validate` requires `--ref` and checks the session against the reference origin; `boreas-convert` refuses to write a cache for a session that fails.
+  The limit 0.10 m was named by the review; the measured worst miss is 0.055 m.
+* **Gate re-run** (`results_p3/logs/boreas_overlap.log`, pose files only, traced; the old log is kept as an attempt): worst ENU miss 0.0551 m in each of 2020-11-26, 2021-04-08 and 2021-06-17 (36,386 / 36,385 / 36,385 rows); the tile overlap in the file frame has exact shares 0.80 to 0.97 and near shares 0.89 to 1.00. **PASS.**
+  The constant part of the miss is a mean of about (-0.021, 0.047) m (east, north), the same in all three sessions: it belongs to the reference origin and not to a session.
+* **Vertical level.** The altitude columns of the three sessions are on one datum to centimetres (gate log, `altitude` rows, nearest trajectory row within 3 m, 1565 to 1704 pairs): median difference 2020-11 to 2021-04 +0.042 m, 2020-11 to 2021-06 +0.041 m, 2021-04 to 2021-06 -0.009 m; 10th to 90th percentile within -0.03 m to +0.13 m.
+  **No vertical offset is applied** (`z_offset = 0` for every session). The tile-ground comparison (`tile-ground`, `p3_eval.py zoffset`) stays as a **diagnostic**: it is run on the caches, reported next to the Boreas table, and never applied. The limit stays: a difference of 0.04 m to 0.13 m can move a point across a 0.2 m voxel boundary.
+* The conversion in `reproduce_p3.sh` therefore runs once per session (no pass 2).
+
+### 16.2 Spires ground (finding 2). Implements section 7.2 as written
+
+`p3_eval.py spires` reports label 3 (non-ground structure) and label 2 (ground) as separate blocks: false-reject rate, undecided share, Static share and windows to first Static, each per label. The default is `--structure-labels 3,2`. Unit tests: `TestSpiresAndBoreas.test_spires_metrics`, `test_cli_boreas_and_spires`.
+Committed (95b97d9) before `eval_spires`.
+
+### 16.3 Shared tiles of the Jaccard (finding 3). Replaces section 8.3 "in shared tiles for each pair"; makes section 7.2 testable
+
+The shared tiles are the 10 m tiles that ALL compared sessions observed (Spires: the three sequences; Boreas: the three sessions). A session observed a tile if its map holds at least one voxel there at the end of the run, Static or not (`*_observed.ids`: Static, Transient, Periodic and Intermittent voxels; a Rejected voxel was erased and does not count).
+The primary Jaccard of each pair is computed inside this set of tiles. The Jaccard inside the tiles that only the two sessions of the pair observed is printed next to it as `pairwise_tiles` (secondary). The command takes `--observed` (required, one file per `--ids` file) and refuses a Static set that is not inside its observed set.
+The earlier command used the tiles of the Static sets, which drops every tile in which one session or arm has no Static voxel and so depends on the arm. Unit tests: `test_jaccard_over_sessions_uses_the_tiles_all_sessions_observed`, `test_cli_boreas_and_spires`.
+`newstatic` is unchanged.
+
+### 16.4 Engine pin (finding 4). Replaces section 2.2, first bullet ("the commit recorded in each step log")
+
+All five datasets run on ONE engine: the `strata_core` tree below (`git rev-parse HEAD:strata_core`). `guard_eval` refuses to run if the tree at HEAD differs from the last `STRATA_CORE_TREE=` line of this file (another agent commits to `strata_core` on this branch; a change needs a new amendment that re-pins).
+Every step log records `STRATA_CORE_TREE` (the tree of the commit the binary was built from) and `STRATA_CORE_TREE_PINNED`; every run record in `results_p3/runs/` carries `strata_core_tree_head` and `strata_core_tree_binary`; `eval_start.txt` and `run_manifest.txt` carry the tree.
+
+```text pin
+STRATA_CORE_TREE=87bee34e3d6e7861d45eef80ad5069ff54fd12da
+```
+
+**Engine changes after the first commit of this file (f208975, 11:55), disclosed.** (a) `8ccf56a` (12:31): after a reverse-test demotion the window count `n` restarts at 0 together with the statistic (the periodicity gate, the rejection and the `n_max_undecided` read-out count the length of the current test). This changes the `sprt` arm only, and only for cells that were demoted.
+(b) `f382498` (12:11): the loops that derive latency and demotion misses stop for a pair that needs over a million windows (a configuration error); no value changes for any pair of this file. (c) `33ef9b8` (12:52): tests only. The smoke tests (11:16 to 11:50) and the Spires cost and count figures of section 14 ran on the engine before (a).
+They were repeated on the pinned engine (`smoke_kth`, `smoke_lil`, `smoke_spires`; `deviations.md`, section "Repeated on the pinned engine"); the figures of those repeats replace the earlier ones. The derived constants of section 2.1 are unchanged by (a) and (b).
+
+### 16.5 KTH evaluator note (finding 6). Adds to the sentence beside every KTH table (section 5.1)
+
+The review compared the evaluator with the official rule on a 30,000-point crop of KITTI 00 (jittered and boundary-seeded map points): the harness and an exact float64 brute force disagree on 0 points; an emulation of the official `export_eval_pcd` (PCL squared distance in float32, square root, `> 0.05f`) disagrees on 3 points, all placed at exactly 0.05 m (SA 61.768 against 61.778, DA identical).
+The exported points are the original frame points, at distance 0 from themselves, so a real run cannot hit that boundary. This is the reviewer's measurement; its script is not in the repository and PCL is not installed here, so it is quoted and not reproduced. The sentence beside each KTH table adds: "the evaluator applies `<= 0.05 m` in float64; the official tool's float32 rule can differ only for points at exactly 0.05 m".
+
+### 16.6 Records of the Boreas feasibility probe (finding 5). Corrects section 14
+
+Section 14 says the probe ran on "data that was already opened". More exactly: the probe ran **two arms of the engine (`shipped_v0_1` and `sprt`) on the first 10 frames of the test session boreas-2020-11-26-13-58** (the same 10 frames as the reader validation), with `static-export`. It computed no label, no rate and no metric, and nothing was chosen from a result except the range window and the veto switch, by cost.
+The files read are in `access_log.tsv` (`feas_boreas_convert*`). The first run printed its table to the terminal and did not save it. The files that survived are in `results_p3/feas/original/`; the probe was run again on the same 10 frames (`feas_rerun_boreas_convert_r*` in `access_log.tsv`),
+and its table and meta files are in `results_p3/feas/`. Cells and peak memory equal the table of section 14 in every row; the seconds differ with host load and are for planning only (R6). `deviations.md` carries the corrected order of events.
