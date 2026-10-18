@@ -36,7 +36,11 @@ class TestRun(unittest.TestCase):
             self.assertEqual(rec["inputs"][0]["sha256"], hashlib.sha256(b"input").hexdigest())
             self.assertEqual(rec["inputs"][0]["size"], 5)
             self.assertEqual(rec["outputs"][0]["sha256"], hashlib.sha256(b"result").hexdigest())
-            self.assertEqual(len(rec["git"]["commit"]), 40)
+            inside = subprocess.run(["git", "-C", HERE, "rev-parse", "--is-inside-work-tree"], capture_output=True, text=True).returncode == 0
+            if inside:                                       # a git archive copy (the build tree of reproduce_p3.sh) has no repository
+                self.assertEqual(len(rec["git"]["commit"]), 40)
+            else:
+                self.assertEqual(rec["git"]["commit"], "")
             self.assertIn("uncommitted_in_experiment_dir", rec["git"])
 
     def test_failing_command_is_recorded_and_returned(self):
