@@ -535,6 +535,10 @@ TEST(P3Boreas, RotationConventionAndCalibration) {
   EXPECT_THROW(readBoreasCalib(tmpPath("T5.txt")), std::runtime_error);                                         // last row not 0 0 0 1
   writeText(tmpPath("T6.txt"), "2 0 0 1\n0 1 0 2\n0 0 1 3\n");
   EXPECT_THROW(readBoreasCalib(tmpPath("T6.txt")), std::runtime_error);                                         // not a rotation
+  writeText(tmpPath("T6b.txt"), "1 0 0 1\n0 1 0 2\n0 0 -1 3\n");                                              // orthonormal, determinant -1: a reflection
+  EXPECT_THROW(readBoreasCalib(tmpPath("T6b.txt")), std::runtime_error);
+  writeText(tmpPath("T6c.txt"), "1 1 0 1\n0 1 0 2\n0 0 1 3\n");                                               // determinant 1, not orthonormal: a shear
+  EXPECT_THROW(readBoreasCalib(tmpPath("T6c.txt")), std::runtime_error);
   writeText(tmpPath("T7.txt"), "1 0 0 1\n0 1 0 2\n");
   EXPECT_THROW(readBoreasCalib(tmpPath("T7.txt")), std::runtime_error);                                         // wrong count
   // compose: (a*b) maps p to a(b(p))
@@ -543,6 +547,12 @@ TEST(P3Boreas, RotationConventionAndCalibration) {
   b.q = Eigen::Quaterniond::Identity(); b.t = Eigen::Vector3d(0, 2, 0);
   const Pose3 c = compose(a, b);
   EXPECT_NEAR((c.t - Eigen::Vector3d(-1, 0, 0)).norm(), 0.0, 1e-12);
+  // rotations: (a * b) p = a (b p) with both non-trivial: b turns x to -z (pitch 90), a turns the result about z (yaw 90)
+  a.q = Eigen::Quaterniond(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitZ())); a.t = Eigen::Vector3d(0, 0, 0);
+  b.q = Eigen::Quaterniond(Eigen::AngleAxisd(M_PI / 2, Eigen::Vector3d::UnitY())); b.t = Eigen::Vector3d(0, 0, 0);
+  const Pose3 d = compose(a, b);
+  EXPECT_NEAR((d.q * Eigen::Vector3d::UnitX() - a.q * (b.q * Eigen::Vector3d::UnitX())).norm(), 0.0, 1e-12);
+  EXPECT_GT((d.q * Eigen::Vector3d::UnitX() - b.q * (a.q * Eigen::Vector3d::UnitX())).norm(), 0.5);      // the other order gives another vector
 }
 
 TEST(P3Boreas, GeodesyAndTheCommonFrame) {
