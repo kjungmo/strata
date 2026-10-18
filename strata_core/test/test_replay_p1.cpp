@@ -432,7 +432,12 @@ TEST(ReplayP1, InSampleKittiReplayOfTheAdvice) {
   all.clear();
   ASSERT_EQ(st.size(), 283511u);
   ASSERT_EQ(mv.size(), 5901u);
+  std::ostringstream rep;
+  rep << std::fixed << std::setprecision(4);
+  rep << "In-sample replay on KITTI 00 (KTH benchmark, 0.2 m voxels, W = 10, single pass), pair (0.15, 0.65, 0.01), pure rule.\n"
+      << "Structure: static_structure voxels (n=" << st.size() << "); moving voxels (n=" << mv.size() << ").\n";
   const Row rs = run(st, 0.15, 0.65, 0.01, 0.01, 1, false, true);
+  rep << "  structure  S " << rs.S << "  R " << rs.R << "  U " << rs.U << "  windows to Static p50 " << rs.lat50x << "\n";
   EXPECT_EQ(rs.mismatches, 0);
   EXPECT_NEAR(rs.S, 0.1963, 0.002); EXPECT_NEAR(rs.R, 0.0759, 0.002); EXPECT_NEAR(rs.U, 0.7277, 0.002);
   EXPECT_EQ(rs.lat50x, 4);
@@ -443,6 +448,7 @@ TEST(ReplayP1, InSampleKittiReplayOfTheAdvice) {
     for (const Cell& c : st) if (c.N >= 4) { ++n4; const Out o = engineReplay(c, p); s4 += o.o == 'S'; u4 += o.o == 'U'; }
     EXPECT_EQ(n4, 145520);
     EXPECT_NEAR(double(s4) / n4, 0.3825, 0.002); EXPECT_NEAR(double(u4) / n4, 0.4696, 0.002);
+    rep << "  structure voxels touched in >= 4 windows: n=" << n4 << "  S " << double(s4) / n4 << "  U " << double(u4) / n4 << "\n";
   }
   // moving voxels by hit-rate band
   {
@@ -456,5 +462,58 @@ TEST(ReplayP1, InSampleKittiReplayOfTheAdvice) {
     EXPECT_EQ(n[0], 5025); EXPECT_EQ(g[0], 0);
     EXPECT_EQ(n[1], 694);  EXPECT_NEAR(double(g[1]) / n[1], 0.174, 0.002);
     EXPECT_EQ(n[2], 182);  EXPECT_NEAR(double(g[2]) / n[2], 0.984, 0.002);
+    rep << "  moving voxels graduated, by hit-rate band: <= 0.15: " << g[0] << " of " << n[0] << "; (0.15, 0.65): " << g[1]
+        << " of " << n[1] << "; >= 0.65: " << g[2] << " of " << n[2] << "\n";
+  }
+  if (const char* out = std::getenv("STRATA_REPLAY_KITTI_OUT")) {
+    std::ofstream o(out);
+    o << rep.str();
+  }
+}
+
+// ================================================================== part C: the shipped pair on the 1.0 s calibration sequences
+
+namespace {
+std::string p1bDir() {
+  if (const char* e = std::getenv("STRATA_P1B_DIR")) return e;
+  return "/mnt/d/wsl/strata/p1b";
+}
+}  // namespace
+
+// Not a reproduction of an advisory number: the realised rates of the SHIPPED pair (0.20, 0.70, 0.01, 0.01)
+// on the W = 15 (1.0 s at 15 Hz) calibration sequences, the numbers that belong beside the bound alpha = 0.01.
+TEST(ReplayP1, ShippedPairOnTheOneSecondCalibrationSequences) {
+  const std::string dir = p1bDir();
+  std::vector<Cell> st, cl, all;
+  if (!loadCells(dir + "/lil_cells_static_0_r0.05_W15.csv", all))
+    GTEST_SKIP() << "W = 15 cell tables not present under " << dir << " (set STRATA_P1B_DIR)";
+  for (auto& c : all) if (c.label == 1) st.push_back(c);
+  all.clear();
+  ASSERT_TRUE(loadCells(dir + "/lil_cells_dynamics_0_r0.05_W15.csv", all));
+  for (auto& c : all) if (c.label == 2 && c.H >= 1) cl.push_back(c);
+  ASSERT_GT(st.size(), 5000u);
+  ASSERT_GT(cl.size(), 10000u);
+
+  std::ostringstream rep;
+  rep << std::fixed << std::setprecision(4);
+  rep << "Realised rates of the shipped pair (m0 0.20, m1 0.70, alpha = beta = 0.01) on the W = 15 calibration sequences\n"
+      << "(LILocBench, 0.05 m, 1.0 s windows). Structure: static_0, label structure, all N >= 1 (n=" << st.size()
+      << "). Clutter: dynamics_0, label free with H >= 1 (n=" << cl.size() << ").\n"
+      << "Bound under independent windows: P(clutter at m0 graduates) <= alpha = 0.0100 per history.\n\n";
+  for (int gate : {1, 24}) {
+    const Row s = run(st, 0.20, 0.70, 0.01, 0.01, gate, false, true), c = run(cl, 0.20, 0.70, 0.01, 0.01, gate, false, true);
+    EXPECT_EQ(s.mismatches + c.mismatches, 0);
+    rep << (gate == 1 ? "pure rule (T = 1)" : "shipped rule (gate T = 24, no lower clamp before the gate)") << "\n"
+        << "  structure  S " << s.S << "  R " << s.R << "  U " << s.U << "  windows to Static p50/p90 " << s.lat50x << "/" << s.lat90x << "\n"
+        << "  clutter    FS " << c.S << " (n=" << c.n << ")  FS at H/N <= m0 " << double(c.nS_le) / c.n_le << " (n=" << c.n_le
+        << ")  FS above m0 " << double(c.nS_gt) / c.n_gt << " (n=" << c.n_gt << ")\n";
+    EXPECT_NEAR(s.S + s.R + s.U, 1.0, 1e-12);
+    // the population the bound is stated for: cells whose observed rate is at or below m0
+    EXPECT_LE(double(c.nS_le) / c.n_le, 0.01) << "gate " << gate;
+    EXPECT_GT(c.nS_gt, 0);
+  }
+  if (const char* out = std::getenv("STRATA_REPLAY_W15_OUT")) {
+    std::ofstream o(out);
+    o << rep.str();
   }
 }

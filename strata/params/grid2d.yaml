@@ -16,8 +16,19 @@
     grid_width: 400
     grid_height: 400
     grid_resolution: 0.05
-    grid_origin_x: -10.0
+                                  # "legacy": the v0.1 rule; it reads l_hit .. prune_prob below, which "sprt" ignores (nine keys)
     grid_origin_y: -10.0
+    # ---- evidence (version 0.2.0) ----
+    evidence_model: "sprt"        # "sprt": sequential test, increments and thresholds derived from m0, m1, alpha, beta
+                                  # "legacy": the v0.1 rule; uses l_hit .. prune_prob below (l_hit .. prune_prob, nine keys, are ignored by "sprt")
+    m0: 0.20                      # hit rate per window at or below which a cell is clutter
+    m1: 0.70                      # hit rate per window at or above which a cell is structure
+    alpha: 0.01                   # P(clutter at m0 graduates), for independent windows
+    beta: 0.01                    # P(structure at m1 is rejected), for independent windows
+    n_max_undecided: 80           # touched windows after which an undecided, non-periodic cell is read out Intermittent (0: never)
+    evidence_calibration: "measured_2d"
+                                  # measured_2d: (m0, m1) measured on LILocBench, 0.05 m, 1.0 s windows (15 scans at 15 Hz);
+                                  # PROVISIONAL until PREREG.md is frozen. Re-derive them for another sensor, window or resolution.
     layer_interval: 10
     l_hit: 0.85
     l_miss: -0.4

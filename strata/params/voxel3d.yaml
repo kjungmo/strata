@@ -14,6 +14,17 @@
                                   # a failing TF lookup (no localizer yet) may keep everything out before WARN
     save_path: "/tmp/strata_3d"
     voxel_size: 0.2
+    # ---- evidence (version 0.2.0) ----
+    evidence_model: "sprt"        # "sprt": sequential test, increments and thresholds derived from m0, m1, alpha, beta
+                                  # "legacy": the v0.1 rule; it reads l_hit .. prune_prob below, which "sprt" ignores (nine keys)
+    m0: 0.20                      # hit rate per window at or below which a cell is clutter
+    m1: 0.70                      # hit rate per window at or above which a cell is structure
+    alpha: 0.01                   # P(clutter at m0 graduates), for independent windows
+    beta: 0.01                    # P(structure at m1 is rejected), for independent windows
+    n_max_undecided: 80           # touched windows after which an undecided, non-periodic cell is read out Intermittent (0: never)
+    evidence_calibration: "fallback_2d_pair"
+                                  # fallback_2d_pair: the 2D pair, NOT calibrated for 3D. On single-pass data most structure
+                                  # stays undecided (SPEC 3.2a). "user": you measured (m0, m1) for your own sensor.
     layer_interval: 10
     l_hit: 0.85
     l_miss: -0.4

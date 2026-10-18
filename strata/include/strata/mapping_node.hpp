@@ -47,6 +47,8 @@ class MappingNode : public rclcpp::Node {
  private:
   using Steady = std::chrono::steady_clock;
   strata_core::LayeredMapParams readLayerParams();
+  // Text of the "<node>: evidence model" status (built once in the constructor).
+  void buildEvidenceStatus(const strata_core::LayeredMapParams& p);
   void onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg);
   void onPoints(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
   void onPublish();
@@ -71,6 +73,9 @@ class MappingNode : public rclcpp::Node {
               std::shared_ptr<std_srvs::srv::Trigger::Response> res);
 
   std::string backend_, global_frame_, save_path_;
+  // Evidence model read-out for /diagnostics: constant after construction.
+  std::string evidence_model_, evidence_calibration_, evidence_message_;
+  std::vector<std::pair<std::string, std::string>> evidence_values_;
   strata_core::MapBackend* map_{nullptr};   // the selected backend
   std::string window_mode_;                 // "scans" (layer_interval) or "time" (window_period_s)
   double window_period_s_{1.0};

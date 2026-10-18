@@ -23,6 +23,7 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
   const double publish_period = declare_parameter<double>("publish_period", 1.0);
 
   const strata_core::LayeredMapParams lp = readLayerParams();
+  buildEvidenceStatus(lp);
   layer_interval_ = lp.layer_interval;
   period_windows_ = lp.periodicity.period_windows;
   // Windows close every layer_interval integrated messages ("scans", the engine's own
@@ -89,6 +90,11 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
 
   RCLCPP_INFO(get_logger(), "strata up: backend=%s frame=%s window_mode=%s", backend_.c_str(),
               global_frame_.c_str(), window_mode_.c_str());
+  RCLCPP_INFO(get_logger(), "evidence: %s", evidence_message_.c_str());
+  if (evidence_model_ == "sprt" && evidence_calibration_ == "fallback_2d_pair")
+    RCLCPP_WARN(get_logger(), "evidence: m0 and m1 are the 2D pair, measured on a 2D scanner; they are not "
+                "calibrated for backend %s. On single-pass 3D data most structure stays Undecided "
+                "(see /diagnostics, \"%s: evidence model\", and SPEC 3.2a)", backend_.c_str(), get_name());
 }
 
 strata_core::LayeredMapParams MappingNode::readLayerParams() {
@@ -109,7 +115,60 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   p.periodic_alpha_spending = declare_parameter<bool>("periodic_alpha_spending", true);
   p.periodicity.period_windows = declare_parameter<int>("period_windows", 24);
   p.periodicity.n_harmonics    = declare_parameter<int>("n_harmonics", 2);
+  // Evidence model (version 0.2.0). The defaults are the library defaults, which are the shipped
+  // YAML values; "legacy" runs the v0.1 arithmetic above (l_hit ... prune_prob), "sprt"
+  // ignores those nine keys and derives its increments and thresholds from m0, m1, alpha, beta.
+  const strata_core::LayeredMapParams def;
+  evidence_model_ = declare_parameter<std::string>("evidence_model", "sprt");
+  p.m0 = declare_parameter<double>("m0", def.m0);
+  p.m1 = declare_parameter<double>("m1", def.m1);
+  p.alpha = declare_parameter<double>("alpha", def.alpha);
+  p.beta = declare_parameter<double>("beta", def.beta);
+  p.n_max_undecided = declare_parameter<int>("n_max_undecided", def.n_max_undecided);
+  evidence_calibration_ = declare_parameter<std::string>("evidence_calibration", "measured_2d");
+  if (evidence_model_ == "sprt") p.evidence_model = strata_core::EvidenceModel::Sprt;
+  else if (evidence_model_ == "legacy") p.evidence_model = strata_core::EvidenceModel::Legacy;
+  else throw std::invalid_argument("evidence_model must be \"sprt\" or \"legacy\", got \"" + evidence_model_ + "\"");
+  if (evidence_calibration_ != "measured_2d" && evidence_calibration_ != "fallback_2d_pair" &&
+      evidence_calibration_ != "user")
+    throw std::invalid_argument("evidence_calibration must be \"measured_2d\", \"fallback_2d_pair\" or "
+                                "\"user\", got \"" + evidence_calibration_ + "\"");
+  if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
+    try {
+      (void)strata_core::deriveSprt(p);   // reject an unusable (m0, m1, alpha, beta, n_max_undecided) at startup
+    } catch (const std::invalid_argument& e) {
+      throw std::invalid_argument(std::string("evidence parameters: ") + e.what());
+    }
+  }
   return p;
+}
+
+void MappingNode::buildEvidenceStatus(const strata_core::LayeredMapParams& p) {
+  auto num = [](double v) { char b[32]; std::snprintf(b, sizeof(b), "%.4g", v); return std::string(b); };
+  evidence_values_.clear();
+  evidence_values_.emplace_back("evidence_model", evidence_model_);
+  if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
+    const strata_core::SprtDerived d = strata_core::deriveSprt(p);
+    evidence_values_.emplace_back("m0", num(p.m0));
+    evidence_values_.emplace_back("m1", num(p.m1));
+    evidence_values_.emplace_back("alpha", num(p.alpha));
+    evidence_values_.emplace_back("beta", num(p.beta));
+    evidence_values_.emplace_back("windows_to_graduate_always_hit", std::to_string(d.latency));
+    evidence_values_.emplace_back("all_miss_windows_to_demote", std::to_string(d.demote_misses));
+    evidence_values_.emplace_back("n_max_undecided", std::to_string(p.n_max_undecided));
+    evidence_message_ = "sprt: clutter m0=" + num(p.m0) + ", structure m1=" + num(p.m1) + ", alpha=" + num(p.alpha) +
+        ", beta=" + num(p.beta) + "; an always-hit cell graduates after " + std::to_string(d.latency) +
+        " windows; the error rates hold for independent windows";
+  } else {
+    evidence_values_.emplace_back("min_observations", std::to_string(p.min_observations));
+    evidence_message_ = "legacy (v0.1 arithmetic): a cell graduates once its smoothed log-odds reach graduate_prob after "
+        "min_observations=" + std::to_string(p.min_observations) + " windows; no error rate is stated";
+  }
+  evidence_values_.emplace_back("evidence_calibration", evidence_calibration_);
+  if (p.evidence_model == strata_core::EvidenceModel::Sprt && evidence_calibration_ == "fallback_2d_pair") {
+    evidence_message_ = "NOT calibrated for " + backend_ + " (fallback: the 2D pair); on single-pass 3D data most "
+        "structure stays undecided; " + evidence_message_;
+  }
 }
 
 void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -421,6 +480,17 @@ void MappingNode::onDiagnostics() {
   // The tf2 text of the last failed lookup while the streak runs; "" when it is 0.
   kv("last_tf_error", tally_.last_tf_error);
   arr.status.push_back(st);
+  // Constant standing note on the evidence model; level OK (a property, not a fault). A second
+  // status, so the values and their order in the "input rate" status stay as they were.
+  DS ev;
+  ev.name = std::string(get_name()) + ": evidence model";
+  ev.hardware_id = st.hardware_id;
+  ev.level = static_cast<unsigned char>(DS::OK);
+  ev.message = evidence_message_;
+  for (const auto& p : evidence_values_) {
+    diagnostic_msgs::msg::KeyValue e; e.key = p.first; e.value = p.second; ev.values.push_back(e);
+  }
+  arr.status.push_back(ev);
   diag_pub_->publish(arr);
   zero_stamps_ = 0;
   // Throttled on the wall clock: a live robot without /clock still gets the warning.

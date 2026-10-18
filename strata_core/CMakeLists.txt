@@ -50,6 +50,13 @@ if(BUILD_TESTING OR STRATA_CORE_BUILD_TESTS)
   add_executable(strata_core_tests ${STRATA_CORE_TESTS})
   target_link_libraries(strata_core_tests strata_core GTest::gtest GTest::gtest_main)
   add_test(NAME strata_core_tests COMMAND strata_core_tests)
+  # The library defaults, both shipped YAMLs and the frozen/conditional values in PREREG.json agree
+  # (needs python3; skipped silently by CTest if the repository layout above strata_core is absent).
+  find_package(Python3 QUIET COMPONENTS Interpreter)
+  if(Python3_Interpreter_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../strata/params/grid2d.yaml)
+    add_test(NAME defaults_match_yaml_and_prereg
+             COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/test/check_defaults.py ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  endif()
 endif()
 
 # ament install/export only when built inside a ROS 2 workspace.
