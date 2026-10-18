@@ -280,12 +280,54 @@ class Report(unittest.TestCase):
             with open(os.path.join(rd, "logs", "x.log"), "w") as f:
                 f.write("STEP x\nSTART 2026-10-18T07:30:00+09:00 host=h load=1 cores=2\n")
             out = os.path.join(d, "R.md")
-            self.assertEqual(mr.main(["--results-dir", rd, "--prereg-dir", d, "--out", out]), 0)
+            here = os.path.dirname(os.path.abspath(__file__))
+            self.assertEqual(mr.main(["--results-dir", rd, "--prereg-dir", here, "--out", out]), 0)
             with open(out) as f:
                 text = f.read()
+            # the chronology lists real commits (finding 1: the root was one level too deep and the list was empty)
+            chron = text.split("## 1. Chronology")[1].split("Step logs")[0]
+            self.assertRegex(chron, r"- [0-9a-f]{7,} 20\d\d-")
+            self.assertIn("2db4f2c", chron)
+            self.assertIn("no test-split file was modified", text)
+            self.assertIn("## 13. Open items", text)
             self.assertIn("## 2. Gates G1 and G2", text)
             self.assertIn("0.20", text)
             self.assertIn("The first measurement step (`x`) started 2026-10-18T07:30:00+09:00", text)
+
+
+class ReportGit(unittest.TestCase):
+    def test_git_fails_loudly_outside_a_repository(self):
+        import make_report_p1b as mr
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(RuntimeError):
+                mr.git(["log", "-1"], d)
+            with self.assertRaises(RuntimeError):
+                mr.repo_root(d)
+
+    def test_repo_root_is_the_top_level_not_paper(self):
+        import make_report_p1b as mr
+        here = os.path.dirname(os.path.abspath(__file__))
+        root = mr.repo_root(here)
+        self.assertTrue(os.path.isdir(os.path.join(root, "paper", "experiments", "realdata")))
+
+    def test_laser_optima(self):
+        import make_report_p1b as mr
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "o.csv")
+            with open(p, "w") as f:
+                f.write("anchor,dt_s,c_front,c_rear,score\nstart,-0.13,5,9,14\nstart,-0.06,8,7,15\nstart,0.0,9,8,17\n")
+            o = mr.laser_optima(p)
+            self.assertEqual(o["c_front"], ("-0.13", "5"))
+            self.assertEqual(o["c_rear"], ("-0.06", "7"))
+            self.assertEqual(o["score"], ("-0.13", "14"))
+
+    def test_n_max_numbers_quoted_in_the_report(self):
+        import derive_defaults as dd
+        for m0, m1, u64, u80 in ((0.15, 0.65, 0.0314, 0.0113), (0.20, 0.70, 0.0388, 0.0150)):
+            t = dd.table(m0, m1)
+            self.assertEqual(t["n_max_undecided"], 80)
+            self.assertAlmostEqual(dd.undecided_probability(m0, m1, t["mstar"], 64), u64, places=4)
+            self.assertAlmostEqual(dd.undecided_probability(m0, m1, t["mstar"], 80), u80, places=4)
 
 
 class GapRows(unittest.TestCase):

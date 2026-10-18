@@ -8,7 +8,7 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
 1. 07:04:10 stat record of every test-split file written; 07:04:53 committed (2db4f2c).
 2. 07:11:31 Amendment 2 committed (d343dad).
 3. 07:22:51 phase 1b code and tests committed (43fa004). First measurement step started 07:23:03 (`gate2d_mapping`).
-4. Later code commits, each before the step that needed it (listed in the report, section 1): 571acf6 (07:30:04), d2e2579 (07:30:59),
+4. Later code commits, each before the step that needed it (listed in the report, section 1; the first generated list was empty, see item 18): 571acf6 (07:30:04), d2e2579 (07:30:59),
    26f7df0 (07:35:53), 475f728 (07:38:59), 7f3c157 (07:41:02), and the commit that carries the results.
 
 ### Code changes after the first measurement (none changes a number of an earlier step)
@@ -61,3 +61,26 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
 17. **Gate verdicts and the freeze.** All five calibration sequences fail G1; none fails G2. By the rule of `PREREG_P1B.md` section 3.3 the 2D pair is not frozen. By section 6 the
     3D pair is branch F, and the fallback (the 2D pair) does not exist, so 3D is not frozen either. The measured gaps would give branch F in any case for 3D (the gap is below 0.15 under both
     miss definitions). `PREREG.md` states this and prints the conditional 2D values as "NOT A FREEZE".
+
+### After the Opus review of phase 1b (Amendment 3 in `PREREG_P1B.md`; no measurement re-run, no number of a table changes)
+
+18. **The chronology list of the report was empty (finding 1, fixed).** `make_report_p1b.py` took the repository root as `prereg_dir/../..`, which is `paper/`; the pathspec became
+    `paper/paper/experiments/realdata`, and the helper that runs the version-control command swallowed the error. It now raises, the root comes from `rev-parse --show-toplevel`, and an empty list is an error. Tests:
+    `ReportGit` and the smoke test of the report (it now runs against the real repository). The report is regenerated; section 1 lists the commits from 2db4f2c on. The "report" step row still has no end time or rc
+    (it is written while the step runs; cosmetic).
+19. **The stat comparison proves non-modification only (finding 2, wording corrected).** Reading a file changes neither mtime, ctime nor size, and `atime` does not move on this mount
+    (identical `atime` before and after for the Keble 02 zip, `gt-tum.txt` and the TLS PCD, which were read). The `atime` part of the advice section 7 acceptance check cannot be verified here.
+    The evidence for "no other test-split file was opened" is the step logs and the committed scripts: test-split paths occur only in the stat scripts (reviewer's search). For P3 a file-open
+    trace (`strace -f -e trace=openat,open`) per step is committed. `compare_stat.py`, the report (section 11) and Amendment 3 say so.
+20. **`n_max` = 80 is not the lead's 64 (finding 3, open for the lead).** Already disclosed in item 8. Recomputed: P(undecided) at 64 is 0.0314 and 0.0388, at 80 it is 0.0113 and 0.0150
+    (the reviewer's own dynamic program gives the same; `ReportGit.test_n_max_numbers_quoted_in_the_report` pins them). The lead records which value binds P2. The implementer does not choose.
+21. **Time base of `dynamics_0` was not examined (finding 4, open for the lead).** The P1 offset tables: front optimum -0.13 s, rear optimum -0.06 s on `dynamics_0` (rear count 8904 at -0.13 s,
+    7258 at -0.06 s); both lasers at -0.13 s on `mapping` and `static_0`. In P1 the per-sequence search itself selected -0.09 s for `dynamics_0` (lowest sum at -0.11 s) and run B applied -0.13 s to all three
+    sequences. Reviewer's post hoc numbers (uncommitted, not reproduced by the implementer): robust wall width of the rear laser 0.172 m (`dynamics_0`) against 0.075 m (`static_0`), 0.120 m with the rear
+    frames at -0.06 s; G1 on `dynamics_0` 0.185 m / 485 patches -> 0.140 m / 581 patches; `q_c` (0.05 m, W = 15) 0.1725 -> 0.1707 (pair stays (0.20, 0.70)); `structure@dynamics_0` q10 0.25 -> 0.36; the
+    W = 15 cell table rebuilt at -0.13 s is byte-identical to the run B cache. Consequence: the `dynamics_0` clutter cells may be partly smeared by the rear laser. The lead must settle the rear-laser offset
+    (a per-laser rule, as an amendment, before the re-run) before waiving any gate for `dynamics_0`. Nothing was re-run.
+22. **G1 does not measure pose smear (finding 5, open for the lead, blocks the freeze).** Verdicts stand as pre-registered. The reviewer reproduces G2 exactly and G1 within sampling with independent code,
+    and shows that the G1 statistic is dominated by second surfaces inside "linear" patches (robust core width 0.076 m on `static_0`, 0.063 m on `mapping`, 0.131 m on the run A cache, G1 0.32 m on Keble 02 with good
+    poses). Together with item 7 (G2 cannot see smear) the two gates, as specified, do not test what they claim. A replacement gate is a second gate change after seeing data and the lead's decision; it needs an
+    amendment with this chronology. Report section 13.3 states it, marked post hoc.

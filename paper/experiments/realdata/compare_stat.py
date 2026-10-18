@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Compares the stat records of the test-split files before and after phase 1b (PREREG_P1B.md section 11).
 Columns: path, size, mtime, atime, ctime. Reports every file whose size or mtime or ctime changed, files that appeared or
-disappeared, and the files whose atime changed (the disk is mounted without access times, so atime is not evidence).
+disappeared, and the files whose atime changed (the disk is mounted without access times, so atime is not evidence). The comparison shows non-modification only, never non-access.
 Files named in --expected-opened (path prefixes) are the ones the amendment allowed to be read; a change in size, mtime or
 ctime of any other file is an incident.
 
@@ -53,9 +53,13 @@ def main(argv=None):
          "Files in the before record: %d. Files in the after record: %d." % (len(b), len(f)), "",
          "- files that disappeared: %d" % len(gone), "- files that appeared: %d" % len(new),
          "- size changed: %d" % len(changed["size"]), "- mtime changed: %d" % len(changed["mtime"]), "- ctime changed: %d" % len(changed["ctime"]),
-         "- atime changed: %d (not evidence: the disk is mounted without access times)" % len(changed["atime"]), ""]
+         "- atime changed: %d (not evidence: the disk is mounted without access times; see below)" % len(changed["atime"]), ""]
     for p in gone + new:
         L.append("- %s: %s" % ("gone" if p in gone else "new", p))
+    L.append("")
+    L.append("What this comparison proves: only that no file was modified. Reading a file changes neither size, mtime nor ctime, and the mount has no access "
+             "times, so the comparison cannot show that a file was not opened. The evidence for that is the step logs and the committed scripts "
+             "(and, from P3 on, an strace of each step).")
     L.append("")
     L.append("Files the amendment allowed to be read: " + ", ".join("`%s`" % e for e in a.expected_opened))
     L.append("")
@@ -64,7 +68,7 @@ def main(argv=None):
         L.append("## INCIDENT: files not named in the amendment changed (size, mtime, ctime, appeared or gone)")
         L.extend("- %s" % p for p in bad)
     else:
-        L.append("No file outside the amendment's list changed in size, mtime or ctime. **No incident.**")
+        L.append("No file outside the amendment's list was modified (size, mtime, ctime). **No modification incident.**")
     if changed["atime"]:
         L.append("")
         L.append("Files with a changed atime (first 30):")

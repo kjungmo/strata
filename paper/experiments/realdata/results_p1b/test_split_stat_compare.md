@@ -11,9 +11,11 @@ Files in the before record: 6644. Files in the after record: 6644.
 - size changed: 0
 - mtime changed: 0
 - ctime changed: 0
-- atime changed: 0 (not evidence: the disk is mounted without access times)
+- atime changed: 0 (not evidence: the disk is mounted without access times; see below)
 
+
+What this comparison proves: only that no file was modified. Reading a file changes neither size, mtime nor ctime, and the mount has no access times, so the comparison cannot show that a file was not opened. The evidence for that is the step logs and the committed scripts (and, from P3 on, an strace of each step).
 
 Files the amendment allowed to be read: `spires/keble/sequences/2024-03-12-keble-college-02/`, `spires/keble/ground_truth_map/keble-college/merged-cloud-1cm.pcd`, `spires/keble/calibration/README.md`
 
-No file outside the amendment's list changed in size, mtime or ctime. **No incident.**
+No file outside the amendment's list was modified (size, mtime, ctime). **No modification incident.**

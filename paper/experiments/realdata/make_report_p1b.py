@@ -41,10 +41,28 @@ def table(rows, cols, heads=None):
 
 
 def git(args, cwd):
+    """Runs git in cwd and fails loudly: a wrong path must never give an empty chronology (Opus finding 1, phase 1b)."""
     try:
-        return subprocess.check_output(["git", "-C", cwd] + args, stderr=subprocess.DEVNULL).decode().strip()
-    except Exception:
-        return ""
+        return subprocess.check_output(["git", "-C", cwd] + args, stderr=subprocess.PIPE).decode().strip()
+    except subprocess.CalledProcessError as e:
+        raise RuntimeError("git %s failed in %s (rc=%d): %s" % (" ".join(args), cwd, e.returncode, e.stderr.decode().strip()))
+
+
+def repo_root(start):
+    """The root of the repository that contains `start` (not a fixed number of levels up)."""
+    return git(["rev-parse", "--show-toplevel"], os.path.abspath(start))
+
+
+def laser_optima(csv_path):
+    """Per-laser offset optimum of a P1 offset table: the dt with the fewest occupied cells, front and rear separately."""
+    rows = load(csv_path)
+    if not rows:
+        return None
+    out = {}
+    for k in ("c_front", "c_rear", "score"):
+        b = min(rows, key=lambda r: int(r[k]))
+        out[k] = (b["dt_s"], b[k])
+    return out
 
 
 def first_last(logdir):
@@ -97,8 +115,10 @@ def main(argv=None):
     # ---- chronology
     P("## 1. Chronology")
     P("")
-    repo = os.path.abspath(os.path.join(a.prereg_dir, "..", ".."))
+    repo = repo_root(a.prereg_dir)
     log = git(["log", "--reverse", "--format=%h %cI %s", "2db4f2c^..HEAD", "--", "paper/experiments/realdata"], repo)
+    if not log.strip():
+        raise RuntimeError("the chronology is empty: no commit in 2db4f2c^..HEAD touches paper/experiments/realdata")
     P("Commits of the branch since the stat record (oldest first):")
     P("")
     for line in log.splitlines():
@@ -259,6 +279,13 @@ def main(argv=None):
     cm = os.path.join(rd, "test_split_stat_compare.md")
     P("## 11. Test-split access record")
     P("")
+    P("**What this record proves.** Only that no test-split file was modified (size, mtime and ctime are equal before and after). Reading a file changes none of them, "
+      "and `D:` is a 9p mount with `noatime`: the `atime` of files that were certainly read in this phase (the Keble 02 `lidar-clouds.zip`, `gt-tum.txt` and the TLS "
+      "`merged-cloud-1cm.pcd`) is identical in the two records. The advice section 7 acceptance check on `atime` therefore cannot be verified on this mount. "
+      "The evidence that other test files were not opened is the step logs and the committed scripts (a search of all committed scripts, logs and exploratory logs "
+      "finds test-split paths only in the stat scripts: Opus review of phase 1b, finding 2). For P3 every measurement step records an `strace -f -e trace=openat,open` "
+      "log, committed beside the step log (`PREREG_P1B.md`, Amendment 3).")
+    P("")
     if os.path.exists(cm):
         with open(cm) as f:
             txt = f.read()
@@ -272,6 +299,54 @@ def main(argv=None):
             with open(mp) as f:
                 lines = [l for l in f.read().splitlines() if l.startswith("Mutants:")]
             P("- mutation %s: %s (`%s`)" % (title, lines[0] if lines else "n/a", fn))
+    P("")
+    # ---- review findings (static text and one table read from committed P1 tables)
+    P("## 13. Open items from the Opus review of phase 1b (for the lead; nothing here changes a verdict or a definition)")
+    P("")
+    P("### 13.1 Time base of the LILocBench clutter sequence (`dynamics_0`)")
+    P("")
+    P("Advice section 4: if LIL fails G1 or G2, stop and re-examine the time base first. Phase 1b stopped but did not look. The phase 1 offset search already shows a "
+      "per-laser disagreement on `dynamics_0` only (fewest occupied cells, front and rear laser alone; `results_p1/meta/lil_offset_*.csv`):")
+    P("")
+    rows = []
+    p1 = os.path.join(rd, "..", "results_p1", "meta")
+    for sq in ("mapping", "static_0", "dynamics_0"):
+        o = laser_optima(os.path.join(p1, "lil_offset_%s.csv" % sq))
+        if o:
+            rows.append({"sequence": sq, "front_dt_s": o["c_front"][0], "front_cells": o["c_front"][1], "rear_dt_s": o["c_rear"][0], "rear_cells": o["c_rear"][1],
+                         "sum_dt_s": o["score"][0], "sum_cells": o["score"][1]})
+    P(table(rows, ["sequence", "front_dt_s", "front_cells", "rear_dt_s", "rear_cells", "sum_dt_s", "sum_cells"],
+            ["sequence", "front optimum dt (s)", "cells", "rear optimum dt (s)", "cells", "both lasers optimum dt (s)", "cells"]))
+    P("Run B used one offset, -0.13 s, for all three sequences. On `dynamics_0` the rear laser is best at -0.06 s (7258 cells; 8904 at -0.13 s). "
+      "The reviewer's post hoc check (own code, files under `/mnt/d/wsl/strata/review_p1b/`, not committed, not pre-registered, not reproduced here): robust wall width "
+      "3.46 x 1.4826 x MAD of the perpendicular offsets in the accepted linear patches is 0.172 m for the `dynamics_0` rear laser against 0.075 m for the `static_0` rear laser; "
+      "with the rear frames of `dynamics_0` taken at -0.06 s it is 0.120 m. The pre-registered G1 statistic on `dynamics_0` would move from median 0.185 m (485 patches) to 0.140 m "
+      "(581 patches); `q_c` (0.05 m, W = 15) from 0.1725 to 0.1707, so the conditional pair stays (0.20, 0.70); `structure@dynamics_0` q10 from 0.25 to 0.36. "
+      "The W = 15 cell table of `dynamics_0` rebuilt at -0.13 s is byte-identical to the run B cache. "
+      "**The lead must settle the `dynamics_0` rear-laser offset (a pre-registered per-laser rule, as an amendment) before waiving any gate for `dynamics_0`.**")
+    P("")
+    P("### 13.2 `n_max_undecided`")
+    P("")
+    P("`LEAD_DECISIONS_P1.md` L-6 fixes 64. `PREREG_P1B.md` section 7 replaced it with a rule (smallest multiple of 16 with P(undecided) <= 0.03), which gives 80. "
+      "Exact undecided shares under the engine rule (no floor before n >= 24; `derive_defaults.py`, re-computed and equal to the reviewer's own dynamic program):")
+    P("")
+    P("| pair | P(undecided) at 64 | P(undecided) at 80 | rule |")
+    P("|---|---|---|---|")
+    P("| (0.15, 0.65) | 0.0314 | 0.0113 | 80 |")
+    P("| (0.20, 0.70) | 0.0388 | 0.0150 | 80 |")
+    P("")
+    P("The value that binds P2 is for the lead to record in `LEAD_DECISIONS_P1.md`: the rule (80), or 64 with the 0.039 undecided share reported.")
+    P("")
+    P("### 13.3 G1 does not measure what it claims")
+    P("")
+    P("The gates match the spec. The reviewer's independent C++ (own reader, RNG, nearest-neighbour search and eigen code) reproduces G2 on `static_0` exactly "
+      "(1,445,199 query points, matched 0.999698, median 0.001326 m, p90 0.005970 m) and G1 within sampling (427 patches, 0.1707 / 0.2550 m against the branch's 391, 0.1705 / 0.2545 m). "
+      "But sqrt(12 lambda_min) does not resist off-line points. On the same accepted patches the robust core width is 0.076 m on `static_0` (the spec predicts 0.077) and 0.063 m on `mapping`; "
+      "on the run A cache, which has the known 0.13 s error, it is 0.131 m. So the 0.17 to 0.19 m G1 failures come from second surfaces inside 'linear' patches, not from pose smear. "
+      "On Keble 02, G1 fails (0.32 m) while the poses are good. G2 cannot see smear (`deviations.md`, item 7). "
+      "Any replacement gate is a second gate change made after seeing data: it must be committed as an amendment with this chronology and reported as such. "
+      "A robust-width G1 at the spec's 0.10 m limit separates run A from run B in the reviewer's post hoc check; that check is not pre-registered and must not be presented as such. "
+      "**This blocks the freeze; the decision is the lead's.**")
     P("")
     out = "\n".join(L)
     with open(a.out, "w") as f:
