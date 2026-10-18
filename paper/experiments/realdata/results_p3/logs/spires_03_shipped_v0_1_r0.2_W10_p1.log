@@ -1,0 +1,10 @@
+STEP spires_03_shipped_v0_1_r0.2_W10_p1
+START 2026-10-18T16:44:00+09:00 host=DESKTOP-KCD7BRS load=5.02 5.25 4.88 cores=12
+COMMIT 02462c3485d342114d136abe34ef58e804bc2c94
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 02462c3485d342114d136abe34ef58e804bc2c94
+STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+CMD <BUILD_DIR>/build/realdata/p3_probe arm-eval --cache <OUT_DIR>/spires_03/cache.bin --labels <OUT_DIR>/spires_03/labels_r0.2.bin --arm shipped_v0_1 --res 0.2 --window 10 --periodicity 1 --format counts --out <OUT_DIR>/spires_03/counts_shipped_v0_1_r0.2_W10_p1.csv --meta <OUT_DIR>/spires_03/counts_shipped_v0_1_r0.2_W10_p1.meta
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_03_shipped_v0_1_r0.2_W10_p1.json rc=0
+END 2026-10-18T16:51:07+09:00 rc=0 load=1.75 3.54 4.32

@@ -521,3 +521,19 @@ Resolves finding 2 of the third Opus review. Section 12 lists six open items and
 ```text lead decisions
 LEAD_P3_DECISIONS=amendment-7
 ```
+
+## 21. Amendment 8 (2026-10-18, during the evaluation, after the first failed run): failures do not stop a stage; resume; memory limit of the Spires 0.1 m runs
+
+Written and committed after the first failure of the evaluation and before any run that it affects. The two LILocBench stages (veto on and off) had finished without a failure. It changes no arm, no label, no window, no resolution and no metric.
+
+**What happened.** The stage `eval_spires` (veto on) ran `spires_03_shipped_v0_1_r0.1_W10_p1` with the default address-space limit of 6 GB (`MEM_LIMIT_KB = 6000000`) and ended with `std::bad_alloc` after 17 minutes
+(`results_p3/logs/spires_03_shipped_v0_1_r0.1_W10_p1.attempt-*.log` and its run record, kept). The script stopped the whole stage at the failed step (`must`). The 0.2 m runs of Keble 03 (28 arm runs) had finished.
+
+**Changes (all in `reproduce_p3.sh`; committed before the run they affect).**
+
+1. A failed arm run, export or evaluation is appended to `results_p3/failed_steps.tsv` and the stage goes on with the next run (`try`). The failure stays a reported result (section 4: all runs are reported, failures with the reason). A run that depends on a failed run (its evaluation, the Jaccard of an arm whose export failed) is not started and is listed as not run.
+2. `P3_RESUME=1`: a step whose run record exists with return code 0 is not run again. Nothing else is skipped. A failed step is run again with an identical command and its earlier log is kept as an attempt (section 4: a run is repeated only after a crash with an identical configuration; the repetition is listed).
+3. The Spires arm runs at 0.1 m use the address-space limit **9 GB** (the limit of the KTH exports, section 14), 0.2 m runs stay at 6 GB. The host has 11.9 GB of RAM and 32 GB of swap. If a 0.1 m run fails at 9 GB it is reported as failed with this limit and is not run again with a larger one.
+   This is a resource limit of the harness, not a setting of an arm. The limit is stated beside every Spires 0.1 m table.
+
+The same rule (1 and 2) applies to the KTH and Boreas stages. Their memory limits stay as written (KTH 9 GB; Boreas conversion and static exports 6 GB, section 14 and Amendment 1).

@@ -45,6 +45,10 @@ tree_dirty() { git -C "$HERE" status --porcelain -- ':(glob)p3_*' ':(glob)test_p
 #   logs host, load, commit and the command (p3_runlog.py run), and with --traced runs the command under the file-open trace (p3_traced.sh)
 step() {
   local name="$1"; shift
+  # Amendment 8: with P3_RESUME=1 a step whose run record exists with return code 0 is not run again (the record and the log stay as they are)
+  if [ "${P3_RESUME:-0}" = "1" ] && [ -f "$RES/runs/$name.json" ] && python3 -I -c "import json,sys; sys.exit(0 if json.load(open(sys.argv[1])).get('returncode')==0 else 1)" "$RES/runs/$name.json"; then
+    echo "step $name rc=0 (resumed: earlier run record kept)"; return 0
+  fi
   local traced=0; local -a rl=()
   while [ $# -gt 0 ] && [ "$1" != "--" ]; do
     case "$1" in --traced) traced=1; shift;; --hash) rl+=(--hash-inputs); shift;; --input|--output) rl+=("$1" "$2"); shift 2;; *) echo "step: bad option $1"; exit 2;; esac
@@ -68,6 +72,8 @@ step() {
   echo "step $name rc=$rc"
   return $rc
 }
+# try CMD...: Amendment 8. A failed run is listed in results_p3/failed_steps.tsv and the stage goes on (all runs are reported, failures included).
+try() { "$@"; local rc=$?; if [ $rc -ne 0 ]; then printf '%s\t%s\trc=%s\n' "$(stamp)" "$2" "$rc" >> "$RES/failed_steps.tsv"; fi; return $rc; }
 must() { "$@" || { echo "stopping: step failed"; exit 1; }; }
 engine_has_sprt() { "$P3" arms | grep -q '^engine_has_sprt=1'; }
 
@@ -237,18 +243,20 @@ stage_eval_spires() {
       [ -f "$d/labels_r$r.bin" ] || must step "spires_${s}_labels_r$r" -- "$PB" spires-labels --tls-dir "$d" --cache "$d/cache.bin" --res "$r" --out "$d/labels_r$r.bin" --meta "$d/labels_r$r.meta"
       for arm in $(arms_to_run); do
         for w in 10 20; do
-          must step "spires_${s}_${arm}_r${r}_W${w}_p$PER" -- "$P3" arm-eval --cache "$d/cache.bin" --labels "$d/labels_r$r.bin" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
-            --format counts --out "$d/counts_${arm}_r${r}_W${w}_p$PER.csv" --meta "$d/counts_${arm}_r${r}_W${w}_p$PER.meta"
-          must step "spires_eval_${s}_${arm}_r${r}_W${w}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' spires --counts '$d/counts_${arm}_r${r}_W${w}_p$PER.csv' --latency '$d/counts_${arm}_r${r}_W${w}_p$PER.csv.latency' > '$RES/spires_${s}_${arm}_r${r}_W${w}_p$PER.json'"
+          # Amendment 8: 0.1 m runs get the 9 GB address-space limit of the KTH exports (the first attempt at 6 GB ended in std::bad_alloc); a failed run is listed, not hidden
+          local ml=6000000; [ "$r" = "0.1" ] && ml="${SPIRES_R01_MEM_LIMIT_KB:-9000000}"
+          MEM_LIMIT_KB=$ml try step "spires_${s}_${arm}_r${r}_W${w}_p$PER" -- "$P3" arm-eval --cache "$d/cache.bin" --labels "$d/labels_r$r.bin" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
+            --format counts --out "$d/counts_${arm}_r${r}_W${w}_p$PER.csv" --meta "$d/counts_${arm}_r${r}_W${w}_p$PER.meta" && \
+          try step "spires_eval_${s}_${arm}_r${r}_W${w}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' spires --counts '$d/counts_${arm}_r${r}_W${w}_p$PER.csv' --latency '$d/counts_${arm}_r${r}_W${w}_p$PER.csv.latency' > '$RES/spires_${s}_${arm}_r${r}_W${w}_p$PER.json'"
         done
       done
     done
   done
   # agreement of the Static sets of the three same-day sequences (one TLS frame), per arm
   for arm in $(arms_to_run); do
-    must step "spires_static_${arm}_p$PER" -- "$P3" static-export --caches "$OUT/spires_03/cache.bin,$OUT/spires_04/cache.bin,$OUT/spires_05/cache.bin" --arm "$arm" --res 0.2 --window 10 \
-      --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}_p${PER}" --meta "$OUT/spires_agree_${arm}_p${PER}.meta"
-    must step "spires_jaccard_${arm}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_p${PER}_s0_static.ids' '$OUT/spires_agree_${arm}_p${PER}_s1_static.ids' '$OUT/spires_agree_${arm}_p${PER}_s2_static.ids' --observed '$OUT/spires_agree_${arm}_p${PER}_s0_observed.ids' '$OUT/spires_agree_${arm}_p${PER}_s1_observed.ids' '$OUT/spires_agree_${arm}_p${PER}_s2_observed.ids' --res 0.2 > '$RES/spires_agree_${arm}_p${PER}.json'"
+    try step "spires_static_${arm}_p$PER" -- "$P3" static-export --caches "$OUT/spires_03/cache.bin,$OUT/spires_04/cache.bin,$OUT/spires_05/cache.bin" --arm "$arm" --res 0.2 --window 10 \
+      --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}_p${PER}" --meta "$OUT/spires_agree_${arm}_p${PER}.meta" && \
+    try step "spires_jaccard_${arm}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_p${PER}_s0_static.ids' '$OUT/spires_agree_${arm}_p${PER}_s1_static.ids' '$OUT/spires_agree_${arm}_p${PER}_s2_static.ids' --observed '$OUT/spires_agree_${arm}_p${PER}_s0_observed.ids' '$OUT/spires_agree_${arm}_p${PER}_s1_observed.ids' '$OUT/spires_agree_${arm}_p${PER}_s2_observed.ids' --res 0.2 > '$RES/spires_agree_${arm}_p${PER}.json'"
   done
   finish_eval "eval_spires_p$PER" "$OUT"/spires_0? "$OUT"/spires_agree_*_p$PER* "$RES"/spires_*_p$PER.json
 }
@@ -264,10 +272,10 @@ stage_eval_kth() {
     for arm in $(arms_to_run); do
       # the identity check (policy all = every frame point = the GT cloud: SA 100, DA 0) runs once per condition, with the first arm
       local pols="static_only,not_rejected"; [ "$arm" = "shipped_v0_1" ] && pols="$pols,all"
-      MEM_LIMIT_KB=9000000 must step "kth_${1}_${arm}_r${r}_W${w}_p$PER" --traced -- "$P3" kth-export --dir "$seq" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
-        --policies "$pols" --out-prefix "$d/${arm}_r${r}_W${w}_p$PER" --meta "$d/${arm}_r${r}_W${w}_p$PER.meta"
+      MEM_LIMIT_KB=9000000 try step "kth_${1}_${arm}_r${r}_W${w}_p$PER" --traced -- "$P3" kth-export --dir "$seq" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
+        --policies "$pols" --out-prefix "$d/${arm}_r${r}_W${w}_p$PER" --meta "$d/${arm}_r${r}_W${w}_p$PER.meta" || continue
       for pol in ${pols//,/ }; do
-        MEM_LIMIT_KB=9000000 must step "kth_eval_${1}_${arm}_r${r}_W${w}_p${PER}_$pol" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth --gt '$seq/gt_cloud.pcd' --map '$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd' > '$RES/kth_${1}_${arm}_r${r}_W${w}_p${PER}_$pol.json'"
+        MEM_LIMIT_KB=9000000 try step "kth_eval_${1}_${arm}_r${r}_W${w}_p${PER}_$pol" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth --gt '$seq/gt_cloud.pcd' --map '$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd' > '$RES/kth_${1}_${arm}_r${r}_W${w}_p${PER}_$pol.json'"
         rm -f "$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd"          # bulky; the meta file and the JSON keep the numbers
       done
     done
@@ -291,12 +299,13 @@ stage_eval_boreas() {
     if [ "$id" != "${ids[0]}" ]; then python3 -I "$HERE/p3_eval.py" zoffset --a "$d/ground_${ids[0]}.csv" --b "$d/ground_$id.csv" > "$RES/boreas_ground_diagnostic_$id.json"; fi
   done
   for arm in $(arms_to_run); do
+    local ok_ind=0 ok_cum=0
     for mode in independent cumulative; do
-      must step "boreas_static_${arm}_$mode" -- "$P3" static-export --caches "$caches" --arm "$arm" --res 0.2 --window 10 --periodicity 0 --mode "$mode" \
-        --out-prefix "$d/${arm}_$mode" --meta "$d/${arm}_$mode.meta"
+      try step "boreas_static_${arm}_$mode" -- "$P3" static-export --caches "$caches" --arm "$arm" --res 0.2 --window 10 --periodicity 0 --mode "$mode" \
+        --out-prefix "$d/${arm}_$mode" --meta "$d/${arm}_$mode.meta" && { [ "$mode" = independent ] && ok_ind=1 || ok_cum=1; }
     done
-    must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --observed '$d/${arm}_independent_s0_observed.ids' '$d/${arm}_independent_s1_observed.ids' '$d/${arm}_independent_s2_observed.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
-    must step "boreas_newstatic_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' newstatic --cum '$d/${arm}_cumulative_s2_static.ids' --ind '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' > '$RES/boreas_${arm}_newstatic.json'"
+    [ "$ok_ind" = 1 ] && try step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --observed '$d/${arm}_independent_s0_observed.ids' '$d/${arm}_independent_s1_observed.ids' '$d/${arm}_independent_s2_observed.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
+    [ "$ok_ind" = 1 ] && [ "$ok_cum" = 1 ] && try step "boreas_newstatic_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' newstatic --cum '$d/${arm}_cumulative_s2_static.ids' --ind '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' > '$RES/boreas_${arm}_newstatic.json'"
   done
   finish_eval eval_boreas "$d" "$RES"/boreas_*.json
 }

@@ -129,3 +129,8 @@ I did not disagree with any finding. No evaluation stage has run (`results_p3/ev
 The reviewer computed no arm, label, metric or rate. The purpose was a reader check against TLS. KTH 00 (calibration data) was also read; it is not test split and has no row in the access log. No configuration changed because of these reads. The TLS map is read by the `spires_*_tls` steps of `eval_spires` under strace as before.
 
 **Test-split stat record.** `results_p3/review/review3_stat_now*.tsv` (taken after the reads) against `test_split_stat_after_r2*.tsv`: comparison `results_p3/review/review3_stat_compare.md`. 6,644 files in each record; no file appeared, disappeared or changed in size, mtime or ctime. As before, this shows only that no file was modified; it does not show that a file was not opened.
+
+## Evaluation run (2026-10-18): deviations during the run
+
+1. **Spires 0.1 m, 6 GB limit (first failure).** `spires_03_shipped_v0_1_r0.1_W10_p1` ended with `std::bad_alloc` at the 6 GB address-space limit after 17 minutes. The stage stopped (`must`). `PREREG_P3.md` Amendment 8 lets failed runs be listed and the stage go on, adds `P3_RESUME`, and sets the limit of the Spires 0.1 m arm runs to 9 GB. The failed attempt's log and run record are kept as `*.attempt-*`.
+2. The stat record before the evaluation run is `test_split_stat_before_p3run*.tsv` (committed in 724ecf4, before the first evaluation step).
