@@ -1,17 +1,16 @@
 STEP build_make
-START 2026-10-18T14:21:20+09:00 host=DESKTOP-KCD7BRS load=11.54 10.69 9.96 cores=12
-COMMIT f2819d839bf0f0a765571a3c8928e1182dbe1d6e
+START 2026-10-18T14:49:29+09:00 host=DESKTOP-KCD7BRS load=3.32 3.01 6.33 cores=12
+COMMIT a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT f2819d839bf0f0a765571a3c8928e1182dbe1d6e
+BINARY_COMMIT a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7
 STRATA_CORE_TREE d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
-STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
 CMD cmake --build <BUILD_DIR>/build -j4 --target p3_probe hitrate_probe p1b_probe test_p3
 Scanning dependencies of target strata_core
-[ 12%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
-[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
+[ 25%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
 [ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/periodicity.cpp.o
-[ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
-[ 62%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/voxel3d_backend.cpp.o
+[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
+[ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp: In function ‘bool strata_core::worldToGrid(const strata_core::GridMeta&, double, double, int&, int&)’:
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp:6:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
     6 |   if(fx<0.0||fy<0.0) return false; gx=static_cast<int>(fx); gy=static_cast<int>(fy);
@@ -19,6 +18,7 @@ Scanning dependencies of target strata_core
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp:6:36: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
     6 |   if(fx<0.0||fy<0.0) return false; gx=static_cast<int>(fx); gy=static_cast<int>(fy);
       |                                    ^~
+[ 62%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/voxel3d_backend.cpp.o
 [ 75%] Linking CXX static library libstrata_core.a
 [ 75%] Built target strata_core
 Scanning dependencies of target p3_probe
@@ -46,4 +46,4 @@ Scanning dependencies of target test_p3
 [100%] Linking CXX executable test_p3
 [100%] Built target test_p3
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/build_make.json rc=0
-END 2026-10-18T14:27:07+09:00 rc=0 load=13.20 13.40 11.51
+END 2026-10-18T14:50:25+09:00 rc=0 load=3.93 3.26 6.22

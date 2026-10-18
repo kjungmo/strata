@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "5.14 5.74 5.81 6/826 815470",
+  "loadavg": "4.03 3.40 6.13 5/861 1145531",
   "meminfo": {
-   "MemAvailable": "9947132 kB",
+   "MemAvailable": "9026800 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31849952 kB"
+   "SwapFree": "31939608 kB"
   },
-  "time": "2026-10-18T11:16:08+0900",
+  "time": "2026-10-18T14:51:11+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 100 73980 test_closed_loo",
-   " 6.6 651924 2.1.299",
-   " 3.2 184632 claude",
-   " 1.0 13824 python3",
-   " 0.8 12648 x-terminal-emul"
+   " 102 731088 cc1plus",
+   "99.8  4152 e5_trajectory",
+   "17.9 82192 python3",
+   "16.4 76604 python3",
+   " 6.1 646292 2.1.299"
   ]
  },
  "argv": [
@@ -24,31 +24,36 @@
   "boreas-validate",
   "--seq",
   "~/datasets/strata/boreas/boreas-2020-11-26-13-58",
+  "--ref",
+  "~/datasets/strata/boreas/boreas-2020-11-26-13-58",
   "--n",
   "10"
  ],
  "before": {
-  "loadavg": "5.07 5.73 5.81 5/803 815094",
+  "loadavg": "4.03 3.40 6.13 4/861 1145498",
   "meminfo": {
-   "MemAvailable": "9560872 kB",
+   "MemAvailable": "8966544 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31849952 kB"
+   "SwapFree": "31939608 kB"
   },
-  "time": "2026-10-18T11:16:04+0900",
+  "time": "2026-10-18T14:51:08+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 100 29336 strata_core_tes",
-   "99.9 73980 test_closed_loo",
-   "97.5 579640 cc1plus",
-   " 6.6 612748 2.1.299",
-   " 3.2 191160 claude"
+   " 108 303324 cc1plus",
+   "99.1 724240 cc1plus",
+   "99.0  4152 e5_trajectory",
+   "17.8 81908 python3",
+   "16.4 76604 python3"
   ]
  },
  "cores": 12,
  "git": {
-  "commit": "774812177c00c9279717c552d1fc38a43d0bcf62",
-  "uncommitted_in_experiment_dir": 4,
-  "uncommitted_in_repository": 19
+  "binary_commit": "a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7",
+  "commit": "a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7",
+  "strata_core_tree_binary": "d8db00efc9e04d1c1880cd55cf75bd90a018b5c0",
+  "strata_core_tree_head": "d8db00efc9e04d1c1880cd55cf75bd90a018b5c0",
+  "uncommitted_in_experiment_dir": 1,
+  "uncommitted_in_repository": 22
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -57,6 +62,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 3.335,
+ "seconds": 2.431,
  "step": "validate_boreas_2020"
 }

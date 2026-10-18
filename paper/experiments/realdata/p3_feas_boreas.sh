@@ -7,19 +7,20 @@
 # its per-configuration files were overwritten except the last ones (results_p3/feas/original/). This script keeps everything it prints:
 # the table (results_p3/feas/feas_table.txt), the convert meta of every range window and the meta and time files of every configuration.
 # It was run again for the record after review finding 5, with the same 10 frames (the new reads are in access_log.tsv under feas_rerun_*).
+# Third run (PREREG_P3.md Amendment 4, the rotation convention was wrong in the first two): same 10 frames, steps feas_a4_*, records in results_p3/feas_a4/.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 B="${BUILD_DIR:-$HOME/.cache/strata_p3_build}/build/realdata"
 D="${DATA_ROOT:-$HOME/datasets/strata}/boreas/boreas-2020-11-26-13-58"
-O="${FEAS_OUT:-/mnt/d/wsl/strata/p3/feas_rerun}"        # bulky caches stay outside the repository
-R="${FEAS_RECORD:-$HERE/results_p3/feas}"                  # small records, committed
+O="${FEAS_OUT:-/mnt/d/wsl/strata/p3/feas_a4}"        # bulky caches stay outside the repository
+R="${FEAS_RECORD:-$HERE/results_p3/feas_a4}"               # small records, committed
 mkdir -p "$O" "$R"
 cd "$HERE"
 {
   echo "# engine commit $(cat "${BUILD_DIR:-$HOME/.cache/strata_p3_build}/commit" 2>/dev/null || echo unknown); started $(date -Is); host $(hostname); load $(cut -d' ' -f1-3 /proc/loadavg)"
   echo "r_max res periodicity arm cells rss_kb seconds"
   for rmax in 50 25 15; do
-    bash p3_traced.sh feas_rerun_boreas_convert_r$rmax "$B/p3_probe" boreas-convert --seq "$D" --ref "$D" --max-frames 10 --r-max "$rmax" --out "$O/cache10_r$rmax.bin" --meta "$O/cache10_r$rmax.meta" > /dev/null
+    bash p3_traced.sh feas_a4_boreas_convert_r$rmax "$B/p3_probe" boreas-convert --seq "$D" --ref "$D" --max-frames 10 --r-max "$rmax" --out "$O/cache10_r$rmax.bin" --meta "$O/cache10_r$rmax.meta" > /dev/null
     cp "$O/cache10_r$rmax.meta" "$R/convert_r$rmax.meta"
     for res in 0.2 0.4; do
       for per in 0 1; do
