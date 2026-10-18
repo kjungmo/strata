@@ -1,6 +1,7 @@
 // Tests of the phase 3 harness on small synthetic fixtures. No real data are needed.
 #include <gtest/gtest.h>
 #include <sys/stat.h>
+#include <unistd.h>
 #include <zlib.h>
 #include <array>
 #include <cstdio>
@@ -27,6 +28,8 @@ std::string tmpDir() {
   return dir;
 }
 std::string tmpPath(const std::string& name) { return tmpDir() + "/" + name; }
+// Relative paths in command line tests (error cases write "x" and "y") must not land in the directory the tests run from.
+const int kChdir = (::chdir(tmpDir().c_str()), 0);
 void makeDir(const std::string& p) { ::mkdir(p.c_str(), 0755); }
 
 std::string readText(const std::string& path) {
