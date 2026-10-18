@@ -207,43 +207,43 @@ lil_sequence() {   # lil_sequence SEQ: convert (run B time base), then every arm
     --deskew 1 --anchor start --time-offset -0.13 --out "$d/cache_$seq.bin" --meta "$d/cache_$seq.meta"
   cp "$d/cache_$seq.meta" "$RES/meta_lil_convert_$seq.meta" 2>/dev/null
   # time-base diagnostic of the lt_changes bag (selects nothing; PREREG_P3.md section 6.1): the scan-to-GT offset search of phase 1
-  must step "lil_offset_$seq" --traced -- "$HP" lil-offset --bag "$DATA/lilocbench/bags/$seq.bag" --gt "$DATA/lilocbench/gt_x/$seq/gt_poses.txt" \
+  [ -f "$d/offset_$seq.csv" ] || must step "lil_offset_$seq" --traced -- "$HP" lil-offset --bag "$DATA/lilocbench/bags/$seq.bag" --gt "$DATA/lilocbench/gt_x/$seq/gt_poses.txt" \
     --out "$d/offset_$seq.csv" --meta "$RES/meta_lil_offset_$seq.meta"
   for arm in $(arms_to_run); do
-    must step "lil_${seq}_$arm" -- "$P3" arm-eval --cache "$d/cache_$seq.bin" --labels "$P1/lil/ref_r0.05.bin" --arm "$arm" --res 0.05 --window 15 --periodicity "$PER" \
+    must step "lil_${seq}_${arm}_p$PER" -- "$P3" arm-eval --cache "$d/cache_$seq.bin" --labels "$P1/lil/ref_r0.05.bin" --arm "$arm" --res 0.05 --window 15 --periodicity "$PER" \
       --out "$d/dump_${seq}_${arm}_p$PER.csv" --meta "$d/dump_${seq}_${arm}_p$PER.meta"
-    must step "lil_eval_${seq}_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' lil --dump '$d/dump_${seq}_${arm}_p$PER.csv' --res 0.05 > '$RES/lil_${seq}_${arm}_p$PER.json'"
+    must step "lil_eval_${seq}_${arm}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' lil --dump '$d/dump_${seq}_${arm}_p$PER.csv' --res 0.05 > '$RES/lil_${seq}_${arm}_p$PER.json'"
   done
 }
-stage_eval_lil() { guard_eval; lil_sequence lt_changes_dynamics_0; lil_sequence lt_changes_0; finish_eval eval_lil "$OUT/lil" "$RES"/lil_*.json; }
+stage_eval_lil() { guard_eval; lil_sequence lt_changes_dynamics_0; lil_sequence lt_changes_0; finish_eval "eval_lil_p$PER" "$OUT/lil" "$RES"/lil_*_p$PER.json; }
 
 stage_eval_spires() {
   guard_eval
   local dt; dt="$(grep '^selected_dt_s=' "$HERE/results_p1b/meta/spires_offset.meta" | cut -d= -f2)"
   for s in 03 04 05; do
     local seq="$KEBLE/sequences/2024-03-12-keble-college-$s" d="$OUT/spires_$s"; mkdir -p "$d"
-    must step "spires_${s}_tls" --traced -- "$PB" spires-tls --pcd "$KEBLE/ground_truth_map/keble-college/merged-cloud-1cm.pcd" --gt "$seq/processed/trajectory/gt-tum.txt" \
+    [ -f "$d/spires_tls.meta" ] || must step "spires_${s}_tls" --traced -- "$PB" spires-tls --pcd "$KEBLE/ground_truth_map/keble-college/merged-cloud-1cm.pcd" --gt "$seq/processed/trajectory/gt-tum.txt" \
       --radius 30 --out-dir "$d" --meta "$d/spires_tls.meta"
-    must step "spires_${s}_convert" --traced -- "$PB" spires-convert --zip "$seq/raw/lidar-clouds.zip" --gt "$seq/processed/trajectory/gt-tum.txt" --dt "$dt" \
+    [ -f "$d/cache.bin" ] || must step "spires_${s}_convert" --traced -- "$PB" spires-convert --zip "$seq/raw/lidar-clouds.zip" --gt "$seq/processed/trajectory/gt-tum.txt" --dt "$dt" \
       --out "$d/cache.bin" --meta "$d/spires_convert.meta"
     for r in 0.2 0.1; do
-      must step "spires_${s}_labels_r$r" -- "$PB" spires-labels --tls-dir "$d" --cache "$d/cache.bin" --res "$r" --out "$d/labels_r$r.bin" --meta "$d/labels_r$r.meta"
+      [ -f "$d/labels_r$r.bin" ] || must step "spires_${s}_labels_r$r" -- "$PB" spires-labels --tls-dir "$d" --cache "$d/cache.bin" --res "$r" --out "$d/labels_r$r.bin" --meta "$d/labels_r$r.meta"
       for arm in $(arms_to_run); do
         for w in 10 20; do
-          must step "spires_${s}_${arm}_r${r}_W$w" -- "$P3" arm-eval --cache "$d/cache.bin" --labels "$d/labels_r$r.bin" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
+          must step "spires_${s}_${arm}_r${r}_W${w}_p$PER" -- "$P3" arm-eval --cache "$d/cache.bin" --labels "$d/labels_r$r.bin" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
             --format counts --out "$d/counts_${arm}_r${r}_W${w}_p$PER.csv" --meta "$d/counts_${arm}_r${r}_W${w}_p$PER.meta"
-          must step "spires_eval_${s}_${arm}_r${r}_W$w" -- bash -c "python3 -I '$HERE/p3_eval.py' spires --counts '$d/counts_${arm}_r${r}_W${w}_p$PER.csv' --latency '$d/counts_${arm}_r${r}_W${w}_p$PER.csv.latency' > '$RES/spires_${s}_${arm}_r${r}_W${w}_p$PER.json'"
+          must step "spires_eval_${s}_${arm}_r${r}_W${w}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' spires --counts '$d/counts_${arm}_r${r}_W${w}_p$PER.csv' --latency '$d/counts_${arm}_r${r}_W${w}_p$PER.csv.latency' > '$RES/spires_${s}_${arm}_r${r}_W${w}_p$PER.json'"
         done
       done
     done
   done
   # agreement of the Static sets of the three same-day sequences (one TLS frame), per arm
   for arm in $(arms_to_run); do
-    must step "spires_static_${arm}" -- "$P3" static-export --caches "$OUT/spires_03/cache.bin,$OUT/spires_04/cache.bin,$OUT/spires_05/cache.bin" --arm "$arm" --res 0.2 --window 10 \
-      --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}" --meta "$OUT/spires_agree_${arm}.meta"
-    must step "spires_jaccard_${arm}" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_s0_static.ids' '$OUT/spires_agree_${arm}_s1_static.ids' '$OUT/spires_agree_${arm}_s2_static.ids' --observed '$OUT/spires_agree_${arm}_s0_observed.ids' '$OUT/spires_agree_${arm}_s1_observed.ids' '$OUT/spires_agree_${arm}_s2_observed.ids' --res 0.2 > '$RES/spires_agree_${arm}.json'"
+    must step "spires_static_${arm}_p$PER" -- "$P3" static-export --caches "$OUT/spires_03/cache.bin,$OUT/spires_04/cache.bin,$OUT/spires_05/cache.bin" --arm "$arm" --res 0.2 --window 10 \
+      --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}_p${PER}" --meta "$OUT/spires_agree_${arm}_p${PER}.meta"
+    must step "spires_jaccard_${arm}_p$PER" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_p${PER}_s0_static.ids' '$OUT/spires_agree_${arm}_p${PER}_s1_static.ids' '$OUT/spires_agree_${arm}_p${PER}_s2_static.ids' --observed '$OUT/spires_agree_${arm}_p${PER}_s0_observed.ids' '$OUT/spires_agree_${arm}_p${PER}_s1_observed.ids' '$OUT/spires_agree_${arm}_p${PER}_s2_observed.ids' --res 0.2 > '$RES/spires_agree_${arm}_p${PER}.json'"
   done
-  finish_eval eval_spires "$OUT"/spires_0? "$OUT"/spires_agree_* "$RES"/spires_*.json
+  finish_eval "eval_spires_p$PER" "$OUT"/spires_0? "$OUT"/spires_agree_*_p$PER* "$RES"/spires_*_p$PER.json
 }
 
 stage_eval_kth() {
@@ -257,15 +257,15 @@ stage_eval_kth() {
     for arm in $(arms_to_run); do
       # the identity check (policy all = every frame point = the GT cloud: SA 100, DA 0) runs once per condition, with the first arm
       local pols="static_only,not_rejected"; [ "$arm" = "shipped_v0_1" ] && pols="$pols,all"
-      MEM_LIMIT_KB=9000000 must step "kth_${1}_${arm}_r${r}_W$w" --traced -- "$P3" kth-export --dir "$seq" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
+      MEM_LIMIT_KB=9000000 must step "kth_${1}_${arm}_r${r}_W${w}_p$PER" --traced -- "$P3" kth-export --dir "$seq" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
         --policies "$pols" --out-prefix "$d/${arm}_r${r}_W${w}_p$PER" --meta "$d/${arm}_r${r}_W${w}_p$PER.meta"
       for pol in ${pols//,/ }; do
-        MEM_LIMIT_KB=9000000 must step "kth_eval_${1}_${arm}_r${r}_W${w}_$pol" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth --gt '$seq/gt_cloud.pcd' --map '$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd' > '$RES/kth_${1}_${arm}_r${r}_W${w}_p${PER}_$pol.json'"
+        MEM_LIMIT_KB=9000000 must step "kth_eval_${1}_${arm}_r${r}_W${w}_p${PER}_$pol" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth --gt '$seq/gt_cloud.pcd' --map '$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd' > '$RES/kth_${1}_${arm}_r${r}_W${w}_p${PER}_$pol.json'"
         rm -f "$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd"          # bulky; the meta file and the JSON keep the numbers
       done
     done
   done
-  finish_eval eval_kth "$OUT"/kth_05 "$OUT"/kth_semindoor "$RES"/kth_*.json
+  finish_eval "eval_kth_p$PER" "$OUT"/kth_05 "$OUT"/kth_semindoor "$RES"/kth_*_p${PER}_*.json
 }
 
 stage_eval_boreas() {
