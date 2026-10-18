@@ -97,7 +97,9 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
 24. **Chronology wording was false in two places (finding 2, corrected in items 4 and 5 above).** An exploratory step ran ahead of its commit: `gate_spires_structure_filter.log` starts 07:41:41, `--labels` was first
     committed in d759627 at 07:52:47, and `spires_measure_r0.1` (07:43:51) ran on the binary rebuilt from that uncommitted tree. `spires_measure_r0.2` (start 07:40:35) ran on the binary built before it. No number is
     affected: the reviewer rebuilt at fd08285 and all 8 Keble 02 cell tables are byte-identical to the committed run; the implementer repeated the check for the four `r = 0.1` tables on a binary built from a
-    clean committed tree: see the result line below this item.
+    clean committed tree.
+    **Result (2026-10-18, 09:4x):** binary built by `reproduce_p1b.sh build` at 11d90db with a clean tree; `spires-measure` on `r = 0.1`, windows 10 and 20, today and refined: 4 of 4 cell tables
+    byte-identical (`cmp`) to the committed run. Output in `/mnt/d/wsl/strata/p1b_rerun/` (not in the repository).
 25. **Build provenance (finding 3).** `run_manifest.txt` records `commit=43fa004` for the whole phase, but the steps from `equiv_kth_r0.1` on ran on binaries rebuilt at later commits (571acf6, 26f7df0, then the uncommitted tree
     of item 24), and no step log recorded the commit of its binary. Nothing is changed retroactively. From now on `reproduce_p1b.sh` writes `COMMIT` and `TREE_STATUS_PORCELAIN_LINES` into every step log, and the `build`
     stage refuses a tree with uncommitted files outside the results directories (`ALLOW_DIRTY_BUILD=1` overrides and must be disclosed). For P3 the rule is: rebuild only from a clean committed tree.
@@ -105,6 +107,6 @@ a threshold or a rule of the amendment. Times are +09:00 on 2026-10-18.
     gate's 470 and 0.1832 m on `dynamics_0`, which the reviewer reproduced exactly). Those numbers are removed from the report generator; the sections keep a pointer and say that the numbers are post hoc, uncommitted
     and must never reach the paper. Items 21 and 22 above were rewritten the same way. The reviewer's scripts are not in the repository (`/mnt/d/wsl/strata/review_p1b/` holds data only).
 27. **Two tests failed outside a git checkout (finding 5).** In a `git archive` copy `Report.test_report_smoke` and `ReportGit.test_repo_root_is_the_top_level_not_paper` errored with "not a git repository". Both are now skipped
-    unless the directory is inside a git work tree (`skipUnless`); `make_report_p1b.py` still fails loudly there. Checked in a `git archive` copy: see the result line below.
+    unless the directory is inside a git work tree (`skipUnless`); `make_report_p1b.py` still fails loudly there. Checked in a `git archive` copy of 11d90db: 23 tests run, 2 skipped, OK.
 28. **Nits (finding 6).** (a) `laser_optima` now reads only rows with `anchor == start` (test added: an `end` row and a `single` row that would win are ignored); the table in report section 13.1 is unchanged in value.
     (b) `logs/report.log` showed the 08:48 run while the committed report came from about 09:13 without a step log; the report and `PREREG.md` are regenerated through `reproduce_p1b.sh freeze report`, so both logs are current.
