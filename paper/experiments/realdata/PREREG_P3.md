@@ -309,3 +309,14 @@ The vehicle covers about 1.7 km in a slice, which is about 34 sensor footprints 
 * LILocBench `dynamics_0`: seconds per arm run.
 
 If a run exceeds memory or time it is reported as failed with its resource limit. The configuration is not changed after a result is seen.
+
+## 15. Amendment 2 (2026-10-18, before any evaluation): how inputs and outputs are recorded
+
+Section 4 said every step record lists the size and sha256 of its outputs. The step records (`results_p3/runs/<step>.json`) carry host, load, commit, command, return code and time; inputs and outputs are recorded at stage level instead, which is where the files belong together:
+
+* `results_p3/outputs_<stage>.sha256` (`eval_lil`, `eval_spires`, `eval_kth`, `eval_boreas`): sha256 of every output file up to 1 GB under the stage's output directories and result JSONs; larger files (the Boreas caches) by size and path.
+* `results_p3/inputs_check_<stage>.txt`: the size check of every listed test input (`data_inputs_p3.sha256`), and the sha256 check when `P3_HASH_INPUTS=1` is set (about 60 GB read for the full list; not done by default).
+* Inputs without a recorded checksum are hashed by the step that first reads them (`--hash`): the GT poses of the two lt_changes sequences and the ground-truth clouds of KITTI 05 and semi-indoor.
+* A step that fails keeps its log and trace as `*.attempt-<time>.*` when it is repeated.
+
+The KTH stage also exports the policy `all` once per condition (with the first arm) as the identity check of section 5.2.

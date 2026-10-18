@@ -37,13 +37,13 @@ scrub() {
 }
 tree_dirty() { git -C "$HERE" status --porcelain -- ':(glob)p3_*' ':(glob)test_p3*' ':(glob)mutation_p3.py' ':(glob)reproduce_p3.sh' ':(glob)data_inputs_p3*' ':(glob)PREREG_P3.md' ':(glob)CMakeLists.txt' ':(glob)realdata_io.hpp' ':(glob)p1b_*' ':(glob)probe_core.hpp' ':(glob)hitrate_probe.cpp' ':(glob)stat_test_split.sh' ':(glob)compare_stat.py' | wc -l; }
 
-# step NAME [--traced] [--input P]... [--output P]... -- cmd...
+# step NAME [--traced] [--hash] [--input P]... [--output P]... -- cmd...   (--hash: sha256 of the --input files, for inputs without a recorded checksum)
 #   logs host, load, commit and the command (p3_runlog.py run), and with --traced runs the command under the file-open trace (p3_traced.sh)
 step() {
   local name="$1"; shift
   local traced=0; local -a rl=()
   while [ $# -gt 0 ] && [ "$1" != "--" ]; do
-    case "$1" in --traced) traced=1; shift;; --input|--output) rl+=("$1" "$2"); shift 2;; *) echo "step: bad option $1"; exit 2;; esac
+    case "$1" in --traced) traced=1; shift;; --hash) rl+=(--hash-inputs); shift;; --input|--output) rl+=("$1" "$2"); shift 2;; *) echo "step: bad option $1"; exit 2;; esac
   done
   shift
   local log="$RES/logs/$name.log"
@@ -65,6 +65,20 @@ step() {
 }
 must() { "$@" || { echo "stopping: step failed"; exit 1; }; }
 engine_has_sprt() { "$P3" arms | grep -q '^engine_has_sprt=1'; }
+
+# finish_eval NAME DIR_OR_FILE...: sizes of the recorded test inputs (sha256 with P3_HASH_INPUTS=1) and sha256 of every output file up to 1 GB
+# under the given paths (larger files by size), written to results_p3/ so that a result can be tied to its inputs and outputs.
+finish_eval() {
+  local name="$1"; shift
+  local -a full=(); [ "${P3_HASH_INPUTS:-0}" = "1" ] && full=(--full)
+  python3 -I "$HERE/p3_runlog.py" check-inputs --data-root "$DATA" --list "$HERE/data_inputs_p3.sha256" "${full[@]}" > "$RES/inputs_check_$name.txt" 2>&1
+  {
+    echo "# sha256  path (outputs of $name up to 1 GB; LARGE lines: size and path of larger files)"
+    find "$@" -type f -size -1073741824c -print0 2>/dev/null | sort -z | xargs -0 -r sha256sum
+    find "$@" -type f -size +1073741823c -printf 'LARGE %s %p\n' 2>/dev/null | sort -k3
+  } | sed "s|$HOME|~|g" > "$RES/outputs_$name.sha256"
+  echo "finish $name: $(wc -l < "$RES/outputs_$name.sha256") output lines, $(tail -1 "$RES/inputs_check_$name.txt")"
+}
 
 stage_build() {   # from a git archive copy of HEAD: the binary is the committed code
   local commit; commit="$(git -C "$HERE" rev-parse HEAD)"
@@ -166,7 +180,7 @@ arms_to_run() {
 
 lil_sequence() {   # lil_sequence SEQ: convert (run B time base), then every arm against the mapping reference
   local seq="$1" d="$OUT/lil"; mkdir -p "$d"
-  [ -f "$d/cache_$seq.bin" ] || must step "lil_convert_$seq" --traced -- "$HP" lil-convert --bag "$DATA/lilocbench/bags/$seq.bag" --gt "$DATA/lilocbench/gt_x/$seq/gt_poses.txt" \
+  [ -f "$d/cache_$seq.bin" ] || must step "lil_convert_$seq" --traced --hash --input "$DATA/lilocbench/gt_x/$seq/gt_poses.txt" -- "$HP" lil-convert --bag "$DATA/lilocbench/bags/$seq.bag" --gt "$DATA/lilocbench/gt_x/$seq/gt_poses.txt" \
     --deskew 1 --anchor start --time-offset -0.13 --out "$d/cache_$seq.bin" --meta "$d/cache_$seq.meta"
   cp "$d/cache_$seq.meta" "$RES/meta_lil_convert_$seq.meta" 2>/dev/null
   # time-base diagnostic of the lt_changes bag (selects nothing; PREREG_P3.md section 6.1): the scan-to-GT offset search of phase 1
@@ -178,7 +192,7 @@ lil_sequence() {   # lil_sequence SEQ: convert (run B time base), then every arm
     must step "lil_eval_${seq}_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' lil --dump '$d/dump_${seq}_${arm}_p$PER.csv' --res 0.05 > '$RES/lil_${seq}_${arm}_p$PER.json'"
   done
 }
-stage_eval_lil() { guard_eval; lil_sequence lt_changes_dynamics_0; lil_sequence lt_changes_0; }
+stage_eval_lil() { guard_eval; lil_sequence lt_changes_dynamics_0; lil_sequence lt_changes_0; finish_eval eval_lil "$OUT/lil" "$RES"/lil_*.json; }
 
 stage_eval_spires() {
   guard_eval
@@ -206,6 +220,7 @@ stage_eval_spires() {
       --periodicity "$PER" --mode independent --out-prefix "$OUT/spires_agree_${arm}" --meta "$OUT/spires_agree_${arm}.meta"
     must step "spires_jaccard_${arm}" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$OUT/spires_agree_${arm}_s0_static.ids' '$OUT/spires_agree_${arm}_s1_static.ids' '$OUT/spires_agree_${arm}_s2_static.ids' --res 0.2 > '$RES/spires_agree_${arm}.json'"
   done
+  finish_eval eval_spires "$OUT"/spires_0? "$OUT"/spires_agree_* "$RES"/spires_*.json
 }
 
 stage_eval_kth() {
@@ -214,7 +229,7 @@ stage_eval_kth() {
   for cfg in "05 0.2 10" "05 0.2 2" "semindoor 0.2 10" "semindoor 0.2 2" "semindoor 0.1 10"; do
     set -- $cfg; local seq="$DATA/kth/$1" r="$2" w="$3" d="$OUT/kth_$1"; mkdir -p "$d"
     if [ ! -f "$RES/kth_selfcheck_$1.json" ]; then
-      MEM_LIMIT_KB=9000000 must step "kth_selfcheck_$1" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth-selfcheck --gt '$seq/gt_cloud.pcd' > '$RES/kth_selfcheck_$1.json'"
+      MEM_LIMIT_KB=9000000 must step "kth_selfcheck_$1" --traced --hash --input "$seq/gt_cloud.pcd" -- bash -c "python3 -I '$HERE/p3_eval.py' kth-selfcheck --gt '$seq/gt_cloud.pcd' > '$RES/kth_selfcheck_$1.json'"
     fi
     for arm in $(arms_to_run); do
       # the identity check (policy all = every frame point = the GT cloud: SA 100, DA 0) runs once per condition, with the first arm
@@ -227,6 +242,7 @@ stage_eval_kth() {
       done
     done
   done
+  finish_eval eval_kth "$OUT"/kth_05 "$OUT"/kth_semindoor "$RES"/kth_*.json
 }
 
 stage_eval_boreas() {
@@ -256,7 +272,11 @@ stage_eval_boreas() {
     must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
     must step "boreas_newstatic_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' newstatic --cum '$d/${arm}_cumulative_s2_static.ids' --ind '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' > '$RES/boreas_${arm}_newstatic.json'"
   done
+  finish_eval eval_boreas "$d" "$RES"/boreas_*.json "$RES"/boreas_zoffsets_used.txt
 }
+
+# test of finish_eval on the outputs of the calibration smoke tests
+stage_smoke_manifest() { finish_eval smoke "$OUT/smoke_kth00" "$OUT/smoke_lil" "$RES"/smoke_*.json; }
 
 stage_statafter() {
   bash "$HERE/stat_test_split.sh" "$RES/test_split_stat_after.tsv"
@@ -268,7 +288,7 @@ if [ $# -eq 0 ]; then echo "usage: $0 STAGE..."; exit 2; fi
 for st in "$@"; do
   case "$st" in
     build) stage_build;; check) stage_check;; unit) stage_unit;; validate_readers) stage_validate_readers;;
-    boreas_gate) stage_boreas_gate;; smoke_kth) stage_smoke_kth;; smoke_lil) stage_smoke_lil;; statafter) stage_statafter;;
+    boreas_gate) stage_boreas_gate;; smoke_kth) stage_smoke_kth;; smoke_lil) stage_smoke_lil;; smoke_manifest) stage_smoke_manifest;; statafter) stage_statafter;;
     eval_lil) stage_eval_lil;; eval_spires) stage_eval_spires;; eval_kth) stage_eval_kth;; eval_boreas) stage_eval_boreas;;
     *) echo "unknown stage $st"; exit 2;;
   esac
