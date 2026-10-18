@@ -312,8 +312,8 @@ class TestLilMetrics(unittest.TestCase):
         # clutter: ref_free cells far from the wall; 40 with H >= 1 and n >= 5: 4 static, 6 undecided, 30 rejected; rates by band
         for i in range(40):
             v = "static" if i < 4 else ("undecided" if i < 10 else "rejected")
-            h = 5 if i < 4 else 1                              # the static ones have hit rate 0.5, the others 0.1
-            fs = 5 if i < 4 else (7 if i in (20, 21) else -1)  # two cells were Static at some window and rejected later
+            h = 5 if i < 4 else (2 if i == 30 else 1)          # the static ones have hit rate 0.5, cell 30 exactly m0 = 0.2, the others 0.1
+            fs = 5 if i < 4 else (7 if i in (20, 21) else (9 if i == 30 else -1))   # three cells were Static at some window and rejected later
             rows.append((ev.REF_FREE, 100 + i, 400, 10, h, v, fs))
         # excluded: clutter with n < nmin, a free cell never hit (h = 0), a near-wall free cell that is static
         rows.append((ev.REF_FREE, 300, 400, 4, 2, "static", -1))
@@ -329,10 +329,17 @@ class TestLilMetrics(unittest.TestCase):
         c = m["false_static_on_clutter"]
         self.assertEqual((c["k"], c["n"]), (4, 40))
         self.assertAlmostEqual(c["rate"], 0.1)
-        # unit of the alpha test (Amendment 5): the cell, Static at any window: 4 Static at the end + 2 rejected after being Static
+        # unit of the alpha test (Amendment 5): the cell, Static at any window: 4 Static at the end + 3 rejected after being Static
         e = m["ever_static_on_clutter"]
-        self.assertEqual((e["k"], e["n"]), (6, 40))
-        self.assertAlmostEqual(e["rate"], 0.15)
+        self.assertEqual((e["k"], e["n"]), (7, 40))
+        self.assertAlmostEqual(e["rate"], 0.175)
+        # at or below m0 = 0.2 (the population of the replay reference rows): the 36 cells that are not the 4 at 0.5; cell 30 is exactly m0
+        e0 = m["ever_static_on_clutter_at_or_below_m0"]
+        self.assertEqual((e0["k"], e0["n"]), (3, 36))
+        import inspect
+        self.assertEqual(inspect.signature(ev.lil_metrics).parameters["m0"].default, 0.20)   # the shipped m0
+        e1 = ev.lil_metrics(self.build(), 0.05, m0=0.15)["ever_static_on_clutter_at_or_below_m0"]
+        self.assertEqual((e1["k"], e1["n"]), (2, 35))
         self.assertEqual(m["clutter_undecided"]["k"], 6)
         self.assertEqual(m["clutter_rejected"]["k"], 30)
         w = m["false_reject_on_wall_runs"]
@@ -344,9 +351,10 @@ class TestLilMetrics(unittest.TestCase):
         self.assertEqual(m["wall_run_cells_total"], 80)
         lo, hi = m["false_static_on_clutter"]["wilson95"]
         self.assertLess(lo, 0.1); self.assertGreater(hi, 0.1)
-        # band table: 4 static clutter cells have hit rate 0.5 (band [0.30, 0.65)), 36 have 0.1 (band [0, 0.15))
+        # band table: 4 static clutter cells have hit rate 0.5 (band [0.30, 0.65)), 35 have 0.1 (band [0, 0.15)), one has 0.2
         bands = {tuple(b["band"]): b for b in m["false_static_by_hit_rate_band"]}
-        self.assertEqual((bands[(0.0, 0.15)]["k"], bands[(0.0, 0.15)]["n"]), (0, 36))
+        self.assertEqual((bands[(0.0, 0.15)]["k"], bands[(0.0, 0.15)]["n"]), (0, 35))
+        self.assertEqual((bands[(0.15, 0.30)]["k"], bands[(0.15, 0.30)]["n"]), (0, 1))
         self.assertEqual((bands[(0.30, 0.65)]["k"], bands[(0.30, 0.65)]["n"]), (4, 4))
         # latency: windows to first static on wall-run cells
         lat = m["wall_run_windows_to_first_static"]

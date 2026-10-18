@@ -448,3 +448,35 @@ Tests (`test_p3.cpp`; mutants in `mutation_p3.py` with notes beginning `a4`):
 * `validate_boreas_2020` (new rotation, new checks), `boreas_overlap` (gate with the convention checks), and the feasibility probe (`p3_feas_boreas.sh`, the same 10 frames) on a binary built from the committed code.
 * The earlier logs stay as `*.attempt-*`. The old probe records stay in `results_p3/feas/original/` and in git history.
 * The probe measures cost. Cells, memory and time may differ slightly from the table of section 14. The configuration (3 m to 25 m, 0.2 m, veto off) changes only if a row exceeds the memory of the host. Read section 14 together with the repeated table.
+
+## 18. Amendment 5 (2026-10-18, after the fourth Opus review of phase 1, before any evaluation): the unit of the alpha test; re-pin
+
+### 18.1 Fault
+
+The bound `alpha = 0.01` is stated per history of a cell (L-7). The replay of the shipped pair on the W = 15 calibration sequences (`results_p2/replay_shipped_pair_W15.txt`) stopped at the first decision of each cell and did not say so. The deployed engine erases a rejected cell, the next observation creates it again, and the cell gets a new history. Run to the end of the sequence, one cell per map, the share of clutter cells that were Static at any window is:
+
+| unit | at H/N <= m0 (n = 22,273) | above m0 (n = 1,823) | all clutter (n = 24,096) |
+|---|---|---|---|
+| first history (first decision), periodicity off | 0.40 % | 22.3 % | 2.06 % |
+| cell, ever-Static, periodicity off | 1.64 % | 33.8 % | 4.07 % |
+| cell, ever-Static, periodicity on (as the node ships it) | 1.51 % | 30.5 % | 3.71 % |
+
+The per-cell figure at or below `m0` is above `alpha`. "The realised rate is lower than the bound" holds per first history, not per cell. `PREREG_P3.md` sections 3.3 and 6.2 said "false-Static rate on clutter" without a unit; the harness computed the share of clutter cells whose verdict at the END of the run is Static.
+
+### 18.2 Rule
+
+1. **The unit of the `lt_changes_dynamics_0` alpha test is the cell.** The primary quantity is `ever_static_on_clutter`: the share of eligible clutter cells with `first_static >= 0` (Static at the close of any window), per arm, with the Wilson interval and the tile bootstrap of section 3.3. It replaces `false_static_on_clutter` as the primary quantity of section 6.2 for all arms and all LILocBench sequences.
+2. **Printed beside it, unchanged:** `false_static_on_clutter` (Static at the end of the run), `clutter_undecided`, `clutter_rejected`, and the band table. New row: `ever_static_on_clutter_at_or_below_m0`, the same quantity on the clutter cells with observed rate `H/N <= m0 = 0.20`, the population of the calibration reference rows above.
+3. **Reference rows, quoted with every table of this quantity:** the three rows of the table in 18.1 (calibration sequences, same code, same pair), and the bound `alpha = 0.01` per history under independent windows. The comparison is held-out per-cell ever-Static against the per-cell calibration rows, not against `alpha` alone.
+4. **The first-history unit is not computed on the test data.** The harness records the final verdict and the first Static window of a cell, not its histories. This is stated in every table. No claim of the form "the realised rate is below the bound" is made from a per-cell figure that is above `alpha`.
+5. No threshold, arm, label, window, resolution or verdict rule changes. KTH, Spires and Boreas rows are unchanged (they count voxels at the end of a run, section 3.3).
+
+Tests (`test_p3_eval.py`): a fixture with cells that were Static and rejected later (ever-Static 7 of 40, end-of-run Static 4 of 40; at or below `m0`: 3 of 36, with one cell at exactly `m0`; `m0` default 0.20); mutants in `mutation_p3.py` (notes beginning `lil: ever-Static`).
+
+### 18.3 Re-pin
+
+Commit `2f3cead` (test and node work on the branch, from the review) changed `strata_core/test/test_replay_p1.cpp` and `strata_core/test/check_defaults.py` only. The trees of `strata_core/src` (`be2e48e0f03b5340989480bbf25f1681fdcff1ce`) and `strata_core/include` (`50d9d7f4710fa5e27884cf0b8956a14a72005f5e`) are those of Amendment 3 item 16.7; `strata_core/CMakeLists.txt` is unchanged. The engine code of every earlier run is therefore the code of the new pin; only `strata_core/test` differs. The guard compares the whole `strata_core` tree and refused at the new HEAD, as designed. The last `STRATA_CORE_TREE=` line of this file is the pin; it replaces the line of item 16.7. A further commit to `strata_core` needs a new amendment of this kind before an evaluation can start.
+
+```text pin
+STRATA_CORE_TREE=bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+```

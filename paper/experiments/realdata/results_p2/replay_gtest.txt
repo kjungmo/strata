@@ -12,13 +12,13 @@ Note: Google Test filter = ReplayP1.*
 [ RUN      ] ReplayP1.NMaxOfTheShippedPairIsTheSmallestMultipleOf16UnderThreePercent
 [       OK ] ReplayP1.NMaxOfTheShippedPairIsTheSmallestMultipleOf16UnderThreePercent (0 ms)
 [ RUN      ] ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences
-[       OK ] ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences (684 ms)
+[       OK ] ReplayP1.AdvisoryTableThroughLayeredMapOnTheCalibrationSequences (681 ms)
 [ RUN      ] ReplayP1.InSampleKittiReplayOfTheAdvice
-[       OK ] ReplayP1.InSampleKittiReplayOfTheAdvice (745 ms)
+[       OK ] ReplayP1.InSampleKittiReplayOfTheAdvice (787 ms)
 [ RUN      ] ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences
-[       OK ] ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences (280 ms)
-[----------] 7 tests from ReplayP1 (1709 ms total)
+[       OK ] ReplayP1.ShippedPairOnTheOneSecondCalibrationSequences (786 ms)
+[----------] 7 tests from ReplayP1 (2254 ms total)
 
 [----------] Global test environment tear-down
-[==========] 7 tests from 1 test suite ran. (1709 ms total)
+[==========] 7 tests from 1 test suite ran. (2254 ms total)
 [  PASSED  ] 7 tests.

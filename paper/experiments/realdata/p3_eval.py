@@ -333,7 +333,7 @@ def wall_run_mask(ix, iy, res, rho=1.0, min_cells=20, ratio_max=0.02, min_extent
     return ok
 
 
-def lil_metrics(d, res, origin=-30.0, nmin=5, bands=(0.0, 0.15, 0.30, 0.65, 1.0001)):
+def lil_metrics(d, res, origin=-30.0, nmin=5, bands=(0.0, 0.15, 0.30, 0.65, 1.0001), m0=0.20):
     """Rates for one arm on one sequence from an arm-eval dump of the reference label file (section 6)."""
     n, h, lab, ver = d["n"], d["h"], d["label"], d["verdict"]
     x = origin + (d["ix"] + 0.5) * res
@@ -364,6 +364,8 @@ def lil_metrics(d, res, origin=-30.0, nmin=5, bands=(0.0, 0.15, 0.30, 0.65, 1.00
     block(structure, ver != VERDICTS["static"], "wall_runs_not_static")
     block(structure, ver == VERDICTS["static"], "wall_runs_static")
     r = np.where(n > 0, h / np.maximum(n, 1), 0.0)
+    # The population of the replay reference rows (results_p2/replay_shipped_pair_W15.txt): observed rate H/N at or below m0.
+    block(clutter & (r <= m0), d["first_static"] >= 0, "ever_static_on_clutter_at_or_below_m0")
     out["false_static_by_hit_rate_band"] = []
     for lo_b, hi_b in zip(bands[:-1], bands[1:]):
         m = clutter & (r >= lo_b) & (r < hi_b)

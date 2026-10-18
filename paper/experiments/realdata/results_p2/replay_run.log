@@ -1,10 +1,10 @@
-START 2026-10-18T14:52:05+09:00 host=DESKTOP-KCD7BRS load=4.30 3.60 6.04 commit=f2602962ba0b2c961da03de78740ec040bfd9757
+START 2026-10-18T15:20:45+09:00 host=DESKTOP-KCD7BRS load=7.55 7.00 5.81 commit=2f3cead98e92fa7748e6a4d91d715032091f5fc4
 TREE_STATUS 0 uncommitted file(s) under strata_core
 INPUTS_OK 5 files match replay_inputs.sha256
 INPUTS_OK 2 files match replay_inputs_p1b.sha256
 
 [----------] Global test environment tear-down
-[==========] 7 tests from 1 test suite ran. (1709 ms total)
+[==========] 7 tests from 1 test suite ran. (2254 ms total)
 [  PASSED  ] 7 tests.
 gtest rc=0
-END 2026-10-18T14:52:14+09:00
+END 2026-10-18T15:20:52+09:00
