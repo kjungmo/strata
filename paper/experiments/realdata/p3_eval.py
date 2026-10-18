@@ -280,7 +280,7 @@ def read_dump(path):
         rows = list(csv.DictReader(f))
     if not rows:
         raise ValueError(f"{path}: empty")
-    out = {k: np.array([int(r[k]) for r in rows]) for k in ("label", "ix", "iy", "iz", "n", "h", "first_static")}
+    out = {k: np.array([int(r[k]) for r in rows]) for k in ("label", "ix", "iy", "iz", "n", "h", "first_static", "first_touch")}
     out["verdict"] = np.array([VERDICTS[r["verdict"]] for r in rows])
     return out
 
@@ -363,7 +363,8 @@ def lil_metrics(d, res, origin=-30.0, nmin=5, bands=(0.0, 0.15, 0.30, 0.65, 1.00
         m = clutter & (r >= lo_b) & (r < hi_b)
         k = int((m & (ver == VERDICTS["static"])).sum())
         out["false_static_by_hit_rate_band"].append({"band": [lo_b, min(hi_b, 1.0)], "k": k, "n": int(m.sum()), "rate": (k / int(m.sum()) if m.any() else float("nan"))})
-    lat = d["first_static"][structure & (d["first_static"] >= 0)]
+    got = structure & (d["first_static"] >= 0)
+    lat = (d["first_static"] - d["first_touch"] + 1)[got]
     out["wall_run_windows_to_first_static"] = {"n": int(lat.size), "p50": pct(lat, 50), "p90": pct(lat, 90), "min": float(lat.min()) if lat.size else float("nan")}
     # qualitative change counts (lt_changes_0): no truth per cell, counts only
     elig = n >= nmin
@@ -412,7 +413,7 @@ def spires_metrics(counts_csv, latency_csv=None, structure_labels=(3,), clutter_
         with open(latency_csv) as f:
             for r in csv.DictReader(f):
                 if int(r["label"]) in structure_labels:
-                    w += [int(r["first_static_window"])] * int(r["count"])
+                    w += [int(r["windows_to_static"])] * int(r["count"])
         out["structure_windows_to_first_static"] = {"n": len(w), "p50": pct(w, 50), "p90": pct(w, 90)}
     return out
 

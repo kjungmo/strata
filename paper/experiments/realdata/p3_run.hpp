@@ -51,6 +51,7 @@ struct CellTally {
   std::uint32_t n{0};            // touched windows
   std::uint32_t h{0};            // of those, windows with a hit
   std::int32_t first_static{-1}; // window index (1 = first) at whose close the cell was first Static; -1 never
+  std::int32_t first_touch{-1};  // window index of the first window that touched the cell (windows to decision = first_static - first_touch + 1)
 };
 
 // Counts touched windows of the cells in `watch` (all cells if watch is null). If track_static is set,
@@ -58,9 +59,10 @@ struct CellTally {
 class TallyObserver : public strata_core::WindowObserver {
  public:
   TallyObserver(const LabelMap* watch, bool track_static) : watch_(watch), track_(track_static) {}
-  void onTouchedCell(int, strata_core::CellId id, bool hit, bool) override {
+  void onTouchedCell(int window_index, strata_core::CellId id, bool hit, bool) override {
     if (watch_ && watch_->find(id) == watch_->end()) return;
     CellTally& c = t_[id];
+    if (c.first_touch < 0) c.first_touch = window_index;
     ++c.n;
     if (hit) ++c.h;
     if (track_) touched_.push_back(id);
@@ -120,7 +122,7 @@ DriveReport drive(Backend& b, const std::function<bool(Frame&)>& next, const str
 
 // ------------------------------------------------------------------------ cell dump ----------
 
-// One row per labelled cell: label, ix, iy, iz, n, h, verdict, first_static. Cells never touched have n = 0
+// One row per labelled cell: label, ix, iy, iz, n, h, verdict, first_static, first_touch. Cells never touched have n = 0
 // and the verdict the engine gives to a cell it does not hold (Rejected).
 inline void writeLabelledDump(const std::string& path, const LabelMap& labels, const strata_core::LayeredMap& m,
                               const TallyObserver& tally, bool binary, bool three_d, int grid_width) {
@@ -130,7 +132,7 @@ inline void writeLabelledDump(const std::string& path, const LabelMap& labels, c
   std::sort(ids.begin(), ids.end());
   std::ofstream o(path);
   if (!o) fail(path, "cannot write");
-  o << "label,ix,iy,iz,n,h,verdict,first_static\n";
+  o << "label,ix,iy,iz,n,h,verdict,first_static,first_touch\n";
   for (strata_core::CellId id : ids) {
     int ix, iy, iz = 0;
     if (three_d) decodeVoxel(id, ix, iy, iz); else decodeGrid(id, grid_width, ix, iy);
@@ -138,7 +140,7 @@ inline void writeLabelledDump(const std::string& path, const LabelMap& labels, c
     auto it = tally.tally().find(id);
     if (it != tally.tally().end()) c = it->second;
     o << int(labels.at(id)) << "," << ix << "," << iy << "," << iz << "," << c.n << "," << c.h << ","
-      << verdictName(verdictOf(m, id, binary)) << "," << c.first_static << "\n";
+      << verdictName(verdictOf(m, id, binary)) << "," << c.first_static << "," << c.first_touch << "\n";
   }
 }
 

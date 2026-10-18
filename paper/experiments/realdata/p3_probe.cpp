@@ -486,20 +486,20 @@ void evalCommon(Backend& b, CacheReader& cache, const LabelMap& labels, const Ar
     writeLabelledDump(need(a, "out"), labels, b.layered(), tally, arm.binary, three_d, width);
   } else if (format == "counts") {
     std::map<std::tuple<int, int, int>, std::size_t> cnt;      // label, eligible, verdict
-    std::map<std::pair<int, int>, std::size_t> lat;            // label, first_static window
+    std::map<std::pair<int, int>, std::size_t> lat;            // label, windows to decision (first_static - first_touch + 1)
     for (const auto& kv : labels) {
       CellTally c; auto it = tally.tally().find(kv.first);
       if (it != tally.tally().end()) c = it->second;
       const Verdict v = verdictOf(b.layered(), kv.first, arm.binary);
       ++cnt[{int(kv.second), c.n >= static_cast<std::uint32_t>(nmin) ? 1 : 0, int(v)}];
-      if (c.first_static >= 0) ++lat[{int(kv.second), c.first_static}];
+      if (c.first_static >= 0) ++lat[{int(kv.second), c.first_static - c.first_touch + 1}];
     }
     std::ofstream o(need(a, "out"));
     if (!o) fail(need(a, "out"), "cannot write");
     o << "label,eligible,verdict,count\n";
     for (const auto& kv : cnt) o << std::get<0>(kv.first) << "," << std::get<1>(kv.first) << "," << verdictName(static_cast<Verdict>(std::get<2>(kv.first))) << "," << kv.second << "\n";
     std::ofstream l(need(a, "out") + ".latency");
-    l << "label,first_static_window,count\n";
+    l << "label,windows_to_static,count\n";
     for (const auto& kv : lat) l << kv.first.first << "," << kv.first.second << "," << kv.second << "\n";
   } else {
     fail("arguments", "--format must be cells or counts");

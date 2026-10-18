@@ -291,22 +291,24 @@ class TestWallRuns(unittest.TestCase):
 
 
 def make_dump(rows):
-    """rows: (label, ix, iy, n, h, verdict, first_static) -> arrays as read_dump returns."""
+    """rows: (label, ix, iy, n, h, verdict, first_static[, first_touch = 1]) -> arrays as read_dump returns."""
     return {
         "label": np.array([r[0] for r in rows]), "ix": np.array([r[1] for r in rows]), "iy": np.array([r[2] for r in rows]),
         "iz": np.zeros(len(rows), dtype=int), "n": np.array([r[3] for r in rows]), "h": np.array([r[4] for r in rows]),
         "verdict": np.array([ev.VERDICTS[r[5]] for r in rows]), "first_static": np.array([r[6] for r in rows]),
+        "first_touch": np.array([r[7] if len(r) > 7 else 1 for r in rows]),
     }
 
 
 class TestLilMetrics(unittest.TestCase):
     def build(self):
         rows = []
-        # a 4 m wall (80 cells) with n = 10: 60 static (first_static 4 for 30 of them, 6 for 30), 10 undecided, 10 rejected
+        # a 4 m wall (80 cells) with n = 10: 60 static (30 decided 4 windows after the first touch, 30 decided 7 windows after it), 10 undecided, 10 rejected
         for i in range(80):
             v = "static" if i < 60 else ("undecided" if i < 70 else "rejected")
-            fs = (4 if i < 30 else 6) if v == "static" else -1
-            rows.append((ev.REF_OCCUPIED, 100 + i, 200, 10, 10, v, fs))
+            fs = (4 if i < 30 else 9) if v == "static" else -1
+            ft = 1 if i < 30 else 3                              # windows to decision: 4 for the first 30, 9 - 3 + 1 = 7 for the next 30
+            rows.append((ev.REF_OCCUPIED, 100 + i, 200, 10, 10, v, fs, ft))
         # clutter: ref_free cells far from the wall; 40 with H >= 1 and n >= 5: 4 static, 6 undecided, 30 rejected; rates by band
         for i in range(40):
             v = "static" if i < 4 else ("undecided" if i < 10 else "rejected")
@@ -344,7 +346,7 @@ class TestLilMetrics(unittest.TestCase):
         # latency: windows to first static on wall-run cells
         lat = m["wall_run_windows_to_first_static"]
         self.assertEqual(lat["n"], 60)
-        self.assertEqual((lat["p50"], lat["p90"], lat["min"]), (5.0, 6.0, 4.0))
+        self.assertEqual((lat["p50"], lat["p90"], lat["min"]), (5.5, 7.0, 4.0))
 
     def test_nmin_and_h_filters(self):
         d = self.build()
@@ -367,12 +369,13 @@ class TestLilMetrics(unittest.TestCase):
     def test_dump_reader_roundtrip(self):
         with tempfile.TemporaryDirectory() as d:
             with open(d + "/x.csv", "w") as f:
-                f.write("label,ix,iy,iz,n,h,verdict,first_static\n1,60,50,0,10,10,static,3\n2,30,50,0,1,1,undecided,-1\n3,5,5,0,0,0,rejected,-1\n")
+                f.write("label,ix,iy,iz,n,h,verdict,first_static,first_touch\n1,60,50,0,10,10,static,3,1\n2,30,50,0,1,1,undecided,-1,4\n3,5,5,0,0,0,rejected,-1,-1\n")
             r = ev.read_dump(d + "/x.csv")
             self.assertEqual(r["verdict"].tolist(), [2, 1, 0])
             self.assertEqual(r["first_static"].tolist(), [3, -1, -1])
+            self.assertEqual(r["first_touch"].tolist(), [1, 4, -1])
             with open(d + "/e.csv", "w") as f:
-                f.write("label,ix,iy,iz,n,h,verdict,first_static\n")
+                f.write("label,ix,iy,iz,n,h,verdict,first_static,first_touch\n")
             with self.assertRaises(ValueError):
                 ev.read_dump(d + "/e.csv")
             run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "lil", "--dump", d + "/x.csv", "--res", "0.1"], capture_output=True, text=True)
@@ -387,7 +390,7 @@ class TestSpiresAndBoreas(unittest.TestCase):
                 f.write("label,eligible,verdict,count\n1,1,static,30\n1,1,undecided,10\n1,1,rejected,60\n1,0,static,999\n"
                         "3,1,static,700\n3,1,undecided,200\n3,1,rejected,100\n3,0,rejected,5\n2,1,static,10\n")
             with open(d + "/c.csv.latency", "w") as f:
-                f.write("label,first_static_window,count\n3,4,500\n3,6,200\n1,5,30\n")
+                f.write("label,windows_to_static,count\n3,4,500\n3,6,200\n1,5,30\n")
             m = ev.spires_metrics(d + "/c.csv", d + "/c.csv.latency")
         c = m["false_static_on_clutter"]
         self.assertEqual((c["k"], c["n"]), (30, 100))                     # ineligible cells are excluded

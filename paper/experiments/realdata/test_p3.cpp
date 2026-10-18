@@ -175,6 +175,8 @@ TEST(P3Tally, CountsWindowsAndFirstStatic) {
   ASSERT_TRUE(t.count(wall));
   EXPECT_EQ(t.at(wall).n, 6u); EXPECT_EQ(t.at(wall).h, 6u);
   EXPECT_EQ(t.at(wall).first_static, 3);                                            // 3 observations needed (min_observations)
+  EXPECT_EQ(t.at(wall).first_touch, 1);
+  EXPECT_EQ(t.at(other).first_touch, 1);
   ASSERT_TRUE(t.count(other));
   EXPECT_EQ(t.at(other).h, 2u);
   EXPECT_EQ(t.at(other).first_static, -1);
@@ -208,9 +210,9 @@ TEST(P3Tally, LabelledDumpRows) {
   const std::string path = tmpPath("dump.csv");
   writeLabelledDump(path, labels, b.layered(), tally, false, false, g.width);
   EXPECT_EQ(readText(path),
-            "label,ix,iy,iz,n,h,verdict,first_static\n"
-            "1,10,12,0,5,5,static,3\n"
-            "2,30,31,0,0,0,rejected,-1\n");
+            "label,ix,iy,iz,n,h,verdict,first_static,first_touch\n"
+            "1,10,12,0,5,5,static,3,1\n"
+            "2,30,31,0,0,0,rejected,-1,-1\n");
 }
 
 // ----------------------------------------------------------------------------- PCD writer ----------
@@ -717,6 +719,7 @@ TEST(P3Sprt, DriverRecordsTheGraduationWindow) {
   int k = 0;
   drive(b, [&](Frame& f) { if (k >= 8) return false; f = Frame(); f.group = k++; f.xyz = {1.05f, 1.05f, 0.f}; return true; }, &g, &tally);
   EXPECT_EQ(tally.tally().at(c).first_static, 4);
+  EXPECT_EQ(tally.tally().at(c).first_touch, 1);
   EXPECT_EQ(tally.tally().at(c).n, 8u);
 }
 
@@ -864,14 +867,14 @@ TEST(P3Probe, ArmEvalCellsAndCounts) {
   ASSERT_EQ(runProbe(base + " --out " + tmpPath("d2.csv") + " --meta " + tmpPath("d2.meta"), &out), 0) << out;
   std::istringstream is(readText(tmpPath("d2.csv"))); std::string line; std::vector<std::string> rows;
   std::getline(is, line);
-  EXPECT_EQ(line, "label,ix,iy,iz,n,h,verdict,first_static");
+  EXPECT_EQ(line, "label,ix,iy,iz,n,h,verdict,first_static,first_touch");
   while (std::getline(is, line)) rows.push_back(line);
   // ids are sorted: gy * 100 + gx -> (60,50)=5060, (30,50)=5030, (30,60)=6030, (5,5)=505
   ASSERT_EQ(rows.size(), 4u);
-  EXPECT_EQ(rows[0], "3,5,5,0,0,0,rejected,-1");
-  EXPECT_EQ(rows[1], "2,30,50,0,3,3,static,3");                                       // three hit windows: graduates in window 3
-  EXPECT_EQ(rows[2], "1,60,50,0,10,10,static,3");
-  EXPECT_EQ(rows[3], "2,30,60,0,2,2,undecided,-1");                                   // two hit windows: not enough observations
+  EXPECT_EQ(rows[0], "3,5,5,0,0,0,rejected,-1,-1");
+  EXPECT_EQ(rows[1], "2,30,50,0,3,3,static,3,1");                                     // three hit windows: graduates in window 3
+  EXPECT_EQ(rows[2], "1,60,50,0,10,10,static,3,1");
+  EXPECT_EQ(rows[3], "2,30,60,0,2,2,undecided,-1,1");                                   // two hit windows: not enough observations
   const auto m = readMeta(tmpPath("d2.meta"));
   EXPECT_EQ(m.at("windows_closed"), "10"); EXPECT_EQ(m.at("labelled_cells"), "4"); EXPECT_EQ(m.at("dim"), "2");
   // counts format: label, eligible (n >= nmin = 3), verdict
@@ -882,10 +885,10 @@ TEST(P3Probe, ArmEvalCellsAndCounts) {
             "2,0,undecided,1\n"                                                       // n = 2 < 3: not eligible
             "2,1,static,1\n"                                                          // n = 3 == nmin: eligible
             "3,0,rejected,1\n");
-  EXPECT_EQ(readText(tmpPath("c2.csv.latency")), "label,first_static_window,count\n1,3,1\n2,3,1\n");
+  EXPECT_EQ(readText(tmpPath("c2.csv.latency")), "label,windows_to_static,count\n1,3,1\n2,3,1\n");
   // no latency tracking: first_static stays -1
   ASSERT_EQ(runProbe(base + " --latency 0 --out " + tmpPath("d3.csv") + " --meta " + tmpPath("d3.meta"), &out), 0) << out;
-  EXPECT_NE(readText(tmpPath("d3.csv")).find("1,60,50,0,10,10,static,-1"), std::string::npos);
+  EXPECT_NE(readText(tmpPath("d3.csv")).find("1,60,50,0,10,10,static,-1,1"), std::string::npos);
   // dimension mismatch between cache and labels fails
   writeLabels(tmpPath("l3.bin"), 3, labels);
   EXPECT_NE(runProbe("arm-eval --cache " + tmpPath("c2.bin") + " --labels " + tmpPath("l3.bin") + " --arm shipped_v0_1 --res 0.1 --window 3 --out x --meta y", &out), 0);
