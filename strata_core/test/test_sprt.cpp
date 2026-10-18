@@ -395,13 +395,22 @@ TEST(Sprt, DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic) {
   // must survive the gate (rate 0.25 has negative drift, l is far below B at n = 24) and
   // be read out Periodic once the significance test has two periods; it is never kept Static.
   LayeredMapParams p = Sp(); p.enable_periodicity = true;      // T = 24, H = 2, a_min = 0.3
+  p.n_max_undecided = 64;
   LayeredMap m(p);
   bool periodic_seen = false;
+  int candidate_unknown_checks = 0;
   for (int w = 0; w < 96; ++w) {
     if ((w % 24) < 6) { m.observeHit(9); } else { m.observeMiss(9); }
     m.tick();
     if (w + 1 <= 24) { EXPECT_EQ(m.cellCount(), 1u) << "window " << (w + 1); }   // alive through the gate
     if (m.classify(9) == CellClass::Periodic) periodic_seen = true;
+    // A cell at the floor (n >= T, l <= B) that is kept only as a periodic candidate and is not yet
+    // read out Periodic or Static reads Unknown: neither Transient nor Intermittent (n_max = 64 here).
+    if (p.n_max_undecided > 0 && m.observations(9) >= p.periodicity.period_windows && !m.isStatic(9) &&
+        m.classify(9) != CellClass::Periodic && m.occupancyProb(9) <= 1.0 / (1.0 + std::exp(-m.sprt().B)) + 1e-12) {
+      ++candidate_unknown_checks;
+      EXPECT_EQ(m.classify(9), CellClass::Unknown) << "window " << (w + 1);
+    }
     // Before the gate a cell is never Unknown (not rejected): here Static in the first hit phase, then Transient.
     if (w + 1 < 24) { EXPECT_NE(m.classify(9), CellClass::Unknown) << "window " << (w + 1); }
     // (The door graduates in each hit phase and is demoted by the reverse test in the miss phase, which
@@ -409,6 +418,7 @@ TEST(Sprt, DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic) {
     // the floor itself is pinned by the gate tests above.)
   }
   EXPECT_TRUE(periodic_seen);
+  EXPECT_GT(candidate_unknown_checks, 0);                      // the branch was reached, not skipped
   EXPECT_EQ(m.classify(9), CellClass::Periodic);
   EXPECT_FALSE(m.isStatic(9));
 }
