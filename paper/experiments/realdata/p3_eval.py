@@ -2,8 +2,8 @@
 """Phase 3 evaluators (PREREG_P3.md). numpy only, deterministic (fixed seeds), no data in the repository.
 
     kth            SA / DA / AA / HA of a method map against a KTH ground-truth cloud (PREREG_P3.md section 4)
-    kth-selfcheck  the two validation cases on a ground-truth cloud: GT static points only -> SA = DA = 100;
-                   remove nothing (the whole GT) -> SA = 100, DA = 0
+    kth-selfcheck  the two validation cases on a ground-truth cloud: GT static points only -> SA = 100 and DA equal to the oracle ceiling
+                   (100 unless dynamic points touch static ones within tol); remove nothing (the whole GT) -> SA = 100, DA = 0
     lil            false-Static on clutter and false-reject on wall runs from an `arm-eval` cell dump (section 6)
     spires         the same rates from an `arm-eval` counts table of a 3D label file (section 7)
     boreas         cross-session Jaccard of Static voxel sets inside shared tiles (section 5)
@@ -195,13 +195,42 @@ def cmd_kth(args):
     return 0
 
 
+def shadowed_independent(static_xyz, dyn_xyz, tol):
+    """Number of dynamic points that have a static point within tol, by a method that shares no code with `matched`: a sort on x,
+    a window of +-tol in x, and a brute-force distance test inside the window."""
+    st = np.asarray(static_xyz, dtype=np.float64).reshape(-1, 3)
+    dy = np.asarray(dyn_xyz, dtype=np.float64).reshape(-1, 3)
+    if st.shape[0] == 0:
+        return 0
+    order = np.argsort(st[:, 0], kind="stable")
+    sx = st[order]
+    xs = sx[:, 0]
+    count = 0
+    for p in dy:
+        lo = np.searchsorted(xs, p[0] - tol, side="left")
+        hi = np.searchsorted(xs, p[0] + tol, side="right")
+        if hi > lo:
+            d = sx[lo:hi] - p
+            if ((d * d).sum(axis=1) <= tol * tol).any():
+                count += 1
+    return count
+
+
 def cmd_kth_selfcheck(args):
+    """Two validation cases on a ground-truth cloud (PREREG_P3.md section 4.3).
+    1. The map is the GT static points: SA must be 100, and DA must equal the share of dynamic points that have NO static point within
+       tol, counted independently. On real clouds that share is below 100 (dynamic points that touch static ground within 5 cm cannot
+       be removed by any map), so DA = 100 holds only when no dynamic point is that close; the ceiling is printed.
+    2. The map is the whole GT (remove nothing): SA must be 100 and DA 0."""
     gt, lab = read_pcd(args.gt)
     dyn = lab != 0
-    a = kth_scores(gt, dyn, gt[~dyn], args.tol)          # the GT static points as the method map
-    b = kth_scores(gt, dyn, gt, args.tol)                # the method keeps everything
-    print(json.dumps({"gt_static_only": a, "remove_nothing": b}, indent=1, sort_keys=True))
-    ok = (a["SA"] == 100.0 and a["DA"] == 100.0 and b["SA"] == 100.0 and b["DA"] == 0.0)
+    a = kth_scores(gt, dyn, gt[~dyn], args.tol)
+    b = kth_scores(gt, dyn, gt, args.tol)
+    shadowed = shadowed_independent(gt[~dyn], gt[dyn], args.tol)
+    ceiling = 100.0 * (a["gt_dynamic"] - shadowed) / a["gt_dynamic"]
+    out = {"gt_static_only": a, "remove_nothing": b, "dynamic_points_within_tol_of_a_static_point": shadowed, "DA_oracle_ceiling": ceiling}
+    print(json.dumps(out, indent=1, sort_keys=True))
+    ok = (a["SA"] == 100.0 and abs(a["DA"] - ceiling) < 1e-9 and b["SA"] == 100.0 and b["DA"] == 0.0)
     print("SELFCHECK " + ("PASS" if ok else "FAIL"))
     return 0 if ok else 3
 

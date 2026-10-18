@@ -161,6 +161,16 @@ class TestKthScores(unittest.TestCase):
             self.assertEqual(run.returncode, 0, run.stderr)
             res = json.loads(run.stdout)
             self.assertEqual((res["SA"], res["DA"]), (100.0, 100.0))
+            # a dynamic point 3 cm from a static point cannot be removed by any map: the oracle ceiling of DA drops below 100 and the check still passes
+            near = xyz[lab == 0][:1] + np.array([[0.03, 0.0, 0.0]], dtype=np.float32)
+            ev.write_pcd(d + "/gt2.pcd", np.concatenate([xyz, near]), np.concatenate([lab, [1.0]]).astype(np.float32))
+            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "kth-selfcheck", "--gt", d + "/gt2.pcd"], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stdout + run.stderr)
+            res = json.loads(run.stdout.split("SELFCHECK")[0])
+            self.assertEqual(res["dynamic_points_within_tol_of_a_static_point"], 1)
+            n_dyn = int(lab.sum()) + 1
+            self.assertAlmostEqual(res["DA_oracle_ceiling"], 100.0 * (n_dyn - 1) / n_dyn)
+            self.assertAlmostEqual(res["gt_static_only"]["DA"], res["DA_oracle_ceiling"])
             # a GT cloud whose intensity is not a 0/1 flag is refused
             ev.write_pcd(d + "/bad.pcd", xyz, lab * 5)
             run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "kth", "--gt", d + "/bad.pcd", "--map", d + "/map.pcd"], capture_output=True, text=True)
@@ -169,6 +179,20 @@ class TestKthScores(unittest.TestCase):
             ev.write_pcd(d + "/half.pcd", xyz[lab == 0][::2])
             run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "kth", "--gt", d + "/gt.pcd", "--map", d + "/half.pcd"], capture_output=True, text=True)
             self.assertAlmostEqual(json.loads(run.stdout)["SA"], 100.0 * np.ceil((lab == 0).sum() / 2) / (lab == 0).sum(), places=6)
+
+
+class TestShadowed(unittest.TestCase):
+    def test_independent_count_agrees_with_matched(self):
+        rng = np.random.RandomState(11)
+        st = rng.rand(3000, 3) * 3.0
+        dy = np.concatenate([rng.rand(400, 3) * 3.0, st[:100] + (rng.rand(100, 3) - 0.5) * 0.08])
+        for tol in (0.05, 0.1):
+            self.assertEqual(ev.shadowed_independent(st, dy, tol), int(ev.matched(dy, st, tol).sum()))
+        self.assertEqual(ev.shadowed_independent(np.zeros((0, 3)), dy, 0.05), 0)
+
+    def test_boundary_is_inclusive(self):
+        self.assertEqual(ev.shadowed_independent(np.array([[0.05, 0, 0]]), np.array([[0.0, 0, 0]]), 0.05), 1)
+        self.assertEqual(ev.shadowed_independent(np.array([[0.0500001, 0, 0]]), np.array([[0.0, 0, 0]]), 0.05), 0)
 
 
 class TestStatistics(unittest.TestCase):
