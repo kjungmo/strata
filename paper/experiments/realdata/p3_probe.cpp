@@ -131,7 +131,7 @@ int cmdKthExport(const std::map<std::string, std::string>& a) {
   const ArmSpec arm = armSpec(need(a, "arm"));
   KthExportOptions o;
   o.res = std::stod(need(a, "res")); o.window_steps = std::stoi(need(a, "window")); o.periodicity = flag(a, "periodicity", true);
-  o.max_range = std::stod(opt(a, "max-range", "50")); o.max_frames = std::stoul(opt(a, "max-frames", "0"));
+  o.max_range = std::stod(opt(a, "max-range", "0")); o.max_frames = std::stoul(opt(a, "max-frames", "0"));
   o.policies.clear();
   for (const auto& p : splitList(opt(a, "policies", "static_only,not_rejected"))) o.policies.push_back(parsePolicy(p));
   if (o.policies.empty()) fail("arguments", "--policies is empty");

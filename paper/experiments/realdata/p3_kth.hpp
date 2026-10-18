@@ -1,8 +1,10 @@
 // KTH DynamicMap benchmark exporter (PREREG_P3.md section 4). Runs one arm over the frames of a sequence and writes the
 // ORIGINAL points whose voxel is kept, for each export policy, as a PCD map that the benchmark's evaluation reads.
 // Output points are copies of frame points, so a ground-truth point matches its own copy at distance 0; voxel centres
-// would fail the benchmark's 0.05 m match. Only points with sensor distance < max_range (50 m, the rule that built the
-// ground-truth cloud) are exported. Header-only; the evaluator is p3_eval.py.
+// would fail the benchmark's 0.05 m match. By default every point of every frame is exported: the ground-truth cloud of KITTI 00
+// holds every frame point (the sum of the frame POINTS equals the GT POINTS, and the first GT points are frame 0 in order; the 50 m
+// limit of the benchmark README is not a cut of the points). max_range > 0 restores a cut (sensor distance < max_range). Header-only;
+// the evaluator is p3_eval.py.
 #pragma once
 #include <dirent.h>
 #include <algorithm>
@@ -31,7 +33,7 @@ struct KthExportOptions {
   double res{0.2};
   int window_steps{10};
   bool periodicity{true};
-  double max_range{50.0};
+  double max_range{0.0};              // points with sensor distance >= max_range are not exported; 0 = no limit (see below)
   std::vector<Policy> policies{Policy::StaticOnly, Policy::NotRejected};
   std::size_t max_frames{0};          // 0 = all frames (a smaller number is for tests and reader validation)
 };
@@ -74,7 +76,7 @@ inline KthExportReport kthExport(const std::string& seq_dir, const ArmSpec& arm,
     const PcdCloud c = readPcd(seq_dir + "/pcd/" + f);
     for (std::size_t i = 0; i < c.xyz.size(); i += 3) {
       const Eigen::Vector3d p(c.xyz[i], c.xyz[i + 1], c.xyz[i + 2]);
-      if (!((p - c.hdr.t).norm() < o.max_range)) { ++rep.points_out_of_range; continue; }
+      if (o.max_range > 0.0 && !((p - c.hdr.t).norm() < o.max_range)) { ++rep.points_out_of_range; continue; }
       ++rep.points_in_range;
       const Verdict v = verdictOf(b.layered(), b.voxelId(p), arm.binary);
       ++rep.verdict_points[static_cast<int>(v)];

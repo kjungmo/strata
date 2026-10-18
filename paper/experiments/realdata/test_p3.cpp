@@ -256,7 +256,7 @@ std::string makeKthSequence(const std::string& name, int frames) {
 
 TEST(P3Kth, ExportsOriginalPointsByPolicy) {
   const std::string dir = makeKthSequence("kth1", 12);
-  KthExportOptions o; o.res = 0.2; o.window_steps = 2; o.periodicity = false;
+  KthExportOptions o; o.res = 0.2; o.window_steps = 2; o.periodicity = false; o.max_range = 50.0;
   o.policies = {Policy::StaticOnly, Policy::NotRejected, Policy::All};
   const KthExportReport r = kthExport(dir, armSpec("shipped_v0_1"), o, tmpPath("kth1_out"));
   EXPECT_EQ(r.frames, 12u); EXPECT_EQ(r.windows, 6u);
@@ -314,7 +314,7 @@ TEST(P3Kth, RangeRuleAndRaysUseTheViewpoint) {
     char nm[32]; std::snprintf(nm, sizeof nm, "/pcd/%06d.pcd", k);
     writePcd(dir + nm, xyz, nullptr, vp);
   }
-  KthExportOptions o; o.res = 0.2; o.window_steps = 1; o.periodicity = false;
+  KthExportOptions o; o.res = 0.2; o.window_steps = 1; o.periodicity = false; o.max_range = 50.0;
   o.policies = {Policy::StaticOnly, Policy::NotRejected, Policy::All};
   const KthExportReport r = kthExport(dir, armSpec("shipped_v0_1"), o, tmpPath("kth5_out"));
   EXPECT_EQ(r.points_out_of_range, 12u);                                            // 80.1 m is 50.1 m from the sensor
@@ -322,6 +322,19 @@ TEST(P3Kth, RangeRuleAndRaysUseTheViewpoint) {
   EXPECT_EQ(r.kept[2], 25u);
   EXPECT_EQ(r.kept[0], 24u);                                                        // wall and the point 49.9 m ahead graduate
   EXPECT_EQ(r.kept[1], 25u);                                                        // the mover is hit in one window and never missed: Undecided, kept
+}
+
+TEST(P3Kth, NoRangeCutByDefault) {
+  // the ground-truth cloud holds every frame point, so the default exports every point, far ones included
+  const std::string dir = makeKthSequence("kth6", 12);
+  KthExportOptions o; o.res = 0.2; o.window_steps = 2; o.periodicity = false; o.policies = {Policy::All, Policy::StaticOnly};
+  EXPECT_DOUBLE_EQ(o.max_range, 0.0);
+  const KthExportReport r = kthExport(dir, armSpec("shipped_v0_1"), o, tmpPath("kth6_out"));
+  EXPECT_EQ(r.points_out_of_range, 0u);
+  EXPECT_EQ(r.points_in_range, 12u * 3u + 2u);
+  EXPECT_EQ(r.kept[0], r.points_in_range);                                          // policy all = every frame point, the GT cloud of the sequence
+  EXPECT_EQ(r.kept[1], 36u);                                                        // wall, 49.99 m point and the 50.0 m point all graduate
+  EXPECT_EQ(readPcd(r.out_paths[0]).hdr.points, 38u);
 }
 
 TEST(P3Kth, MissingViewpointAndMissingFramesFailLoudly) {
@@ -823,7 +836,7 @@ TEST(P3Probe, KthValidateAcceptsAFrameAndRejectsBrokenOnes) {
 TEST(P3Probe, KthExportCommandWritesMapsAndMeta) {
   const std::string dir = makeKthSequence("kcli", 12);
   std::string out;
-  EXPECT_EQ(runProbe("kth-export --dir " + dir + " --arm shipped_v0_1 --res 0.2 --window 2 --periodicity 0 --policies static_only,all --out-prefix " + tmpPath("kcli_out") + " --meta " + tmpPath("kcli.meta"), &out), 0) << out;
+  EXPECT_EQ(runProbe("kth-export --dir " + dir + " --arm shipped_v0_1 --res 0.2 --window 2 --periodicity 0 --max-range 50 --policies static_only,all --out-prefix " + tmpPath("kcli_out") + " --meta " + tmpPath("kcli.meta"), &out), 0) << out;
   const auto m = readMeta(tmpPath("kcli.meta"));
   EXPECT_EQ(m.at("frames"), "12"); EXPECT_EQ(m.at("kept_static_only"), "24"); EXPECT_EQ(m.at("kept_all"), "26"); EXPECT_EQ(m.at("points_out_of_range"), "12");
   EXPECT_EQ(readPcd(m.at("out_static_only")).hdr.points, 24u);
