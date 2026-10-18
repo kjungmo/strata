@@ -195,6 +195,8 @@ guard_eval() {
   local pin; pin="$(engine_pin)"
   if [ -z "$pin" ]; then echo "refusing: PREREG_P3.md records no engine pin (line STRATA_CORE_TREE=<hash>)"; exit 4; fi
   if [ "$(engine_tree HEAD)" != "$pin" ]; then echo "refusing: strata_core at HEAD ($(engine_tree HEAD)) is not the pinned engine ($pin); an amendment must re-pin it"; exit 4; fi
+  # the lead decisions of PREREG_P3.md section 12 (Amendment 7) must be recorded before the first evaluation
+  if ! grep -qE '^LEAD_P3_DECISIONS=amendment-[0-9]+$' "$HERE/PREREG_P3.md"; then echo "refusing: PREREG_P3.md records no lead decisions for section 12 (line LEAD_P3_DECISIONS=amendment-N)"; exit 4; fi
   { echo "evaluations started $(stamp)"; echo "head $(git -C "$HERE" rev-parse HEAD)"; echo "strata_core_tree $pin"; echo "prereg_p3_last_commit $(git -C "$HERE" log -1 --format='%H %cI' -- PREREG_P3.md)"; } >> "$RES/eval_start.txt"
 }
 

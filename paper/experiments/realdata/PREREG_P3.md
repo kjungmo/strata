@@ -57,8 +57,8 @@ sprt_high_end: sprt m0=0.3 m1=0.75 alpha=0.01 beta=0.01 n_max_undecided=80 binar
 |---|---|---|
 | `shipped_v0_1` | the v0.1 shipped rule, unchanged (`evidence_model = legacy`) | `LayeredMapParams` defaults of v0.1 |
 | `symmetric` | `shipped_v0_1` with `l_miss = -l_hit`; nothing else changes | DESIGN_AND_PLAN section 4 rule 4 |
-| `octomap` | OctoMap update: `p_hit 0.7`, `p_miss 0.4`, clamps `0.12` and `0.97`, occupied iff `l > 0` (graduate at `0.5 + 1e-12`, demote at `0.5`), no leak, never pruned | Hornung et al. 2013 defaults |
-| `elite_like` | on-ray odds factors 9 and 1/9 (`l = +-ln 9`), no leak, occupied iff `l > 0`; clamp `+-50` (the paper states none that we found) | ELite Eq. 5 and 6 at zero distance (`sources_verified.md` (6)) |
+| `octomap` (table label: OctoMap parameters on window evidence; Amendment 6) | OctoMap parameters, one increment per touched window: `p_hit 0.7`, `p_miss 0.4`, clamps `0.12` and `0.97`, occupied iff `l > 0` (graduate at `0.5 + 1e-12`, demote at `0.5`), no leak, never pruned | Hornung et al. 2013 defaults |
+| `elite_like` (table label: ELite factors on window evidence; Amendment 6) | on-ray odds factors 9 and 1/9, one increment per touched window (`l = +-ln 9`), no leak, occupied iff `l > 0`; clamp `+-50` (the paper states none that we found) | ELite Eq. 5 and 6 at zero distance (`sources_verified.md` (6)) |
 | `sprt` | Wald test on the per-window hit rate; increments and thresholds derived by the engine from `(m0, m1, alpha, beta)`; Intermittent read-out after `n_max_undecided` windows; floor rule and reverse-test demotion of L-6 | `PREREG.json` conditional pair of the 2D backend |
 
 `sprt_low_end` and `sprt_high_end` are extra arms, not part of the five. They run the interval ends of the conditional pair (`PREREG.md`: "pair at the
@@ -105,7 +105,7 @@ at the end. The meta file of every KTH export lists the verdict of every exporte
 ### 3.2 Export policies for the KTH benchmark
 
 * **(i) `static_only`**: a point is kept iff the verdict of its voxel is Static. This is the lifelong reading; SA is expected to collapse on single-pass data.
-* **(ii) `not_rejected`**: a point is kept iff the verdict of its voxel is not Rejected. This is the removal reading, comparable to the OctoMap-family rows.
+* **(ii) `not_rejected`**: a point is kept iff the verdict of its voxel is not Rejected. This is the removal reading. It is not comparable to published OctoMap or ELite rows (Amendment 6: every arm updates once per touched window).
 * For binary arms (i) and (ii) are identical.
 
 ### 3.3 Metrics
@@ -140,7 +140,7 @@ Order (P1_DECISION_ADVICE section 7): (1) `lt_changes_dynamics_0`, (2) `lt_chang
 * KITTI 05: 321 frames (`002350` to `002670`), 10 Hz, 64 beams, poses of SuMa (SemanticKITTI), not ground truth. Semi-indoor: 960 frames, VLP-16, poses of an NDT SLAM run. Frames are fed unfiltered, one tick per frame, sensor origin from `VIEWPOINT`.
 * Conditions: KITTI 05 at 0.2 m with `W = 10` (32 windows) and `W = 2` (160 windows). Semi-indoor at 0.2 m with `W = 10` (96 windows) and `W = 2` (480), and at 0.1 m with `W = 10`. KITTI 05 at 0.1 m is not run (memory: the engine map holds every free-space voxel; KITTI 00 at 0.1 m has 29 million cells for 141 frames, and KITTI 05 has 321 frames).
 * 5 arms x 2 policies x conditions x Periodic veto on and off. The `sprt` pair is the 2D pair (section 2.3); this is stated beside the table.
-* A sentence stands beside every KTH table: single pass, number of windows, voxel size, pose source, 16-beam validity for semi-indoor, AA and HA labelled.
+* A sentence stands beside every KTH table: single pass, number of windows, voxel size, pose source, 16-beam validity for semi-indoor, AA and HA labelled, and (Amendment 6) the words "every arm applies its increment once per touched window, so the rows labelled OctoMap parameters on window evidence and ELite factors on window evidence are not the published OctoMap and ELite methods".
 
 ### 5.2 Export
 
@@ -479,4 +479,45 @@ Commit `2f3cead` (test and node work on the branch, from the review) changed `st
 
 ```text pin
 STRATA_CORE_TREE=bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+```
+
+## 19. Amendment 6 (2026-10-18, before any evaluation): every arm updates once per touched window; labels of the two baseline rows
+
+Resolves finding 1 of the third Opus review. It changes no arm value, label rule, window, resolution or metric. It replaces the wording of section 2.1 (rows `octomap` and `elite_like`), section 3.2 (policy ii) and section 5.1 (the sentence beside each KTH table); the earlier text stays and this section is binding.
+
+### 19.1 What the engine does
+
+`LayeredMap::endWindow` (`strata_core/src/layered_map.cpp`, lines 110 to 119) adds `l_hit` or `l_miss` once per touched window: hit if any return fell in the window, miss if only free-space rays did. It then clamps, and applies graduate and demote. All five arms run through this one path. Voxel ray casting at the stated resolution gives the hits and misses of each window.
+
+OctoMap and ELite update once per ray per scan at 0.1 m. So the `octomap` arm is the OctoMap parameters (`p_hit`, `p_miss`, clamps, threshold) applied to window outcomes. It is not OctoMap. The same holds for `elite_like` and ELite. Evidence from the smoke run on KITTI 00 (calibration data): the `octomap` arm scores SA 98.45 and DA 97.81 (`results_p3/smoke_kth00_octomap_not_rejected.json`). The published OctoMap row of the KTH benchmark is about SA 68.
+
+### 19.2 Rule
+
+1. Every arm, `octomap` and `elite_like` included, applies its increment once per touched window, through the same voxel ray casting at the stated resolution.
+2. In every table, figure and sentence the two rows are named **OctoMap parameters on window evidence** and **ELite factors on window evidence**. The names OctoMap and ELite alone are not used for them. The arm ids `octomap` and `elite_like` stay in code, file names and the arm block of section 2.1.
+3. The sentence beside each KTH table adds: "every arm applies its increment once per touched window, so the rows labelled OctoMap parameters on window evidence and ELite factors on window evidence are not the published OctoMap and ELite methods; their numbers are not comparable to the published rows".
+4. No KTH table puts these two rows next to published OctoMap or ELite numbers as if they were the same quantity.
+5. No arm value changes. Section 2.1 and the `arms` block stay as written.
+
+## 20. Amendment 7 (2026-10-18, before any evaluation): the lead decisions of section 12; n_max_undecided
+
+Resolves finding 2 of the third Opus review. Section 12 lists six open items and had no recorded answer. The lead ordered all findings of the review to be resolved without changing any arm. The decisions below follow from that order and from the binding documents. Five are "keep as written". Every decision can be replaced by a further dated amendment that is committed before the first evaluation. The guard refuses to run until this section exists (marker line at the end).
+
+| Item of section 12 | Decision | Reason |
+|---|---|---|
+| 1. Freeze or waive the pair | **Keep as written.** The pair is waived. `sprt` runs the point pair (0.20, 0.70, 0.01, 0.01) of `PREREG.json`. `sprt_low_end` and `sprt_high_end` stay extra arms. | `PREREG.md`: G1 fails, so neither pair is frozen (section 2.3). The three `sprt*` rows show how much the answer depends on the pair. |
+| 2. Spires clutter definition (section 7.3) | **Keep as written.** No vertical band. The definition is reported with its caveat. | A band chosen now would be a new label rule. Section 13 forbids changes after a result and the definition is already fixed. |
+| 3. Per-laser time offset on `dynamics_0` | **Keep as written.** The conversion uses -0.13 s for both lasers. The diagnostic search is reported and not used. | A per-laser offset chosen by a search would tune on test data. |
+| 4. Vertical offset between Boreas sessions | **Settled by Amendment 3 (16.1).** No offset is applied (`z_offset = 0`). The tile-ground comparison is a diagnostic only. | Amendment 3 measured the altitude columns on one datum to centimetres. |
+| 5. Periodic veto | **Keep as written.** Primary on, secondary off. Boreas runs with the veto off (Amendment 1). | Section 2.2. The node ships the veto. The secondary run isolates the evidence rule. |
+| 6. MTD-Map-like arm | **Keep as written.** Not built. It is reported as not run, with the reason of section 2.4. | No released code was found. A reimplementation from the paper alone would claim more than we know. |
+
+### 20.1 n_max_undecided = 80 (not 64)
+
+`LEAD_DECISIONS_P1.md` L-6 says 64. The arm table of section 2.1 runs 80 (`results_p1b/deviations.md` items 8 and 20). The memo's Monte Carlo gives P(still undecided) = 0.024 at 64 windows, but it lets a cell be rejected from window 1. The engine rejects only once n >= 24 (the gate `T`). With that rule the exact P(undecided) is 0.0314 and 0.0388 at 64, and 0.0113 and 0.0150 at 80 (two pairs; the reviewer's own dynamic program gives the same). The memo's own bound, P <= 0.03, is met at 80 and not at 64.
+
+**Decision: 80 binds P3 and the paper.** The arm table is not changed. The paper states that L-6 named 64, that the engine rule needs 80 to reach the stated undecided share, and gives both figures. If the lead replaces this decision, the arm block of section 2.1 and `p3_arms.hpp` change in a dated amendment committed before the first evaluation.
+
+```text lead decisions
+LEAD_P3_DECISIONS=amendment-7
 ```

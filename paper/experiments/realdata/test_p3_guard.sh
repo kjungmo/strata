@@ -54,6 +54,16 @@ printf '# prereg\nSTRATA_CORE_TREE=%s\nSTRATA_CORE_TREE=%s\n' "00000000000000000
 git -C "$R" add -A; git -C "$R" -c user.name=t -c user.email=t@example.com commit -q -m goodpin
 echo "$(head_commit)" > "$T/build/commit"
 
+# lead decisions of section 12 (Amendment 7): no marker, a malformed marker: refused; the marker line: passes
+MSG="records no lead decisions"; expect_refusal "no lead decisions" env P3_RUN_EVALUATIONS=1
+echo "LEAD_P3_DECISIONS=" >> "$RD/PREREG_P3.md"
+git -C "$R" add -A; git -C "$R" -c user.name=t -c user.email=t@example.com commit -q -m badmarker
+echo "$(head_commit)" > "$T/build/commit"
+MSG="records no lead decisions"; expect_refusal "malformed lead decisions marker" env P3_RUN_EVALUATIONS=1
+echo "LEAD_P3_DECISIONS=amendment-7" >> "$RD/PREREG_P3.md"
+git -C "$R" add -A; git -C "$R" -c user.name=t -c user.email=t@example.com commit -q -m marker
+echo "$(head_commit)" > "$T/build/commit"
+
 echo "# changed after the commit" >> "$RD/PREREG_P3.md"
 MSG="uncommitted changes"; expect_refusal "PREREG_P3.md modified" env P3_RUN_EVALUATIONS=1
 git -C "$R" checkout -q -- .

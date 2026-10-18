@@ -109,3 +109,23 @@ The 94 Boreas mutants of the earlier lists, rerun on the final tests: 91 killed,
 
 **Test-split stat record.** `test_split_stat_before_r2*.tsv` (14:39:57, before the first read of this work) and `test_split_stat_after_r2*.tsv` (after the last read), comparison `test_split_stat_compare_r2.md`: 6,648 files in each record; no file appeared, disappeared or changed in size, mtime or ctime. As before, this shows only that no file was modified.
 The opens are in `access_log.tsv` (steps `r2_explore_pose`, `validate_boreas_2020`, `boreas_overlap`, `feas_a4_boreas_convert_r*`): the GPS and lidar-pose text files of the three Boreas sessions and the first 10 lidar frames of 2020-11-26 only; no other lidar frame of any session was opened.
+
+### Third review of the harness (Opus), three findings (2026-10-18, before any evaluation)
+
+I did not disagree with any finding. No evaluation stage has run (`results_p3/eval_start.txt` does not exist). The two amendments are committed before any run.
+
+| # | Finding | Resolution | Where |
+|---|---|---|---|
+| 1 | The `octomap` and `elite_like` arms apply one increment per touched window, not per ray per scan, so they are not OctoMap and ELite. | Checked: `layered_map.cpp` `endWindow` adds `l_hit` or `l_miss` once per touched window; the smoke row `octomap` on KITTI 00 has SA 98.45 and DA 97.81. Amendment 6 states that every arm updates once per touched window, renames the rows "OctoMap parameters on window evidence" and "ELite factors on window evidence", and adds the words to the sentence beside each KTH table. No arm value changes. | `PREREG_P3.md` section 19 |
+| 2 | Section 12 has no recorded resolution; n_max 80 against the lead's 64 is missing from it. | Amendment 7 records a decision for each of the six items (five "keep as written", item 4 settled by Amendment 3) and decides n_max 80 with the figures. `guard_eval` refuses to run without the marker line `LEAD_P3_DECISIONS=amendment-N`. The decisions are the implementer's record of the lead's order to resolve the finding without changing an arm; the lead can replace any of them by a dated amendment before the first evaluation. | `PREREG_P3.md` section 20; `reproduce_p3.sh` `guard_eval` |
+| 3 | The reviewer read test-split files without strace. | Eight rows added to `access_log.tsv` (step `review3_untraced_reads`, open calls "unrecorded"). Listed below. A stat record was taken after the reads. | `access_log.tsv`; `review/review3_stat_*` |
+
+**Reads of the reviewer (untraced).** Test split:
+
+* Boreas `boreas-2020-11-26-13-58`: `applanix/gps_post_process.csv` (rows within 30 s of the slice start), `applanix/lidar_poses.csv`, `calib/T_applanix_lidar.txt`, lidar frames 0 and 9 (`1606417543533737.bin`, `1606417544467377.bin`).
+* Spires Keble 03: `raw/lidar-clouds.zip` (central directory and scans 1 to 9), `processed/trajectory/gt-tum.txt`.
+* Spires TLS map `ground_truth_map/keble-college/merged-cloud-1cm.pcd`: not opened by the harness before. The reviewer read it once, sequentially, and kept only the voxels inside the bounding box of the first 9 Keble 03 scans (about 409k voxels at 0.1 m).
+
+The reviewer computed no arm, label, metric or rate. The purpose was a reader check against TLS. KTH 00 (calibration data) was also read; it is not test split and has no row in the access log. No configuration changed because of these reads. The TLS map is read by the `spires_*_tls` steps of `eval_spires` under strace as before.
+
+**Test-split stat record.** `results_p3/review/review3_stat_now*.tsv` (taken after the reads) against `test_split_stat_after_r2*.tsv`: comparison `results_p3/review/review3_stat_compare.md`. 6,644 files in each record; no file appeared, disappeared or changed in size, mtime or ctime. As before, this shows only that no file was modified; it does not show that a file was not opened.
