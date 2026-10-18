@@ -333,6 +333,8 @@ int cmdBoreasConvert(const std::map<std::string, std::string>& a) {
   const BoreasSession ref = loadSession(need(a, "ref"));
   const std::size_t maxf = std::stoul(opt(a, "max-frames", "0"));
   const std::size_t nf = maxf > 0 ? std::min(maxf, s.frames.size()) : s.frames.size();
+  const std::size_t step = std::stoul(opt(a, "frame-step", "1"));      // use frames 0, step, 2 step, ...
+  if (step < 1) fail("arguments", "--frame-step must be at least 1");
   BoreasConvertOptions co;
   co.r_min = std::stod(opt(a, "r-min", "3")); co.r_max = std::stod(opt(a, "r-max", "50")); co.dt = std::stod(opt(a, "dt", "0"));
   const double zoff = std::stod(opt(a, "z-offset", "0"));
@@ -345,13 +347,13 @@ int cmdBoreasConvert(const std::map<std::string, std::string>& a) {
   const Pose3 to_common = sessionToReference(refo, org, zoff);
   CacheWriter w(need(a, "out"), 3);
   BoreasConvertReport rep; Frame fr;
-  for (std::size_t k = 0; k < nf; ++k) {
+  for (std::size_t k = 0; k < nf; k += step) {
     const BoreasScan sc = parseBoreasBin(readFileBytes(s.dir + "/lidar/" + s.frames[k]), s.frames[k]);
-    if (convertBoreasScan(sc, boreasFrameTime(s.frames[k]), track, T, to_common, co, static_cast<std::uint32_t>(k), fr, rep)) w.add(fr);
+    if (convertBoreasScan(sc, boreasFrameTime(s.frames[k]), track, T, to_common, co, static_cast<std::uint32_t>(k / step), fr, rep)) w.add(fr);
   }
   w.finish();
   Meta m(need(a, "meta"));
-  m.put("sequence", s.id); m.put("reference", ref.id); m.put("r_min_m", co.r_min); m.put("r_max_m", co.r_max); m.put("dt_s", co.dt); m.put("z_offset_m", zoff);
+  m.put("sequence", s.id); m.put("reference", ref.id); m.put("frame_step", step); m.put("r_min_m", co.r_min); m.put("r_max_m", co.r_max); m.put("dt_s", co.dt); m.put("z_offset_m", zoff);
   m.put("frames_in_directory", s.frames.size()); m.put("frames_written", w.frames()); m.put("scans_dropped_no_pose", rep.scans_dropped_no_pose);
   m.put("points_in_files", rep.points_in); m.put("points_nonfinite", rep.points_nonfinite); m.put("points_out_of_range", rep.points_out_of_range);
   m.put("points_no_pose", rep.points_no_pose); m.put("points_used", rep.points_used);

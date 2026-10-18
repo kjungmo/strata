@@ -1041,6 +1041,14 @@ TEST(P3Probe, BoreasValidateOverlapAndConvertOnSyntheticSessions) {
     ASSERT_LE(r, 50.2);
     ASSERT_GE(r, 2.8);
   }
+  // every second frame: frames 0, 2, 4, ... and groups renumbered
+  ASSERT_EQ(runProbe("boreas-convert --seq " + a + " --ref " + a + " --frame-step 2 --out " + tmpPath("bsA2.cache") + " --meta " + tmpPath("bsA2.meta"), &out), 0) << out;
+  EXPECT_EQ(readMeta(tmpPath("bsA2.meta")).at("frames_written"), "6");
+  EXPECT_EQ(readMeta(tmpPath("bsA2.meta")).at("frame_step"), "2");
+  const auto f2 = readCache(tmpPath("bsA2.cache"));
+  ASSERT_EQ(f2.size(), 6u);
+  EXPECT_NEAR(f2[1].origin.x(), fa[2].origin.x(), 1e-9); EXPECT_EQ(f2[1].group, 1u);
+  EXPECT_NE(runProbe("boreas-convert --seq " + a + " --ref " + a + " --frame-step 0 --out x --meta y", &out), 0);
   EXPECT_NE(runProbe("boreas-convert --seq " + a + " --ref " + tmpPath("nope") + " --out x --meta y", &out), 0);
   // broken layout: a frame of the wrong size is reported
   { std::ofstream f(a + "/lidar/1606417543533737.bin", std::ios::binary | std::ios::trunc); f << std::string(1000, 'x'); }
