@@ -217,9 +217,11 @@ stage_eval_kth() {
       MEM_LIMIT_KB=9000000 must step "kth_selfcheck_$1" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth-selfcheck --gt '$seq/gt_cloud.pcd' > '$RES/kth_selfcheck_$1.json'"
     fi
     for arm in $(arms_to_run); do
+      # the identity check (policy all = every frame point = the GT cloud: SA 100, DA 0) runs once per condition, with the first arm
+      local pols="static_only,not_rejected"; [ "$arm" = "shipped_v0_1" ] && pols="$pols,all"
       MEM_LIMIT_KB=9000000 must step "kth_${1}_${arm}_r${r}_W$w" --traced -- "$P3" kth-export --dir "$seq" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
-        --policies static_only,not_rejected --out-prefix "$d/${arm}_r${r}_W${w}_p$PER" --meta "$d/${arm}_r${r}_W${w}_p$PER.meta"
-      for pol in static_only not_rejected; do
+        --policies "$pols" --out-prefix "$d/${arm}_r${r}_W${w}_p$PER" --meta "$d/${arm}_r${r}_W${w}_p$PER.meta"
+      for pol in ${pols//,/ }; do
         MEM_LIMIT_KB=9000000 must step "kth_eval_${1}_${arm}_r${r}_W${w}_$pol" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth --gt '$seq/gt_cloud.pcd' --map '$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd' > '$RES/kth_${1}_${arm}_r${r}_W${w}_p${PER}_$pol.json'"
         rm -f "$d/${arm}_r${r}_W${w}_p${PER}_$pol.pcd"          # bulky; the meta file and the JSON keep the numbers
       done
