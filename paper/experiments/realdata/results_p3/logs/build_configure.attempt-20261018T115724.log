@@ -1,0 +1,11 @@
+STEP build_configure
+START 2026-10-18T11:43:50+09:00 host=DESKTOP-KCD7BRS load=3.60 4.41 5.27 cores=12
+COMMIT b545319e62b428685551e0aa05d15b9967146071
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT b545319e62b428685551e0aa05d15b9967146071
+CMD cmake -S <BUILD_DIR>/src/paper/experiments -B <BUILD_DIR>/build -DCMAKE_BUILD_TYPE=Release
+-- Configuring done
+-- Generating done
+-- Build files have been written to: ~/.cache/strata_p3_build/build
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/build_configure.json rc=0
+END 2026-10-18T11:43:50+09:00 rc=0 load=3.60 4.41 5.27

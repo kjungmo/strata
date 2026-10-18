@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "2.82 3.32 4.23 3/878 886249",
+  "meminfo": {
+   "MemAvailable": "9517792 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31863868 kB"
+  },
+  "time": "2026-10-18T11:57:24+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 115 522736 cc1plus",
+   "27.1 74820 python3",
+   " 6.5 575408 2.1.299",
+   " 5.7 82364 fusion_node_mai",
+   " 3.2 187836 claude"
+  ]
+ },
+ "argv": [
+  "cmake",
+  "-S",
+  "~/.cache/strata_p3_build/src/paper/experiments",
+  "-B",
+  "~/.cache/strata_p3_build/build",
+  "-DCMAKE_BUILD_TYPE=Release"
+ ],
+ "before": {
+  "loadavg": "2.82 3.32 4.23 4/878 886244",
+  "meminfo": {
+   "MemAvailable": "9542188 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31863868 kB"
+  },
+  "time": "2026-10-18T11:57:24+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 113 518220 cc1plus",
+   "26.8 74812 python3",
+   " 6.5 575408 2.1.299",
+   " 5.6 82360 fusion_node_mai",
+   " 3.2 187836 claude"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "af415b06f07c22b3617b24d0a4ed0aa20101b22e",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 14
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.088,
+ "step": "build_configure"
+}

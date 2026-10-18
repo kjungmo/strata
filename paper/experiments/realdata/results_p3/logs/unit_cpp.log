@@ -1,11 +1,11 @@
 STEP unit_cpp
-START 2026-10-18T11:03:40+09:00 host=DESKTOP-KCD7BRS load=2.95 3.59 5.00 cores=12
-COMMIT 4fda8f3ad06616f1b4ad344fd3a84e897b9bc6d1
-EXPERIMENT_DIR_UNCOMMITTED 5
-BINARY_COMMIT 4fda8f3ad06616f1b4ad344fd3a84e897b9bc6d1
+START 2026-10-18T13:11:13+09:00 host=DESKTOP-KCD7BRS load=9.48 8.66 7.45 cores=12
+COMMIT c9fa37104e833bee4efe61207893f5e3454ba85c
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT c9fa37104e833bee4efe61207893f5e3454ba85c
 CMD <BUILD_DIR>/build/realdata/test_p3
 Running main() from /build/googletest-j5yxiC/googletest-1.10.0/googletest/src/gtest_main.cc
-[==========] Running 37 tests from 8 test suites.
+[==========] Running 42 tests from 9 test suites.
 [----------] Global test environment set-up.
 [----------] 4 tests from P3Arms
 [ RUN      ] P3Arms.TableMatchesTheDocumentedNumbers
@@ -17,6 +17,11 @@ Running main() from /build/googletest-j5yxiC/googletest-1.10.0/googletest/src/gt
 [ RUN      ] P3Arms.DescribeIsStableText
 [       OK ] P3Arms.DescribeIsStableText (0 ms)
 [----------] 4 tests from P3Arms (0 ms total)
+
+[----------] 1 test from P3Prereg
+[ RUN      ] P3Prereg.ArmsAreDocumented
+[       OK ] P3Prereg.ArmsAreDocumented (1 ms)
+[----------] 1 test from P3Prereg (1 ms total)
 
 [----------] 3 tests from P3Verdict
 [ RUN      ] P3Verdict.ThreeStatesAndTheBinaryRule
@@ -38,46 +43,48 @@ Running main() from /build/googletest-j5yxiC/googletest-1.10.0/googletest/src/gt
 
 [----------] 1 test from P3Pcd
 [ RUN      ] P3Pcd.StreamWriterRoundTripAndEmpty
-[       OK ] P3Pcd.StreamWriterRoundTripAndEmpty (1 ms)
-[----------] 1 test from P3Pcd (1 ms total)
+[       OK ] P3Pcd.StreamWriterRoundTripAndEmpty (0 ms)
+[----------] 1 test from P3Pcd (0 ms total)
 
-[----------] 5 tests from P3Kth
+[----------] 6 tests from P3Kth
 [ RUN      ] P3Kth.ExportsOriginalPointsByPolicy
-[       OK ] P3Kth.ExportsOriginalPointsByPolicy (1 ms)
+[       OK ] P3Kth.ExportsOriginalPointsByPolicy (3 ms)
 [ RUN      ] P3Kth.MoverRemovedByNotRejectedOnlyWhenTheEngineRejectsIt
 [       OK ] P3Kth.MoverRemovedByNotRejectedOnlyWhenTheEngineRejectsIt (2 ms)
 [ RUN      ] P3Kth.RangeRuleAndRaysUseTheViewpoint
-[       OK ] P3Kth.RangeRuleAndRaysUseTheViewpoint (1 ms)
+[       OK ] P3Kth.RangeRuleAndRaysUseTheViewpoint (2 ms)
+[ RUN      ] P3Kth.NoRangeCutByDefault
+[       OK ] P3Kth.NoRangeCutByDefault (2 ms)
 [ RUN      ] P3Kth.MissingViewpointAndMissingFramesFailLoudly
 [       OK ] P3Kth.MissingViewpointAndMissingFramesFailLoudly (1 ms)
 [ RUN      ] P3Kth.MaxFramesLimitsTheRun
-[       OK ] P3Kth.MaxFramesLimitsTheRun (1 ms)
-[----------] 5 tests from P3Kth (6 ms total)
+[       OK ] P3Kth.MaxFramesLimitsTheRun (2 ms)
+[----------] 6 tests from P3Kth (12 ms total)
 
 [----------] 11 tests from P3Boreas
 [ RUN      ] P3Boreas.BinParsing
 [       OK ] P3Boreas.BinParsing (0 ms)
 [ RUN      ] P3Boreas.LayoutVerdictRules
-[       OK ] P3Boreas.LayoutVerdictRules (6 ms)
+[       OK ] P3Boreas.LayoutVerdictRules (8 ms)
 [ RUN      ] P3Boreas.LayoutVerdictBoundariesOnBothSides
 [       OK ] P3Boreas.LayoutVerdictBoundariesOnBothSides (0 ms)
 [ RUN      ] P3Boreas.PoseCsvWindowOriginAndTimeScale
-[       OK ] P3Boreas.PoseCsvWindowOriginAndTimeScale (0 ms)
+[       OK ] P3Boreas.PoseCsvWindowOriginAndTimeScale (1 ms)
 [ RUN      ] P3Boreas.RotationConventionAndCalibration
 [       OK ] P3Boreas.RotationConventionAndCalibration (0 ms)
 [ RUN      ] P3Boreas.GeodesyAndTheCommonFrame
 [       OK ] P3Boreas.GeodesyAndTheCommonFrame (0 ms)
 [ RUN      ] P3Boreas.DeskewPlacesAStaticPointWhereItIs
 [       OK ] P3Boreas.DeskewPlacesAStaticPointWhereItIs (0 ms)
+[ RUN      ] P3Boreas.ConvertRotatesThePointsByThePose
+[       OK ] P3Boreas.ConvertRotatesThePointsByThePose (0 ms)
 [ RUN      ] P3Boreas.ConvertRangeWindowTimeOffsetAndMissingPose
 [       OK ] P3Boreas.ConvertRangeWindowTimeOffsetAndMissingPose (0 ms)
 [ RUN      ] P3Boreas.FrameTimeFromName
 [       OK ] P3Boreas.FrameTimeFromName (0 ms)
 [ RUN      ] P3Boreas.TileOverlap
 [       OK ] P3Boreas.TileOverlap (0 ms)
-[ RUN      ] P3Boreas.ZOffsetIsTheMedianOfTheTileDifferences
-[       OK ] P3Boreas.ZOffsetIsTheMedianOfTheTileDifferences (0 ms)
-[----------] 11 tests from P3Boreas (6 ms total)
+[----------] 11 tests from P3Boreas (9 ms total)
 
 [----------] 2 tests from P3Sprt
 [ RUN      ] P3Sprt.WallGraduatesInFourWindowsAndClutterIsRejectedOrUndecided
@@ -86,27 +93,33 @@ Running main() from /build/googletest-j5yxiC/googletest-1.10.0/googletest/src/gt
 [       OK ] P3Sprt.DriverRecordsTheGraduationWindow (0 ms)
 [----------] 2 tests from P3Sprt (0 ms total)
 
-[----------] 8 tests from P3Probe
+[----------] 11 tests from P3Probe
+[ RUN      ] P3Probe.LilValidateOnASyntheticBag
+[       OK ] P3Probe.LilValidateOnASyntheticBag (24 ms)
 [ RUN      ] P3Probe.ArmsListsFiveArmsAndTheExtras
-[       OK ] P3Probe.ArmsListsFiveArmsAndTheExtras (3 ms)
+[       OK ] P3Probe.ArmsListsFiveArmsAndTheExtras (2 ms)
 [ RUN      ] P3Probe.KthValidateAcceptsAFrameAndRejectsBrokenOnes
-[       OK ] P3Probe.KthValidateAcceptsAFrameAndRejectsBrokenOnes (12 ms)
+[       OK ] P3Probe.KthValidateAcceptsAFrameAndRejectsBrokenOnes (21 ms)
 [ RUN      ] P3Probe.KthExportCommandWritesMapsAndMeta
-[       OK ] P3Probe.KthExportCommandWritesMapsAndMeta (8 ms)
+[       OK ] P3Probe.KthExportCommandWritesMapsAndMeta (9 ms)
 [ RUN      ] P3Probe.ArmEvalCellsAndCounts
-[       OK ] P3Probe.ArmEvalCellsAndCounts (12 ms)
+[       OK ] P3Probe.ArmEvalCellsAndCounts (13 ms)
 [ RUN      ] P3Probe.RefExportDecodesGridCells
 [       OK ] P3Probe.RefExportDecodesGridCells (2 ms)
 [ RUN      ] P3Probe.StaticExportIndependentAndCumulative
-[       OK ] P3Probe.StaticExportIndependentAndCumulative (9 ms)
+[       OK ] P3Probe.StaticExportIndependentAndCumulative (17 ms)
+[ RUN      ] P3Probe.TileGroundGivesThePercentileHeightPerTile
+[       OK ] P3Probe.TileGroundGivesThePercentileHeightPerTile (12 ms)
 [ RUN      ] P3Probe.BoreasValidateOverlapAndConvertOnSyntheticSessions
-[       OK ] P3Probe.BoreasValidateOverlapAndConvertOnSyntheticSessions (41 ms)
+[       OK ] P3Probe.BoreasValidateOverlapAndConvertOnSyntheticSessions (57 ms)
+[ RUN      ] P3Probe.BoreasGateAndValidatorFailures
+[       OK ] P3Probe.BoreasGateAndValidatorFailures (51 ms)
 [ RUN      ] P3Probe.SpiresValidateOnASyntheticZip
-[       OK ] P3Probe.SpiresValidateOnASyntheticZip (6 ms)
-[----------] 8 tests from P3Probe (93 ms total)
+[       OK ] P3Probe.SpiresValidateOnASyntheticZip (9 ms)
+[----------] 11 tests from P3Probe (217 ms total)
 
 [----------] Global test environment tear-down
-[==========] 37 tests from 8 test suites ran. (107 ms total)
-[  PASSED  ] 37 tests.
+[==========] 42 tests from 9 test suites ran. (239 ms total)
+[  PASSED  ] 42 tests.
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/unit_cpp.json rc=0
-END 2026-10-18T11:03:40+09:00 rc=0 load=2.95 3.59 5.00
+END 2026-10-18T13:11:14+09:00 rc=0 load=9.48 8.66 7.45
