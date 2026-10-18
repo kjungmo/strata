@@ -384,6 +384,7 @@ int cmdStaticExport(const std::map<std::string, std::string>& a) {
     std::vector<CellId> stat = b->layered().staticCells(), obs = stat;
     for (CellId id : b->layered().transientCells()) obs.push_back(id);
     for (CellId id : b->layered().periodicCells()) obs.push_back(id);
+    for (CellId id : b->layered().intermittentCells()) obs.push_back(id);
     const std::string pre = need(a, "out-prefix") + "_s" + std::to_string(i);
     writeIds(pre + "_static.ids", stat);
     writeIds(pre + "_observed.ids", obs);

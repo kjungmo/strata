@@ -642,6 +642,53 @@ TEST(P3Boreas, ZOffsetIsTheMedianOfTheTileDifferences) {
   EXPECT_TRUE(std::isnan(estimateZOffset(a, std::map<TileKey, double>{{{50, 50}, 0.0}})));
 }
 
+// ----------------------------------------------------------------------------- the sprt arm ----------
+
+TEST(P3Sprt, WallGraduatesInFourWindowsAndClutterIsRejectedOrUndecided) {
+  if (!engineHasSprt()) GTEST_SKIP() << "no sprt engine in this build";
+  strata_core::LayeredMap m(toParams(armSpec("sprt"), 1, false));
+  strata_core::LayeredMap probe(toParams(armSpec("sprt"), 1, false));
+  const CellId wall = 1, mover = 2, flicker = 3;
+  for (int w = 0; w < 4; ++w) {
+    m.observeHit(wall); m.tick();
+    EXPECT_EQ(m.isStatic(wall), w == 3) << "window " << w + 1;                       // m0 = 0.2, m1 = 0.7, alpha = beta = 0.01: 4 windows (PREREG.md)
+  }
+  EXPECT_EQ(verdictOf(m, wall, false), Verdict::Static);
+  // a mover hit once, then missed: rejected (erased) once it has n >= 24 touched windows, not before. A later miss would create a
+  // new history for the voxel (a new Transient cell), so nothing observes the cell after window 24 here.
+  strata_core::LayeredMap r(toParams(armSpec("sprt"), 1, false));
+  for (int w = 0; w < 23; ++w) { if (w == 0) r.observeHit(mover); else r.observeMiss(mover); r.tick(); }
+  EXPECT_EQ(verdictOf(r, mover, false), Verdict::Undecided);                          // 23 touched windows: the gate is not open
+  r.observeMiss(mover); r.tick();
+  EXPECT_EQ(verdictOf(r, mover, false), Verdict::Rejected);
+  EXPECT_EQ(r.classify(mover), strata_core::CellClass::Unknown);
+  r.observeMiss(mover); r.tick();                                                     // a ray through the erased voxel starts a new history
+  EXPECT_EQ(verdictOf(r, mover, false), Verdict::Undecided);
+  // a cell hit at the zero-drift rate m* = 0.4391 never reaches either threshold: Undecided, and Intermittent after 80 windows
+  strata_core::LayeredMap u(toParams(armSpec("sprt"), 1, false));
+  const double mstar = 0.4391263739;
+  for (int w = 0; w < 79; ++w) { if (std::floor((w + 1) * mstar) > std::floor(w * mstar)) u.observeHit(flicker); else u.observeMiss(flicker); u.tick(); }
+  EXPECT_EQ(u.classify(flicker), strata_core::CellClass::Transient);
+  EXPECT_EQ(verdictOf(u, flicker, false), Verdict::Undecided);
+  for (int w = 79; w < 100; ++w) { if (std::floor((w + 1) * mstar) > std::floor(w * mstar)) u.observeHit(flicker); else u.observeMiss(flicker); u.tick(); }
+  EXPECT_EQ(u.classify(flicker), strata_core::CellClass::Intermittent);
+  EXPECT_EQ(verdictOf(u, flicker, false), Verdict::Undecided);                      // Intermittent is still undecided, not rejected
+  (void)probe;
+}
+
+TEST(P3Sprt, DriverRecordsTheGraduationWindow) {
+  if (!engineHasSprt()) GTEST_SKIP() << "no sprt engine in this build";
+  strata_core::GridMeta g; g.width = g.height = 50; g.resolution = 0.1;
+  strata_core::Grid2DBackend b(g, toParams(armSpec("sprt"), 1, false));
+  LabelMap watch; const CellId c = strata_core::gridCellId(g, 10, 10); watch[c] = 1;
+  TallyObserver tally(&watch, true);
+  b.setWindowObserver(&tally);
+  int k = 0;
+  drive(b, [&](Frame& f) { if (k >= 8) return false; f = Frame(); f.group = k++; f.xyz = {1.05f, 1.05f, 0.f}; return true; }, &g, &tally);
+  EXPECT_EQ(tally.tally().at(c).first_static, 4);
+  EXPECT_EQ(tally.tally().at(c).n, 8u);
+}
+
 // ------------------------------------------------------------------- the command line tool ----------
 
 TEST(P3Probe, ArmsListsFiveArmsAndTheExtras) {
