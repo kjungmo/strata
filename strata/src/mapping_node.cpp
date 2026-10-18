@@ -91,7 +91,7 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
   RCLCPP_INFO(get_logger(), "strata up: backend=%s frame=%s window_mode=%s", backend_.c_str(),
               global_frame_.c_str(), window_mode_.c_str());
   RCLCPP_INFO(get_logger(), "evidence: %s", evidence_message_.c_str());
-  if (evidence_model_ == "sprt" && evidence_calibration_ == "fallback_2d_pair")
+  if (evidence_model_ == "sprt" && evidence_calibration_ == "fallback_2d_pair" && backend_ != "grid2d")
     RCLCPP_WARN(get_logger(), "evidence: m0 and m1 are the 2D pair, measured on a 2D scanner; they are not "
                 "calibrated for backend %s. On single-pass 3D data most structure stays Undecided "
                 "(see /diagnostics, \"%s: evidence model\", and SPEC 3.2a)", backend_.c_str(), get_name());
@@ -125,7 +125,10 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   p.alpha = declare_parameter<double>("alpha", def.alpha);
   p.beta = declare_parameter<double>("beta", def.beta);
   p.n_max_undecided = declare_parameter<int>("n_max_undecided", def.n_max_undecided);
-  evidence_calibration_ = declare_parameter<std::string>("evidence_calibration", "measured_2d");
+  // Where the pair comes from. Without the key, the 2D pair is measured for grid2d only; voxel3d
+  // reuses it uncalibrated, so the default for voxel3d is the fallback label (and its warning).
+  evidence_calibration_ = declare_parameter<std::string>(
+      "evidence_calibration", backend_ == "voxel3d" ? "fallback_2d_pair" : "measured_2d");
   if (evidence_model_ == "sprt") p.evidence_model = strata_core::EvidenceModel::Sprt;
   else if (evidence_model_ == "legacy") p.evidence_model = strata_core::EvidenceModel::Legacy;
   else throw std::invalid_argument("evidence_model must be \"sprt\" or \"legacy\", got \"" + evidence_model_ + "\"");
@@ -133,6 +136,9 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
       evidence_calibration_ != "user")
     throw std::invalid_argument("evidence_calibration must be \"measured_2d\", \"fallback_2d_pair\" or "
                                 "\"user\", got \"" + evidence_calibration_ + "\"");
+  // The pair is measured on a 2D scanner only. "measured_2d" on another backend is a wrong label:
+  // report it as the fallback, so the start-up warning and /diagnostics say the truth.
+  if (evidence_calibration_ == "measured_2d" && backend_ != "grid2d") evidence_calibration_ = "fallback_2d_pair";
   if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
     try {
       (void)strata_core::deriveSprt(p);   // reject an unusable (m0, m1, alpha, beta, n_max_undecided) at startup
@@ -165,7 +171,8 @@ void MappingNode::buildEvidenceStatus(const strata_core::LayeredMapParams& p) {
         "min_observations=" + std::to_string(p.min_observations) + " windows; no error rate is stated";
   }
   evidence_values_.emplace_back("evidence_calibration", evidence_calibration_);
-  if (p.evidence_model == strata_core::EvidenceModel::Sprt && evidence_calibration_ == "fallback_2d_pair") {
+  if (p.evidence_model == strata_core::EvidenceModel::Sprt && evidence_calibration_ == "fallback_2d_pair" &&
+      backend_ != "grid2d") {
     evidence_message_ = "NOT calibrated for " + backend_ + " (fallback: the 2D pair); on single-pass 3D data most "
         "structure stays undecided; " + evidence_message_;
   }

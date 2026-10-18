@@ -404,19 +404,9 @@ TEST(Sprt, DoorWith25PercentDutyIsNotRejectedBeforeTheGateAndBecomesPeriodic) {
     if (m.classify(9) == CellClass::Periodic) periodic_seen = true;
     // Before the gate a cell is never Unknown (not rejected): here Static in the first hit phase, then Transient.
     if (w + 1 < 24) { EXPECT_NE(m.classify(9), CellClass::Unknown) << "window " << (w + 1); }
-    // From n = T on l is floored at B. A kept candidate that sits on the floor reads Unknown; one that
-    // the next hits lifted above it reads Transient (undecided) until the significance test fires.
-    if (w + 1 >= 24 && m.classify(9) != CellClass::Periodic) {
-      const bool on_floor = m.occupancyProb(9) <= 0.0100001;
-      EXPECT_EQ(m.classify(9), on_floor ? CellClass::Unknown : CellClass::Transient) << "window " << (w + 1);
-    }
-    if (w + 1 == 24) {
-      EXPECT_EQ(m.classify(9), CellClass::Unknown);
-      EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-m.sprt().B)), 1e-12);        // l was floored at B at n = T
-    }
-    if (w + 1 == 25) {   // the first hit of the next period starts from the floor, not from the unclamped -12.75
-      EXPECT_NEAR(m.occupancyProb(9), 1.0 / (1.0 + std::exp(-(m.sprt().B + m.sprt().l_hit))), 1e-12);
-    }
+    // (The door graduates in each hit phase and is demoted by the reverse test in the miss phase, which
+    // restarts its count, so the floor at B from n = T is not reached at fixed window numbers here;
+    // the floor itself is pinned by the gate tests above.)
   }
   EXPECT_TRUE(periodic_seen);
   EXPECT_EQ(m.classify(9), CellClass::Periodic);
@@ -494,7 +484,8 @@ TEST(Sprt, PeriodicVetoStopsGraduationAndLeavesTheStatisticAlone) {
     if (on) m.observeHit(6); else m.observeMiss(6);
     m.tick();
     if (tracking) {
-      l = std::min(d.ceiling, std::max(d.B, l + (on ? d.l_hit : d.l_miss)));
+      l = std::min(d.ceiling, l + (on ? d.l_hit : d.l_miss));
+      if (m.observations(6) >= 24) l = std::max(d.B, l);                     // the floor applies from n = T of the current test
       EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l)), 1e-9) << "window " << (w + 1);
       EXPECT_FALSE(m.isStatic(6)) << "window " << (w + 1);
       ++checked;
@@ -541,6 +532,29 @@ TEST(Sprt, DemotedCellContinuesAsAnUndecidedCellAndCanGraduateAgain) {
   ASSERT_EQ(m.classify(4), CellClass::Transient);
   for (int w = 1; w <= m.sprt().latency; ++w) { m.observeHit(4); m.tick(); }
   EXPECT_TRUE(m.isStatic(4));
+}
+
+TEST(Sprt, DemotionRestartsTheWindowCountSoALongHistoryDoesNotReadIntermittentAtOnce) {
+  // 100 hit windows (far more than n_max = 64), then 5 misses: the reverse test demotes the cell.
+  // The restarted test has seen 0 windows, so it is not Intermittent, and it gets the same
+  // no-clamp grace before T as a new cell.
+  LayeredMapParams p = Sp(); p.n_max_undecided = 64;
+  LayeredMap m(p);
+  for (int w = 0; w < 100; ++w) { m.observeHit(4); m.tick(); }
+  ASSERT_TRUE(m.isStatic(4));
+  for (int k = 0; k < 5; ++k) { m.observeMiss(4); m.tick(); }
+  ASSERT_FALSE(m.isStatic(4));
+  EXPECT_EQ(m.observations(4), 0);
+  EXPECT_EQ(m.classify(4), CellClass::Transient);
+  m.observeHit(4); m.tick();
+  EXPECT_EQ(m.observations(4), 1);
+  EXPECT_EQ(m.classify(4), CellClass::Transient);
+  // grace: more misses than the floor would allow before T, and the cell is neither floored nor erased
+  const int T = std::max(1, p.periodicity.period_windows);
+  for (int k = 0; k < 10; ++k) { m.observeMiss(4); m.tick(); }
+  ASSERT_LT(m.observations(4), T);
+  EXPECT_LT(m.occupancyProb(4), 1.0 / (1.0 + std::exp(-m.sprt().B)));   // below sigma(B): not floored
+  EXPECT_NE(m.classify(4), CellClass::Intermittent);
 }
 
 TEST(Sprt, DoorGraduatesEarlyAndPeriodicityThenDemotesIt) {

@@ -229,8 +229,8 @@ B      = ln(beta / (1 - alpha))      reject at l <= B, once n >= T
 ceiling = A + 2 l_hit                 upper clamp (sprt_ceiling overrides it)
 ```
 
-**Update at window close**, for a touched cell (`n` counts its touched windows, `T` is
-`period_windows`):
+**Update at window close**, for a touched cell (`n` counts the touched windows of the current
+test, and a reverse-test demotion restarts it at 0 with `l`; `T` is `period_windows`):
 
 ```
 l += l_hit (occ) or l_miss (free)        no multiplier: exp(l) is a supermartingale for every rate <= m0
@@ -238,7 +238,7 @@ l  = min(l, ceiling)
 n += 1
 if n >= T: l = max(l, B)                 no lower clamp before the periodicity gate
 graduate : !graduated && !periodic && l >= A          -> graduated, l := ceiling
-demote   : graduated && (periodic || l <= ceiling - A) -> not graduated; after the reverse test l := 0
+demote   : graduated && (periodic || l <= ceiling - A) -> not graduated; after the reverse test l := 0, n := 0
 reject   : !graduated && n >= T && l <= B && amp < periodic_amplitude_min -> erase the cell
 ```
 
@@ -257,10 +257,14 @@ from 2.8 % to 3.5 % and halve the structure rejects (2.4 % to 1.3 %), at the pai
 **Demotion is a reverse test.** A graduated cell sits at the ceiling. It is demoted
 when `l` falls by `A` from there: `ceil(A / |l_miss|)` all-miss windows (5 at the
 default pair, 6 at the pair (0.15, 0.65)). One miss never demotes. After a demotion by
-the reverse test the forward test restarts from `l = 0`.
+the reverse test the forward test restarts from `l = 0` and `n = 0`: the restarted test
+has the same no-clamp grace before `T`, and the same `n_max_undecided` read-out, as a new
+cell. A cell demoted after 100 hit windows is therefore not `Intermittent` until its new test
+has run `n_max_undecided` windows.
 
 **Truncation.** An undecided, non-periodic cell is read out `Intermittent` once
-`n >= n_max_undecided` (`0`: never). It is a read-out only; the test continues, and the
+`n >= n_max_undecided` (`0`: never), where `n` is the window count of the current test
+(restarted by a reverse-test demotion). It is a read-out only; the test continues, and the
 cell can still graduate or be rejected. `n_max_undecided = 80` is the smallest multiple
 of 16 for which the share still undecided at the zero-drift rate `m*` is at most 3 %
 (1.5 % at 80; `PREREG.md`).
@@ -286,8 +290,8 @@ provisional. The CTest `defaults_match_yaml_and_prereg` (`strata_core/test/check
 
 **What the error rates mean, and what they do not.**
 - *They hold for independent windows.* Under independent windows with hit rate at most
-  `m0`, a cell history graduates with probability at most `exp(-A) = alpha` (Ville's
-  inequality), and the exact value for the default pair at `m0` is 0.0055
+  `m0`, a cell history graduates with probability at most `exp(-A) = alpha/(1-beta)`, about
+  `alpha` (0.0101 at the default pair; Ville's inequality), and the exact value for the default pair at `m0` is 0.0055
   (`results/e7_oc.csv`). Real windows are autocorrelated (lag-1 0.2 to 0.5 on the
   calibration sequences). With lag-1 autocorrelation 0.23 at exactly `m0`, the
   per-history rate on the engine is 0.035, 3.5 times `alpha` (0.0054 at 0, 0.014 at 0.10,
@@ -509,12 +513,17 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `beta` | `0.01` | P(structure at `m1` is rejected), independent windows |
 | `n_max_undecided` | `80` | touched windows after which an undecided, non-periodic cell reads Intermittent; `0` never |
 | `sprt_ceiling` | derived, `A + 2 l_hit` | library only: upper clamp of the statistic (NaN derives it); not a node parameter |
-| `evidence_calibration` | `measured_2d` (`grid2d.yaml`), `fallback_2d_pair` (`voxel3d.yaml`) | node only: states where `(m0, m1)` come from: `measured_2d`, `fallback_2d_pair` (not calibrated for this backend; logs a warning and says so on `/diagnostics`) or `user` |
+| `evidence_calibration` | `measured_2d` for `grid2d`, `fallback_2d_pair` for `voxel3d` (the shipped YAMLs say so, and so does the node when the key is missing; `measured_2d` on another backend is reported as `fallback_2d_pair`) | node only: states where `(m0, m1)` come from: `measured_2d`, `fallback_2d_pair` (not calibrated for this backend; logs a warning and says so on `/diagnostics`) or `user` |
 
 With `sprt` the nine keys `l_hit` to `prune_prob` below are ignored. With `legacy`
 `m0` to `n_max_undecided` are ignored (and not validated). The node refuses to start
 on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 `alpha + beta < 1`, `n_max_undecided >= 0`) and names the parameter.
+
+**API and ABI note for library users (0.2.0).**
+1. Rebuild against 0.2.0. `MapBackend` gains a virtual (`intermittentCellCount`), and `LayeredMapParams` and `LayeredMap` change layout.
+2. If you set the v0.1 keys (`l_hit`, `graduate_prob` and the others), set `evidence_model = EvidenceModel::Legacy` too. `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, which ignores those keys without an error.
+3. Handle `CellClass::Intermittent` in every `switch` over `CellClass`. With `Legacy` it never occurs.
 
 ### Layered persistence engine (`LayeredMapParams`, legacy keys)
 | Param | Default | Meaning |

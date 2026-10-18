@@ -43,7 +43,7 @@ fade. Sensor poses are full 6-DoF.
   an always-hit wall graduates after **4** windows, not 3, and never earlier; a cell can be
   rejected or read out `Intermittent`; the 3D defaults are **not calibrated for 3D**.
   To get the v0.1 behaviour, set `evidence_model: "legacy"` (the nine v0.1 keys `l_hit` to
-  `prune_prob` are read only then). The defaults `m0 = 0.20`, `m1 = 0.70` were measured on one 2D
+  `prune_prob` are read only then). **C++ library users:** rebuild against 0.2.0 (`MapBackend`, `LayeredMapParams` and `LayeredMap` change layout); `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, so set `evidence_model = EvidenceModel::Legacy` explicitly if you set the v0.1 keys, or they are ignored; and handle the new `CellClass::Intermittent` in your `switch` ([`SPEC.md` §5](SPEC.md)). The defaults `m0 = 0.20`, `m1 = 0.70` were measured on one 2D
   dataset and are provisional until the calibration is frozen
   (`paper/experiments/realdata/PREREG.md`). The paper (`paper/arxiv_ref`) still describes
   `312b09c`: its text and numbers are not updated yet.

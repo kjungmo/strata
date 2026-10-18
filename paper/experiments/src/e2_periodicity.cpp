@@ -68,6 +68,7 @@ const char* className(CellClass c) {
     case CellClass::Transient: return "Transient";
     case CellClass::Periodic: return "Periodic";
     case CellClass::Static: return "Static";
+    case CellClass::Intermittent: return "Intermittent";
   }
   return "?";
 }

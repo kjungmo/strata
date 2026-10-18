@@ -34,4 +34,12 @@ else echo "FAIL: legacy start did not log the evidence line"; echo "$out" | tail
 out=$(timeout 8 ros2 run strata strata_node_main 2>&1); code=$?
 if [ "$code" -eq 124 ] && grep -qF "evidence: sprt: clutter m0=0.2" <<< "$out"; then echo "ok: the default starts with the sprt model"
 else echo "FAIL: default start (exit $code)"; echo "$out" | tail -3; fail=1; fi
+# voxel3d without the shipped YAML: the 2D pair is labelled as the fallback and the node warns
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p backend:=voxel3d 2>&1); code=$?
+if [ "$code" -eq 124 ] && grep -qF "not calibrated for backend voxel3d" <<< "$out" && grep -qF "NOT calibrated for voxel3d" <<< "$out"; then
+  echo "ok: backend:=voxel3d without a YAML warns that the pair is not calibrated"
+else echo "FAIL: voxel3d default start (exit $code)"; echo "$out" | tail -3; fail=1; fi
+# grid2d with the key left out stays measured_2d and does not warn
+out=$(timeout 8 ros2 run strata strata_node_main 2>&1)
+if grep -qF "not calibrated for backend" <<< "$out"; then echo "FAIL: grid2d default start warns"; fail=1; else echo "ok: grid2d default start does not warn"; fi
 exit "$fail"

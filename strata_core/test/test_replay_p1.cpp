@@ -499,7 +499,7 @@ TEST(ReplayP1, ShippedPairOnTheOneSecondCalibrationSequences) {
   rep << "Realised rates of the shipped pair (m0 0.20, m1 0.70, alpha = beta = 0.01) on the W = 15 calibration sequences\n"
       << "(LILocBench, 0.05 m, 1.0 s windows). Structure: static_0, label structure, all N >= 1 (n=" << st.size()
       << "). Clutter: dynamics_0, label free with H >= 1 (n=" << cl.size() << ").\n"
-      << "Bound under independent windows: P(clutter at m0 graduates) <= alpha = 0.0100 per history.\n\n";
+      << "Bound under independent windows: P(clutter at m0 graduates) <= exp(-A) = alpha/(1-beta) = 0.0101 (about alpha) per history.\n\n";
   for (int gate : {1, 24}) {
     const Row s = run(st, 0.20, 0.70, 0.01, 0.01, gate, false, true), c = run(cl, 0.20, 0.70, 0.01, 0.01, gate, false, true);
     EXPECT_EQ(s.mismatches + c.mismatches, 0);

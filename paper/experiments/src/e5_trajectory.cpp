@@ -178,6 +178,7 @@ const char* cname(CellClass c) {
     case CellClass::Transient: return "T";
     case CellClass::Periodic: return "P";
     case CellClass::Static: return "S";
+    case CellClass::Intermittent: return "I";
   }
   return "?";
 }

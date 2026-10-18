@@ -152,7 +152,7 @@ void LayeredMap::endWindow() {
 // The sequential test. Per touched cell, in this order:
 //   l += l_hit (hit window) or l_miss (miss window); no multiplier, so exp(l) is a
 //   supermartingale under every hit rate <= m0 and Ville's inequality bounds the chance
-//   of ever reaching A by exp(-A) per uninterrupted history (independent windows).
+//   of ever reaching A by exp(-A) = alpha/(1-beta), about alpha, per uninterrupted history (independent windows).
 //   l is capped at the ceiling. Below the periodicity gate (n < T touched windows) there
 //   is no lower clamp and no rejection, so a door that is closed early can still be told
 //   from clutter once T windows are in; from n >= T on l is floored at B and a cell with
@@ -161,7 +161,8 @@ void LayeredMap::endWindow() {
 //   A cell graduates at l >= A unless Periodic, and l restarts at the ceiling. A
 //   graduated cell is demoted by the reverse test: l <= ceiling - A (the reverse
 //   statistic from the ceiling crossed A), or Periodic. After a reverse-test demotion the
-//   forward test restarts from l = 0.
+//   forward test restarts from l = 0 and from n = 0 (the count behind the periodicity gate,
+//   the rejection and the n_max read-out is the length of the current test, not of the cell's life).
 void LayeredMap::endWindowSprt() {
   WindowObserver* const observer = observer_;
   const SprtDerived& d = sprt_;
@@ -189,7 +190,10 @@ void LayeredMap::endWindowSprt() {
     }
     if (e.graduated) {
       if (periodic) e.graduated = false;
-      else if (e.log_odds <= d.demote_level) { e.graduated = false; e.log_odds = 0.0; }
+      else if (e.log_odds <= d.demote_level) {
+        e.graduated = false; e.log_odds = 0.0;
+        e.observations = 0;                                         // the restarted test counts its own windows
+      }
     }
     e.window_hits = 0; e.window_misses = 0;
     const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;
