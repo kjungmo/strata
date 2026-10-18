@@ -279,3 +279,33 @@ Can show: cross-session agreement of the Static label across months (snow and no
 ## 13. Not in this phase
 
 Changing any arm, label, window or metric after seeing a result; Option C; Periodic on real data (no logged schedule); timing; the paper text; companions; a push or a pull request.
+
+## 14. Amendment 1 (2026-10-18, before any evaluation): Boreas configuration and measured cost
+
+Written and committed before any test evaluation, after a feasibility probe on calibration data and on data that was already opened. It replaces section 8.1 where it says so and changes no arm, no label, no window of another dataset and no metric.
+
+**Probe** (`p3_feas_boreas.sh`, committed before it ran; engine `sprt` arm, the first 10 frames of `boreas-2020-11-26-13-58`, which were opened for reader validation, `W = 10`):
+
+| range window | voxel | Periodic veto | cells after 10 frames | peak memory | time |
+|---|---|---|---|---|---|
+| 3 to 50 m | 0.2 m | off | 2,582,017 | 221 MB | 26 s |
+| 3 to 50 m | 0.2 m | on | 2,582,017 | 1,212 MB | 29 s |
+| 3 to 25 m | 0.2 m | off | 491,113 | 45 MB | 10 s |
+| 3 to 25 m | 0.2 m | on | 491,113 | 234 MB | 7 s |
+| 3 to 25 m | 0.4 m | off | 72,613 | 15 MB | 1.4 s |
+| 3 to 15 m | 0.2 m | off | 143,421 | 17 MB | 1.2 s |
+
+The vehicle covers about 1.7 km in a slice, which is about 34 sensor footprints of a strip 50 m wide at 25 m range. At 3 to 50 m that is of the order of 90 million cells (about 8 GB with the veto off, about 40 GB with it on). That is not feasible on this host
+(11.9 GB, shared). At 3 to 25 m, 0.2 m and veto off it is of the order of 17 million cells (about 1.5 GB) and about 1 s per frame, 30 minutes for one session.
+
+**Changes to section 8.1.** The range window of Boreas is **3 m to 25 m** (not 50 m). The **Periodic veto is off** for all Boreas runs (memory: the veto costs about five times the memory per cell). All 1736 frames are used, `W = 10`, 0.2 m.
+`boreas-convert --frame-step N` exists to halve the cost; using it needs an amendment before the first Boreas run (with `W` scaled to keep one second). Estimated cost: one single-session run 30 minutes; the cumulative run over three sessions 90 minutes; per arm about 3 hours; seven arms about 20 hours.
+
+**Measured cost of the other paths (for planning; calibration data only).**
+
+* Spires, Keble 02 cache (3005 scans, 164 million points, 0.2 m, `W = 10`), one arm run: `shipped_v0_1` with the veto off took 5.2 minutes and 261 MB; `sprt` with the veto on took 6.2 minutes and 1.5 GB. Keble 04 and 05 have about twice as many scans.
+  The counts table of that run holds 195,641 eligible structure cells and 15,864 eligible clutter cells, equal to the numbers in `PREREG.md`: the evaluation path reproduces the calibration counts.
+* KTH KITTI 00 (141 frames, 0.2 m, `W = 10`, veto on): about 2 minutes per export with 4.6 million cells. KITTI 05 has 321 frames; the KTH export steps run with a 9 GB address-space limit instead of 6 GB.
+* LILocBench `dynamics_0`: seconds per arm run.
+
+If a run exceeds memory or time it is reported as failed with its resource limit. The configuration is not changed after a result is seen.
