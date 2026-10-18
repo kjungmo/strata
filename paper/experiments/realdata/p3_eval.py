@@ -7,6 +7,7 @@
     lil            false-Static on clutter and false-reject on wall runs from an `arm-eval` cell dump (section 6)
     spires         the same rates from an `arm-eval` counts table of a 3D label file (section 7)
     jaccard        Jaccard of Static voxel sets of several sequences or sessions, inside the tiles they share (sections 5 and 7)
+    newstatic      Static voxels of a cumulative map that no single session makes Static (section 8)
     zoffset        vertical offset between two sessions from the tile ground heights of `p3_probe tile-ground` (section 5)
 
 Run with `python3 -I p3_eval.py <command> ...`.
@@ -454,6 +455,22 @@ def jaccard_in_shared_tiles(a, b, res, all_a=None, all_b=None, tile_m=TILE_M):
     return out
 
 
+def new_static(cumulative, independent):
+    """Static voxels of a cumulative map that are Static in none of the independent single-session maps: the cells that graduated only
+    because of more than one session. Returns the sizes and the share."""
+    cum = np.unique(np.asarray(cumulative, dtype=np.int64))
+    ind = np.unique(np.concatenate([np.asarray(s, dtype=np.int64) for s in independent])) if independent else np.zeros(0, dtype=np.int64)
+    only = np.setdiff1d(cum, ind, assume_unique=True)
+    return {"cumulative_static": int(cum.size), "static_in_any_independent_session": int(ind.size), "only_in_cumulative": int(only.size),
+            "share_only_in_cumulative": (only.size / cum.size if cum.size else float("nan"))}
+
+
+def cmd_newstatic(args):
+    ind = [np.fromfile(p, dtype="<i8") for p in args.ind]
+    print(json.dumps(new_static(np.fromfile(args.cum, dtype="<i8"), ind), indent=1, sort_keys=True))
+    return 0
+
+
 def zoffset(csv_a, csv_b, min_count=500):
     """Offset to ADD to the z of session B so that its ground meets the ground of session A: the median over the tiles present in both
     tables (at least min_count returns in each) of ground_a - ground_b. (n_tiles, median, p10, p90) in a dict; NaN if no shared tile."""
@@ -500,6 +517,7 @@ def main(argv=None):
     p = sub.add_parser("kth-selfcheck"); p.add_argument("--gt", required=True); p.add_argument("--tol", type=float, default=0.05); p.set_defaults(fn=cmd_kth_selfcheck)
     p = sub.add_parser("lil"); p.add_argument("--dump", required=True); p.add_argument("--res", type=float, required=True); p.add_argument("--origin", type=float, default=-30.0); p.add_argument("--nmin", type=int, default=5); p.set_defaults(fn=cmd_lil)
     p = sub.add_parser("spires"); p.add_argument("--counts", required=True); p.add_argument("--latency"); p.set_defaults(fn=cmd_spires)
+    p = sub.add_parser("newstatic"); p.add_argument("--cum", required=True); p.add_argument("--ind", nargs="+", required=True); p.set_defaults(fn=cmd_newstatic)
     p = sub.add_parser("zoffset"); p.add_argument("--a", required=True); p.add_argument("--b", required=True); p.add_argument("--min-count", type=int, default=500); p.add_argument("--field", choices=("tiles", "median", "p10", "p90")); p.set_defaults(fn=cmd_zoffset)
     p = sub.add_parser("jaccard"); p.add_argument("--ids", nargs="+", required=True); p.add_argument("--res", type=float, required=True); p.set_defaults(fn=cmd_jaccard)
     args = ap.parse_args(argv)

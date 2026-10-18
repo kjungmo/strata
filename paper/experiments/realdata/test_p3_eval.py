@@ -434,6 +434,19 @@ class TestSpiresAndBoreas(unittest.TestCase):
         self.assertEqual(r2["shared_tiles"], 2)
         self.assertLess(r2["jaccard"], r["jaccard"])
 
+    def test_new_static_counts_cells_that_need_more_than_one_session(self):
+        r = ev.new_static([1, 2, 3, 4, 5], [[1, 2], [2, 9], [4]])
+        self.assertEqual((r["cumulative_static"], r["static_in_any_independent_session"], r["only_in_cumulative"]), (5, 4, 2))     # 3 and 5
+        self.assertAlmostEqual(r["share_only_in_cumulative"], 0.4)
+        self.assertEqual(ev.new_static([1, 2], [[1, 2]])["only_in_cumulative"], 0)
+        self.assertTrue(math.isnan(ev.new_static([], [[1]])["share_only_in_cumulative"]))
+        self.assertEqual(ev.new_static([7, 7, 8], [])["only_in_cumulative"], 2)                   # duplicates are sets, no independent session
+        with tempfile.TemporaryDirectory() as d:
+            np.array([1, 2, 3], dtype="<i8").tofile(d + "/c.ids"); np.array([1], dtype="<i8").tofile(d + "/a.ids"); np.array([2], dtype="<i8").tofile(d + "/b.ids")
+            run = subprocess.run([sys.executable, "-I", os.path.join(HERE, "p3_eval.py"), "newstatic", "--cum", d + "/c.ids", "--ind", d + "/a.ids", d + "/b.ids"], capture_output=True, text=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(json.loads(run.stdout)["only_in_cumulative"], 1)
+
     def test_zoffset_is_the_median_of_the_tile_differences(self):
         with tempfile.TemporaryDirectory() as d:
             def table(path, rows):

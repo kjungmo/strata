@@ -267,7 +267,7 @@ def prepare(scratch):
     subprocess.check_call(["tar", "-x", "-C", src], stdin=arc.stdout)
     arc.wait()
     for f in os.listdir(HERE):                       # the current sources over the committed ones
-        if f.endswith((".hpp", ".cpp", ".py", ".txt", ".sh")) and os.path.isfile(os.path.join(HERE, f)):
+        if f.endswith((".hpp", ".cpp", ".py", ".txt", ".sh", ".md")) and os.path.isfile(os.path.join(HERE, f)):
             shutil.copy(os.path.join(HERE, f), os.path.join(src, RD, f))
     return src
 

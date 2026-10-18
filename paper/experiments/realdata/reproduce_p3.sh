@@ -165,6 +165,9 @@ lil_sequence() {   # lil_sequence SEQ: convert (run B time base), then every arm
   [ -f "$d/cache_$seq.bin" ] || must step "lil_convert_$seq" --traced -- "$HP" lil-convert --bag "$DATA/lilocbench/bags/$seq.bag" --gt "$DATA/lilocbench/gt_x/$seq/gt_poses.txt" \
     --deskew 1 --anchor start --time-offset -0.13 --out "$d/cache_$seq.bin" --meta "$d/cache_$seq.meta"
   cp "$d/cache_$seq.meta" "$RES/meta_lil_convert_$seq.meta" 2>/dev/null
+  # time-base diagnostic of the lt_changes bag (selects nothing; PREREG_P3.md section 6.1): the scan-to-GT offset search of phase 1
+  must step "lil_offset_$seq" --traced -- "$HP" lil-offset --bag "$DATA/lilocbench/bags/$seq.bag" --gt "$DATA/lilocbench/gt_x/$seq/gt_poses.txt" \
+    --out "$d/offset_$seq.csv" --meta "$RES/meta_lil_offset_$seq.meta"
   for arm in $(arms_to_run); do
     must step "lil_${seq}_$arm" -- "$P3" arm-eval --cache "$d/cache_$seq.bin" --labels "$P1/lil/ref_r0.05.bin" --arm "$arm" --res 0.05 --window 15 --periodicity "$PER" \
       --out "$d/dump_${seq}_${arm}_p$PER.csv" --meta "$d/dump_${seq}_${arm}_p$PER.meta"
@@ -206,6 +209,9 @@ stage_eval_kth() {
   # KITTI 05 at 0.2 m (W = 10: 32 windows; W = 2: 160 windows) and semi-indoor at 0.2 m and 0.1 m (W = 10: 96 windows; W = 2)
   for cfg in "05 0.2 10" "05 0.2 2" "semindoor 0.2 10" "semindoor 0.2 2" "semindoor 0.1 10"; do
     set -- $cfg; local seq="$DATA/kth/$1" r="$2" w="$3" d="$OUT/kth_$1"; mkdir -p "$d"
+    if [ ! -f "$RES/kth_selfcheck_$1.json" ]; then
+      MEM_LIMIT_KB=9000000 must step "kth_selfcheck_$1" --traced -- bash -c "python3 -I '$HERE/p3_eval.py' kth-selfcheck --gt '$seq/gt_cloud.pcd' > '$RES/kth_selfcheck_$1.json'"
+    fi
     for arm in $(arms_to_run); do
       must step "kth_${1}_${arm}_r${r}_W$w" --traced -- "$P3" kth-export --dir "$seq" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
         --policies static_only,not_rejected --out-prefix "$d/${arm}_r${r}_W${w}_p$PER" --meta "$d/${arm}_r${r}_W${w}_p$PER.meta"
@@ -242,6 +248,7 @@ stage_eval_boreas() {
         --out-prefix "$d/${arm}_$mode" --meta "$d/${arm}_$mode.meta"
     done
     must step "boreas_jaccard_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' jaccard --ids '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' --res 0.2 > '$RES/boreas_${arm}_independent.json'"
+    must step "boreas_newstatic_$arm" -- bash -c "python3 -I '$HERE/p3_eval.py' newstatic --cum '$d/${arm}_cumulative_s2_static.ids' --ind '$d/${arm}_independent_s0_static.ids' '$d/${arm}_independent_s1_static.ids' '$d/${arm}_independent_s2_static.ids' > '$RES/boreas_${arm}_newstatic.json'"
   done
 }
 

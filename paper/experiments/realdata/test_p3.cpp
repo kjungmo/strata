@@ -103,6 +103,20 @@ TEST(P3Arms, SprtArmNeedsTheSprtEngine) {
   EXPECT_TRUE(l.evidence_model == std::decay_t<decltype(l.evidence_model)>::Legacy);
 }
 
+TEST(P3Prereg, ArmsAreDocumented) {
+  // the block "```text arms" of PREREG_P3.md holds exactly the lines of describe() for the five arms and the two extra arms
+  const std::string doc = readText(P3_PREREG_PATH);
+  const std::string open = "```text arms\n";
+  const std::size_t b = doc.find(open);
+  ASSERT_NE(b, std::string::npos) << "no arms block in " << P3_PREREG_PATH;
+  const std::size_t e = doc.find("```", b + open.size());
+  ASSERT_NE(e, std::string::npos);
+  std::string expected;
+  for (const auto& n : armNames()) expected += describe(armSpec(n)) + "\n";
+  for (const auto& n : extraArmNames()) expected += describe(armSpec(n)) + "\n";
+  EXPECT_EQ(doc.substr(b + open.size(), e - b - open.size()), expected);
+}
+
 TEST(P3Arms, DescribeIsStableText) {
   EXPECT_EQ(describe(armSpec("shipped_v0_1")),
             "shipped_v0_1: legacy l_hit=0.85 l_miss=-0.4 l_min=-5 l_max=5 decay=0.97 graduate_prob=0.8 demote_prob=0.45 min_observations=3 prune_prob=0.05 binary=0");
