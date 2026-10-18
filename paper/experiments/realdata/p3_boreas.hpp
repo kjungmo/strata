@@ -301,7 +301,7 @@ inline std::string poseConventionVerdict(const PoseConventionCheck& c) {
   if (c.moving < 500) return "fewer than 500 rows above the speed limit";
   if (!(std::fabs(c.dev_p10) <= kForwardAxisTolDeg && std::fabs(c.dev_p90) <= kForwardAxisTolDeg)) return "the forward axis does not follow the velocity";
   if (!(c.quad_median_worst <= kForwardAxisTolDeg)) return "the forward axis does not follow the velocity in every heading quadrant";
-  if (!(c.gyro_corr >= kGyroCorrMin)) return "the yaw rate of the rotation does not follow the gyro (sign or scale)";
+  if (!(c.gyro_corr >= kGyroCorrMin)) return "the yaw rate of the rotation does not follow the gyro (sign or shape)";
   return "";
 }
 

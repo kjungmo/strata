@@ -638,6 +638,33 @@ TEST(P3Boreas, PoseConventionCheckAcceptsTheTrueConventionAndRejectsTheTranspose
   // a log without velocity columns cannot pass
   auto novel = good; for (auto& r : novel) r.vel_east = std::nan("");
   EXPECT_NE(poseConventionVerdict(poseConventionCheck(novel)), "");
+  // rows without a gyro value are not used at all (they are not half-used)
+  auto nogyro = good; for (auto& r : nogyro) r.angvel_z = std::nan("");
+  EXPECT_EQ(poseConventionCheck(nogyro).moving, 0u);
+  EXPECT_NE(poseConventionVerdict(poseConventionCheck(nogyro)), "");
+  // a gyro that only partly follows the rotation (correlation about 0.5) is refused: the limit is +0.99
+  { auto noisy = good; std::mt19937 gn(3); std::normal_distribution<double> nd(0.0, 1.0);
+    double sd = 0; for (const auto& r : good) sd += r.angvel_z * r.angvel_z; sd = std::sqrt(sd / good.size());
+    for (auto& r : noisy) r.angvel_z += sd * 1.7 * nd(gn);
+    const PoseConventionCheck cn = poseConventionCheck(noisy);
+    EXPECT_GT(cn.gyro_corr, 0.2); EXPECT_LT(cn.gyro_corr, 0.9);
+    EXPECT_NE(poseConventionVerdict(cn), ""); }
+  // fewer than 500 moving rows cannot pass, however good they are
+  { std::vector<double> few(az.begin(), az.begin() + 300); EXPECT_NE(poseConventionVerdict(poseConventionCheck(drivingRows(few, 2.0, 8.0, 0.005))), ""); }
+  // the quadrant rule: 300 of 4300 rows (7 %, so the 90th percentile does not see them) lie in one heading quadrant and 20 degrees off
+  { std::vector<double> az2; for (int i = 0; i < 4000; ++i) az2.push_back(80.0 * std::sin(2.0 * M_PI * i / 3000.0));     // quadrants 1 and 2 only
+    const auto good2 = drivingRows(az2, 2.0, 8.0, 0.005);
+    auto rows = good2; std::vector<double> bad_az; for (int i = 0; i < 300; ++i) bad_az.push_back(100.0 + 70.0 * i / 299.0);
+    auto badrows = drivingRows(bad_az, 22.0, 8.0, 0.005);
+    for (std::size_t i = 0; i < badrows.size(); ++i) { badrows[i].t = 140.0 + 0.005 * i; }
+    rows.insert(rows.end(), badrows.begin(), badrows.end());
+    const PoseConventionCheck cq = poseConventionCheck(rows);
+    EXPECT_LE(std::fabs(cq.dev_p90), kForwardAxisTolDeg);                      // the percentiles pass
+    EXPECT_GT(cq.quad_median_worst, 15.0);
+    EXPECT_NE(poseConventionVerdict(cq), "");
+    // the same rows with only 100 of them are too few to count as a quadrant (the rule ignores quadrants of fewer than 200 rows)
+    auto rows2 = good2; rows2.insert(rows2.end(), badrows.begin(), badrows.begin() + 100);
+    EXPECT_EQ(poseConventionVerdict(poseConventionCheck(rows2)), ""); }
   // the quadrant rule: a drive that points the right way in three quadrants and 20 degrees off in the fourth is rejected
   auto skew = good; for (auto& r : skew) { const double az_r = M_PI / 2 - r.heading; if (std::cos(az_r) > 0.7071 && std::sin(az_r) > -0.7071 && std::sin(az_r) < 0.7071) r.vel_north += 3.0; }
   EXPECT_NE(poseConventionVerdict(poseConventionCheck(skew)), "");
@@ -678,6 +705,11 @@ TEST(P3Boreas, FrameConsistencyFollowsTheTrueRotationAndNotTheTransposedOne) {
   EXPECT_EQ(right.points_b, lb.size());
   // exact versus near: a shift of one voxel is near but not in
   std::vector<Eigen::Vector3d> a1 = {{0.05, 0.05, 0.05}}, b1 = {{0.15, 0.05, 0.05}};
+  { const std::vector<Eigen::Vector3d> bz = {{0.05, 0.05, 0.15}};                 // one voxel away in z only
+    EXPECT_DOUBLE_EQ(frameConsistency(a1, bz, 0.1).share_in, 0.0); EXPECT_DOUBLE_EQ(frameConsistency(a1, bz, 0.1).share_near, 1.0);
+    const std::vector<Eigen::Vector3d> two = {{0.05, 0.05, 0.05}, {9.0, 9.0, 9.0}};   // one of two points matches: the shares use the size of B
+    EXPECT_DOUBLE_EQ(frameConsistency(a1, two, 0.1).share_in, 0.5); EXPECT_DOUBLE_EQ(frameConsistency(a1, two, 0.1).share_near, 0.5);
+    EXPECT_DOUBLE_EQ(frameConsistency(two, a1, 0.1).share_in, 1.0); }
   EXPECT_DOUBLE_EQ(frameConsistency(a1, b1, 0.1).share_in, 0.0);
   EXPECT_DOUBLE_EQ(frameConsistency(a1, b1, 0.1).share_near, 1.0);
   b1 = {{0.25, 0.05, 0.05}};
@@ -1155,10 +1187,10 @@ TEST(P3Probe, StaticExportIndependentAndCumulative) {
 // Amendment 4: the drive is a real one in the sense of the checks. The applanix forward axis (+y) follows the velocity (east): heading is 90 degrees
 // (clockwise from north) plus a small oscillation, angvel_z is minus its derivative, and the lidar frames show ONE fixed world from the lidar_poses.csv pose
 // of each frame. convention = 1 writes a heading of -90 degrees (the forward axis points west while the car drives east: what the counter-clockwise
-// reading of the angles would call a valid file); render_wrong shows the world through the transposed rotation (frames of the moving car do not fall on each other); gyro_flip writes angvel_z with the wrong sign; vel_off_deg turns the velocity columns.
+// reading of the angles would call a valid file; 2 = heading 0, a symmetric rotation: the transposed reading cannot be told from the true one); clutter is the share of points per frame that are random (moving things); gps_bias_rad turns the GPS heading after the third frame; render_wrong shows the world through the transposed rotation (frames of the moving car do not fall on each other); gyro_flip writes angvel_z with the wrong sign; vel_off_deg turns the velocity columns.
 std::string makeBoreasSession(const std::string& id, double lat0, double lon_ref, double t0_us, double speed = 10.0, double lp_shift = 0.0, double lon_scale = 1.0,
                               double east0 = 0.0, double north0 = 0.0, double alt_offset = 0.0, bool own_frame_files = false, double gps_time_shift = 0.0,
-                              int convention = 0, bool gyro_flip = false, double vel_off_deg = 0.0, bool render_wrong = false) {
+                              int convention = 0, bool gyro_flip = false, double vel_off_deg = 0.0, bool render_wrong = false, double clutter = 0.0, double gps_bias_rad = 0.0) {
   const double e2 = kWgs84F * (2 - kWgs84F), s = std::sin(lat0), N = kWgs84A / std::sqrt(1 - e2 * s * s);
   const double M = kWgs84A * (1 - e2) / std::pow(1 - e2 * s * s, 1.5);
   const std::string d = tmpPath(id);
@@ -1168,14 +1200,14 @@ std::string makeBoreasSession(const std::string& id, double lat0, double lon_ref
   const double fe = own_frame_files ? east0 : 0.0, fn = own_frame_files ? north0 : 0.0;          // what to subtract from the shared-frame coordinates in the files
   std::string gps = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x,accelz,accely,accelx,latitude,longitude\n";
   std::string lp = "GPSTime,easting,northing,altitude,vel_east,vel_north,vel_up,roll,pitch,heading,angvel_z,angvel_y,angvel_x\n";
-  const double h0 = convention == 1 ? -M_PI / 2 : M_PI / 2, amp = 0.01, w = 2.0 * M_PI * 0.5;       // heading: 90 degrees plus 0.57 degrees at 0.5 Hz
+  const double h0 = convention == 1 ? -M_PI / 2 : (convention == 2 ? 0.0 : M_PI / 2), amp = convention == 2 ? 0.0 : 0.01, w = 2.0 * M_PI * 0.5;       // heading: 90 degrees plus 0.57 degrees at 0.5 Hz
   auto heading = [&](double t) { return h0 + amp * std::sin(w * (t - tstart)); };
   auto gyro = [&](double t) { return (gyro_flip ? 1.0 : -1.0) * amp * w * std::cos(w * (t - tstart)); };       // counter-clockwise yaw rate = minus d(heading)/dt
   for (int i = 0; i < 1000; ++i) {                                                  // 200 Hz GPS
     const double x = speed * 0.005 * i, t = tstart + 0.005 * i;
     const double vo = vel_off_deg * M_PI / 180.0;
     std::ostringstream l; l.precision(15);
-    l << t + gps_time_shift << "," << east0 + x - fe << "," << north0 - fn << "," << alt_offset << "," << speed * std::cos(vo) << "," << speed * std::sin(vo) << ",0,0,0," << heading(t) << ","
+    l << t + gps_time_shift << "," << east0 + x - fe << "," << north0 - fn << "," << alt_offset << "," << speed * std::cos(vo) << "," << speed * std::sin(vo) << ",0,0,0," << heading(t) + (gps_bias_rad != 0.0 && t > t0_us * 1e-6 + 0.25 ? gps_bias_rad : 0.0) << ","
       << gyro(t) << ",0,0,0,0,0," << lat0 + north0 / M << "," << lon_ref + lon_scale * (east0 + x) / (N * std::cos(lat0)) << "\n";
     gps += l.str();
   }
@@ -1191,9 +1223,13 @@ std::string makeBoreasSession(const std::string& id, double lat0, double lon_ref
     const Eigen::Matrix3d R = Eigen::AngleAxisd(-h, Eigen::Vector3d::UnitZ()).toRotationMatrix();                       // applanix to ENU, flat: Rz(-heading)
     std::size_t i = 0;
     for (const auto& wp : world) {
-      const Eigen::Vector3d pl = (render_wrong ? R : Eigen::Matrix3d(R.transpose())) * (wp - tl);
+      Eigen::Vector3d pl = (render_wrong ? R : Eigen::Matrix3d(R.transpose())) * (wp - tl);
       const double r = pl.norm();
       if (r < 2.9 || r > 49.0) continue;
+      if (clutter > 0.0 && static_cast<double>(i % 100) < clutter * 100.0) {                                              // a thing that is not there in the other frame
+        std::mt19937 gc(static_cast<unsigned>(k * 100003 + i)); std::uniform_real_distribution<double> uc(-1.0, 1.0);
+        pl = Eigen::Vector3d(uc(gc), uc(gc), uc(gc)).normalized() * (5.0 + 30.0 * std::fabs(uc(gc)));
+      }
       pts.push_back({float(pl.x()), float(pl.y()), float(pl.z()), float(i % 200), float(i % 128), -0.05f + 0.1f * float(i) / 12000.f}); ++i;
     }
     const auto b = binOf(pts);
@@ -1369,6 +1405,25 @@ TEST(P3Probe, BoreasGateAndValidatorFailures) {
     EXPECT_EQ(runProbe("boreas-overlap --seqs " + a + "," + a, &out), 0) << out;
     EXPECT_NE(out.find("pose_convention,bsGA,"), std::string::npos) << out;
     EXPECT_NE(out.find(",ok\n"), std::string::npos) << out;
+    // the limit at 0.3 m: 5 % of the points are random in every frame: the share falls from 0.93 to about 0.88 at both voxel sizes, under the limit at 0.3 m (0.92) and over the limit at 0.1 m (0.70)
+    const std::string cl = makeBoreasSession("bsGCL", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 0, false, 0.0, false, 0.05);
+    EXPECT_EQ(runProbe("boreas-validate --seq " + cl + " --ref " + a + " --n 5", &out), 3) << out;
+    EXPECT_EQ(out.find("share near at 0.1 m below"), std::string::npos) << out;
+    EXPECT_NE(out.find("share near at 0.3 m below"), std::string::npos) << out;
+    // a heading of zero is a symmetric rotation: the contrast with the transposed reading is zero and the test says it cannot tell
+    const std::string sy = makeBoreasSession("bsGSY", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 2);
+    EXPECT_EQ(runProbe("boreas-validate --seq " + sy + " --ref " + a + " --n 5", &out), 3) << out;
+    EXPECT_NE(out.find("does not discriminate"), std::string::npos) << out;
+    EXPECT_EQ(out.find("share near at"), std::string::npos) << out;
+    // the car barely moves between the two frames: the test needs motion
+    const std::string sl = makeBoreasSession("bsGSL", lat0, lon0, 1606417543533737.0, 1.0);
+    EXPECT_EQ(runProbe("boreas-validate --seq " + sl + " --ref " + a + " --n 5", &out), 3) << out;
+    EXPECT_NE(out.find("moved less than 1 m"), std::string::npos) << out;
+    // a GPS heading that turns after the third frame spoils the GPS source and not the lidar_poses.csv source
+    const std::string gb = makeBoreasSession("bsGGB", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 0, false, 0.0, false, 0.0, 0.05);
+    EXPECT_EQ(runProbe("boreas-validate --seq " + gb + " --ref " + a + " --n 5", &out), 3) << out;
+    EXPECT_NE(out.find("frame consistency (gps_x_calibration)"), std::string::npos) << out;
+    EXPECT_EQ(out.find("frame consistency (lidar_poses.csv)"), std::string::npos) << out;
     const std::string rw = makeBoreasSession("bsGRW", lat0, lon0, 1606417543533737.0, 10.0, 0.0, 1.0, 0.0, 0.0, 0.0, false, 0.0, 0, false, 0.0, true);
     EXPECT_EQ(runProbe("boreas-validate --seq " + rw + " --ref " + a + " --n 5", &out), 3) << out;
     EXPECT_NE(out.find("frame consistency (lidar_poses.csv): share near at 0.1 m below"), std::string::npos) << out;

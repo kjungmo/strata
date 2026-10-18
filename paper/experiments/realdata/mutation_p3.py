@@ -277,6 +277,8 @@ PY = [
     ("p3_eval.py", "structure = wall & (n >= nmin)", "structure = occ & (n >= nmin)", "lil: wall runs only"),
     ("p3_eval.py", "block(structure, ver == VERDICTS[\"rejected\"], \"false_reject_on_wall_runs\")", "block(structure, ver == VERDICTS[\"undecided\"], \"false_reject_on_wall_runs\")", "lil: false reject is Rejected"),
     ("p3_eval.py", "block(clutter, ver == VERDICTS[\"static\"], \"false_static_on_clutter\")", "block(clutter, ver != VERDICTS[\"rejected\"], \"false_static_on_clutter\")", "lil: false static is Static"),
+    ("p3_eval.py", "block(clutter, d[\"first_static\"] >= 0, \"ever_static_on_clutter\")", "block(clutter, ver == VERDICTS[\"static\"], \"ever_static_on_clutter\")", "lil: ever-Static is Static at the end"),
+    ("p3_eval.py", "block(clutter, d[\"first_static\"] >= 0, \"ever_static_on_clutter\")", "block(clutter, d[\"first_static\"] < 0, \"ever_static_on_clutter\")", "lil: ever-Static negated"),
     ("p3_eval.py", "m = clutter & (r >= lo_b) & (r < hi_b)", "m = clutter & (r > lo_b) & (r < hi_b)", "lil: band lower edge"),
     ("p3_eval.py", "m = clutter & (r >= lo_b) & (r < hi_b)", "m = clutter & (r >= lo_b) & (r <= hi_b)", "lil: band upper edge"),
     ("p3_eval.py", "got = structure & (d[\"first_static\"] >= 0)", "got = structure & (d[\"first_static\"] > 0)", "lil: latency sentinel"),
@@ -318,6 +320,7 @@ PY = [
 ]
 
 EQUIVALENT = {
+    "a4 convention: gyro scale": "the Pearson correlation of the yaw rate with the gyro does not change with the scale of either series (degrees or radians per second)",
     "cli: validate frame check rows": "unreachable: a valid origin needs the latitude and longitude columns, so every GPS row of the window carries them and `ea.rows > 0` equals `gps.size() > 10 n`, which is checked just before",
     "cli: convert needs rows to check": "unreachable: `trackOf(gps)` already fails for fewer than two GPS rows in the window, and every row carries latitude and longitude when the origin is valid",
     "cli: validate converts in the file frame": "the validator prints only counts of the converted points; a vertical shift of 1 m changes none of them",
