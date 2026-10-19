@@ -379,3 +379,9 @@ Ten mutants of `strata/include/strata/evidence_status.hpp` (user and legacy also
 Mutant, run by hand against `strata_core` (113 tests): in `layered_map.cpp`, `if (periodic) e.graduated = false;` also resets `log_odds = 0.0` and `observations = 0` (the reverse-test restart applied to the periodic path).
 Before the fix it survived all tests. After the added assertions in `Sprt.DoorGraduatesEarlyAndPeriodicityThenDemotesIt` (at the window where `isStatic` goes from true to false, `observations()` is n + 1 and `occupancyProb` equals the sigma of the old level plus this window's update, capped at the ceiling), it is killed (3 failed assertions, 1 failed test). The file was restored and 113 of 113 passed.
 `scripts/check_evidence_params.sh` was run in the ros2_humble env against the colcon build of this head: all cases passed, including four new ones for the ignored-key warning.
+
+## Addendum (2026-10-19, Opus review finding 1 of the second v2 round): tie-break of the periodic path and the reverse test
+
+Mutant, run by hand against `strata_core` (114 tests): in `layered_map.cpp`, `else if (e.log_odds <= d.demote_level)` becomes `if (...)`, so the reverse-test restart also runs in a window where the periodic predicate fires.
+It survived all 113 earlier tests. The new test `Sprt.PeriodicPathWinsWhenTheReverseTestFiresInTheSameWindow` (door of 17 open and 7 closed windows of 24, shipped defaults; the first tie is window 45, where the cell must keep `n` = 24 and its level) kills it: 1 failed test of 114. The file was restored and 114 of 114 passed.
+SPEC 3.2a now states the tie-break (the periodic path wins).

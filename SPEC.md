@@ -242,6 +242,11 @@ demote   : graduated && (periodic || l <= ceiling - A) -> not graduated; after t
 reject   : !graduated && n >= T && l <= B && amp < periodic_amplitude_min -> erase the cell
 ```
 
+If the periodic predicate and the reverse test both fire in the same window, the periodic path
+wins: the cell stops being Static and keeps `l` and `n`; the restart `l := 0, n := 0` runs only
+when the reverse test fires alone. (Test `Sprt.PeriodicPathWinsWhenTheReverseTestFiresInTheSameWindow`:
+a door open 17 and closed 7 windows of 24, tie at window 45.)
+
 A rejected cell is erased. A later hit creates a new cell, which starts a new history
 at `n = 0`. A cell that is still a periodic candidate (`amp >= periodic_amplitude_min`)
 is kept until the periodicity test decides.

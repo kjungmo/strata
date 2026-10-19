@@ -606,6 +606,44 @@ TEST(Sprt, DoorGraduatesEarlyAndPeriodicityThenDemotesIt) {
   EXPECT_FALSE(m.isStatic(6));
 }
 
+TEST(Sprt, PeriodicPathWinsWhenTheReverseTestFiresInTheSameWindow) {
+  // SPEC 3.2a tie-break. Door of 17 open and 7 closed windows (period 24 = T), shipped defaults with
+  // periodicity and alpha spending on. At window 45 (the 5th closed-phase miss) the first Periodic
+  // read-out comes in the same window in which the reverse test would also fire (level <= ceiling - A).
+  // The periodic path wins: the cell keeps l and n. The reverse-test restart (l := 0, n := 0) must not run.
+  LayeredMapParams p;                                           // the library defaults, as shipped
+  p.evidence_model = EvidenceModel::Sprt; p.layer_interval = 1; p.enable_periodicity = true;
+  p.periodic_alpha_spending = true; p.n_max_undecided = 0;
+  ASSERT_EQ(p.periodicity.period_windows, 24);
+  LayeredMap m(p);
+  const SprtDerived d = m.sprt();
+  int ties = 0;
+  for (int w = 0; w < 120; ++w) {
+    const bool was = m.isStatic(6);
+    const int n_before = m.observations(6);
+    const double pr = m.occupancyProb(6);
+    const double l_before = std::log(pr / (1.0 - pr));
+    const bool hit = (w % 24) < 17;
+    if (hit) m.observeHit(6); else m.observeMiss(6);
+    m.tick();
+    if (was && !m.isStatic(6)) {
+      const double l_expect = std::min(d.ceiling, l_before + (hit ? d.l_hit : d.l_miss));
+      if (l_expect > d.demote_level) continue;                  // the periodic path alone
+      if (w == 21) {                                            // the reverse test alone (no Periodic read-out yet)
+        EXPECT_EQ(m.observations(6), 0);
+        EXPECT_NEAR(m.occupancyProb(6), 0.5, 1e-12);
+        continue;
+      }
+      ++ties;
+      if (ties == 1) EXPECT_EQ(w, 45);                          // the first tie
+      EXPECT_EQ(m.observations(6), n_before + 1);
+      EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l_expect)), 1e-9);
+      EXPECT_GT(m.occupancyProb(6), 0.5);                       // l kept, not restarted at 0
+    }
+  }
+  EXPECT_GE(ties, 1);
+}
+
 // ---- Intermittent -----------------------------------------------------------------------
 
 namespace {
