@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "13.38 11.83 9.63 11/1072 1746962",
+  "loadavg": "3.20 3.08 3.04 5/1056 1805073",
   "meminfo": {
-   "MemAvailable": "7913824 kB",
+   "MemAvailable": "8885868 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31225632 kB"
+   "SwapFree": "31225816 kB"
   },
-  "time": "2026-10-19T01:44:25+0900",
+  "time": "2026-10-19T02:59:50+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "98.9 461452 pytest",
-   "98.5 27324 exp_lever_new5",
-   "98.5  7880 exp_lever_new5",
-   "98.5 1172892 python3",
-   "98.4 27444 exp_lever_new5"
+   " 117 625932 pytest",
+   "29.1 224592 python3",
+   "28.9 224772 python3",
+   "20.9 113092 python3",
+   "12.5 83628 fusion_node_mai"
   ]
  },
  "argv": [
@@ -39,30 +39,30 @@
   "/mnt/d/wsl/strata/p3/spires_04/counts_sprt_low_end_r0.2_W10_p1.meta"
  ],
  "before": {
-  "loadavg": "10.83 9.44 8.15 10/1057 1739535",
+  "loadavg": "2.21 2.42 3.66 2/965 1791241",
   "meminfo": {
-   "MemAvailable": "9088836 kB",
+   "MemAvailable": "9903796 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31238292 kB"
+   "SwapFree": "31208404 kB"
   },
-  "time": "2026-10-19T01:38:30+0900",
+  "time": "2026-10-19T02:34:30+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.4 27324 exp_lever_new5",
-   "99.4 27444 exp_lever_new5",
-   "99.4 26588 exp_lever_new5",
-   "99.4 27444 exp_lever_new5",
-   "99.2 25756 exp_lever_20116"
+   "17.9 79960 python3",
+   " 5.1 82504 fusion_node_mai",
+   " 4.8 561084 2.1.299",
+   " 4.4 522800 2.1.302",
+   " 1.0 62776 Xvfb"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
-  "commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
+  "binary_commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
+  "commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
-  "uncommitted_in_repository": 76
+  "uncommitted_in_repository": 29
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -70,7 +70,7 @@
  "kernel": "6.18.54.1-microsoft-standard-WSL2",
  "outputs": [],
  "python": "3.8.10",
- "returncode": 1,
- "seconds": 354.366,
+ "returncode": 0,
+ "seconds": 1519.445,
  "step": "spires_04_sprt_low_end_r0.2_W10_p1"
 }

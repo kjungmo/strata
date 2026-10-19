@@ -1,11 +1,10 @@
 STEP spires_04_sprt_r0.2_W10_p1
-START 2026-10-19T00:55:36+09:00 host=DESKTOP-KCD7BRS load=6.25 6.67 7.14 cores=12
-COMMIT e3cf02866252670fd0f5c7e298d66d7275aef0b0
+START 2026-10-19T02:10:08+09:00 host=DESKTOP-KCD7BRS load=4.80 4.30 6.18 cores=12
+COMMIT 8a1e4d30430eb87d842fc550fbdbc90e25362f4d
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT e3cf02866252670fd0f5c7e298d66d7275aef0b0
+BINARY_COMMIT 8a1e4d30430eb87d842fc550fbdbc90e25362f4d
 STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
 STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
 CMD <BUILD_DIR>/build/realdata/p3_probe arm-eval --cache <OUT_DIR>/spires_04/cache.bin --labels <OUT_DIR>/spires_04/labels_r0.2.bin --arm sprt --res 0.2 --window 10 --periodicity 1 --format counts --out <OUT_DIR>/spires_04/counts_sprt_r0.2_W10_p1.csv --meta <OUT_DIR>/spires_04/counts_sprt_r0.2_W10_p1.meta
-p3_probe: <OUT_DIR>/spires_04/cache.bin: truncated frame 6299
-run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_04_sprt_r0.2_W10_p1.json rc=1
-END 2026-10-19T01:19:31+09:00 rc=1 load=7.38 7.57 7.31
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_04_sprt_r0.2_W10_p1.json rc=0
+END 2026-10-19T02:34:30+09:00 rc=0 load=2.21 2.42 3.66

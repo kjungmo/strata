@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "6.30 7.20 7.12 5/965 1519967",
+  "loadavg": "3.60 4.00 6.24 5/1056 1771791",
   "meminfo": {
-   "MemAvailable": "9728412 kB",
+   "MemAvailable": "9065828 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31144552 kB"
+   "SwapFree": "31154164 kB"
   },
-  "time": "2026-10-18T21:43:32+0900",
+  "time": "2026-10-19T02:08:56+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.9 44496 lever",
-   "99.9 44468 lever",
-   "99.9 44468 lever",
-   "19.9 87680 python3",
-   " 9.2 82588 fusion_node_mai"
+   "73.5 198748 cc1plus",
+   "70.0 190564 cc1plus",
+   "67.5 181280 cc1plus",
+   "19.5 90396 python3",
+   "19.5 90352 python3"
   ]
  },
  "argv": [
@@ -25,26 +25,26 @@
   "-DCMAKE_BUILD_TYPE=Release"
  ],
  "before": {
-  "loadavg": "6.30 7.20 7.12 4/965 1519956",
+  "loadavg": "3.60 4.00 6.24 5/1055 1771777",
   "meminfo": {
-   "MemAvailable": "9731680 kB",
+   "MemAvailable": "8983452 kB",
    "MemTotal": "12249900 kB",
-   "SwapFree": "31144552 kB"
+   "SwapFree": "31154164 kB"
   },
-  "time": "2026-10-18T21:43:32+0900",
+  "time": "2026-10-19T02:08:56+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.9 44468 lever",
-   "99.9 44468 lever",
-   "99.8 44496 lever",
-   "19.9 87668 python3",
-   " 9.1 82588 fusion_node_mai"
+   "71.0 191688 cc1plus",
+   "65.5 179544 cc1plus",
+   "62.0 173832 cc1plus",
+   "58.5 163284 cc1plus",
+   "19.5 90376 python3"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
-  "commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
+  "binary_commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
+  "commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
   "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
   "uncommitted_in_experiment_dir": 0,
@@ -57,6 +57,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 0.121,
+ "seconds": 0.128,
  "step": "build_configure"
 }

@@ -1,0 +1,62 @@
+{
+ "after": {
+  "loadavg": "6.30 7.20 7.12 5/965 1519967",
+  "meminfo": {
+   "MemAvailable": "9728412 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31144552 kB"
+  },
+  "time": "2026-10-18T21:43:32+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.9 44496 lever",
+   "99.9 44468 lever",
+   "99.9 44468 lever",
+   "19.9 87680 python3",
+   " 9.2 82588 fusion_node_mai"
+  ]
+ },
+ "argv": [
+  "cmake",
+  "-S",
+  "~/.cache/strata_p3_build/src/paper/experiments",
+  "-B",
+  "~/.cache/strata_p3_build/build",
+  "-DCMAKE_BUILD_TYPE=Release"
+ ],
+ "before": {
+  "loadavg": "6.30 7.20 7.12 4/965 1519956",
+  "meminfo": {
+   "MemAvailable": "9731680 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31144552 kB"
+  },
+  "time": "2026-10-18T21:43:32+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.9 44468 lever",
+   "99.9 44468 lever",
+   "99.8 44496 lever",
+   "19.9 87668 python3",
+   " 9.1 82588 fusion_node_mai"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
+  "commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
+  "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 4
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.121,
+ "step": "build_configure"
+}
