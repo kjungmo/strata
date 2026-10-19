@@ -373,3 +373,9 @@ path; the door test now kills it.
 Three mutants were added to the `defaults` sweep of `mutation_p2.py` (`check_defaults.py` check 6) and the sweep was re-run at this head: 21 of 21 killed.
 The three: the provisional note loses its text while `PREREG.json` says not frozen; the note names the wrong gate; `mapping_node.cpp` stops including `evidence_status.hpp`.
 Ten mutants of `strata/include/strata/evidence_status.hpp` (user and legacy also provisional, never provisional, value or message without the note, note at the end, uncalibrated text on the wrong backend or label, `m1` value, `n_max_undecided` dropped) were run against `strata/test/test_evidence_status.cpp`: 10 of 10 killed (two survivors of the first draft, the `m1` value and the uncalibrated text on `grid2d`, got their assertions).
+
+## Addendum (2026-10-19, Opus review findings 1 to 3 of the v2 branch)
+
+Mutant, run by hand against `strata_core` (113 tests): in `layered_map.cpp`, `if (periodic) e.graduated = false;` also resets `log_odds = 0.0` and `observations = 0` (the reverse-test restart applied to the periodic path).
+Before the fix it survived all tests. After the added assertions in `Sprt.DoorGraduatesEarlyAndPeriodicityThenDemotesIt` (at the window where `isStatic` goes from true to false, `observations()` is n + 1 and `occupancyProb` equals the sigma of the old level plus this window's update, capped at the ceiling), it is killed (3 failed assertions, 1 failed test). The file was restored and 113 of 113 passed.
+`scripts/check_evidence_params.sh` was run in the ros2_humble env against the colcon build of this head: all cases passed, including four new ones for the ignored-key warning.

@@ -578,13 +578,30 @@ TEST(Sprt, DoorGraduatesEarlyAndPeriodicityThenDemotesIt) {
   p.periodicity.period_windows = 8; p.periodicity.n_harmonics = 3;
   p.periodic_alpha_spending = false; p.periodic_false_alarm = 0.1;
   LayeredMap m(p);
+  const SprtDerived d = m.sprt();
   bool was_static = false;
+  int periodic_demotions = 0;
   for (int w = 0; w < 64; ++w) {
-    if ((w % 8) < 4) m.observeHit(6); else m.observeMiss(6);
+    const bool was = m.isStatic(6);
+    const int n_before = m.observations(6);
+    const double l_before = std::log(m.occupancyProb(6) / (1.0 - m.occupancyProb(6)));
+    const bool hit = (w % 8) < 4;
+    if (hit) m.observeHit(6); else m.observeMiss(6);
     m.tick();
     if (m.isStatic(6)) was_static = true;
+    if (was && !m.isStatic(6)) {
+      // SPEC 3.2a: the periodic path only clears the Static flag. It keeps l (this window's update on
+      // top of the ceiling) and n, unlike the reverse-test demotion, which restarts at l = 0, n = 0.
+      ++periodic_demotions;
+      const double l_expect = std::min(d.ceiling, l_before + (hit ? d.l_hit : d.l_miss));
+      ASSERT_GT(l_expect, d.demote_level);                      // so this is not the reverse-test path
+      EXPECT_EQ(m.observations(6), n_before + 1);
+      EXPECT_NEAR(m.occupancyProb(6), 1.0 / (1.0 + std::exp(-l_expect)), 1e-9);
+      EXPECT_GT(m.occupancyProb(6), 0.9);
+    }
   }
   EXPECT_TRUE(was_static);
+  EXPECT_GE(periodic_demotions, 1);
   EXPECT_EQ(m.classify(6), CellClass::Periodic);
   EXPECT_FALSE(m.isStatic(6));
 }

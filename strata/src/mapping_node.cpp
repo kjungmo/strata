@@ -141,6 +141,29 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   // The pair is measured on a 2D scanner only. "measured_2d" on another backend is a wrong label:
   // report it as the fallback, so the start-up warning and /diagnostics say the truth.
   if (evidence_calibration_ == "measured_2d" && backend_ != "grid2d") evidence_calibration_ = "fallback_2d_pair";
+  // A tuned v0.1 YAML on the sprt default (or sprt keys on legacy) is silently ignored otherwise: say so.
+  {
+    std::string changed;
+    auto note = [&changed](const char* key, double v, double dflt) {
+      if (v != dflt) { changed += changed.empty() ? "" : ", "; changed += key; }
+    };
+    if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
+      note("l_hit", p.l_hit, 0.85); note("l_miss", p.l_miss, -0.4); note("l_min", p.l_min, -5.0);
+      note("l_max", p.l_max, 5.0); note("survival_decay", p.survival_decay, 0.97);
+      note("graduate_prob", p.graduate_prob, 0.8); note("demote_prob", p.demote_prob, 0.45);
+      note("min_observations", p.min_observations, 3); note("prune_prob", p.prune_prob, 0.05);
+      if (!changed.empty())
+        RCLCPP_WARN(get_logger(), "evidence: evidence_model is sprt, so these v0.1 keys are ignored: %s. Set "
+                    "evidence_model:=legacy to use them, or tune m0, m1, alpha, beta and n_max_undecided (SPEC 5)",
+                    changed.c_str());
+    } else {
+      note("m0", p.m0, def.m0); note("m1", p.m1, def.m1); note("alpha", p.alpha, def.alpha);
+      note("beta", p.beta, def.beta); note("n_max_undecided", p.n_max_undecided, def.n_max_undecided);
+      if (!changed.empty())
+        RCLCPP_WARN(get_logger(), "evidence: evidence_model is legacy, so these sprt keys are ignored: %s",
+                    changed.c_str());
+    }
+  }
   if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
     try {
       (void)strata_core::deriveSprt(p);   // reject an unusable (m0, m1, alpha, beta, n_max_undecided) at startup

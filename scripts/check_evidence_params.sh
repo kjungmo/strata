@@ -32,7 +32,7 @@ elif grep -qF "strata up" <<< "$out" && grep -qF "evidence: legacy" <<< "$out"; 
 else echo "FAIL: legacy start did not log the evidence line"; echo "$out" | tail -3; fail=1; fi
 # the shipped default starts with the sprt model
 out=$(timeout 8 ros2 run strata strata_node_main 2>&1); code=$?
-if [ "$code" -eq 124 ] && grep -qF "evidence: sprt: clutter m0=0.2" <<< "$out"; then echo "ok: the default starts with the sprt model"
+if [ "$code" -eq 124 ] && grep -qF "sprt: clutter m0=0.2" <<< "$out" && grep -qF "provisional (PREREG not frozen: G1 failed)" <<< "$out"; then echo "ok: the default starts with the sprt model, labelled provisional"
 else echo "FAIL: default start (exit $code)"; echo "$out" | tail -3; fail=1; fi
 # voxel3d without the shipped YAML: the 2D pair is labelled as the fallback and the node warns
 out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p backend:=voxel3d 2>&1); code=$?
@@ -42,4 +42,13 @@ else echo "FAIL: voxel3d default start (exit $code)"; echo "$out" | tail -3; fai
 # grid2d with the key left out stays measured_2d and does not warn
 out=$(timeout 8 ros2 run strata strata_node_main 2>&1)
 if grep -qF "not calibrated for backend" <<< "$out"; then echo "FAIL: grid2d default start warns"; fail=1; else echo "ok: grid2d default start does not warn"; fi
+# a tuned v0.1 key on the sprt default warns; the same key on legacy does not; sprt keys on legacy warn
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p l_hit:=1.2 2>&1)
+if grep -qF "these v0.1 keys are ignored: l_hit" <<< "$out"; then echo "ok: a v0.1 key on the sprt default warns"; else echo "FAIL: no v0.1 key warning"; fail=1; fi
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p evidence_model:=legacy -p l_hit:=1.2 2>&1)
+if grep -qF "keys are ignored" <<< "$out"; then echo "FAIL: legacy warns about v0.1 keys"; fail=1; else echo "ok: legacy with a v0.1 key does not warn"; fi
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p evidence_model:=legacy -p m0:=0.3 2>&1)
+if grep -qF "these sprt keys are ignored: m0" <<< "$out"; then echo "ok: an sprt key on legacy warns"; else echo "FAIL: no sprt key warning on legacy"; fail=1; fi
+out=$(timeout 8 ros2 run strata strata_node_main 2>&1)
+if grep -qF "keys are ignored" <<< "$out"; then echo "FAIL: default start warns about ignored keys"; fail=1; else echo "ok: default start has no ignored-key warning"; fi
 exit "$fail"
