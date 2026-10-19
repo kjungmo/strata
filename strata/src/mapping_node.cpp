@@ -141,6 +141,16 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   // The pair is measured on a 2D scanner only. "measured_2d" on another backend is a wrong label:
   // report it as the fallback, so the start-up warning and /diagnostics say the truth.
   if (evidence_calibration_ == "measured_2d" && backend_ != "grid2d") evidence_calibration_ = "fallback_2d_pair";
+  // A pair that differs from the measured values is the user's pair whatever the label says: relabel it
+  // "user" and warn, so the start-up line and /diagnostics do not claim a source the pair does not have.
+  if (p.evidence_model == strata_core::EvidenceModel::Sprt && evidence_calibration_ != "user" &&
+      (p.m0 != def.m0 || p.m1 != def.m1 || p.alpha != def.alpha || p.beta != def.beta)) {
+    RCLCPP_WARN(get_logger(), "evidence: m0, m1, alpha or beta differ from the measured values (m0=%g, m1=%g, "
+                "alpha=%g, beta=%g), so evidence_calibration \"%s\" is changed to \"user\"; set "
+                "evidence_calibration:=user to silence this", def.m0, def.m1, def.alpha, def.beta,
+                evidence_calibration_.c_str());
+    evidence_calibration_ = "user";
+  }
   // A tuned v0.1 YAML on the sprt default (or sprt keys on legacy) is silently ignored otherwise: say so.
   {
     std::string changed;

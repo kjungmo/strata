@@ -385,3 +385,7 @@ Before the fix it survived all tests. After the added assertions in `Sprt.DoorGr
 Mutant, run by hand against `strata_core` (114 tests): in `layered_map.cpp`, `else if (e.log_odds <= d.demote_level)` becomes `if (...)`, so the reverse-test restart also runs in a window where the periodic predicate fires.
 It survived all 113 earlier tests. The new test `Sprt.PeriodicPathWinsWhenTheReverseTestFiresInTheSameWindow` (door of 17 open and 7 closed windows of 24, shipped defaults; the first tie is window 45, where the cell must keep `n` = 24 and its level) kills it: 1 failed test of 114. The file was restored and 114 of 114 passed.
 SPEC 3.2a now states the tie-break (the periodic path wins).
+
+## Addendum (2026-10-19, Opus review finding 2 of the second v2 round): a tuned pair under the measured label
+
+`mapping_node.cpp` now logs a warning and sets `evidence_calibration` to `user` when the model is `sprt`, the label is not `user`, and `m0`, `m1`, `alpha` or `beta` differs from the library default. `scripts/check_evidence_params.sh` has two new cases (`-p m0:=0.30 -p m1:=0.60` warns, relabels and no longer says `PREREG not frozen`; the same with `evidence_calibration:=user` is silent). The script was run in the ros2_humble env against the colcon build of this head: all 16 cases passed.

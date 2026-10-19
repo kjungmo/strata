@@ -14,6 +14,8 @@ namespace strata {
 //   sprt            fallback_2d_pair    voxel3d   "NOT calibrated for voxel3d (...)"       "fallback_2d_pair, provisional (...)"
 //                                                  and then the provisional note
 //   sprt            user                any       "sprt: ..."                              "user"
+//   sprt            any, with m0, m1, alpha or beta set away from the library default: the node relabels it
+//                   "user" (and logs a warning) before this function runs, so it reads like the "user" row
 //   legacy          any                 any       "legacy (v0.1 arithmetic): ..."          the label as given (no pair is used)
 //
 // The provisional note is there because PREREG.md marks the 2D pair NOT FROZEN (gate G1 failed on all three

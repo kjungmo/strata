@@ -49,6 +49,13 @@ out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p evidence_model:=l
 if grep -qF "keys are ignored" <<< "$out"; then echo "FAIL: legacy warns about v0.1 keys"; fail=1; else echo "ok: legacy with a v0.1 key does not warn"; fi
 out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p evidence_model:=legacy -p m0:=0.3 2>&1)
 if grep -qF "these sprt keys are ignored: m0" <<< "$out"; then echo "ok: an sprt key on legacy warns"; else echo "FAIL: no sprt key warning on legacy"; fail=1; fi
+# a user-tuned pair under the measured_2d label is relabelled "user" and warns; the untouched default does not
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p m0:=0.30 -p m1:=0.60 2>&1)
+if grep -qF 'differ from the measured values' <<< "$out" && grep -qF 'changed to "user"' <<< "$out" && ! grep -qF "PREREG not frozen" <<< "$out"; then
+  echo "ok: a tuned pair is relabelled user and warns"
+else echo "FAIL: tuned pair (m0, m1) keeps the measured label"; echo "$out" | tail -4; fail=1; fi
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p m0:=0.30 -p m1:=0.60 -p evidence_calibration:=user 2>&1)
+if grep -qF 'differ from the measured values' <<< "$out"; then echo "FAIL: user label still warns about the pair"; fail=1; else echo "ok: evidence_calibration:=user with a tuned pair does not warn"; fi
 out=$(timeout 8 ros2 run strata strata_node_main 2>&1)
 if grep -qF "keys are ignored" <<< "$out"; then echo "FAIL: default start warns about ignored keys"; fail=1; else echo "ok: default start has no ignored-key warning"; fi
 exit "$fail"
