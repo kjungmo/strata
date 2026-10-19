@@ -603,3 +603,9 @@ The bound is not an exact rate and no `alpha` is printed beside it. It is tight 
 Code: `p3_eval.py` `spires_metrics`. Tests: `test_p3_eval.py` (`test_spires_metrics`, `test_ever_static_bound_on_eligible_clutter`). Mutation record: `results_p3/mutation_record_amend13.md` (5 mutants of the bound, 1 of the latency wording, 6 killed).
 
 **Test registration.** `test_p3_not_run_split.sh` (Amendment 12) and `test_p3_step_names.sh` were run by nothing. Both are now `add_test` entries in `CMakeLists.txt` (`p3_not_run_split`, `p3_step_names`, next to `p3_guard`), both run in the `unit` stage of `reproduce_p3.sh` (step `unit_sh`), and both are listed in `README_P3.md`.
+
+## 27. Amendment 14 (2026-10-19, during the evaluation, before any further run): re-pin of the engine tree
+
+Commits 0d09639 and a7559d4 (review findings on the P2 engine) and 9355770 and 718460c changed `strata_core/test/test_sprt.cpp`, `strata/src/mapping_node.cpp`, `strata/include/strata/evidence_status.hpp` and `scripts/check_evidence_params.sh`. The trees of `strata_core/src` (`be2e48e0f03b5340989480bbf25f1681fdcff1ce`) and `strata_core/include` (`50d9d7f4710fa5e27884cf0b8956a14a72005f5e`) are those of the pin of Amendment 5, and `strata_core/CMakeLists.txt` is unchanged. Only `strata_core/test` differs (one test file). The engine code of every earlier run is the engine code of the new pin. The guard compares the whole `strata_core` tree and refused at the new HEAD, as designed. The last `STRATA_CORE_TREE=` line of this file is the pin. No arm, label, window, resolution, threshold or metric changes, and no run is repeated because of this amendment.
+
+STRATA_CORE_TREE=c780639aec9402da556bd33b91ff9acbc06c0cd0
