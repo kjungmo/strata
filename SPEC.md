@@ -528,8 +528,8 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `sprt_ceiling` | derived, `A + 2 l_hit` | library only: upper clamp of the statistic (NaN derives it); not a node parameter |
 | `evidence_calibration` | `measured_2d` for `grid2d`, `fallback_2d_pair` for `voxel3d` (the shipped YAMLs say so, and so does the node when the key is missing; `measured_2d` on another backend is reported as `fallback_2d_pair`) | node only: states where `(m0, m1)` come from: `measured_2d`, `fallback_2d_pair` (not calibrated for this backend; logs a warning and says so on `/diagnostics`) or `user` ; while `PREREG.md` marks the 2D pair not frozen, the message and the value of `evidence_calibration` on `/diagnostics` also carry `provisional (PREREG not frozen: G1 failed)` (every value except `user`; `evidence_model: legacy` states no pair) |
 
-With `sprt` the nine keys `l_hit` to `prune_prob` below are ignored. With `legacy`
-`m0` to `n_max_undecided` are ignored (and not validated). The node refuses to start
+With `sprt` the nine keys `l_hit` to `prune_prob` below are ignored, and the node logs a warning that names any of them set away from its v0.1 default. With `legacy`
+`m0` to `n_max_undecided` are ignored (and not validated), with the same kind of warning. The node refuses to start
 on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 `alpha + beta < 1`, `n_max_undecided >= 0`) and names the parameter.
 
