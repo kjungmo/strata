@@ -247,7 +247,14 @@ stage_eval_spires() {
           local ml=6000000; [ "$r" = "0.1" ] && ml="${SPIRES_R01_MEM_LIMIT_KB:-9000000}"
           # Amendment 9: once an arm has failed at 0.1 m (same veto setting), its later 0.1 m runs are not started and are listed in not_run_steps.tsv
           if [ "$r" = "0.1" ] && grep -q "spires_.*_${arm}_r0.1_W[0-9]*_p${PER}	" "$RES/failed_steps.tsv" 2>/dev/null; then
-            printf '%s\t%s\tnot run: arm %s failed at 0.1 m with veto %s\n' "$(stamp)" "spires_${s}_${arm}_r${r}_W${w}_p$PER" "$arm" "$PER" >> "$RES/not_run_steps.tsv"; continue
+            # Amendment 12: a step that is itself in failed_steps.tsv ran and failed; a repeat that is skipped goes to skipped_repeat.tsv, never to not_run_steps.tsv
+            local self="spires_${s}_${arm}_r${r}_W${w}_p$PER"
+            if grep -qF "	${self}	" "$RES/failed_steps.tsv" 2>/dev/null; then
+              printf '%s\t%s\tskipped repeat: the step ran and failed (see failed_steps.tsv)\n' "$(stamp)" "$self" >> "$RES/skipped_repeat.tsv"
+            else
+              printf '%s\t%s\tnot run: arm %s failed at 0.1 m with veto %s\n' "$(stamp)" "$self" "$arm" "$PER" >> "$RES/not_run_steps.tsv"
+            fi
+            continue
           fi
           MEM_LIMIT_KB=$ml try step "spires_${s}_${arm}_r${r}_W${w}_p$PER" -- "$P3" arm-eval --cache "$d/cache.bin" --labels "$d/labels_r$r.bin" --arm "$arm" --res "$r" --window "$w" --periodicity "$PER" \
             --format counts --out "$d/counts_${arm}_r${r}_W${w}_p$PER.csv" --meta "$d/counts_${arm}_r${r}_W${w}_p$PER.meta" && \

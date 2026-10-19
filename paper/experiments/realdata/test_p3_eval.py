@@ -412,13 +412,18 @@ class TestSpiresAndBoreas(unittest.TestCase):
         self.assertEqual((s["n"], s["rejected"], s["undecided"], s["static"]), (1000, 100, 200, 700))
         self.assertAlmostEqual(s["false_reject_rate"], 0.1)
         self.assertAlmostEqual(s["undecided_share"], 0.2)
-        self.assertEqual(s["windows_to_first_static"], {"n": 700, "p50": 4.0, "p90": 6.0})
+        self.assertEqual({k: s["windows_to_first_static"][k] for k in ("n", "p50", "p90")}, {"n": 700, "p50": 4.0, "p90": 6.0})
+        self.assertIn("eligible or not", s["windows_to_first_static"]["population"])             # Amendment 12 wording beside the latency rows
+        self.assertIn("not the unit of the alpha test", c["unit"])
+        e = m["ever_static_on_clutter_all_cells"]                                                  # label-1 latency rows; all cells, eligible or not
+        self.assertEqual((e["k"], e["n"]), (30, 1099))
+        self.assertIn("eligible or not", e["population"])
         # ground (label 2) is a block of its own, with its own rates and its own latency (PREREG_P3.md section 7.2)
         g = m["structure_label_2"]
         self.assertEqual((g["n"], g["rejected"], g["undecided"], g["static"]), (1000, 350, 50, 600))
         self.assertAlmostEqual(g["false_reject_rate"], 0.35)
         self.assertAlmostEqual(g["undecided_share"], 0.05)
-        self.assertEqual(g["windows_to_first_static"], {"n": 600, "p50": 9.0, "p90": 9.0})
+        self.assertEqual({k: g["windows_to_first_static"][k] for k in ("n", "p50", "p90")}, {"n": 600, "p50": 9.0, "p90": 9.0})
         self.assertNotIn("structure_windows_to_first_static", m)
         # a label that is asked for but absent gives an empty block, not a crash; a label not asked for gives no block
         with tempfile.TemporaryDirectory() as d:
@@ -428,6 +433,7 @@ class TestSpiresAndBoreas(unittest.TestCase):
             self.assertEqual(m2["structure_label_2"]["n"], 0)
             self.assertTrue(math.isnan(m2["structure_label_2"]["false_reject_rate"]))
             self.assertNotIn("windows_to_first_static", m2["structure_label_3"])
+            self.assertNotIn("ever_static_on_clutter_all_cells", m2)
             self.assertNotIn("structure_label_2", ev.spires_metrics(d + "/c.csv", structure_labels=(3,)))
 
     def test_voxel_id_decoding_matches_the_engine_packing(self):

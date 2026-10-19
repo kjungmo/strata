@@ -410,16 +410,27 @@ def spires_metrics(counts_csv, latency_csv=None, structure_labels=SPIRES_STRUCTU
         return sum(v for (l, e, _), v in c.items() if l == label and e == elig)
 
     lat = {lab: [] for lab in structure_labels}
+    clutter_ever = 0                                                  # label-1 cells with a first Static window, eligible or not (Amendment 12)
     if latency_csv:
         with open(latency_csv) as f:
             for r in csv.DictReader(f):
                 if int(r["label"]) in lat:
                     lat[int(r["label"])] += [int(r["windows_to_static"])] * int(r["count"])
+                if int(r["label"]) == clutter_label:
+                    clutter_ever += int(r["count"])
 
     out = {}
     nc = tot(clutter_label)
     kc = c.get((clutter_label, 1, "static"), 0)
-    out["false_static_on_clutter"] = {"k": kc, "n": nc, "rate": (kc / nc if nc else float("nan")), "wilson95": list(wilson(kc, nc))}
+    out["false_static_on_clutter"] = {"k": kc, "n": nc, "rate": (kc / nc if nc else float("nan")), "wilson95": list(wilson(kc, nc)),
+                                 "unit": "end of run, eligible cells; not the unit of the alpha test (PREREG_P3.md Amendments 5 and 12)"}
+    if latency_csv:
+        # Amendment 12, added after the run: ever-Static clutter recovered from the label-1 rows of the .latency file. The .latency file has
+        # no eligible column, so numerator and denominator both count ALL label-1 cells, eligible or not (not comparable to the rows above).
+        na = sum(v for (l, _, _), v in c.items() if l == clutter_label)
+        out["ever_static_on_clutter_all_cells"] = {"k": clutter_ever, "n": na, "rate": (clutter_ever / na if na else float("nan")),
+                                                   "wilson95": list(wilson(clutter_ever, na)),
+                                                   "population": "all label-1 cells, eligible or not; added after the run (PREREG_P3.md Amendment 12)"}
     for lab in structure_labels:
         ns = tot(lab)
         kr = c.get((lab, 1, "rejected"), 0)
@@ -430,7 +441,8 @@ def spires_metrics(counts_csv, latency_csv=None, structure_labels=SPIRES_STRUCTU
                "undecided_share": (ku / ns if ns else float("nan"))}
         if latency_csv:
             w = lat[lab]
-            blk["windows_to_first_static"] = {"n": len(w), "p50": pct(w, 50), "p90": pct(w, 90)}
+            blk["windows_to_first_static"] = {"n": len(w), "p50": pct(w, 50), "p90": pct(w, 90),
+                                              "population": "all labelled cells ever Static, eligible or not (PREREG_P3.md Amendment 12)"}
         out[f"structure_label_{lab}"] = blk
     return out
 

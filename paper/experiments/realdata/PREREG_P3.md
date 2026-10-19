@@ -562,3 +562,26 @@ The earlier note on a transient read error of this mount is in section 11, item 
 **Change** (`p1b_io.hpp`, tests in `test_p1b.cpp`): `CacheReader::next` repeats the read of a frame from its start, up to 6 times, with a wait of 1, 2, ..., 6 seconds, after clearing the stream state. Each repeat prints a line `read retry` to the step log. A file that is really short fails after the sixth repeat with the old message.
 The frames that are returned are the same as before; only the failure path differs. Mutation record: `results_p3/mutation_record_cache_retry.md` (9 mutants, 9 killed). No arm, label, window, resolution or metric changes.
 The three failed runs are run again with an identical command (`P3_RESUME=1` runs steps whose record has a non-zero return code again); their first logs stay as attempts and the repetition is listed in `results_p3/deviations.md`. Runs that finished are not run again.
+
+## 25. Amendment 12 (2026-10-19, during the evaluation, before any Spires table is written): populations of the Spires latency and false-Static rows; failed and not-run lists
+
+Written after the fifth Opus review (three findings on the Spires rows and the run lists). Committed before any Spires table and before any further run. The C++ probe is not changed: Keble 03 (0.2 m) and Keble 04 (0.2 m, partly) are already run. No arm, label, window, resolution, threshold or verdict rule changes.
+
+### 25.1 Spires "windows to first Static" counts all labelled cells that were ever Static
+
+`p3_probe.cpp` (`evalCommon`, format `counts`) adds a cell to the latency table whenever `first_static >= 0`, with no check that the cell has `n >= nmin` (section 2.2: cells with fewer than 5 touched windows are not eligible for any rate). The `.latency` file has no eligible column. Evidence: Keble 03, `sprt`, 0.2 m, `W = 10`, veto on: label 3 has 196,584 eligible cells; its latency table holds 178,472 cells; at least 4,222 cells with `n < 5` are Static at the end of the run and are in that population.
+The LILocBench latency (`p3_eval.py`, `lil_metrics`) counts eligible cells only. The two are therefore different populations.
+
+Rule: **the Spires latency population is all labelled cells that were ever Static, eligible or not.** This sentence stands beside every Spires latency row (`windows_to_first_static`), and the JSON of `p3_eval.py spires` carries it in the field `population`. A Spires latency is not compared with a LILocBench latency. The latency table is not re-run with an eligible column.
+
+### 25.2 The Spires end-of-run false-Static row is not the unit of the alpha test
+
+Section 3.3 prints `alpha = 0.01` beside every realised false-Static rate. Amendment 5 makes the cell (ever-Static) the unit of the alpha test and keeps the Spires, KTH and Boreas rows at end-of-run counts (18.2 item 5).
+Rule: **the Spires row `false_static_on_clutter` is labelled "end of run, eligible cells; not the unit of the alpha test", and `alpha` is not printed beside it.** The JSON field `unit` carries the label.
+An ever-Static row for clutter is recovered from the label-1 rows of the `.latency` file and **added after the run**: `ever_static_on_clutter_all_cells`, k = label-1 cells with a first Static window, n = all label-1 cells. Because the `.latency` file has no eligible column, both counts include ineligible cells (25.1). The row is listed as added after the run, it is not comparable with the eligible-cell rows of Amendment 5, and `alpha` is not printed beside it either. The comparison with the calibration reference rows (18.2 item 3) is made on LILocBench only.
+Code: `p3_eval.py` `spires_metrics`; tests `test_p3_eval.py` (`test_spires_metrics`); mutation record `results_p3/mutation_record_amend12.md` (3 mutants, 3 killed). Spires JSON files written before this amendment lack the new fields; the table is built by `p3_eval.py spires` from the counts and latency files.
+
+### 25.3 Failed steps are not "not run"
+
+At 21:44:36 and 02:10:07 the resume pass listed the seven `spires_03_<arm>_r0.1_W10_p1` steps in `not_run_steps.tsv` although they had run and failed (`failed_steps.tsv`, 18:46 to 21:23). Cause: the Amendment 9 skip matched the step's own name in `failed_steps.tsv` and logged a skip as "not run".
+Rule: **a step that appears in `failed_steps.tsv` is failed, not not-run.** `reproduce_p3.sh` no longer writes such a step to `not_run_steps.tsv`; the skip of a repeat is written to `results_p3/skipped_repeat.tsv`. Steps that never started (the Keble 03 `W = 20` runs, Keble 04 and 05) stay in `not_run_steps.tsv`. The rows already written are not edited (the files are append-only logs); a table takes the status "failed" for every step in `failed_steps.tsv`, whatever `not_run_steps.tsv` says. Test: `test_p3_not_run_split.sh`.
