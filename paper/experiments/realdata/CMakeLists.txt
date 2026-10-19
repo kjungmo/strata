@@ -44,6 +44,10 @@ add_test(NAME check_realdata_script
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_check_realdata.sh)
 add_test(NAME p3_guard
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_p3_guard.sh)
+add_test(NAME p3_not_run_split
+         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_p3_not_run_split.sh)
+add_test(NAME p3_step_names
+         COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_p3_step_names.sh)
 add_test(NAME reproduce_tree_check
          COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/test_reproduce_tree_check.sh)
 add_test(NAME analysis_unit_tests

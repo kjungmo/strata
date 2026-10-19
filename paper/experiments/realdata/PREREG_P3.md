@@ -578,10 +578,28 @@ Rule: **the Spires latency population is all labelled cells that were ever Stati
 
 Section 3.3 prints `alpha = 0.01` beside every realised false-Static rate. Amendment 5 makes the cell (ever-Static) the unit of the alpha test and keeps the Spires, KTH and Boreas rows at end-of-run counts (18.2 item 5).
 Rule: **the Spires row `false_static_on_clutter` is labelled "end of run, eligible cells; not the unit of the alpha test", and `alpha` is not printed beside it.** The JSON field `unit` carries the label.
-An ever-Static row for clutter is recovered from the label-1 rows of the `.latency` file and **added after the run**: `ever_static_on_clutter_all_cells`, k = label-1 cells with a first Static window, n = all label-1 cells. Because the `.latency` file has no eligible column, both counts include ineligible cells (25.1). The row is listed as added after the run, it is not comparable with the eligible-cell rows of Amendment 5, and `alpha` is not printed beside it either. The comparison with the calibration reference rows (18.2 item 3) is made on LILocBench only.
-Code: `p3_eval.py` `spires_metrics`; tests `test_p3_eval.py` (`test_spires_metrics`); mutation record `results_p3/mutation_record_amend12.md` (3 mutants, 3 killed). Spires JSON files written before this amendment lack the new fields; the table is built by `p3_eval.py spires` from the counts and latency files.
+An ever-Static row for clutter is recovered from the label-1 rows of the `.latency` file and **added after the run**: `ever_static_on_clutter_all_cells` (replaced by the bound of Amendment 13, section 26), k = label-1 cells with a first Static window, n = all label-1 cells. Because the `.latency` file has no eligible column, both counts include ineligible cells (25.1). The row is listed as added after the run, it is not comparable with the eligible-cell rows of Amendment 5, and `alpha` is not printed beside it either. The comparison with the calibration reference rows (18.2 item 3) is made on LILocBench only.
+Code: `p3_eval.py` `spires_metrics`; tests `test_p3_eval.py` (`test_spires_metrics`); mutation record `results_p3/mutation_record_amend12.md` (3 mutants, 3 killed; the all-cells row is replaced by Amendment 13). Spires JSON files written before this amendment lack the new fields; the table is built by `p3_eval.py spires` from the counts and latency files.
 
 ### 25.3 Failed steps are not "not run"
 
 At 21:44:36 and 02:10:07 the resume pass listed the seven `spires_03_<arm>_r0.1_W10_p1` steps in `not_run_steps.tsv` although they had run and failed (`failed_steps.tsv`, 18:46 to 21:23). Cause: the Amendment 9 skip matched the step's own name in `failed_steps.tsv` and logged a skip as "not run".
 Rule: **a step that appears in `failed_steps.tsv` is failed, not not-run.** `reproduce_p3.sh` no longer writes such a step to `not_run_steps.tsv`; the skip of a repeat is written to `results_p3/skipped_repeat.tsv`. Steps that never started (the Keble 03 `W = 20` runs, Keble 04 and 05) stay in `not_run_steps.tsv`. The rows already written are not edited (the files are append-only logs); a table takes the status "failed" for every step in `failed_steps.tsv`, whatever `not_run_steps.tsv` says. Test: `test_p3_not_run_split.sh`.
+
+## 26. Amendment 13 (2026-10-19, during the evaluation, before any Spires table is written): the Spires ever-Static clutter row is a bound on eligible cells
+
+Written after the sixth Opus review (two findings). Committed before any Spires table and before any re-run. No run is repeated: no committed result file holds the row, it is computed from the counts and `.latency` files by `p3_eval.py spires`.
+
+**Finding.** The row `ever_static_on_clutter_all_cells` of 25.2 took all label-1 cells as its denominator. That includes cells with `n < 5` and cells that were never touched, which cannot be Static. The dilution differs between arms. Recomputed on Keble 03, 0.2 m, `W = 10`: 41,053 label-1 cells, 22,262 of them ineligible. For `sprt` the row reads 6,893 / 41,053 = 0.168, below the end-of-run rate on eligible cells (0.283). Ever-Static contains end-Static, so the two cannot describe one population. For `octomap` the row reads 0.815 against an end-of-run rate of 0.514. The row stretched the `sprt` to `octomap` contrast from about 2x to about 5x.
+
+**Rule.** **The all-cells row is removed.** It is replaced by `ever_static_on_clutter_eligible_bound`, a bound on the ever-Static rate over eligible label-1 cells (`n >= 5`):
+
+- `k_lo` = eligible label-1 cells that are Static at the end of the run (`counts` rows `1,1,static`). A cell Static at the end has been Static.
+- `k_hi` = min(ever-Static label-1 cells in the `.latency` file minus ineligible label-1 cells that are Static at the end (`counts` rows `1,0,static`), `n_elig`). Those ineligible cells are ever-Static and are not in the eligible population.
+- `lo = k_lo / n_elig`, `hi = k_hi / n_elig`, `n = n_elig`. The field `consistent` is false if `k_hi < k_lo`. Then the files disagree and the row is not used.
+
+The bound is not an exact rate and no `alpha` is printed beside it. It is tight for the `sprt` arms and wide for `octomap` and `elite_like`. Values on Keble 03, 0.2 m, `W = 10` (n = 18,791): `sprt` [0.283, 0.287], `sprt_low_end` [0.285, 0.287], `sprt_high_end` [0.156, 0.158], `shipped_v0_1` [0.443, 0.448], `symmetric` [0.387, 0.410], `octomap` [0.514, 0.635], `elite_like` [0.394, 0.622]. A wide bound is reported as wide. The exact rate needs an eligible column in the `.latency` file; the probe is not changed and the runs are not repeated (25.1).
+
+Code: `p3_eval.py` `spires_metrics`. Tests: `test_p3_eval.py` (`test_spires_metrics`, `test_ever_static_bound_on_eligible_clutter`). Mutation record: `results_p3/mutation_record_amend13.md` (5 mutants of the bound, 1 of the latency wording, 6 killed).
+
+**Test registration.** `test_p3_not_run_split.sh` (Amendment 12) and `test_p3_step_names.sh` were run by nothing. Both are now `add_test` entries in `CMakeLists.txt` (`p3_not_run_split`, `p3_step_names`, next to `p3_guard`), both run in the `unit` stage of `reproduce_p3.sh` (step `unit_sh`), and both are listed in `README_P3.md`.

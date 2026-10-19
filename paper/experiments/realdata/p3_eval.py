@@ -425,12 +425,17 @@ def spires_metrics(counts_csv, latency_csv=None, structure_labels=SPIRES_STRUCTU
     out["false_static_on_clutter"] = {"k": kc, "n": nc, "rate": (kc / nc if nc else float("nan")), "wilson95": list(wilson(kc, nc)),
                                  "unit": "end of run, eligible cells; not the unit of the alpha test (PREREG_P3.md Amendments 5 and 12)"}
     if latency_csv:
-        # Amendment 12, added after the run: ever-Static clutter recovered from the label-1 rows of the .latency file. The .latency file has
-        # no eligible column, so numerator and denominator both count ALL label-1 cells, eligible or not (not comparable to the rows above).
-        na = sum(v for (l, _, _), v in c.items() if l == clutter_label)
-        out["ever_static_on_clutter_all_cells"] = {"k": clutter_ever, "n": na, "rate": (clutter_ever / na if na else float("nan")),
-                                                   "wilson95": list(wilson(clutter_ever, na)),
-                                                   "population": "all label-1 cells, eligible or not; added after the run (PREREG_P3.md Amendment 12)"}
+        # Amendment 13 replaces the all-cells ever-Static row of Amendment 12 (its denominator held ineligible and never-touched cells and
+        # differed between arms). The .latency file has no eligible column, so the ever-Static count of ELIGIBLE label-1 cells is bounded:
+        #   lo = end-Static eligible cells (a cell Static at the end has been Static)
+        #   hi = ever-Static label-1 cells minus the ineligible cells that are Static at the end (those are ever-Static and ineligible), capped at n_elig
+        k_inelig_end = c.get((clutter_label, 0, "static"), 0)
+        hi_k = min(clutter_ever - k_inelig_end, nc)
+        out["ever_static_on_clutter_eligible_bound"] = {
+            "n": nc, "k_lo": kc, "k_hi": hi_k,
+            "lo": (kc / nc if nc else float("nan")), "hi": (hi_k / nc if nc else float("nan")),
+            "consistent": bool(hi_k >= kc),
+            "population": "eligible label-1 cells; bounds from the counts and latency files, not an exact rate (PREREG_P3.md Amendment 13)"}
     for lab in structure_labels:
         ns = tot(lab)
         kr = c.get((lab, 1, "rejected"), 0)

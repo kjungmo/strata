@@ -120,6 +120,7 @@ stage_check() {
 stage_unit() {
   must step unit_cpp -- "$BUILD/build/realdata/test_p3"
   must step unit_py -- bash -c "cd '$HERE' && python3 -I -m unittest discover -s . -p 'test_p3*.py'"
+  must step unit_sh -- bash -c "cd '$HERE' && bash test_p3_not_run_split.sh && bash test_p3_step_names.sh"
 }
 
 # ----------------------------------------------------------------------------- reader validation ------

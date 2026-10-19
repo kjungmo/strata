@@ -404,7 +404,7 @@ class TestSpiresAndBoreas(unittest.TestCase):
                         "3,1,static,700\n3,1,undecided,200\n3,1,rejected,100\n3,0,rejected,5\n"
                         "2,1,static,600\n2,1,undecided,50\n2,1,rejected,350\n2,0,static,7\n")
             with open(d + "/c.csv.latency", "w") as f:
-                f.write("label,windows_to_static,count\n3,4,500\n3,6,200\n1,5,30\n2,3,100\n2,9,500\n")
+                f.write("label,windows_to_static,count\n3,4,500\n3,6,200\n1,5,1029\n2,3,100\n2,9,500\n")
             m = ev.spires_metrics(d + "/c.csv", d + "/c.csv.latency")
         c = m["false_static_on_clutter"]
         self.assertEqual((c["k"], c["n"]), (30, 100))                     # ineligible cells are excluded
@@ -415,9 +415,11 @@ class TestSpiresAndBoreas(unittest.TestCase):
         self.assertEqual({k: s["windows_to_first_static"][k] for k in ("n", "p50", "p90")}, {"n": 700, "p50": 4.0, "p90": 6.0})
         self.assertIn("eligible or not", s["windows_to_first_static"]["population"])             # Amendment 12 wording beside the latency rows
         self.assertIn("not the unit of the alpha test", c["unit"])
-        e = m["ever_static_on_clutter_all_cells"]                                                  # label-1 latency rows; all cells, eligible or not
-        self.assertEqual((e["k"], e["n"]), (30, 1099))
-        self.assertIn("eligible or not", e["population"])
+        self.assertNotIn("ever_static_on_clutter_all_cells", m)                                    # replaced by the bound (Amendment 13)
+        e = m["ever_static_on_clutter_eligible_bound"]                                             # ever 1029 - ineligible end-Static 999 = 30
+        self.assertEqual((e["n"], e["k_lo"], e["k_hi"], e["consistent"]), (100, 30, 30, True))
+        self.assertAlmostEqual(e["lo"], 0.3); self.assertAlmostEqual(e["hi"], 0.3)
+        self.assertIn("eligible label-1 cells", e["population"])
         # ground (label 2) is a block of its own, with its own rates and its own latency (PREREG_P3.md section 7.2)
         g = m["structure_label_2"]
         self.assertEqual((g["n"], g["rejected"], g["undecided"], g["static"]), (1000, 350, 50, 600))
@@ -433,8 +435,27 @@ class TestSpiresAndBoreas(unittest.TestCase):
             self.assertEqual(m2["structure_label_2"]["n"], 0)
             self.assertTrue(math.isnan(m2["structure_label_2"]["false_reject_rate"]))
             self.assertNotIn("windows_to_first_static", m2["structure_label_3"])
-            self.assertNotIn("ever_static_on_clutter_all_cells", m2)
+            self.assertNotIn("ever_static_on_clutter_eligible_bound", m2)
             self.assertNotIn("structure_label_2", ev.spires_metrics(d + "/c.csv", structure_labels=(3,)))
+
+    def test_ever_static_bound_on_eligible_clutter(self):
+        # 100 eligible label-1 cells (30 Static at the end); 200 ineligible undecided and 5 ineligible Static cells.
+        counts = "label,eligible,verdict,count\n1,1,static,30\n1,1,undecided,10\n1,1,rejected,60\n1,0,static,5\n1,0,undecided,200\n"
+
+        def bound(ever):
+            with tempfile.TemporaryDirectory() as d:
+                with open(d + "/c.csv", "w") as f:
+                    f.write(counts)
+                with open(d + "/c.csv.latency", "w") as f:
+                    f.write("label,windows_to_static,count\n1,3,%d\n" % ever)
+                return ev.spires_metrics(d + "/c.csv", d + "/c.csv.latency")["ever_static_on_clutter_eligible_bound"]
+        b = bound(50)                                  # at most 50 - 5 = 45 eligible cells were ever Static; at least the 30 Static at the end
+        self.assertEqual((b["k_lo"], b["k_hi"], b["n"], b["consistent"]), (30, 45, 100, True))
+        self.assertAlmostEqual(b["lo"], 0.30); self.assertAlmostEqual(b["hi"], 0.45)
+        b = bound(400)                                 # capped at the eligible cell count
+        self.assertEqual((b["k_hi"], b["hi"]), (100, 1.0))
+        b = bound(10)                                  # latency file smaller than the counts allow: flagged, not hidden
+        self.assertEqual((b["k_lo"], b["k_hi"], b["consistent"]), (30, 5, False))
 
     def test_voxel_id_decoding_matches_the_engine_packing(self):
         def pack(ix, iy, iz):
