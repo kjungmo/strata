@@ -1,0 +1,10 @@
+STEP spires_03_octomap_r0.1_W10_p0
+START 2026-10-20T00:10:09+09:00 host=DESKTOP-KCD7BRS load=1.10 1.12 1.12 cores=12
+COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD <BUILD_DIR>/build/realdata/p3_probe arm-eval --cache <OUT_DIR>/spires_03/cache.bin --labels <OUT_DIR>/spires_03/labels_r0.1.bin --arm octomap --res 0.1 --window 10 --periodicity 0 --format counts --out <OUT_DIR>/spires_03/counts_octomap_r0.1_W10_p0.csv --meta <OUT_DIR>/spires_03/counts_octomap_r0.1_W10_p0.meta
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_03_octomap_r0.1_W10_p0.json rc=0
+END 2026-10-20T00:29:14+09:00 rc=0 load=1.00 1.02 1.06

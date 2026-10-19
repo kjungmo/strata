@@ -1,0 +1,11 @@
+STEP spires_04_labels_r0.1
+START 2026-10-19T11:49:54+09:00 host=DESKTOP-KCD7BRS load=1.50 1.52 2.87 cores=12
+COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD <BUILD_DIR>/build/realdata/p1b_probe spires-labels --tls-dir <OUT_DIR>/spires_04 --cache <OUT_DIR>/spires_04/cache.bin --res 0.1 --out <OUT_DIR>/spires_04/labels_r0.1.bin --meta <OUT_DIR>/spires_04/labels_r0.1.meta
+2026-10-19T11:49:56+0900 collecting hit voxels at 0.100000 m
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_04_labels_r0.1.json rc=0
+END 2026-10-19T11:50:28+09:00 rc=0 load=1.59 1.54 2.82

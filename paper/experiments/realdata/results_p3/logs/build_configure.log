@@ -1,13 +1,13 @@
 STEP build_configure
-START 2026-10-19T02:08:56+09:00 host=DESKTOP-KCD7BRS load=3.60 4.00 6.24 cores=12
-COMMIT 8a1e4d30430eb87d842fc550fbdbc90e25362f4d
+START 2026-10-19T10:51:51+09:00 host=DESKTOP-KCD7BRS load=8.55 11.58 9.18 cores=12
+COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT 8a1e4d30430eb87d842fc550fbdbc90e25362f4d
-STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
-STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+BINARY_COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
 CMD cmake -S <BUILD_DIR>/src/paper/experiments -B <BUILD_DIR>/build -DCMAKE_BUILD_TYPE=Release
 -- Configuring done
 -- Generating done
 -- Build files have been written to: ~/.cache/strata_p3_build/build
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/build_configure.json rc=0
-END 2026-10-19T02:08:57+09:00 rc=0 load=3.60 4.00 6.24
+END 2026-10-19T10:51:51+09:00 rc=0 load=8.55 11.58 9.18

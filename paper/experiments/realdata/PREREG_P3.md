@@ -609,3 +609,27 @@ Code: `p3_eval.py` `spires_metrics`. Tests: `test_p3_eval.py` (`test_spires_metr
 Commits 0d09639 and a7559d4 (review findings on the P2 engine) and 9355770 and 718460c changed `strata_core/test/test_sprt.cpp`, `strata/src/mapping_node.cpp`, `strata/include/strata/evidence_status.hpp` and `scripts/check_evidence_params.sh`. The trees of `strata_core/src` (`be2e48e0f03b5340989480bbf25f1681fdcff1ce`) and `strata_core/include` (`50d9d7f4710fa5e27884cf0b8956a14a72005f5e`) are those of the pin of Amendment 5, and `strata_core/CMakeLists.txt` is unchanged. Only `strata_core/test` differs (one test file). The engine code of every earlier run is the engine code of the new pin. The guard compares the whole `strata_core` tree and refused at the new HEAD, as designed. The last `STRATA_CORE_TREE=` line of this file is the pin. No arm, label, window, resolution, threshold or metric changes, and no run is repeated because of this amendment.
 
 STRATA_CORE_TREE=c780639aec9402da556bd33b91ff9acbc06c0cd0
+
+## 28. Amendment 15 (2026-10-20, during the evaluation, before the Boreas stage and before any KTH stage): report-only rows; two streams; the report generator
+
+Written during the evaluation. Committed before the Boreas stage, before any KTH stage and before any further Spires run. No arm, label, window, resolution, threshold, verdict rule or metric of a run changes. No run is repeated because of this amendment.
+
+### 28.1 Report generator and report-only rows
+
+The report `results_p3/P3_REPORT.md` is written by `make_report_p3.py` from the JSON files of `p3_eval.py`, the meta files of the probe and the run records. The script copies numbers. Two kinds of row are computed in the script and are labelled report-only in the report:
+
+1. **Near-wall thickening** (LILocBench). Cells that were free in the mapping session and lie within 0.10 m of an occupied cell are the label 3 of the reference file (`ref_free_near_occupied`). They are set aside by the clutter definition of section 6.2. The advice (`P1_DECISION_ADVICE.md`, controls) asks for their Static share to be measured and reported. The row is computed from the committed arm dumps (`dump_*.csv`): cells with label 3 and `n >= 5`, Static at the end and ever Static, with the Wilson 95 % interval of `p3_eval.wilson`, and the same on the subset with at least one hit. The dumps already existed when the row was defined; no run is started for it. Test: `test_report_p3.py` (`Thickening`).
+2. **Spires metrics from the counts and latency files.** The JSON files of `p3_eval.py spires` written before Amendments 12 and 13 lack the fields `ever_static_on_clutter_eligible_bound` and `population`. The report recomputes every Spires row from the counts and latency files with `p3_eval.spires_metrics` (the same function) and lists any field of a committed JSON that differs from the recomputed value (Amendment 12 said the table is built this way).
+
+### 28.2 Two streams (replaces the sentence "One process at a time" of section 4 for the Boreas stage)
+
+Section 4 required one process at a time. The reason was a clean record of host load; no timing is measured in this phase. The Spires runs with the veto off at 0.1 m (Keble 04 and 05) take about one to two hours each, and the Boreas stage takes about a day. To finish in reasonable time the Boreas stage (`eval_boreas`) may run at the same time as the Spires stage. Rules:
+
+* At most two evaluation processes run at the same time: one `eval_spires` or `eval_kth` stream and one `eval_boreas` stream. The KTH stage never runs together with a Spires 0.1 m run (the KTH exports have a 9 GB address-space limit; the host has 11.9 GB shared).
+* The step logs already record the load before and after each step. The host load of a run is stated, not controlled.
+* A run that fails with `std::bad_alloc` or a kill while two streams run is listed in `failed_steps.tsv` like every failure. It is repeated alone, with the identical command, and the first log stays as an attempt (section 4). The report lists both.
+* Memory limits per step do not change.
+
+### 28.3 Re-pin of the build
+
+The commit of this amendment changes HEAD. The binary is rebuilt from the new HEAD (`reproduce_p3.sh build check unit`) before the next evaluation step. `strata_core` is the tree of the pin (Amendment 14): the diff to the earlier commit holds `make_report_p3.py`, `test_report_p3.py`, `results_p3` files and this file only.

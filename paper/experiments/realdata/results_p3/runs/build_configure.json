@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "3.60 4.00 6.24 5/1056 1771791",
+  "loadavg": "8.55 11.58 9.18 5/1392 99052",
   "meminfo": {
-   "MemAvailable": "9065828 kB",
-   "MemTotal": "12249900 kB",
-   "SwapFree": "31154164 kB"
+   "MemAvailable": "6187920 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "33552192 kB"
   },
-  "time": "2026-10-19T02:08:56+0900",
+  "time": "2026-10-19T10:51:51+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "73.5 198748 cc1plus",
-   "70.0 190564 cc1plus",
-   "67.5 181280 cc1plus",
-   "19.5 90396 python3",
-   "19.5 90352 python3"
+   " 100 13276 exp_lever",
+   " 100 13368 exp_lever",
+   " 100 13336 exp_lever",
+   " 100 13420 exp_lever",
+   "25.4 150088 python3"
   ]
  },
  "argv": [
@@ -25,28 +25,28 @@
   "-DCMAKE_BUILD_TYPE=Release"
  ],
  "before": {
-  "loadavg": "3.60 4.00 6.24 5/1055 1771777",
+  "loadavg": "8.55 11.58 9.18 6/1392 99041",
   "meminfo": {
-   "MemAvailable": "8983452 kB",
-   "MemTotal": "12249900 kB",
-   "SwapFree": "31154164 kB"
+   "MemAvailable": "6186432 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "33552192 kB"
   },
-  "time": "2026-10-19T02:08:56+0900",
+  "time": "2026-10-19T10:51:51+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "71.0 191688 cc1plus",
-   "65.5 179544 cc1plus",
-   "62.0 173832 cc1plus",
-   "58.5 163284 cc1plus",
-   "19.5 90376 python3"
+   "98.5 13276 exp_lever",
+   "98.5 13368 exp_lever",
+   "98.5 13336 exp_lever",
+   "98.5 13420 exp_lever",
+   "25.4 150060 python3"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
-  "commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
-  "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
-  "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "binary_commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
   "uncommitted_in_experiment_dir": 0,
   "uncommitted_in_repository": 4
  },
@@ -57,6 +57,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 0.128,
+ "seconds": 0.141,
  "step": "build_configure"
 }

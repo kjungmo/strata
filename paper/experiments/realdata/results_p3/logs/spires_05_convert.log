@@ -1,0 +1,22 @@
+STEP spires_05_convert
+START 2026-10-19T11:51:08+09:00 host=DESKTOP-KCD7BRS load=1.23 1.45 2.74 cores=12
+COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD <BUILD_DIR>/build/realdata/p1b_probe spires-convert --zip <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-05/raw/lidar-clouds.zip --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-05/processed/trajectory/gt-tum.txt --dt 0 --out <OUT_DIR>/spires_05/cache.bin --meta <OUT_DIR>/spires_05/spires_convert.meta
+2026-10-19T11:51:16+0900 converted 500 of 5834 scans
+2026-10-19T11:51:23+0900 converted 1000 of 5834 scans
+2026-10-19T11:51:31+0900 converted 1500 of 5834 scans
+2026-10-19T11:51:40+0900 converted 2000 of 5834 scans
+2026-10-19T11:51:50+0900 converted 2500 of 5834 scans
+2026-10-19T11:51:59+0900 converted 3000 of 5834 scans
+2026-10-19T11:52:09+0900 converted 3500 of 5834 scans
+2026-10-19T11:52:18+0900 converted 4000 of 5834 scans
+2026-10-19T11:52:26+0900 converted 4500 of 5834 scans
+2026-10-19T11:52:34+0900 converted 5000 of 5834 scans
+2026-10-19T11:52:43+0900 converted 5500 of 5834 scans
+step spires_05_convert rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/spires_05_convert.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_05_convert.json rc=0
+END 2026-10-19T11:52:49+09:00 rc=0 load=1.24 1.40 2.59

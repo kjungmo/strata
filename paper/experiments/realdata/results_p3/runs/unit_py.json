@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "4.80 4.30 6.18 5/1030 1773260",
+  "loadavg": "8.87 10.70 9.16 5/1399 101020",
   "meminfo": {
-   "MemAvailable": "7407580 kB",
-   "MemTotal": "12249900 kB",
-   "SwapFree": "31166148 kB"
+   "MemAvailable": "6388860 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "33552192 kB"
   },
-  "time": "2026-10-19T02:10:07+0900",
+  "time": "2026-10-19T10:53:51+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "97.2 546732 cc1plus",
-   "97.1 510580 cc1plus",
-   "95.0 582088 cc1plus",
-   "92.0 615644 cc1plus",
-   "20.4 99696 python3"
+   " 100 25756 exp_lever",
+   "99.9 25664 exp_lever",
+   "99.8 25612 exp_lever",
+   "99.8 25704 exp_lever",
+   "21.0 81920 python3"
   ]
  },
  "argv": [
@@ -22,30 +22,30 @@
   "cd '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata' && python3 -I -m unittest discover -s . -p 'test_p3*.py'"
  ],
  "before": {
-  "loadavg": "4.78 4.29 6.19 11/1051 1773063",
+  "loadavg": "8.69 10.70 9.15 8/1400 100905",
   "meminfo": {
-   "MemAvailable": "8582096 kB",
-   "MemTotal": "12249900 kB",
-   "SwapFree": "31164844 kB"
+   "MemAvailable": "6471868 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "33552192 kB"
   },
-  "time": "2026-10-19T02:10:02+0900",
+  "time": "2026-10-19T10:53:45+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "91.0 238988 cc1plus",
-   "86.6 308968 cc1plus",
-   "83.0 131812 cc1plus",
-   "82.0 334880 cc1plus",
-   "20.4 99020 python3"
+   "99.9 25756 exp_lever",
+   "99.8 25612 exp_lever",
+   "99.8 25704 exp_lever",
+   "99.8 25664 exp_lever",
+   "21.0 81108 python3"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
-  "commit": "8a1e4d30430eb87d842fc550fbdbc90e25362f4d",
-  "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
-  "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "binary_commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
   "uncommitted_in_experiment_dir": 0,
-  "uncommitted_in_repository": 16
+  "uncommitted_in_repository": 17
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -54,6 +54,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 4.968,
+ "seconds": 6.045,
  "step": "unit_py"
 }

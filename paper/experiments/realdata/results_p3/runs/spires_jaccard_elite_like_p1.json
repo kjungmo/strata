@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "7.81 8.27 6.35 8/1292 429897",
+  "meminfo": {
+   "MemAvailable": "7087492 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "32151820 kB"
+  },
+  "time": "2026-10-19T19:42:48+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 24004 eskf_lever",
+   " 102 23980 eskf_lever",
+   " 102 24072 eskf_lever",
+   " 102 24176 eskf_lever",
+   "99.3 890292 cc1plus"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' jaccard --ids '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p1_s0_static.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p1_s1_static.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p1_s2_static.ids' --observed '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p1_s0_observed.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p1_s1_observed.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p1_s2_observed.ids' --res 0.2 > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/spires_agree_elite_like_p1.json'"
+ ],
+ "before": {
+  "loadavg": "7.88 8.29 6.35 8/1292 429866",
+  "meminfo": {
+   "MemAvailable": "7338240 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "32151820 kB"
+  },
+  "time": "2026-10-19T19:42:44+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 12620 eskf_lever",
+   " 102 12688 eskf_lever",
+   " 102 12580 eskf_lever",
+   " 102 12512 eskf_lever",
+   "99.9 831264 cc1plus"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 142
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 3.906,
+ "step": "spires_jaccard_elite_like_p1"
+}
