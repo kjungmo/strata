@@ -105,9 +105,11 @@ the behavior is identical across the 2D and 3D backends.
 strata_core   (pure C++17 + Eigen, no ROS / no PCL, gtest-tested):
 
   LayeredMap  ── THE HEART ──────────────────────────────────────────
-    log-odds occupancy (l_hit/l_miss + clamp)
-    survival decay  (Persistence Filter forgetting toward unknown)
-    Schmitt trigger graduate(graduate_prob) / demote(demote_prob)   ─► Static
+    evidence_model = sprt (default): increments from (m0, m1, alpha, beta),
+      graduate at l >= A, cap, reverse-test demotion, reject at n >= T,
+      else Undecided (read out Transient / Intermittent)          ─► Static
+    evidence_model = legacy: log-odds (l_hit/l_miss + clamp), survival
+      decay, Schmitt trigger graduate(graduate_prob) / demote(demote_prob)
         │                                                              │
         └─► PeriodicityModel (FreMEn-lite, incremental Fourier)     ─► Periodic
                 amplitude >= periodic_amplitude_min AND                else Transient
@@ -141,8 +143,7 @@ architecture, the persistence and periodicity model, the seeded synthetic
 characterization suite (calibration E0, experiments E1–E7, in a legacy and a sprt arm),
 a calibration of the shipped pair on real LiDAR data (not frozen) and a held-out
 evaluation of seven evidence rules on four public datasets, and it describes the
-code of commit `a7559d4`; the first release of the manuscript is commit `312b09c`
-(commit `312b09c`). If you use `strata` in academic work, please cite:
+code of commit `a7559d4`; the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
 
 ```bibtex
 @misc{kang2026strata,

@@ -185,7 +185,7 @@ with open(TAB / "e7_oc.tex", "w") as f:
     f.write(HDR % "e7_oc.csv")
     f.write("\\begin{table}[t]\n\\centering\n")
     f.write("\\caption{Operating characteristic of the sequential test on the engine (E7), pair $(m_0,m_1,\\alpha,\\beta)=(%.2f,%.2f,%.2f,%.2f)$, "
-            "independent windows. $P(\\mathrm{Static})$: share of %d cells per rate that graduate. \\emph{Engine}: Monte Carlo on "
+            "independent windows. $P(\\mathrm{Static})$: share of %d cells per rate (one first test each) that graduate. \\emph{Engine}: Monte Carlo on "
             "\\code{LayeredMap} with the periodicity gate $T{=}%d$ (the shipped rule with the Periodic veto off) and Wilson 95\\%% limits; \\emph{Exact}: the same rule "
             "computed state by state on the lattice $l=h\\,l_{\\mathrm{hit}}+k\\,l_{\\mathrm{miss}}$, no sampling; \\emph{Wald}: the closed form of "
             "Eq.~\\eqref{eq:wald}, which ignores the overshoot of the statistic over the thresholds. The last column is the mean number of windows "
@@ -206,7 +206,7 @@ with open(TAB / "e7_autocorr.tex", "w") as f:
     f.write("\\begin{table}[t]\n\\centering\n")
     f.write("\\caption{The guarantee needs independent windows (E7). Share of forward tests (a cell history, split at each demotion) that graduate (Periodic veto off) when the windows of a cell at "
             "exactly $m_0$ follow a two-state chain with lag-1 autocorrelation $\\rho$ ($\\rho=0$: independent). \\emph{Engine}: "
-            "per forward test, %d windows, shipped pair. \\emph{Bare walk}: a random walk floored at $B$ and never rejected, %d windows, "
+            "per forward test (CSV row \\texttt{engine\\_per\\_history}), %d windows, shipped pair. \\emph{Bare walk}: a random walk floored at $B$ and never rejected, %d windows, "
             "the shipped pair; this is not the engine. Ratios are to $\\alpha{=}%.2f$. The band means of the lag-1 autocorrelation of the window outcomes of real "
             "LILocBench calibration cells lie between %.3f and %.3f (Table~\\ref{tab:optc}).}\n" % (int(ACM[("engine_per_history", "0.2", "0")]["horizon_windows"]),
                                  int(ACM[("reference_walk_floor_B", "0.2", "0")]["horizon_windows"]), D["alpha"], min(_lags), max(_lags)))

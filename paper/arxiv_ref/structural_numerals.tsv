@@ -661,6 +661,7 @@ sections/4b_calibration.tex	3	e waived, not a freeze. The 	name of a scenario, d
 sections/4b_calibration.tex	3	 rule gave no pair, and the 	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	2	D backend falls back on the 	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	10	with \code{layer\_interval} 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4c_realdata.tex	03	s: the first scans of Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	0.1	limit of the Spires runs at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	9	lower value to the limit of 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	0.7	vidence}: the probabilities 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -694,21 +695,26 @@ sections/4c_realdata.tex	64	-map benchmark} , KITTI 05 (	dataset configuration (
 sections/4c_realdata.tex	16	d the semi-indoor sequence (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	3	indoor sequence (16 beams), 	name of a scenario, data type, standard or layout width
 sections/4c_realdata.tex	0.2	e (16 beams), 3D, one pass, 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/4c_realdata.tex	0.1	s), 3D, one pass, 0.2 m and 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/4c_realdata.tex	10	nd 0.1 m voxels, windows of 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/4c_realdata.tex	2	m voxels, windows of 10 and 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	0.1	 semi-indoor sequence only, 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	05	e only, 0.1 m voxels (KITTI 	identifier of a dataset sequence or of a pair of sequences
+sections/4c_realdata.tex	0.1	, 0.1 m voxels (KITTI 05 at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	10	on, for memory), windows of 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	2	 memory), windows of 10 and 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	0.05	le (the evaluator applies a 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	3	 autumn, spring and summer, 	name of a scenario, data type, standard or layout width
 sections/4c_realdata.tex	0.2	umn, spring and summer, 3D, 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	3	d summer, 3D, 0.2 m, ranges 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	25	mer, 3D, 0.2 m, ranges 3 to 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	04	g them, \PtRepeatOk{} Keble 	identifier of a dataset sequence or of a pair of sequences
-sections/4c_realdata.tex	03	etried the read), one Keble 	identifier of a dataset sequence or of a pair of sequences
-sections/4c_realdata.tex	0.1	 read), one Keble 03 run at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	03	venth amendment), one Keble 	identifier of a dataset sequence or of a pair of sequences
+sections/4c_realdata.tex	0.1	dment), one Keble 03 run at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	9	as repeated at the limit of 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	04	e first conversion of Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	95	 where tiles are known, the 	confidence level that defines an interval
 sections/4c_realdata.tex	10	nterval of a bootstrap over 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	03	nt, written after the Keble 	identifier of a dataset sequence or of a pair of sequences
+sections/4c_realdata.tex	04	 runs and part of the Keble 	identifier of a dataset sequence or of a pair of sequences
+sections/4c_realdata.tex	0.2	art of the Keble 04 runs at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	0.01	LocBench)} The level \alpha=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	0.20	related (Table ). For SPRT (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	0.70	ed (Table ). For SPRT (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -809,8 +815,8 @@ sections/5_discussion.tex	3	D pair is used in 3D. Every 	name of a scenario, dat
 sections/5_discussion.tex	0.1	5). \item \emph{Memory.} At 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	9	 ended out of memory at the 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	03	limit of the harness (Keble 	identifier of a dataset sequence or of a pair of sequences
-sections/5_discussion.tex	0.2	ames of one Boreas session (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/5_discussion.tex	3	ssion (0.2 m voxels, ranges 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/5_discussion.tex	0.2	ened for reader validation (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/5_discussion.tex	3	ation (0.2 m voxels, ranges 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	50	 (0.2 m voxels, ranges 3 to 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	3	 amendment), so the shipped 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	100	 map.} Only Static is drawn 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -824,6 +830,7 @@ sections/5_discussion.tex	100	de{lethal\_cost\_threshold} 	inline or displayed m
 sections/5_discussion.tex	100	_cost\_threshold} 100, only 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	50	00, only 100 is lethal, and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	75	y 100 is lethal, and 50 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	1	ead as free space, as does -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	50	and a threshold at or below 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	50	w 50 makes every cell drawn 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	50	ver} reads every cell drawn 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text

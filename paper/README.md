@@ -111,8 +111,9 @@ They are re-synced at the end of P5, together with the companions:
   P5 also writes into it the deployer warnings of the manuscript (numbers only under
   the guard): memory at 0.1 m and with the 3D veto on, no range crop in the node,
   the median and upper-decile wait for a wall to become Static, the Undecided share,
-  not using the map as the only obstacle source, and how Nav2 reads 50 and 75 (live
-  and saved map).
+  not using the map as the only obstacle source, how Nav2 reads 50 and 75 (live
+  and saved map), the `~/map` topic name, and the extent of the shipped `grid2d` grid
+  (endpoints outside it are dropped; a sensor outside it clears nothing).
 - Release items: no tag `paper-v1` exists, so the text names commit `312b09c`;
   creating the tag is an author action. The code URL opens `main`, which is still the
   v0.1 code; before submission merge the code or tag `a7559d4` and name that tag in the

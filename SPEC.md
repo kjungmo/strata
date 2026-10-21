@@ -248,8 +248,8 @@ when the reverse test fires alone. (Test `Sprt.PeriodicPathWinsWhenTheReverseTes
 a door open 17 and closed 7 windows of 24, tie at window 45.)
 
 A rejected cell is erased. A later observation (hit or miss) creates a new cell, which starts a new history
-at `n = 0`. A cell that is still a periodic candidate (`amp >= periodic_amplitude_min`)
-is kept until the periodicity test decides.
+at `n = 0`. A cell with `n >= T` and `l <= B` is kept as a periodic candidate while `amp >= periodic_amplitude_min`
+and erased once `amp < periodic_amplitude_min`; the periodicity test need not have decided.
 
 **Why no lower clamp before the gate.** The periodicity test withholds its answer
 until `n >= T` windows. If a cell could be rejected earlier, a door with a long closed
