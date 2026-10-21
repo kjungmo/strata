@@ -71,5 +71,26 @@ class Report(unittest.TestCase):
             self.assertIn("ok after repeat", open(out).read())
 
 
+class Review4(unittest.TestCase):
+    def test_da_ceiling_reads_json_with_trailing_text(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = os.path.join(d, "sc.json")
+            with open(p, "w") as f:
+                f.write(json.dumps({"DA_oracle_ceiling": 96.2009}) + "\nSELFCHECK PASS\n")
+            self.assertEqual(mr.da_ceiling(p), "96.20")
+            self.assertEqual(mr.da_ceiling(os.path.join(d, "none.json")), "missing")
+
+    def test_boreas_ground_sign_is_session_minus_reference(self):
+        with tempfile.TemporaryDirectory() as d:
+            rd, od = os.path.join(d, "r"), os.path.join(d, "o")
+            os.makedirs(rd)
+            os.makedirs(od)
+            # stored zoffset JSON = reference minus session: -0.1 median means the session is 0.1 m higher
+            with open(os.path.join(rd, "boreas_ground_diagnostic_boreas-2021-04-08-12-44.json"), "w") as f:
+                json.dump({"tiles": 5, "median": -0.1, "p10": -0.2, "p90": 0.0}, f)
+            out = mr.boreas_section(rd, od)
+            self.assertIn("| boreas-2021-04-08-12-44 | 5 | 0.100 | 0.000 | 0.200 |", out)
+
+
 if __name__ == "__main__":
     unittest.main()

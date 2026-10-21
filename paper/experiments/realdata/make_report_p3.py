@@ -172,7 +172,7 @@ def lil_section(rd, od, per, seqs=("lt_changes_dynamics_0", "lt_changes_0")):
         out.append(md(["arm", "clutter Undecided", "clutter Rejected", "wall runs Rejected", "wall runs not Static", "wall runs Static (k / n)", "windows to decision p50 / p90 / n"], rows2))
         out.append("Counts by hit-rate band of the clutter cell (Static at the end, k / n):\n")
         out.append(md(["arm", "bands"], rows4))
-        out.append("Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15, report-only):\n")
+        out.append("Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15; report-only, added after the results were seen: defined after the LILocBench dumps existed):\n")
         out.append(md(["arm", "Static at the end", "ever Static", "Static at the end, hit >= 1", "ever Static, hit >= 1", "n eligible"], rows5))
         if seq == "lt_changes_0":
             out.append("Counts for the control (no people; rearranged furniture; no per-cell truth). Reference-free cells that end Static, reference-occupied cells not Static, and Rejected:\n")
@@ -181,6 +181,23 @@ def lil_section(rd, od, per, seqs=("lt_changes_dynamics_0", "lt_changes_0")):
             out.append("Confounder: moved furniture legitimately puts structure into reference-free cells; the false-Static rate is an upper bound for people alone (section 6.3 of the pre-registration). "
                        "Control counts of `lt_changes_0` follow below.\n")
     return "\n".join(out)
+
+
+def lil_offset_section(rd):
+    """Per-laser time-offset search and front/rear pair skew of the two LILocBench sequences (PREREG_P3 section 6.1). Copied from the meta files."""
+    rows = []
+    for seq in ("lt_changes_dynamics_0", "lt_changes_0"):
+        o = meta_load(os.path.join(rd, "meta_lil_offset_%s.meta" % seq))
+        c = meta_load(os.path.join(rd, "meta_lil_convert_%s.meta" % seq))
+        if not o or not c:
+            rows.append([seq, "missing", "", "", "", "", "", ""])
+            continue
+        agree = "yes" if o.get("front_rear_optima_agree_within_0.02s") == "1" else "no"
+        rows.append([seq, o.get("selected_dt_s", ""), c.get("time_offset_s", ""), o.get("front_only_best_dt_s", ""), o.get("rear_only_best_dt_s", ""), agree,
+                     c.get("max_front_rear_stamp_skew_s", ""), "%s (bound %s s)" % ("yes" if c.get("pair_skew_ok") == "1" else "no", c.get("pair_skew_bound_s", ""))])
+    return ("Per-laser time-offset search and front/rear stamp skew (diagnostic, section 6.1 of the pre-registration; the search selected nothing: the offset used by the conversion is the value fixed before the evaluation, `-0.13 s`, not the joint optimum). "
+            "Seconds. Source: `meta_lil_offset_*.meta` and `meta_lil_convert_*.meta`:\n\n"
+            + md(["sequence", "joint optimum", "offset used", "front only best", "rear only best", "front and rear optima agree within 0.02 s", "max front/rear stamp skew", "pair skew within bound"], rows))
 
 
 def autocorr_rows(path):
@@ -256,8 +273,8 @@ def spires_section(rd, od, per, failed_names, runs):
                 pass
             tag = "veto ON (primary)" if per == 1 else "veto OFF (secondary)"
             out.append("#### Resolution %s m, W = %d, %s\n" % (r, w, tag))
-            out.append("False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):\n")
-            out.append(md(["sequence", "arm", "Static at the end, Wilson", "ever Static, bound", "eligible n"], rows))
+            out.append("False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):\n")
+            out.append(md(["sequence", "arm", "Static at the end, Wilson", "ever Static, bound (added after the results were seen, Amendment 13)", "eligible n"], rows))
             out.append("False-reject, Undecided share and windows to first Static on non-ground structure (label 3) and ground (label 2). Latency population: all labelled cells ever Static, eligible or not (Amendment 12); it is not comparable with LILocBench latency.\n")
             out.append(md(["sequence", "arm", "label 3 Rejected", "label 3 Undecided", "label 3 windows p50 / p90", "label 2 Rejected", "label 2 Undecided", "label 2 windows p50 / p90", "n label 3", "n label 2"], rows2))
     return "\n".join(out)
@@ -289,6 +306,16 @@ def failure_reason(rd, step):
         return ""
 
 
+def da_ceiling(path):
+    """DA of the ground-truth static cloud (PREREG_P3 section 5.4 item 2). The self-check file is a JSON object followed by a text line, so only the object is parsed."""
+    try:
+        with open(path) as f:
+            obj, _ = json.JSONDecoder().raw_decode(f.read())
+        return "%.2f" % obj["DA_oracle_ceiling"]
+    except (OSError, ValueError, KeyError):
+        return "missing"
+
+
 def kth_section(rd, od, per, runs=None, failed_names=None):
     out = []
     for seq, cfgs in (("05", (("0.2", 10), ("0.2", 2))), ("semindoor", (("0.2", 10), ("0.2", 2), ("0.1", 10)))):
@@ -310,7 +337,8 @@ def kth_section(rd, od, per, runs=None, failed_names=None):
                                  "%.1f / %.1f / %.1f" % tuple(100.0 * int(m.get("points_voxel_" + k, 0)) / pts for k in ("static", "undecided", "rejected")),
                                  m.get("windows_closed", "n/a")])
             tag = "veto ON (primary)" if per == 1 else "veto OFF (secondary)"
-            out.append("#### KITTI %s, %s m, W = %d, %s\n" % (seq, r, w, tag))
+            ceil = da_ceiling(os.path.join(rd, "kth_selfcheck_%s.json" % seq))
+            out.append("#### %s, %s m, W = %d, %s. DA ceiling of the ground-truth static cloud: %s\n" % ("KITTI 05" if seq == "05" else "KTH semi-indoor", r, w, tag, ceil))
             ident = jload(os.path.join(rd, "kth_%s_shipped_v0_1_r%s_W%d_p%d_all.json" % (seq, r, w, per)))
             if ident:
                 out.append("Identity check (policy all, every frame point exported): SA = %s, DA = %s.\n" % (num(ident["SA"], 4), num(ident["DA"], 4)))
@@ -356,8 +384,9 @@ def boreas_section(rd, od):
     for sid in ("boreas-2021-04-08-12-44", "boreas-2021-06-17-17-52"):
         z = jload(os.path.join(rd, "boreas_ground_diagnostic_%s.json" % sid))
         if z:
-            zrows.append([sid, str(z["tiles"]), num(z["median"], 3), num(z["p10"], 3), num(z["p90"], 3)])
-    out.append("Ground height difference to the first session per 10 m tile (diagnostic only, reported and never applied; Amendment 3 sets the vertical offset to 0 for every session). Metres, session minus reference:\n")
+            # the stored JSON is reference minus session (p3_eval.zoffset: ground_a - ground_b, a = reference); the table shows session minus reference
+            zrows.append([sid, str(z["tiles"]), num(0.0 - z["median"], 3), num(0.0 - z["p90"], 3), num(0.0 - z["p10"], 3)])
+    out.append("Ground height difference to the first session per 10 m tile (diagnostic only, reported and never applied; Amendment 3 sets the vertical offset to 0 for every session). Metres, session minus reference (the stored JSON holds reference minus session; the values here are negated, with p10 and p90 swapped). The ground heights are on a 0.1 m step, so the diagnostic resolves only to about 0.1 m:\n")
     out.append(md(["session", "shared tiles", "median", "p10", "p90"], zrows))
     out.append("Static and observed cells per session of each map (the cumulative map is one map, so its per-session lines are the state after that session), peak memory in kB and seconds of the whole run (two streams ran at the same time; timing is stated, not measured under controlled load, Amendment 15):\n")
     out.append(md(["arm", "mode", "session", "frames", "windows closed", "Static cells", "observed cells", "peak RSS kB (run)", "seconds (run)"], srows))
@@ -447,6 +476,7 @@ def main(argv=None):
     doc.append(lil_reference_rows())
     doc.append("The bound alpha = 0.01 holds per history under independent windows (L-7). The committed Monte Carlo of the inflation by the lag-1 autocorrelation `rho` of the window outcomes (`paper/experiments/results/e7_autocorr.csv`, rows at m = m0 = 0.2, pair (0.20, 0.70)); the real windows of the calibration sequences have lag-1 autocorrelation 0.2 to 0.5:\n")
     doc.append(md(["reading", "rho", "histories", "horizon (windows)", "share graduated", "ratio to alpha"], autocorr_rows(os.path.join(HERE, "..", "results", "e7_autocorr.csv"))))
+    doc.append(lil_offset_section(rd))
     for per in (1, 0):
         doc.append(lil_section(rd, od, per))
     doc.append("## 2. Oxford Spires Keble 03 to 05\n")
@@ -457,7 +487,10 @@ def main(argv=None):
     doc.append("Spires JSON files written before Amendments 12 and 13 lack the bound and population fields; the tables above are recomputed from the counts and latency files by `p3_eval.spires_metrics`. Fields of the committed JSON that differ from the recomputed value: %s.\n" % ("none" if not SPIRES_DIFFS else "; ".join(SPIRES_DIFFS)))
     doc.append("## 3. KTH KITTI 05 and semi-indoor\n")
     doc.append("Single pass, one tick per frame, SuMa poses (KITTI 05) and NDT SLAM poses (semi-indoor, 16-beam sensor), AA geometric mean, HA harmonic mean. "
-               "Every arm applies its increment once per touched window, so the rows labelled OctoMap parameters on window evidence and ELite factors on window evidence are not the published OctoMap and ELite methods. "
+               "Every arm applies its increment once per touched window, so the rows labelled OctoMap parameters on window evidence and ELite factors on window evidence are not the published OctoMap and ELite methods; their numbers are not comparable to the published rows. "
+               "The evaluator applies <= 0.05 m in float64; the official tool's float32 rule can differ only for points at exactly 0.05 m. "
+               "The DA ceiling (the DA of an oracle map that holds exactly the ground-truth static points, from the self-check) is printed in the header of every KTH table. "
+               "A map can score a DA above the ceiling only if it drops static points: such a row pays for it in SA. "
                "The `sprt` pair is the 2D pair, not calibrated for 3D. No arm is a competitive removal method.\n")
     for per in (1, 0):
         doc.append(kth_section(rd, od, per, runs, failed_names))

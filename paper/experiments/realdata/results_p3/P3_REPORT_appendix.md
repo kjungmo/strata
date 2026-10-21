@@ -18,6 +18,6 @@ Full text of every deviation: `results_p3/deviations.md`. Short list in order:
 
 **Not run, by design.** The MTD-Map-like arm (section 2.4). KITTI 05 at 0.1 m (section 5.1; memory). Periodic on real data with a logged schedule, timing, Option C, the paper text (section 13).
 
-**Not edited.** The paper. Nothing derived from LILocBench, KITTI, KTH, Spires or Boreas is in the repository except the JSON aggregates, meta files, logs and this report; maps, caches and exports are under `/mnt/d/wsl/strata/p3/` (not in the repository).
+**Not edited.** The paper. Nothing derived from LILocBench, KITTI, KTH, Spires or Boreas is in the repository except the JSON aggregates, meta files, logs and this report; maps and caches are under `/mnt/d/wsl/strata/p3/` (not in the repository). The KTH PCD exports are not there: `reproduce_p3.sh` deletes each export after scoring it by design, and `outputs_eval_kth_*.sha256` does not hash them. Only the meta files and the JSON scores remain. The exports can be regenerated deterministically with the same command (an Opus review did this for KITTI 05).
 
 **Reproduce.** `bash reproduce_p3.sh build check unit`, then with `P3_RUN_EVALUATIONS=1`: `eval_lil eval_spires eval_kth eval_boreas` (with `P3_PERIODICITY=0` for the veto-off setting; Boreas runs with the veto off in both settings). Report: `python3 -I make_report_p3.py --results-dir results_p3 --out-dir /mnt/d/wsl/strata/p3 --out results_p3/P3_REPORT.md`.

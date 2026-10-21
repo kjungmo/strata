@@ -11,7 +11,7 @@ Written by hand from the tables below. Every number in this summary is a number 
 **1. Nominal against realised rate (LILocBench, veto on, `lt_changes_dynamics_0`).**
 
 * The nominal bound `alpha = 0.01` is per history under independent windows. The realised quantity is per cell: the share of eligible clutter cells that were Static at the close of any window (Amendment 5).
-* `SPRT (0.20, 0.70)`: 8.81 % of all eligible clutter cells (Wilson 8.53 to 9.10 %; block interval over 10 m tiles 6.34 to 12.54 %). On clutter cells with observed hit rate at or below `m0 = 0.20`: 2.93 % (2.76 to 3.11 %).
+* `SPRT (0.20, 0.70)`: 8.81 % of all eligible clutter cells (Wilson 8.53 to 9.10 %; block interval over 10 m tiles 6.34 to 12.54 %). On clutter cells with observed hit rate at or below `m0 = 0.20`: 2.93 % (block interval over 10 m tiles 1.87 to 3.70 %; Wilson 2.76 to 3.11 %).
 * Calibration rows with the same code and pair (veto on): 1.51 % at or below `m0`, 3.71 % for all clutter. The held-out rates are about twice the calibration rows and above 1 %. The unit differs from the bound. The real windows are autocorrelated, and the committed Monte Carlo shows that autocorrelation raises the per-history share above `alpha` (ratio 3.49 at lag-1 0.23 for the engine, 12.30 for the reference walk). No claim of the form "the realised rate is below the bound" is made.
 * Control without people (`lt_changes_0`): 9.01 % of all clutter and 0.71 % at or below `m0`. The all-clutter rate is close to the rate with people. The rate on `lt_changes_dynamics_0` is an upper bound for people alone, because moved furniture puts structure into cells that were free in the mapping session.
 * Other arms, all clutter: `shipped v0.1` 21.16 %, `symmetric` 21.40 %, OctoMap parameters 35.18 %, ELite factors 11.33 %. At or below `m0`: 13.90 %, 14.41 %, 28.07 %, 4.99 %.
@@ -23,9 +23,9 @@ Written by hand from the tables below. Every number in this summary is a number 
 * False-reject on wall runs (n = 366): 0 cells for `SPRT (0.20, 0.70)` and for `shipped v0.1` (upper Wilson limit 1.04 %); 0.55 % `symmetric`; 1.37 % OctoMap parameters; 5.19 % ELite factors.
 * Wall-run cells that are not Static at the end: 14.21 % for `SPRT (0.20, 0.70)`, 21.04 % for the high-end pair, 1.09 % for `shipped v0.1`.
 * Windows from first touch to the first Static window, median and 90th percentile: 33 and 156 for `SPRT (0.20, 0.70)`; 10 and 49 for `shipped v0.1`; 1 and 33.6 for OctoMap parameters. One window is 1.0 s.
-* Spires (population of Amendment 12, not comparable with LILocBench): non-ground structure median 5 to 6 windows for `SPRT (0.20, 0.70)`, 3 to 4 for `shipped v0.1`. False-reject on non-ground structure: 0.70 to 0.77 % for `SPRT (0.20, 0.70)`, 0.33 to 0.66 % for `shipped v0.1`, 7.45 to 11.17 % for OctoMap parameters, 11.70 to 16.81 % for ELite factors.
+* Spires (population of Amendment 12, not comparable with LILocBench): non-ground structure median 5 to 6 windows for `SPRT (0.20, 0.70)`, 3 to 4 for `shipped v0.1`. False-reject on non-ground structure: 0.70 to 0.77 % for `SPRT (0.20, 0.70)` (about 3 times the veto-off value, 0.24 to 0.32 %; see item 8), 0.33 to 0.66 % for `shipped v0.1`, 7.45 to 11.17 % for OctoMap parameters, 11.70 to 16.81 % for ELite factors.
 
-**4. Near-wall thickening (LILocBench, veto on, `lt_changes_dynamics_0`; cells free in the mapping session and within 0.10 m of an occupied cell; n = 6441).** Static at the end of the run: 8.09 % for `SPRT (0.20, 0.70)`, 20.17 % for `shipped v0.1`, 9.30 % for ELite factors, 22.23 % for OctoMap parameters. Ever Static: 16.63 %, 39.59 %, 23.54 %, 54.32 %. The 0.10 m band is two cells wide at 0.05 m.
+**4. Near-wall thickening (report-only rows, added after the results were seen: defined in Amendment 15 after the LILocBench dumps existed; LILocBench, veto on, `lt_changes_dynamics_0`; cells free in the mapping session and within 0.10 m of an occupied cell; n = 6441).** Static at the end of the run: 8.09 % for `SPRT (0.20, 0.70)`, 20.17 % for `shipped v0.1`, 9.30 % for ELite factors, 22.23 % for OctoMap parameters. Ever Static: 16.63 %, 39.59 %, 23.54 %, 54.32 %. The 0.10 m band is two cells wide at 0.05 m.
 
 **5. Spires (3D, TLS reference).**
 
@@ -33,11 +33,11 @@ Written by hand from the tables below. Every number in this summary is a number 
 * Agreement of the Static sets of the three same-day sequences (0.2 m, `W = 10`, veto on): Jaccard 0.562, 0.645, 0.720 for `SPRT (0.20, 0.70)` and 0.643, 0.706, 0.789 for `shipped v0.1`, for the pairs (03, 04), (03, 05), (04, 05), in 90 shared tiles.
 * 0.1 m: with the veto on, every arm ran out of memory at the 9 GB limit on Keble 03 (7 failed runs); the later 0.1 m runs of those arms were not started and are listed. With the veto off all 42 runs at 0.1 m finished.
 
-**6. KTH (single pass; two export policies; no competitive removal score is claimed).** KITTI 05, 0.2 m, `W = 10`, veto on, policy `static_only` (SA, DA, AA): `shipped v0.1` 90.20, 83.19, 86.62; `symmetric` 87.31, 74.40, 80.59; OctoMap parameters 98.55, 55.75, 74.12; ELite factors 87.72, 97.55, 92.50; `SPRT (0.20, 0.70)` 66.90, 98.99, 81.38. Policy `not_rejected`: `SPRT (0.20, 0.70)` keeps every point (SA 100.00, DA 0.00) because no voxel is Rejected in this pass; `shipped v0.1` 99.99 and 4.99. Semi-indoor, 0.2 m, `W = 10`, veto on, `static_only` AA: `shipped v0.1` 74.45, `symmetric` 79.22, OctoMap parameters 73.40, ELite factors 73.34, `SPRT (0.20, 0.70)` 77.16. Semi-indoor at 0.1 m with the veto on failed for all seven arms (memory, 9 GB); with the veto off it finished. The validation case (policy `all`, every frame point exported) gives SA 100 and DA 0 in the 9 conditions that finished (5 with the veto off, 4 with the veto on).
+**6. KTH (single pass; two export policies; no competitive removal score is claimed).** The DA ceiling of the ground-truth static cloud is 96.20 (KITTI 05) and 94.42 (semi-indoor), printed in each KTH table header. DA above the ceiling is possible only for a map that drops static points (`SPRT (0.20, 0.70)` 98.99 and ELite factors 97.55 on KITTI 05). KITTI 05, 0.2 m, `W = 10`, veto on, policy `static_only` (SA, DA, AA): `shipped v0.1` 90.20, 83.19, 86.62; `symmetric` 87.31, 74.40, 80.59; OctoMap parameters 98.55, 55.75, 74.12; ELite factors 87.72, 97.55, 92.50; `SPRT (0.20, 0.70)` 66.90, 98.99, 81.38. Policy `not_rejected`: `SPRT (0.20, 0.70)` keeps every point (SA 100.00, DA 0.00) because no voxel is Rejected in this pass; `shipped v0.1` 99.99 and 4.99. Semi-indoor, 0.2 m, `W = 10`, veto on, `static_only` AA: `shipped v0.1` 74.45, `symmetric` 79.22, OctoMap parameters 73.40, ELite factors 73.34, `SPRT (0.20, 0.70)` 77.16. Semi-indoor at 0.1 m with the veto on failed for all seven arms (memory, 9 GB); with the veto off it finished. The validation case (policy `all`, every frame point exported) gives SA 100 and DA 0 in the 9 conditions that finished (5 with the veto off, 4 with the veto on).
 
 **7. Boreas (cross-session, veto off, 0.2 m, 3 to 25 m range).** Jaccard of the independent Static sets in the 617 tiles seen by all three sessions, pairs (autumn, spring), (autumn, summer), (spring, summer): `SPRT (0.20, 0.70)` 0.509, 0.405, 0.489; `shipped v0.1` 0.568, 0.447, 0.535; ELite factors 0.544, 0.440, 0.514; OctoMap parameters 0.582, 0.469, 0.538. Share of the final Static cells of the cumulative map that are Static in no independent session: 20.65 % for `SPRT (0.20, 0.70)`, 13.28 % for `shipped v0.1`, 0.71 % for ELite factors, 0.17 % for OctoMap parameters, 41.82 % for the SPRT high-end pair. The ground height difference between sessions is reported in section 4 and was not applied.
 
-**8. Veto on and off.** Largest differences between the two settings over all paired rows: LILocBench ever-Static on clutter 0.36 points (`lt_changes_0`, `SPRT (0.20, 0.70)`); Spires clutter at the end of the run 0.21 points (Keble 05, OctoMap parameters, 0.2 m, `W = 10`); KTH SA 1.16 points; KTH DA under the policy `not_rejected` up to 23.30 points (KITTI 05, `W = 2`, `SPRT high end`). The veto changes memory use: the 0.1 m Spires runs and the semi-indoor 0.1 m runs finish with the veto off and fail with it on.
+**8. Veto on and off.** The largest relative effect is the Spires false-reject on non-ground structure (0.2 m, `W = 10`): `SPRT (0.20, 0.70)` 0.70 %, 0.77 %, 0.71 % with the veto on and 0.24 %, 0.32 %, 0.29 % with it off on Keble 03, 04, 05; the high-end pair 1.10 % against 0.32 % on Keble 03. Largest absolute differences between the two settings over the other paired rows: LILocBench ever-Static on clutter 0.36 points (`lt_changes_0`, `SPRT (0.20, 0.70)`); Spires clutter at the end of the run 0.21 points (Keble 05, OctoMap parameters, 0.2 m, `W = 10`); KTH SA 1.16 points; KTH DA under the policy `not_rejected` up to 23.30 points (KITTI 05, `W = 2`, `SPRT high end`). The veto changes memory use: the 0.1 m Spires runs and the semi-indoor 0.1 m runs finish with the veto off and fail with it on.
 
 **What these runs cannot show.** Per-object truth (LILocBench), seasons and doors (Spires: one day), a removal benchmark score (KTH: single pass, pair not calibrated, rows for OctoMap parameters and ELite factors are not the published methods), any false-Static or false-reject truth (Boreas).
 
@@ -153,6 +153,13 @@ The bound alpha = 0.01 holds per history under independent windows (L-7). The co
 | reference_walk_floor_B | 0.35 | 100000 | 200 | 28.109% | 28.11 |
 | reference_walk_floor_B | 0.5 | 100000 | 200 | 55.028% | 55.03 |
 
+Per-laser time-offset search and front/rear stamp skew (diagnostic, section 6.1 of the pre-registration; the search selected nothing: the offset used by the conversion is the value fixed before the evaluation, `-0.13 s`, not the joint optimum). Seconds. Source: `meta_lil_offset_*.meta` and `meta_lil_convert_*.meta`:
+
+| sequence | joint optimum | offset used | front only best | rear only best | front and rear optima agree within 0.02 s | max front/rear stamp skew | pair skew within bound |
+|---|---|---|---|---|---|---|---|
+| lt_changes_dynamics_0 | -0.09 | -0.13 | -0.13 | -0.06 | no | 0.01251506805 | yes (bound 0.05 s) |
+| lt_changes_0 | -0.08 | -0.13 | -0.13 | -0.06 | no | 0.02537631989 | yes (bound 0.05 s) |
+
 #### lt_changes_dynamics_0, Periodic veto ON (primary)
 
 False-Static on clutter (reference-free cells hit at least once, N >= 5 windows; 0.05 m, W = 15). Primary quantity: ever Static (Amendment 5). Intervals: Wilson 95 % (cells as independent) and the 95 % percentile interval of a block bootstrap over 10 m tiles (read the block interval).
@@ -191,7 +198,7 @@ Counts by hit-rate band of the clutter cell (Static at the end, k / n):
 | SPRT low end (0.20, 0.65) | [0.00,0.15): 19/33419 ; [0.15,0.30): 83/2252 ; [0.30,0.65): 483/1694 ; [0.65,1.00): 1112/1173 |
 | SPRT high end (0.30, 0.75) | [0.00,0.15): 3/33419 ; [0.15,0.30): 38/2252 ; [0.30,0.65): 219/1694 ; [0.65,1.00): 997/1173 |
 
-Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15, report-only):
+Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15; report-only, added after the results were seen: defined after the LILocBench dumps existed):
 
 | arm | Static at the end | ever Static | Static at the end, hit >= 1 | ever Static, hit >= 1 | n eligible |
 |---|---|---|---|---|---|
@@ -243,7 +250,7 @@ Counts by hit-rate band of the clutter cell (Static at the end, k / n):
 | SPRT low end (0.20, 0.65) | [0.00,0.15): 2/21358 ; [0.15,0.30): 28/1496 ; [0.30,0.65): 356/1307 ; [0.65,1.00): 1120/1208 |
 | SPRT high end (0.30, 0.75) | [0.00,0.15): 0/21358 ; [0.15,0.30): 9/1496 ; [0.30,0.65): 128/1307 ; [0.65,1.00): 1036/1208 |
 
-Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15, report-only):
+Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15; report-only, added after the results were seen: defined after the LILocBench dumps existed):
 
 | arm | Static at the end | ever Static | Static at the end, hit >= 1 | ever Static, hit >= 1 | n eligible |
 |---|---|---|---|---|---|
@@ -305,7 +312,7 @@ Counts by hit-rate band of the clutter cell (Static at the end, k / n):
 | SPRT low end (0.20, 0.65) | [0.00,0.15): 20/33419 ; [0.15,0.30): 89/2252 ; [0.30,0.65): 497/1694 ; [0.65,1.00): 1115/1173 |
 | SPRT high end (0.30, 0.75) | [0.00,0.15): 3/33419 ; [0.15,0.30): 42/2252 ; [0.30,0.65): 236/1694 ; [0.65,1.00): 999/1173 |
 
-Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15, report-only):
+Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15; report-only, added after the results were seen: defined after the LILocBench dumps existed):
 
 | arm | Static at the end | ever Static | Static at the end, hit >= 1 | ever Static, hit >= 1 | n eligible |
 |---|---|---|---|---|---|
@@ -357,7 +364,7 @@ Counts by hit-rate band of the clutter cell (Static at the end, k / n):
 | SPRT low end (0.20, 0.65) | [0.00,0.15): 2/21358 ; [0.15,0.30): 30/1496 ; [0.30,0.65): 363/1307 ; [0.65,1.00): 1120/1208 |
 | SPRT high end (0.30, 0.75) | [0.00,0.15): 0/21358 ; [0.15,0.30): 10/1496 ; [0.30,0.65): 134/1307 ; [0.65,1.00): 1036/1208 |
 
-Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15, report-only):
+Near-wall thickening: cells that were free in the mapping session and lie within 0.10 m of an occupied cell (label 3, N >= 5), Static share (Amendment 15; report-only, added after the results were seen: defined after the LILocBench dumps existed):
 
 | arm | Static at the end | ever Static | Static at the end, hit >= 1 | ever Static, hit >= 1 | n eligible |
 |---|---|---|---|---|---|
@@ -385,9 +392,9 @@ Counts for the control (no people; rearranged furniture; no per-cell truth). Ref
 
 #### Resolution 0.2 m, W = 10, veto ON (primary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | 44.28% [43.57%, 44.99%] | [44.28%, 44.84%] | 18791 |
 | Keble 03 | symmetric | 38.67% [37.97%, 39.37%] | [38.67%, 40.97%] | 18791 |
@@ -439,9 +446,9 @@ False-reject, Undecided share and windows to first Static on non-ground structur
 
 #### Resolution 0.2 m, W = 20, veto ON (primary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | 34.53% [33.72%, 35.36%] | [34.53%, 34.64%] | 12880 |
 | Keble 03 | symmetric | 30.92% [30.12%, 31.72%] | [30.92%, 31.72%] | 12880 |
@@ -493,9 +500,9 @@ False-reject, Undecided share and windows to first Static on non-ground structur
 
 #### Resolution 0.1 m, W = 10, veto ON (primary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | FAILED rc=1 |  |  |
 | Keble 03 | symmetric | FAILED rc=1 |  |  |
@@ -525,9 +532,9 @@ _no rows_
 
 #### Resolution 0.1 m, W = 20, veto ON (primary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | not run (listed in not_run_steps.tsv) |  |  |
 | Keble 03 | symmetric | not run (listed in not_run_steps.tsv) |  |  |
@@ -569,9 +576,9 @@ _no rows_
 
 #### Resolution 0.2 m, W = 10, veto OFF (secondary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | 44.29% [43.58%, 45.00%] | [44.29%, 44.84%] | 18791 |
 | Keble 03 | symmetric | 38.67% [37.97%, 39.37%] | [38.67%, 40.97%] | 18791 |
@@ -623,9 +630,9 @@ False-reject, Undecided share and windows to first Static on non-ground structur
 
 #### Resolution 0.2 m, W = 20, veto OFF (secondary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | 34.54% [33.73%, 35.37%] | [34.54%, 34.64%] | 12880 |
 | Keble 03 | symmetric | 30.92% [30.12%, 31.72%] | [30.92%, 31.72%] | 12880 |
@@ -677,9 +684,9 @@ False-reject, Undecided share and windows to first Static on non-ground structur
 
 #### Resolution 0.1 m, W = 10, veto OFF (secondary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | 26.06% [25.75%, 26.38%] | [26.06%, 27.71%] | 75738 |
 | Keble 03 | symmetric | 20.36% [20.07%, 20.64%] | [20.36%, 24.05%] | 75738 |
@@ -731,9 +738,9 @@ False-reject, Undecided share and windows to first Static on non-ground structur
 
 #### Resolution 0.1 m, W = 20, veto OFF (secondary)
 
-False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
+False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13; this bound row was defined on 2026-10-19, after the Keble 03 results were in hand: added after the results were seen, Amendments 12 and 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):
 
-| sequence | arm | Static at the end, Wilson | ever Static, bound | eligible n |
+| sequence | arm | Static at the end, Wilson | ever Static, bound (added after the results were seen, Amendment 13) | eligible n |
 |---|---|---|---|---|
 | Keble 03 | shipped v0.1 | 21.94% [21.61%, 22.29%] | [21.94%, 22.57%] | 56982 |
 | Keble 03 | symmetric | 17.40% [17.09%, 17.72%] | [17.40%, 19.57%] | 56982 |
@@ -799,9 +806,9 @@ Spires JSON files written before Amendments 12 and 13 lack the bound and populat
 
 ## 3. KTH KITTI 05 and semi-indoor
 
-Single pass, one tick per frame, SuMa poses (KITTI 05) and NDT SLAM poses (semi-indoor, 16-beam sensor), AA geometric mean, HA harmonic mean. Every arm applies its increment once per touched window, so the rows labelled OctoMap parameters on window evidence and ELite factors on window evidence are not the published OctoMap and ELite methods. The `sprt` pair is the 2D pair, not calibrated for 3D. No arm is a competitive removal method.
+Single pass, one tick per frame, SuMa poses (KITTI 05) and NDT SLAM poses (semi-indoor, 16-beam sensor), AA geometric mean, HA harmonic mean. Every arm applies its increment once per touched window, so the rows labelled OctoMap parameters on window evidence and ELite factors on window evidence are not the published OctoMap and ELite methods; their numbers are not comparable to the published rows. The evaluator applies <= 0.05 m in float64; the official tool's float32 rule can differ only for points at exactly 0.05 m. The DA ceiling (the DA of an oracle map that holds exactly the ground-truth static points, from the self-check) is printed in the header of every KTH table. A map can score a DA above the ceiling only if it drops static points: such a row pays for it in SA. The `sprt` pair is the 2D pair, not calibrated for 3D. No arm is a competitive removal method.
 
-#### KITTI 05, 0.2 m, W = 10, veto ON (primary)
+#### KITTI 05, 0.2 m, W = 10, veto ON (primary). DA ceiling of the ground-truth static cloud: 96.20
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -822,7 +829,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 44.98 | 99.56 | 66.92 | 61.96 | 36.3 / 63.7 / 0.0 | 32 |
 | SPRT high end (0.30, 0.75) | not_rejected | 100.00 | 0.00 | 0.00 | 0.00 | 36.3 / 63.7 / 0.0 | 32 |
 
-#### KITTI 05, 0.2 m, W = 2, veto ON (primary)
+#### KITTI 05, 0.2 m, W = 2, veto ON (primary). DA ceiling of the ground-truth static cloud: 96.20
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -843,7 +850,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 43.36 | 99.95 | 65.83 | 60.48 | 33.6 / 62.3 / 4.1 | 160 |
 | SPRT high end (0.30, 0.75) | not_rejected | 98.50 | 24.45 | 49.07 | 39.17 | 33.6 / 62.3 / 4.1 | 160 |
 
-#### KITTI semindoor, 0.2 m, W = 10, veto ON (primary)
+#### KTH semi-indoor, 0.2 m, W = 10, veto ON (primary). DA ceiling of the ground-truth static cloud: 94.42
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -864,7 +871,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 64.91 | 84.66 | 74.13 | 73.48 | 55.3 / 41.1 / 3.6 | 96 |
 | SPRT high end (0.30, 0.75) | not_rejected | 98.92 | 17.48 | 41.58 | 29.71 | 55.3 / 41.1 / 3.6 | 96 |
 
-#### KITTI semindoor, 0.2 m, W = 2, veto ON (primary)
+#### KTH semi-indoor, 0.2 m, W = 2, veto ON (primary). DA ceiling of the ground-truth static cloud: 94.42
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -885,7 +892,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 68.02 | 83.40 | 75.32 | 74.93 | 57.0 / 40.0 / 2.9 | 480 |
 | SPRT high end (0.30, 0.75) | not_rejected | 99.01 | 0.96 | 9.77 | 1.91 | 57.0 / 40.0 / 2.9 | 480 |
 
-#### KITTI semindoor, 0.1 m, W = 10, veto ON (primary)
+#### KTH semi-indoor, 0.1 m, W = 10, veto ON (primary). DA ceiling of the ground-truth static cloud: 94.42
 
 | arm | export policy | SA | DA | AA (geometric mean) | HA (harmonic mean) | points in Static / Undecided / Rejected voxel, % | windows |
 |---|---|---|---|---|---|---|---|
@@ -904,7 +911,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | FAILED rc=1 (p3_probe: std::bad_alloc) |  |  |  |  |  |
 | SPRT high end (0.30, 0.75) | not_rejected | FAILED rc=1 (p3_probe: std::bad_alloc) |  |  |  |  |  |
 
-#### KITTI 05, 0.2 m, W = 10, veto OFF (secondary)
+#### KITTI 05, 0.2 m, W = 10, veto OFF (secondary). DA ceiling of the ground-truth static cloud: 96.20
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -925,7 +932,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 44.98 | 99.56 | 66.92 | 61.96 | 36.3 / 63.7 / 0.0 | 32 |
 | SPRT high end (0.30, 0.75) | not_rejected | 100.00 | 0.00 | 0.00 | 0.00 | 36.3 / 63.7 / 0.0 | 32 |
 
-#### KITTI 05, 0.2 m, W = 2, veto OFF (secondary)
+#### KITTI 05, 0.2 m, W = 2, veto OFF (secondary). DA ceiling of the ground-truth static cloud: 96.20
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -946,7 +953,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 44.24 | 99.94 | 66.49 | 61.33 | 34.4 / 64.6 / 1.0 | 160 |
 | SPRT high end (0.30, 0.75) | not_rejected | 99.66 | 1.15 | 10.71 | 2.27 | 34.4 / 64.6 / 1.0 | 160 |
 
-#### KITTI semindoor, 0.2 m, W = 10, veto OFF (secondary)
+#### KTH semi-indoor, 0.2 m, W = 10, veto OFF (secondary). DA ceiling of the ground-truth static cloud: 94.42
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -967,7 +974,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 65.78 | 83.90 | 74.29 | 73.74 | 56.5 / 41.8 / 1.7 | 96 |
 | SPRT high end (0.30, 0.75) | not_rejected | 99.68 | 21.82 | 46.64 | 35.80 | 56.5 / 41.8 / 1.7 | 96 |
 
-#### KITTI semindoor, 0.2 m, W = 2, veto OFF (secondary)
+#### KTH semi-indoor, 0.2 m, W = 2, veto OFF (secondary). DA ceiling of the ground-truth static cloud: 94.42
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -988,7 +995,7 @@ Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0
 | SPRT high end (0.30, 0.75) | static_only | 68.41 | 83.08 | 75.39 | 75.03 | 57.4 / 40.7 / 1.9 | 480 |
 | SPRT high end (0.30, 0.75) | not_rejected | 99.42 | 0.52 | 7.17 | 1.03 | 57.4 / 40.7 / 1.9 | 480 |
 
-#### KITTI semindoor, 0.1 m, W = 10, veto OFF (secondary)
+#### KTH semi-indoor, 0.1 m, W = 10, veto OFF (secondary). DA ceiling of the ground-truth static cloud: 94.42
 
 Identity check (policy all, every frame point exported): SA = 100.0000, DA = 0.0000.
 
@@ -1037,12 +1044,12 @@ Cells that need more than one session: Static voxels of the cumulative map (thre
 | SPRT low end (0.20, 0.65) | 2499631 | 2400486 | 514160 | 20.57% |
 | SPRT high end (0.30, 0.75) | 1892405 | 1335529 | 791345 | 41.82% |
 
-Ground height difference to the first session per 10 m tile (diagnostic only, reported and never applied; Amendment 3 sets the vertical offset to 0 for every session). Metres, session minus reference:
+Ground height difference to the first session per 10 m tile (diagnostic only, reported and never applied; Amendment 3 sets the vertical offset to 0 for every session). Metres, session minus reference (the stored JSON holds reference minus session; the values here are negated, with p10 and p90 swapped). The ground heights are on a 0.1 m step, so the diagnostic resolves only to about 0.1 m:
 
 | session | shared tiles | median | p10 | p90 |
 |---|---|---|---|---|
-| boreas-2021-04-08-12-44 | 583 | -0.100 | -0.100 | 0.000 |
-| boreas-2021-06-17-17-52 | 658 | -0.100 | -0.200 | 0.000 |
+| boreas-2021-04-08-12-44 | 583 | 0.100 | 0.000 | 0.100 |
+| boreas-2021-06-17-17-52 | 658 | 0.100 | 0.000 | 0.200 |
 
 Static and observed cells per session of each map (the cumulative map is one map, so its per-session lines are the state after that session), peak memory in kB and seconds of the whole run (two streams ran at the same time; timing is stated, not measured under controlled load, Amendment 15):
 
@@ -1126,6 +1133,7 @@ Amendments of `PREREG_P3.md` (each committed before the run it affects; the text
 | 26. Amendment 13 (2026-10-19, during the evaluation, before any Spires table is written): the Spires ever-Static clutter row is a bound on eligible cells |
 | 27. Amendment 14 (2026-10-19, during the evaluation, before any further run): re-pin of the engine tree |
 | 28. Amendment 15 (2026-10-20, during the evaluation, before the Boreas stage and before any KTH stage): report-only rows; two streams; the report generator |
+| 29. Amendment 16 (2026-10-22, after the evaluation, review 4 of the P3 report): report corrections only |
 
 
 The `strata_core` tree changed once during the evaluation (rows before and after 2026-10-19T10:54). The change is in `strata_core/test/test_sprt.cpp` only; the trees of `src` and `include` are the same (Amendment 14). The first row of the table above (one step on 2026-10-18T14:51) is the pose-only Boreas overlap gate (`boreas_overlap`), run before the first evaluation.
@@ -1147,7 +1155,7 @@ Full text of every deviation: `results_p3/deviations.md`. Short list in order:
 
 **Not run, by design.** The MTD-Map-like arm (section 2.4). KITTI 05 at 0.1 m (section 5.1; memory). Periodic on real data with a logged schedule, timing, Option C, the paper text (section 13).
 
-**Not edited.** The paper. Nothing derived from LILocBench, KITTI, KTH, Spires or Boreas is in the repository except the JSON aggregates, meta files, logs and this report; maps, caches and exports are under `/mnt/d/wsl/strata/p3/` (not in the repository).
+**Not edited.** The paper. Nothing derived from LILocBench, KITTI, KTH, Spires or Boreas is in the repository except the JSON aggregates, meta files, logs and this report; maps and caches are under `/mnt/d/wsl/strata/p3/` (not in the repository). The KTH PCD exports are not there: `reproduce_p3.sh` deletes each export after scoring it by design, and `outputs_eval_kth_*.sha256` does not hash them. Only the meta files and the JSON scores remain. The exports can be regenerated deterministically with the same command (an Opus review did this for KITTI 05).
 
 **Reproduce.** `bash reproduce_p3.sh build check unit`, then with `P3_RUN_EVALUATIONS=1`: `eval_lil eval_spires eval_kth eval_boreas` (with `P3_PERIODICITY=0` for the veto-off setting; Boreas runs with the veto off in both settings). Report: `python3 -I make_report_p3.py --results-dir results_p3 --out-dir /mnt/d/wsl/strata/p3 --out results_p3/P3_REPORT.md`.
 

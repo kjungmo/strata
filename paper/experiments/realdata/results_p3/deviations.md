@@ -1,5 +1,7 @@
 ## Deviations and notes, phase 3 harness
 
+**Dated note (2026-10-22).** The sections before "Evaluation run" (this introduction, "Order of events", "Open before the first evaluation" and "Not done") describe the state before the test evaluation. The evaluation has run since; its record is the section "Evaluation run (2026-10-18): deviations during the run" and `P3_REPORT.md`. Read "No test evaluation has been run" and the "Not done" list below as the state at 2026-10-18 11:50, not as the final state.
+
 No test evaluation (`eval_*` stage) has been run. The only runs of an arm on test data are the Boreas feasibility probe on the first 10 frames of one session (order of events, item 7). Times are +09:00 on 2026-10-18. Nothing here changes an arm, a label rule, a window, a resolution or a metric of `PREREG_P3.md`; changes of the harness are in Amendment 3 (section 16 of `PREREG_P3.md`).
 
 ### Order of events
