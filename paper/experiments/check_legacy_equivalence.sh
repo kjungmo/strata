@@ -29,7 +29,7 @@ for e in ${EXPS}; do "${BUILD}/${e}" > "${SCR}/${e}.log" 2>&1 || { echo "FAIL: $
 n=0; bad=0
 for f in "${HERE}"/results/*.csv; do
   b="$(basename "${f}")"
-  case "${b}" in e4_throughput.csv|e7_*.csv) continue ;; esac   # E4: wall clock; E7: new in 0.2.0, no legacy counterpart
+  case "${b}" in e4_throughput.csv|e4_cells_sprt.csv|e7_*.csv|*_sprt.csv) continue ;; esac   # E4: wall clock; E7 and *_sprt.csv: sequential-test files, no legacy counterpart
   if [ ! -f "${SCR}/results/${b}" ]; then echo "FAIL: ${b} was not written" >&2; bad=$((bad + 1)); continue; fi
   if cmp -s "${f}" "${SCR}/results/${b}"; then n=$((n + 1)); else echo "FAIL: ${b} differs from the committed file" >&2; bad=$((bad + 1)); fi
 done

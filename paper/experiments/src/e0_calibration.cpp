@@ -45,7 +45,7 @@ double betaFap(const HarmonicStat& h) {
 }
 
 LayeredMapParams e2Params(double alpha) {  // identical to e2_periodicity.cpp params()
-  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1; p.l_hit = 1.0; p.l_miss = -1.0; p.l_min = -5.0; p.l_max = 5.0;
   p.survival_decay = 1.0; p.graduate_prob = 0.9; p.demote_prob = 0.4;
   p.min_observations = 5; p.prune_prob = 0.05; p.enable_periodicity = true;
@@ -56,13 +56,16 @@ LayeredMapParams e2Params(double alpha) {  // identical to e2_periodicity.cpp pa
 }
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+  if (!eval::parseArm(argc, argv)) return 2;
   const int nA = static_cast<int>(kAlphas.size());
   std::vector<double> worst_null(nA, 0.0), worst_pipe(nA, 0.0), mean_pipe(nA, 0.0);
   double worst_beta = 0.0;
 
   // (i) model-level null grid
-  eval::Csv nul("results/e0_calibration_null.csv");
+  // Part (i) is the model-level null grid (PeriodicityModel only, no evidence model): the sprt
+  // arm recomputes it for the selection rule below but does not write a second copy.
+  eval::Csv nul(eval::sprtArm() ? "/dev/null" : "results/e0_calibration_null.csv");
   std::string hdr = "T,H,m,n,trials,amp_only,beta_0.01";
   for (double a : kAlphas) hdr += ",bound_" + std::to_string(a).substr(0, 4);
   nul.header(hdr);
@@ -111,7 +114,7 @@ int main() {
   }
 
   // (ii) pipeline clutter, E2 parameters, read out at every length 8..100
-  eval::Csv pipe("results/e0_calibration_pipeline.csv");
+  eval::Csv pipe(eval::armPath("results/e0_calibration_pipeline.csv"));
   pipe.header("alpha,m,obs_length,cells,periodic,rate");
   pipe.row("#seed", kCalSeed + 5000, "", "", "", "");
   const int kCells = 1000, kLen = 100;
@@ -140,7 +143,7 @@ int main() {
 
   // (iii) door detection: first read-out length from which the door stays Periodic
   // through window 100 (median over 40 phase offsets / noise draws).
-  eval::Csv det("results/e0_calibration_doors.csv");
+  eval::Csv det(eval::armPath("results/e0_calibration_doors.csv"));
   det.header("alpha,door,flip_noise,median_first_n,never");
   det.row("#seed", kCalSeed + 9000, "", "", "");
   struct Door { std::string name; int period; int on; double flip; };
@@ -177,7 +180,7 @@ int main() {
   }
 
   // selection
-  eval::Csv sel("results/e0_calibration_choice.csv");
+  eval::Csv sel(eval::armPath("results/e0_calibration_choice.csv"));
   sel.header("alpha,worst_null_rate,worst_pipeline_rate,mean_pipeline_rate,door_p8_median_first_n,meets_target,selected");
   int chosen = -1;
   for (int i = 0; i < nA; ++i)

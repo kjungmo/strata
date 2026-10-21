@@ -40,7 +40,7 @@ constexpr unsigned kEvalSeed = 40260928u;    // E5's evaluation base (confusion:
 constexpr unsigned kSweepSeed = 50260928u;   // disjoint from E0-E5 and the unit tests
 
 LayeredMapParams e2Params() {  // identical to e5_trajectory.cpp e2Params()
-  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1; p.l_hit = 1.0; p.l_miss = -1.0; p.l_min = -5.0; p.l_max = 5.0;
   p.survival_decay = 1.0; p.graduate_prob = 0.9; p.demote_prob = 0.4;
   p.min_observations = 5; p.prune_prob = 0.05; p.enable_periodicity = true;
@@ -49,7 +49,7 @@ LayeredMapParams e2Params() {  // identical to e5_trajectory.cpp e2Params()
   return p;
 }
 LayeredMapParams shippedParams() {
-  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1;
   return p;
 }
@@ -61,23 +61,34 @@ double meanFieldThreshold(const LayeredMapParams& p) {
 }
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+  if (!eval::parseArm(argc, argv)) return 2;
+  const bool sprt = eval::sprtArm();
   LayeredMapParams e2d = e2Params(); e2d.survival_decay = 0.97;
   LayeredMapParams sym = shippedParams(); sym.l_miss = -sym.l_hit;
-  const std::vector<Set> conf_sets = {{"e2", e2Params(), true}, {"e2_decay097", e2d, true},
-                                      {"shipped", shippedParams(), false}};
-  const std::vector<Set> sweep_sets = {{"e2", e2Params(), true}, {"e2_decay097", e2d, true},
-                                       {"shipped", shippedParams(), false}, {"shipped_sym", sym, false}};
+  // sprt arm: the two parameter sets that have a counterpart. e2_decay097 and shipped_sym vary
+  // the v0.1 decay and increments, which the sequential test does not have (the shipped
+  // pair is already near-symmetric: l_hit 1.25, l_miss -0.98).
+  std::vector<Set> conf_sets = {{"e2", e2Params(), true}, {"e2_decay097", e2d, true},
+                                {"shipped", shippedParams(), false}};
+  std::vector<Set> sweep_sets = {{"e2", e2Params(), true}, {"e2_decay097", e2d, true},
+                                 {"shipped", shippedParams(), false}, {"shipped_sym", sym, false}};
+  if (sprt) {
+    conf_sets = {{"e2", e2Params(), true}, {"shipped", shippedParams(), false}};
+    sweep_sets = {{"e2", e2Params(), true}, {"shipped", shippedParams(), false}};
+  }
 
   // ---------------------------------------------------------------- (1) confusion
-  eval::Csv cf("results/e6_confusion.csv");
-  cf.header("params,readout,gt,pred_S,pred_P,pred_T,pred_U");
-  cf.row("#seed", kEvalSeed + 97000, "scenes", 20, "", "", "");
+  eval::Csv cf(eval::armPath("results/e6_confusion.csv"));
+  // pred_U: erased or not yet known; pred_I (sprt arm only): read out as Intermittent.
+  cf.header(sprt ? "params,readout,gt,pred_S,pred_P,pred_T,pred_U,pred_I" : "params,readout,gt,pred_S,pred_P,pred_T,pred_U");
+  if (sprt) cf.row("#seed", kEvalSeed + 97000, "scenes", 20, "", "", "", "");
+  else cf.row("#seed", kEvalSeed + 97000, "scenes", 20, "", "", "");
   const std::vector<std::string> gts = {"wall", "door", "aperiodic", "dynamic"};
   const std::vector<int> readouts = {64, 256};
   for (const auto& set : conf_sets) {
     std::vector<std::vector<std::vector<int>>> cnt(
-        2, std::vector<std::vector<int>>(4, std::vector<int>(4, 0)));
+        2, std::vector<std::vector<int>>(4, std::vector<int>(5, 0)));
     for (int s = 0; s < 20; ++s) {
       std::mt19937 rng(kEvalSeed + 97000 + unsigned(s));
       struct C { int gt; int period, on, phase; };
@@ -108,7 +119,7 @@ int main() {
           for (std::size_t c = 0; c < cells.size(); ++c) {
             const CellClass kc = lm.classify(c);
             const int col = kc == CellClass::Static ? 0 : kc == CellClass::Periodic ? 1
-                          : kc == CellClass::Transient ? 2 : 3;
+                          : kc == CellClass::Transient ? 2 : kc == CellClass::Intermittent ? 4 : 3;
             ++cnt[q][cells[c].gt][col];
           }
         }
@@ -116,17 +127,25 @@ int main() {
     }
     for (int q = 0; q < 2; ++q)
       for (int g = 0; g < 4; ++g)
-        cf.row(set.name, readouts[q], gts[g], cnt[q][g][0], cnt[q][g][1], cnt[q][g][2], cnt[q][g][3]);
+        if (sprt)
+          cf.row(set.name, readouts[q], gts[g], cnt[q][g][0], cnt[q][g][1], cnt[q][g][2], cnt[q][g][3], cnt[q][g][4]);
+        else
+          cf.row(set.name, readouts[q], gts[g], cnt[q][g][0], cnt[q][g][1], cnt[q][g][2], cnt[q][g][3]);
   }
 
   // ---------------------------------------------------------------- (2) sweep over m
-  eval::Csv sw("results/e6_static_vs_m.csv");
-  sw.header("params,m,cells,static_64,static_256,ever_static_256,periodic_256,mean_field_threshold");
-  sw.row("#seed", kSweepSeed, "", "", "", "", "", "");
+  eval::Csv sw(eval::armPath("results/e6_static_vs_m.csv"));
+  // sprt arm: the last column is the zero-drift hit rate m* = -l_miss / (l_hit - l_miss) of the
+  // derived increments (the hit rate above which the statistic drifts up), and intermittent_256
+  // counts cells read out as Intermittent at window 256.
+  sw.header(sprt ? "params,m,cells,static_64,static_256,ever_static_256,periodic_256,intermittent_256,zero_drift_rate"
+                 : "params,m,cells,static_64,static_256,ever_static_256,periodic_256,mean_field_threshold");
+  if (sprt) sw.row("#seed", kSweepSeed, "", "", "", "", "", "", "");
+  else sw.row("#seed", kSweepSeed, "", "", "", "", "", "");
   for (const auto& set : sweep_sets) {
     for (int j = 1; j <= 19; ++j) {
       const double m = 0.05 * j;
-      int s64 = 0, s256 = 0, ever = 0, per = 0, cells = 0;
+      int s64 = 0, s256 = 0, ever = 0, per = 0, inter = 0, cells = 0;
       for (int s = 0; s < 10; ++s) {
         std::mt19937 rng(kSweepSeed + 100u * unsigned(j) + unsigned(s));
         std::bernoulli_distribution coin(m);
@@ -143,14 +162,16 @@ int main() {
             if (w == 64 && st) ++s64;
             if (w == 256 && st) ++s256;
             if (w == 256 && lm.classify(c) == CellClass::Periodic) ++per;
+            if (w == 256 && lm.classify(c) == CellClass::Intermittent) ++inter;
           }
         }
         for (int c = 0; c < 200; ++c) ever += ev[c];
         cells += 200;
       }
-      sw.row(set.name, 0.05 * j, cells, s64, s256, ever, per, meanFieldThreshold(set.p));
+      if (sprt) sw.row(set.name, 0.05 * j, cells, s64, s256, ever, per, inter, deriveSprt(set.p).m_star);
+      else sw.row(set.name, 0.05 * j, cells, s64, s256, ever, per, meanFieldThreshold(set.p));
     }
   }
-  std::cout << "E6 done -> results/e6_confusion.csv, results/e6_static_vs_m.csv\n";
+  std::cout << "E6 done" << (sprt ? " (sprt)" : "") << "\n";
   return (cf.ok() && sw.ok()) ? 0 : 1;
 }

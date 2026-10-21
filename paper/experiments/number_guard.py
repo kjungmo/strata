@@ -43,7 +43,24 @@ def rows(name):
         return [r for r in csv.DictReader(f) if not r[list(r)[0]].startswith("#")]
 
 
+# The long-form companions (strata_paper.md, strata_paper_KR.md) are not re-synced during
+# phases P1-P4 of the v2 plan (DESIGN_AND_PLAN section 6); they still describe the code of the
+# first pin, 312b09c. Their numbers are still checked against the result files, which are
+# unchanged for the legacy arm. The checks about the state of the code (pin, tree ids, test
+# counts, standard-library record, reproduction log) are DEFERRED for them, listed in the
+# output, and become ordinary checks again when the companions are regenerated or retired.
+# Remove DEFERRED_FOR_COMPANION then.
+COMPANION = "strata_paper.md"
+DEFERRED_FOR_COMPANION = ("pin commit quoted", "strata_core/ is the tree", "strata/ is the tree", "scripts/ is the tree",
+                          "working tree: pinned", "core gtest", "node gtest", "tests quoted", "test count",
+                          "stdlib", "reproduction log", "reproduction compiler")
+deferred = []
+
+
 def check(label, cond, detail=""):
+    if target == COMPANION and not cond and any(label.startswith(d) or d in label for d in DEFERRED_FOR_COMPANION):
+        deferred.append(f"[{target}] {label}")
+        return
     (passes if cond else failures).append(f"[{target}] {label}{' — ' + detail if detail else ''}")
 
 
@@ -56,6 +73,64 @@ def in_paper(label, *variants):
     check(label, ok, f"none of {variants} found in paper" if not ok else "")
 
 
+def guard_sprt_arm():
+    """The sequential-test arm of the harness (results/*_sprt.csv, phase P4a): structure of the
+    files, the derived latency, the selected levels and the sentences of the text that quote them."""
+    # derived quantities of the shipped defaults, summed as the engine sums them
+    hpp = (HERE.parents[1] / "strata_core/include/strata_core/layered_map.hpp").read_text()
+    dflt = {k: float(re.search(r"double %s\{([0-9.]+)\}" % k, hpp).group(1)) for k in ("m0", "m1", "alpha", "beta")}
+    check("sprt arm: shipped defaults are m0 0.20, m1 0.70, alpha = beta = 0.01",
+          (dflt["m0"], dflt["m1"], dflt["alpha"], dflt["beta"]) == (0.2, 0.7, 0.01, 0.01), str(dflt))
+    l_hit = math.log(dflt["m1"] / dflt["m0"])
+    A = math.log((1 - dflt["beta"]) / dflt["alpha"])
+    ceiling = A + 2 * l_hit
+    l, latency = 0.0, 0
+    while l < A:
+        l = min(l + l_hit, ceiling)
+        latency += 1
+    # E1: recall 1.0 from window index latency - 1 on, in all six runs of both files; no false Static cell
+    for fn in ("e1_static_quality_sprt.csv", "e1_static_quality_periodic_sprt.csv"):
+        rs = rows(fn)
+        runs = {(r["backend"], r["density"]) for r in rs}
+        first = {}
+        for k in runs:
+            rr = sorted((int(r["window"]), float(r["recall"]), float(r["precision"])) for r in rs if (r["backend"], r["density"]) == k)
+            first[k] = next(w for w, rc, _ in rr if rc == 1.0)
+            check(f"sprt arm {fn}: {k} recall stays 1.0 and precision stays 1.0 from window {first[k]}",
+                  all(rc == 1.0 and pr == 1.0 for w, rc, pr in rr if w >= first[k]), str(rr[-1]))
+        check(f"sprt arm {fn}: six runs, recall 1.0 first at the derived latency {latency} (index {latency - 1})",
+              len(runs) == 6 and set(first.values()) == {latency - 1}, str(first))
+    check("sprt arm: periodicity on equals periodicity off in E1",
+          [(r["recall"], r["precision"], r["pred_static"]) for r in rows("e1_static_quality_sprt.csv")]
+          == [(r["recall"], r["precision"], r["pred_static"]) for r in rows("e1_static_quality_periodic_sprt.csv")])
+    in_paper("sprt arm: E1 derived fourth window quoted", "give recall 1.0 from the derived fourth window")
+    in_paper("sprt arm: E1 no false Static cell quoted", "no false Static cell")
+    check("sprt arm: the derived latency is four windows", latency == 4, str(latency))
+    # levels: the periodic level of the sprt arm is chosen by the same pre-stated rules as in the legacy arm
+    sel0 = [r for r in rows("e0_calibration_choice_sprt.csv") if r["selected"] == "1"]
+    sel5 = [r for r in rows("e5_calibration_choice_sprt.csv") if r["selected"] == "1"]
+    check("sprt arm: E0 selects delta 0.1 as in the legacy arm", len(sel0) == 1 and float(sel0[0]["alpha"]) == 0.1)
+    pfa = float(re.search(r"double periodic_false_alarm\{([0-9.]+)\}", hpp).group(1))
+    check("sprt arm: E5 selects the shipped spent level", len(sel5) == 1 and float(sel5[0]["delta"]) == pfa == 0.2, str(sel5))
+    # E6 'e2' rows equal E5's spent rows (same code path and seeds), now with the Intermittent column
+    c5 = {(r["rule"], r["readout"], r["gt"]): r for r in rows("e5_confusion_sprt.csv")}
+    c6 = {(r["params"], r["readout"], r["gt"]): r for r in rows("e6_confusion_sprt.csv")}
+    cols = ("pred_S", "pred_P", "pred_T", "pred_U", "pred_I")
+    check("sprt arm: E6 'e2' rows equal E5's spent rows",
+          all(tuple(c6[("e2", q, g)][k] for k in cols) == tuple(c5[("spending", q, g)][k] for k in cols)
+              for q in ("64", "256") for g in ("wall", "door", "aperiodic", "dynamic")))
+    for (pn, q, g), r in c6.items():
+        check(f"sprt arm: E6 {pn} {q} {g} counts add up", sum(int(r[k]) for k in cols) == {"wall": 1000, "door": 1200, "aperiodic": 2000, "dynamic": 1000}[g])
+    # E7 is a sprt-only file pair; E4 cell counts: one row per backend and extent
+    e4 = rows("e4_cells_sprt.csv")
+    check("sprt arm: E4 cell counts, six rows", len(e4) == 6 and all(r["bytes_per_cell"] == "56" for r in e4))
+    sw = rows("e6_static_vs_m_sprt.csv")
+    check("sprt arm: E6 sweep has 19 points for each of two parameter sets", len(sw) == 38 and {r["params"] for r in sw} == {"e2", "shipped"})
+    ms = math.log((1 - dflt["m1"]) / (1 - dflt["m0"]))
+    check("sprt arm: E6 zero-drift rate is -l_miss / (l_hit - l_miss)",
+          all(abs(float(r["zero_drift_rate"]) - (-ms / (l_hit - ms))) < 1e-5 for r in sw), str(sw[0]["zero_drift_rate"]))
+
+
 def guard():
     # ---- E1: static-map quality ----
     e1 = rows("e1_static_quality.csv")
@@ -66,6 +141,8 @@ def guard():
     late_recall = [float(r["recall"]) for r in e1 if int(r["window"]) >= 3]
     check("E1 recall==1.0 from window 3 on (all runs)", all(v == 1.0 for v in late_recall))
     in_paper("E1 'window 3' quoted", "window 3")
+    if target == "arxiv_ref":
+        guard_sprt_arm()
 
     last_w = max(int(r["window"]) for r in e1)
     final = {(r["backend"], r["density"]): r for r in e1 if int(r["window"]) == last_w}
@@ -388,8 +465,8 @@ def guard_arxiv():
           == [(r["recall"], r["precision"], r["pred_static"]) for r in e1])
     ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                  for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
-    check("56 core gtest cases", ntests == 56, str(ntests))
-    in_paper("56 tests quoted", "56 ")
+    check("114 core gtest cases", ntests == 114, str(ntests))
+    in_paper("114 tests quoted", "114 ")
     quoted = {int(n) for n in re.findall(r"(\d+)(?:~|\s)+(?:gtest cases|behaviou?r-level tests|unit tests)", text)}
     nnode = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                 for f in (HERE.parents[1] / "strata/test").glob("*.cpp"))
@@ -493,11 +570,13 @@ if len(TARGETS) > 1:
 
 
 # Code that the paper pins: the tree ids of strata_core/, strata/ and scripts/ at
-# commit 312b09c. A change to any of them must come with a new pin in the paper.
-PIN = "312b09c"
-PIN_TREES = {"strata_core": "401e7c7fced30ee44ed9888d397158492dc38eb2",
-             "strata": "83619563bcdc60da6f902c2c51718af76a52227c",
-             "scripts": "7183544d9386c903042b1a657346db7511583244"}
+# commit a7559d4 (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
+# must come with a new pin in the paper. The pin moved once on purpose, from 312b09c
+# (v0.1 engine, 11 October 2026), in phase P4a of the v2 plan.
+PIN = "a7559d4"
+PIN_TREES = {"strata_core": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+             "strata": "41af7663c940e2fc75dd5e0e07a53e86127515f9",
+             "scripts": "3a7ef6330965552ccf5a72f7f7ad7c9c4cfd1b2a"}
 # Core regression tests by the defect or rule they cover (the paper's 10 / 9 / 8).
 CENTRING_TESTS = ("AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT8", "AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT24",
                   "ConstantCellUnderUnevenPhaseCoverageHasZeroAmplitude", "SquareWaveDetectedAtNonMultiplesOfPeriod",
@@ -544,6 +623,9 @@ def guard_code(full):
 
     # ---- the pin ----
     in_paper("pin commit quoted", PIN)
+    pin_date = git("show", "-s", "--format=%ad", "--date=short", PIN)
+    if pin_date is not None:
+        check("pin date quoted in the text is the commit date", pin_date == "2026-10-19", str(pin_date))
     if git("rev-parse", "--is-inside-work-tree") == "true":
         for d, want in PIN_TREES.items():
             got = git("rev-parse", f"HEAD:{d}")
@@ -569,8 +651,8 @@ def guard_code(full):
     for w in ("ten regression tests", "nine for", "eight for the spent level"):
         in_paper(f"regression count quoted: {w!r}", w, w.replace("ten", "Ten"))
     node = {f.stem: len(cases(f)) for f in sorted((root / "strata/test").glob("*.cpp"))}
-    check("64 node gtest cases", sum(node.values()) == 64, str(node))
-    in_paper("64 node gtest cases quoted", "64 gtest cases")
+    check("71 node gtest cases", sum(node.values()) == 71, str(node))
+    in_paper("71 node gtest cases quoted", "71 gtest cases")
     for stem in ("test_window_clock", "test_tf_wait", "test_input_status", "test_rate_monitor", "test_map_writer"):
         m = re.search(stem.replace("_", r"\\?_") + r"\}?`? \((\d+) cases\)", text)
         check(f"{stem} case count quoted is {node[stem]}", bool(m) and int(m.group(1)) == node[stem],
@@ -767,9 +849,18 @@ def guard_code(full):
     check("stdlib record: made with the pinned strata_core", f"strata_core_tree: {PIN_TREES['strata_core']}" in sl)
     check("stdlib record: differing files are kept", all((RESULTS / "stdlib_libcxx" / f).exists() for f in diff))
     STDLIB.update(diff=diff, same=same, lines=sl)
-    in_paper("stdlib: identical / total quoted", f"{len(same)} of the {len(same) + len(diff)} seeded result files")
-    check("stdlib: the four differing files", diff == ["e0_calibration_doors.csv", "e1_static_quality.csv",
-                                                     "e1_static_quality_periodic.csv", "e6_confusion.csv"], str(diff))
+    # The legacy arm (the 19 files of the first release's harness) is what the pinned text
+    # reports; the sprt-arm files and E7 are new and counted beside it.
+    is_new = lambda n: n.endswith("_sprt.csv") or n.startswith("e7_")
+    same_l, diff_l = [n for n in same if not is_new(n)], [n for n in diff if not is_new(n)]
+    same_n, diff_n = [n for n in same if is_new(n)], [n for n in diff if is_new(n)]
+    STDLIB.update(same_new=same_n, diff_new=diff_n)
+    in_paper("stdlib: identical / total quoted (legacy arm)", f"{len(same_l)} of the {len(same_l) + len(diff_l)} seeded result files")
+    in_paper("stdlib: identical / total quoted (sprt arm and E7)", f"{len(same_n)} of the {len(same_n) + len(diff_n)} result files of the sequential-test arm and E7")
+    check("stdlib: the four differing files of the legacy arm", diff_l == ["e0_calibration_doors.csv", "e1_static_quality.csv",
+                                                     "e1_static_quality_periodic.csv", "e6_confusion.csv"], str(diff_l))
+    check("stdlib: E7 does not depend on the standard library", all(n.startswith("e7_") for n in same_n if n.startswith("e7_")) and
+          not any(n.startswith("e7_") for n in diff_n), str(diff_n))
     check("stdlib: every seeded result file was compared",
           sorted(same + diff) == sorted(f.name for f in RESULTS.glob("*.csv") if f.name != "e4_throughput.csv"))
     clang = re.search(r"clang version (\d+\.\d+\.\d+)", sl[0]).group(1)
@@ -793,6 +884,8 @@ def guard_code(full):
     in_paper("stdlib: E0 door medians quoted", "20 to 21 and 23 to 24")
     ch_a = open(RESULTS / "e0_calibration_choice.csv").read()
     check("stdlib: E0 choice file identical under libc++", "e0_calibration_choice.csv" in same and "e5_calibration_choice.csv" in same)
+    check("stdlib: the sprt-arm choice files identical under libc++",
+          "e0_calibration_choice_sprt.csv" in same and "e5_calibration_choice_sprt.csv" in same, str(diff_n))
     x6 = {(r["params"], r["readout"], r["gt"]): r for r in lc("e6_confusion.csv")}
     in_paper("stdlib: E6 shipped false Static under libc++",
              f"{x6[('shipped', '64', 'aperiodic')]['pred_S']} instead of {c6[('shipped', '64', 'aperiodic')]['pred_S']} of the 2000")
@@ -837,7 +930,7 @@ STRUCT = [
     (r"sections/", r"\d+-on/\d+-off|\d+-bit|\d+-byte|x86-64|SHA.256|\b[23]D\b|6-DoF|ROS 2|C\+\+17|Bernoulli\(\d?\.\d+\)|"
                    r"\d+ seeds of \d+|\d+th-percentile|O\(1\)|depth \d+|p\{\d?\.\d+\\linewidth\}|\d-on|\d+-window run",
      "name of a scenario, data type, standard or layout width"),
-    (r"sections/", r"\(20\d\d\)|Two 2026 works|11 October 2026|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
+    (r"sections/", r"\(20\d\d\)|Two 2026 works|19 October 2026|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
      "year, date, version or licence identifier (versions are also checked against the records)"),
     (r"sections/appendix", r"\\begin\{table\}\[H\]\s*\\centering\s*\\caption\{Symbols used.*?\\end\{table\}",
      "notation table"),
@@ -1176,6 +1269,10 @@ if len(TARGETS) > 1:
         check("structural numerals equal the committed list (structural_numerals.tsv)", True)
 
 print(f"PASS {len(passes)}")
+if deferred:
+    print(f"DEFERRED {len(deferred)} code-state checks of the companion {COMPANION} (it is re-synced at the end of P5):")
+    for d_ in deferred:
+        print("  " + d_)
 for k_, v_ in sorted(COVER.items()):
     print(f"COVERAGE {v_:4d}  {k_}")
 if "--math" in sys.argv:

@@ -2,15 +2,41 @@
 // Header-only: metric computation, CSV writing, deterministic RNG.
 #pragma once
 #include <cstdint>
+#include <cstdio>
 #include <fstream>
 #include <set>
 #include <string>
 #include <vector>
+#include "strata_core/layered_map.hpp"
 #include "strata_core/types.hpp"
 
 namespace eval {
 
 using strata_core::CellId;
+
+// Evidence-model arm of a harness executable. With no argument an executable runs the
+// v0.1 arithmetic ("legacy") and writes the committed results/*.csv byte for byte. With the
+// argument "sprt" it runs the same scenes with evidence_model = Sprt (the shipped defaults
+// m0, m1, alpha, beta of LayeredMapParams unless the experiment sweeps them) and writes
+// results/<name>_sprt.csv, so no legacy file is ever overwritten.
+inline bool& sprtArm() { static bool v = false; return v; }
+// Returns false (after printing a usage line) when an argument is neither absent nor "sprt".
+inline bool parseArm(int argc, char** argv) {
+  if (argc == 1) return true;
+  if (argc == 2 && std::string(argv[1]) == "sprt") { sprtArm() = true; return true; }
+  std::fprintf(stderr, "usage: %s [sprt]\n", argv[0]);
+  return false;
+}
+// "results/e1_x.csv" -> "results/e1_x_sprt.csv" in the sprt arm, unchanged otherwise.
+inline std::string armPath(const std::string& legacy_path) {
+  if (!sprtArm()) return legacy_path;
+  const std::string ext = ".csv";
+  return legacy_path.substr(0, legacy_path.size() - ext.size()) + "_sprt" + ext;
+}
+// Evidence model of the arm; the v0.1 fields a caller sets afterwards are ignored by Sprt.
+inline strata_core::EvidenceModel armModel() {
+  return sprtArm() ? strata_core::EvidenceModel::Sprt : strata_core::EvidenceModel::Legacy;
+}
 
 // Fixed master seed for every stochastic experiment (recorded in CSV + summary).
 constexpr unsigned kSeed = 12345u;

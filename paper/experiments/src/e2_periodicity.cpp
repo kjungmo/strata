@@ -33,7 +33,7 @@ constexpr int kPeriod = 8;
 constexpr int kHarmonics = 3;
 
 LayeredMapParams params() {
-  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1;
   p.l_hit = 1.0;
   p.l_miss = -1.0;
@@ -103,11 +103,14 @@ std::vector<Cell> makeCells() {
 
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+  if (!eval::parseArm(argc, argv)) return 2;
   const auto cells = makeCells();
 
   // (b) amplitude vs observation length, plus final classification per cell.
-  eval::Csv amp("results/e2_amplitude_vs_length.csv");
+  // The amplitude of a PeriodicityModel does not depend on the evidence model: the sprt arm
+  // does not write a second copy of this file.
+  eval::Csv amp(eval::sprtArm() ? "/dev/null" : "results/e2_amplitude_vs_length.csv");
   amp.header("cell,gt_periodic,obs_length,amplitude,periodic_prob");
   amp.row("#seed", eval::kSeed, "period_windows", kPeriod, "");
 
@@ -122,7 +125,7 @@ int main() {
   }
 
   // (a) final classification via the real LayeredMap pipeline, at full length.
-  eval::Csv cls("results/e2_classification.csv");
+  eval::Csv cls(eval::armPath("results/e2_classification.csv"));
   // ref_amplitude is from the non-pruning mirror model; the real pipeline may
   // prune a low-duty cell before its FreMEn evidence matures, so a cell can show
   // ref_amplitude >= a_min yet still be classified non-Periodic (see door_p8_2on6off).
@@ -160,7 +163,7 @@ int main() {
   const double tpr = gt_pos ? static_cast<double>(tp) / gt_pos : 0.0;
   const double fpr = gt_neg ? static_cast<double>(fp) / gt_neg : 0.0;
 
-  eval::Csv sum("results/e2_summary.csv");
+  eval::Csv sum(eval::armPath("results/e2_summary.csv"));
   sum.header("metric,value,note");
   sum.row("periodic_TPR", tpr, tp);
   sum.row("periodic_FPR", fpr, fp);
@@ -169,7 +172,7 @@ int main() {
 
   // (c) read-out length sweep: a fresh real LayeredMap per length L, classified
   // after exactly L windows. The single 64-window read-out above is one point of it.
-  eval::Csv sw("results/e2_rates_vs_length.csv");
+  eval::Csv sw(eval::armPath("results/e2_rates_vs_length.csv"));
   // ref_tp / ref_fp: the same predicate evaluated on the non-pruning mirror model
   // (full history since window 1), to separate the test from the effect of pruning.
   sw.header("obs_length,tp,fp,gt_periodic,gt_nonperiodic,tpr,fpr,false_positives,ref_tp,ref_fp,ref_false_positives");

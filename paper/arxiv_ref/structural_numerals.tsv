@@ -351,7 +351,7 @@ sections/4_experiments.tex	2	 nominal extents 100^2, 250^	scenario size or grid 
 sections/4_experiments.tex	500	al extents 100^2, 250^2 and 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
 sections/4_experiments.tex	2	xtents 100^2, 250^2 and 500^	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
 sections/4_experiments.tex	1.0	250^2 and 500^2, resolution 	scenario size or grid restated by hand from the harness source named in the sentence (not parsed)
-sections/4_experiments.tex	3	tic layer (E1).} With \Nmin=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4_experiments.tex	3	clutter density. With \Nmin=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4_experiments.tex	39	then holds at 1.0 through t=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4_experiments.tex	24	 at the shipped defaults (T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4_experiments.tex	2	e shipped defaults (T=24, H=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -474,8 +474,9 @@ sections/6_conclusion.tex	50	precision gap, detection of 	duty cycle, share or c
 sections/6_conclusion.tex	0.5	ncy (1960 of 2000 Bernoulli(	name of a scenario, data type, standard or layout width
 sections/appendix.tex	2.0	s released under the Apache-	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	2	 license at and targets ROS 	name of a scenario, data type, standard or layout width
-sections/appendix.tex	11	e of commit \code{312b09c} (	year, date, version or licence identifier (versions are also checked against the records)
-sections/appendix.tex	2026	 \code{312b09c} (11 October 	year, date, version or licence identifier (versions are also checked against the records)
+sections/appendix.tex	19	e of commit \code{a7559d4} (	year, date, version or licence identifier (versions are also checked against the records)
+sections/appendix.tex	2026	 \code{a7559d4} (19 October 	year, date, version or licence identifier (versions are also checked against the records)
+sections/appendix.tex	9.4	lers with which it did (GCC 	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	64	 with libstdc++, on one x86-	name of a scenario, data type, standard or layout width
 sections/appendix.tex	0.1	ve by one window (at \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/appendix.tex	2	[H] \centering \caption{ROS 	name of a scenario, data type, standard or layout width
@@ -496,4 +497,4 @@ figures/e1_f1.tex	sha256:b03b1c6d600441fb	(everything outside the caption)	plot 
 figures/e2_amplitude.tex	sha256:cf3f0a9de65dadcd	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
 figures/e2_fpr.tex	sha256:1111a31af764a1d1	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
 figures/e3_flicker.tex	sha256:df8c1280ee71a155	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
-figures/overview.tex	sha256:4a73a2a95845cbb0	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
+figures/overview.tex	sha256:c8b2589563888e8f	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)

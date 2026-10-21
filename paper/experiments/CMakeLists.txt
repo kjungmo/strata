@@ -19,5 +19,8 @@ foreach(exp e0_calibration e1_static_quality e2_periodicity e3_sensitivity e4_th
 endforeach()
 
 # Phase 1 real-data probe and its tests (needs no data to build; run with reproduce_p1.sh).
+option(STRATA_BUILD_REALDATA "Build the real-data tools and their tests (need zlib; not used by E0-E7)" ON)
 enable_testing()
-add_subdirectory(realdata)
+if(STRATA_BUILD_REALDATA)
+  add_subdirectory(realdata)
+endif()

@@ -31,7 +31,7 @@ constexpr int kRepeats = 15;    // timed runs per config (odd: the median is one
 constexpr int kBytesPerCell = 56;  // evidence 24 + ~32 node, periodicity off
 
 LayeredMapParams params() {
-  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1;
   p.l_hit = 0.85;
   p.l_miss = -0.4;
@@ -128,10 +128,28 @@ double median(std::vector<double> v) {
 }  // namespace
 
 // Usage: e4_throughput [output.csv [per_repeat.csv]]   (default results/e4_throughput.csv)
+//        e4_throughput sprt                            (cell counts only, results/e4_cells_sprt.csv)
+// The sprt arm runs each configuration once with evidence_model = Sprt and writes only the
+// deterministic columns (no timing): the timing of the sequential test is recorded later,
+// on a quiet host, with measure_e4.sh, and is not part of this file.
 // The wall-clock columns differ on every run and machine; the cell counts and byte
 // estimates do not. run_all.sh therefore writes a local file and compares its
 // deterministic columns with the committed reference (check_e4_local.py).
 int main(int argc, char** argv) {
+  if (argc == 2 && std::string(argv[1]) == "sprt") {
+    eval::sprtArm() = true;
+    eval::Csv cells("results/e4_cells_sprt.csv");
+    cells.header("backend,size_label,extent,hits_per_window,windows,final_cells,sum_cells,bytes_per_cell,est_bytes");
+    cells.row("#seed", eval::kSeed, "", "", "", "", "", "", "");
+    for (int ext : {100, 250, 500})
+      for (const char* backend : {"grid2d", "voxel3d"}) {
+        const Run r = std::string(backend) == "grid2d" ? runGrid(ext) : runVoxel(ext);
+        cells.row(backend, std::to_string(ext) + "x" + std::to_string(ext), ext, kHits, kWindows,
+                  r.final_cells, r.sum_cells, kBytesPerCell, (long long)r.final_cells * kBytesPerCell);
+      }
+    std::cout << "E4 (sprt) cell counts -> results/e4_cells_sprt.csv\n";
+    return cells.ok() ? 0 : 1;
+  }
   const std::string out = argc > 1 ? argv[1] : "results/e4_throughput.csv";
   eval::Csv csv(out);
   std::ofstream raw;

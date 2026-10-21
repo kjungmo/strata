@@ -26,7 +26,7 @@ constexpr int kWindows = 40;
 constexpr double kVoxel = 1.0;
 
 LayeredMapParams params(bool periodicity) {
-  LayeredMapParams p; p.evidence_model = EvidenceModel::Legacy;   // the committed results are the v0.1 arithmetic
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1;
   p.l_hit = 0.85;
   p.l_miss = -0.4;
@@ -63,7 +63,7 @@ int densMovers(int d) { return d == 0 ? 5 : (d == 1 ? 25 : 100); }
 
 }  // namespace
 
-int runE1(bool periodicity, const char* path) {
+int runE1(bool periodicity, const std::string& path) {
   eval::Csv csv(path);
   csv.header(
       "backend,density,n_movers,window,gt_static,pred_static,tp,precision,recall,"
@@ -136,8 +136,9 @@ int runE1(bool periodicity, const char* path) {
   return csv.ok() ? 0 : 1;
 }
 
-int main() {
-  int rc = runE1(false, "results/e1_static_quality.csv");
-  rc |= runE1(true, "results/e1_static_quality_periodic.csv");
+int main(int argc, char** argv) {
+  if (!eval::parseArm(argc, argv)) return 2;
+  int rc = runE1(false, eval::armPath("results/e1_static_quality.csv"));
+  rc |= runE1(true, eval::armPath("results/e1_static_quality_periodic.csv"));
   return rc;
 }

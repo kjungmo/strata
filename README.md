@@ -45,8 +45,10 @@ fade. Sensor poses are full 6-DoF.
   To get the v0.1 behaviour, set `evidence_model: "legacy"` (the nine v0.1 keys `l_hit` to
   `prune_prob` are read only then). **C++ library users:** rebuild against 0.2.0 (`MapBackend`, `LayeredMapParams` and `LayeredMap` change layout); `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, so set `evidence_model = EvidenceModel::Legacy` explicitly if you set the v0.1 keys, or they are ignored; and handle the new `CellClass::Intermittent` in your `switch` ([`SPEC.md` §5](SPEC.md)). The defaults `m0 = 0.20`, `m1 = 0.70` were measured on one 2D
   dataset and are provisional until the calibration is frozen
-  (`paper/experiments/realdata/PREREG.md`). The paper (`paper/arxiv_ref`) still describes
-  `312b09c`: its text and numbers are not updated yet.
+  (`paper/experiments/realdata/PREREG.md`). The paper (`paper/arxiv_ref`) is pinned to
+  `a7559d4` (the code of this release); its experiment sections still report the legacy
+  arm and are being rewritten around the sequential test. The sprt arm of E0–E6 and E7
+  are committed under `paper/experiments/results/*_sprt.csv` and `e7_*.csv`.
 - **2026-10** — Paper and repository audited for submission: the manuscript
   (`paper/arxiv_ref`, PDF `paper/strata_paper.pdf`) describes the code of commit
   `312b09c`. Since the first release the periodicity test was corrected (centred
@@ -133,8 +135,8 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 The manuscript is a preprint and has not been peer reviewed. It documents the
 architecture, the persistence and periodicity model, and the seeded synthetic
 characterization suite (calibration E0, experiments E1–E6), and it describes the
-code of commit `312b09c`; the revision that carries the paper and its
-reproduction scripts is the tag `paper-v1`. If you use `strata` in academic work, please cite:
+code of commit `a7559d4`; the first release of the manuscript is the tag `paper-v1`
+(commit `312b09c`). If you use `strata` in academic work, please cite:
 
 ```bibtex
 @misc{kang2026strata,
@@ -221,12 +223,13 @@ mechanism rather than a distributional performance claim; E5 and E6 are multi-se
 <tr>
 <td width="50%" valign="top">
 
-<img src="docs/assets/fig_e1_f1_vs_time.png" width="100%" alt="E1: static-set F1 versus window index, one panel for grid2d and one for voxel3d, one line per clutter density (low, medium, high). Both backends jump to F1 near 1.0 within three windows."/>
+<img src="docs/assets/fig_e1_f1_vs_time.png" width="100%" alt="E1: static-set F1 versus window index, one panel for grid2d and one for voxel3d, one line per clutter density (low, medium, high). Under the legacy (v0.1) evidence rule both backends jump to F1 near 1.0 within three windows."/>
 
 **E1 — static-map quality.** (E0–E6 ran with `evidence_model = legacy`, the v0.1
 arithmetic, which the harness names explicitly; with the 0.2.0 default the same wall
-graduates at window 4.) Both backends graduate the 161-cell static wall by
-**window 3** and hold **recall 1.0** thereafter. The only map-quality divergence
+graduates at window 4: `results/e1_static_quality_sprt.csv`, recall 1.0 from window 4
+and no false Static cell in any of the six runs.) Under the legacy rule both backends
+graduate the 161-cell static wall by **window 3** and hold **recall 1.0** thereafter. The only map-quality divergence
 is a clutter-induced static-precision gap of **0.9253 (grid2d) vs. 0.9758
 (voxel3d)** at 100 movers/window — and it arises in the backends' native
 sampling, not in the shared classifier.

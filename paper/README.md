@@ -27,15 +27,35 @@ authoritative. Numbers are authoritative only in `experiments/results/*.csv`.
 ## Code pin and tag
 
 The engine (`strata_core/`), the node (`strata/`) and the check scripts
-(`scripts/`) that the manuscript describes are those of commit `312b09c`
-(2026-10-11). The harness, experiment E6, the results and the manuscript were
-completed after that commit without changing those three directories. The revision
-that carries the paper and its reproduction scripts is the tag `paper-v1`.
+(`scripts/`) that the manuscript describes are those of commit `a7559d4`
+(2026-10-19; `strata_core` 0.2.0, with `evidence_model = legacy | sprt`). The first
+release of the manuscript pinned commit `312b09c` (2026-10-11, the v0.1 evidence
+rule, tag `paper-v1`); the pin moved once, on purpose, in the v2 work (phase P4a).
+The harness, the results and the manuscript were completed after `a7559d4` without
+changing those three directories.
 
 `experiments/number_guard.py` compares the tree ids of the three directories with
-`312b09c`. **A change to any of them fails the CI job `paper`** until the pin
+`a7559d4`. **A change to any of them fails the CI job `paper`** until the pin
 (`PIN`, `PIN_TREES` in the guard, and the pin sentence of the paper) is moved on
 purpose.
+
+The long-form companions (`strata_paper.md`, `strata_paper_KR.md`) still describe the
+code of `312b09c`. They are re-synced at the end of the v2 work; until then the guard
+lists their code-state checks (pin, tree ids, test counts, standard-library record,
+reproduction log) as `DEFERRED` and still checks their numbers against the result files.
+
+## Two arms: legacy and sprt
+
+Every seeded executable runs twice. With no argument it is the **legacy** arm: the v0.1
+arithmetic with the explicit parameters of the first release (`evidence_model = legacy`);
+it writes the committed `results/*.csv` byte for byte, which
+`experiments/check_legacy_equivalence.sh` checks. With the argument `sprt` it is the
+**sprt** arm: the same scenes with the sequential test at the shipped defaults
+(`m0` 0.20, `m1` 0.70, `alpha = beta = 0.01`); it writes new files `results/*_sprt.csv`
+and never overwrites a legacy file. E3 sweeps other things in the sprt arm because the
+v0.1 knobs (`graduate_prob`, `demote_prob`, `survival_decay`) do not exist there. E7
+(operating characteristic and autocorrelation of the test) and the E4 cell counts of the
+sprt arm (`results/e4_cells_sprt.csv`; no timing) exist only for the sequential test.
 
 ## Reproduce
 
@@ -49,8 +69,8 @@ python3 paper/experiments/number_guard.py           # every numeral against the 
 bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs matplotlib and numpy)
 ```
 
-- E0–E3, E5 and E6 are seeded and rewrite `experiments/results/*.csv` byte for
-  byte with GCC and libstdc++. `bash paper/experiments/check_reproduction.sh` runs
+- E0–E3, E5 and E6 (both arms) and E7 are seeded and rewrite `experiments/results/*.csv`
+  byte for byte with GCC and libstdc++. `bash paper/experiments/check_reproduction.sh` runs
   the harness from a clean checkout and checks exactly that;
   `experiments/reproduction_log.txt` records the compilers it was run with.
 - The result depends on the C++ standard library: with clang and libc++ four of the

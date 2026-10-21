@@ -10,7 +10,7 @@ Tables `tables/*.tex`, `tables/e4_text.tex` (the E4 sentences), `figures/data/*.
 
 1. regenerates every generated file and compares it with the committed one;
 2. recomputes the quoted results from the CSVs and the code and requires the resulting phrases in the text;
-3. compares the git tree ids of `strata_core/`, `strata/` and `scripts/` with those of commit `312b09c`, and fails on uncommitted
+3. compares the git tree ids of `strata_core/`, `strata/` and `scripts/` with those of commit `a7559d4`, and fails on uncommitted
    changes in them;
 4. locates **every numeral** of the hand-written sources (`sections/*.tex`, captions of the hand-written figures) and requires it
    to be tied to a recomputed value or to be listed as structural. Counts at the last run:
@@ -40,7 +40,7 @@ Limits, stated plainly:
   `paper/experiments/mutation_report.txt`.
 - The Markdown companion is checked for the presence of the recomputed phrases only (step 2), not numeral by numeral.
 
-**Code pin.** The paper describes `strata_core/`, `strata/` and `scripts/` at commit `312b09c`. E0–E3, E5 and E6 reproduce their
+**Code pin.** The paper is pinned to `strata_core/`, `strata/` and `scripts/` at commit `a7559d4` (first pin: `312b09c`, tag `paper-v1`). E0–E3, E5 and E6 reproduce their
 committed CSVs byte for byte (`check_reproduction.sh`; compilers in `paper/experiments/reproduction_log.txt`). Under libc++ four
 files differ (`check_stdlib.sh`, record in `results/stdlib_libcxx/`).
 
@@ -87,7 +87,7 @@ byte-identical; the E2 sweep and E3 periodic were rerun; E4 was not rerun.
 | PGM shades 254 / 100 / 0 / 205, thresholds 0.65 / 0.196; 160,000 cells = 400 x 400 | Table 13 | `strata/include/strata/map_writer.hpp`, `strata/params/grid2d.yaml` (guard-checked) |
 | Five `MapBackend` methods | §3.5 | `strata_core/include/strata_core/map_backend.hpp` (guard-checked) |
 | Node parameters: `window_mode` time (code default scans), `window_period_s` 1.0, `expected_scan_rate_hz` 0, `rate_warn_drop_fraction` 0.05, `input_timeout_s` 5, `startup_timeout_s` 30 | Table 10 caption | `strata/params/*.yaml`, `mapping_node.cpp` (guard-checked) |
-| Pin `312b09c`; first release `a82f935` | Appendix A, Remark 1 | git tree ids in `number_guard.py` (`PIN_TREES`); `git log` |
+| Pin `a7559d4` (first pin `312b09c`); first release `a82f935` | Appendix A, Remark 1 | git tree ids in `number_guard.py` (`PIN_TREES`); `git log` |
 | Per-experiment parameter deviations | Table 11 | `paper/experiments/src/e{1..4}_*.cpp` `params()` |
 | QoS / topics / service | Table 12 | `strata/src/mapping_node.cpp` |
 | Apache-2.0, ubuntu-latest CI | Appendix A | `LICENSE`, `.github/workflows/ci.yml` |
@@ -121,7 +121,8 @@ byte-identical; the E2 sweep and E3 periodic were rerun; E4 was not rerun.
 | Claim | Field |
 |---|---|
 | 161-cell wall | `gt_static` (all rows) |
-| recall 1.0 from t=2 (third window) through t=39 | `recall` by `window` |
+| recall 1.0 from t=2 (third window) through t=39, legacy rule | `recall` by `window` |
+| sprt arm: recall 1.0 from t=3 (derived fourth window), six runs, no false Static cell | `e1_static_quality_sprt.csv`, `e1_static_quality_periodic_sprt.csv` (guard-checked against the latency summed from the shipped defaults) |
 | final precision/F1 1.0000/1.0000 (low), 0.9938/0.9969 (med), 0.9253/0.9612 grid2d high, 0.9758/0.9877 voxel3d high | `precision`,`f1` at `window=39` |
 | first false static t=17 (grid2d) / t=25 (voxel3d) at high clutter; 174 / 165 predicted at t=39 | `pred_static` by `window` (backend, density=high) |
 | 5/25/100 movers, 40 windows | `n_movers`, max `window`+1 |
