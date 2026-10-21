@@ -33,8 +33,8 @@ if [ -n "${changed}" ]; then
   echo "${changed}" >&2
   exit 1
 fi
-# Hash of the seeded result files (every results/*.csv except E4's), in name order.
+# Hash of the seeded result files (every results/*.csv except E4's timing file, so the sprt files, E7 and the E4 cell counts of the sprt arm are in), in name order.
 HASH="$(ls results/*.csv | grep -v '/e4_throughput.csv$' | LC_ALL=C sort | xargs cat | sha256sum | cut -d' ' -f1)"
 E4NOTE="E4 cell counts equal"
 [ "${STRATA_SKIP_E4:-0}" = "1" ] && E4NOTE="E4 not run"
-echo "REPRODUCED $(date -u +%Y-%m-%d) | $("${CXX_BIN}" --version | head -1) | $(uname -sm) | strata_core tree $(git rev-parse HEAD:strata_core) | seeded results sha256 ${HASH}: E0-E3, E5 and E6 files byte-identical, ${E4NOTE}"
+echo "REPRODUCED $(date -u +%Y-%m-%d) | $("${CXX_BIN}" --version | head -1) | $(uname -sm) | strata_core tree $(git rev-parse HEAD:strata_core) | seeded results sha256 ${HASH}: E0-E3, E5 and E6 files (legacy and sprt arm) and E7 files byte-identical, ${E4NOTE}"
