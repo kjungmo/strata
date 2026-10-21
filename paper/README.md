@@ -64,7 +64,7 @@ From the repository root, with a C++17 compiler, CMake, Eigen3 and GoogleTest
 (no ROS needed):
 
 ```bash
-bash paper/experiments/run_all.sh                   # build, unit tests, E0, E5, E1–E3, E6, E4 cell counts
+bash paper/experiments/run_all.sh                   # build, unit tests, E0, E5, E1–E3, E6, E7, E4 cell counts
 python3 paper/arxiv_ref/tools/make_artifacts.py     # tables, plot data, the E4 sentences and (via make_v2_artifacts.py) the number macros of the manuscript
 python3 paper/experiments/number_guard.py           # every numeral against the CSVs and the code
 bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs matplotlib and numpy)
@@ -74,10 +74,13 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   byte for byte with GCC and libstdc++. `bash paper/experiments/check_reproduction.sh` runs
   the harness from a clean checkout and checks exactly that;
   `experiments/reproduction_log.txt` records the compilers it was run with.
-- The result depends on the C++ standard library: with clang and libc++ four of the
-  19 seeded files differ (`experiments/check_stdlib.sh`, record in
-  `results/stdlib_libcxx/`), because `std::uniform_int_distribution` is
-  implementation-defined.
+- The result depends on the C++ standard library: with clang and libc++ seven of the
+  39 seeded files differ (`experiments/check_stdlib.sh`, record in
+  `results/stdlib_libcxx/summary.txt`): four of the 19 files of the legacy arm (the two
+  E1 files, the E0 door file and the E6 confusion file) and three of the 20 files of the
+  sprt arm and E7 (the E0 door file, the E6 confusion file and the E4 cell counts
+  `e4_cells_sprt.csv`). The cause is that the standard distributions (for example
+  `std::uniform_int_distribution`) are implementation-defined; E7 draws from `std::mt19937_64` directly and is identical.
 - E4 reads the wall clock. `run_all.sh` only checks its cell counts
   (`experiments/check_e4_local.py`). Timings are recorded with
   `bash paper/experiments/measure_e4.sh` on a quiet host: the script refuses to
@@ -92,6 +95,19 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   earlier engines (comparison columns of the manuscript's corrections table).
 - `deploy_checks/jazzy_map_server/` holds one manual check that Jazzy's
   `nav2_map_server` loads a saved pair (not in CI).
+
+## Not under the number guard (re-sync list for phase P5)
+
+Three files quote numbers or describe the code, and the guard does not cover them fully.
+They are re-synced at the end of P5, together with the companions:
+
+- `strata_paper.md` and `strata_paper_KR.md`: the guard checks their numbers against the
+  result files, but they still describe the first pin, `312b09c`, and the legacy arm.
+- The top-level `README.md`: its numbers (E1 to E6 in the legacy arm, `1960` and `1120`
+  of 2000 in E6, the news entries) are typed by hand and no check reads them.
+  Legacy numbers in it are labelled legacy, the pair is called provisional, the 3D pair
+  is called not calibrated, and Periodic is called synthetic-only. P5 either puts the
+  file under `number_guard.py` or re-reads it against the result files by hand.
 
 ## Build the PDF
 

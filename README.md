@@ -46,12 +46,16 @@ fade. Sensor poses are full 6-DoF.
   `prune_prob` are read only then). **C++ library users:** rebuild against 0.2.0 (`MapBackend`, `LayeredMapParams` and `LayeredMap` change layout); `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, so set `evidence_model = EvidenceModel::Legacy` explicitly if you set the v0.1 keys, or they are ignored; and handle the new `CellClass::Intermittent` in your `switch` ([`SPEC.md` §5](SPEC.md)). The defaults `m0 = 0.20`, `m1 = 0.70` were measured on one 2D
   dataset and are provisional until the calibration is frozen
   (`paper/experiments/realdata/PREREG.md`). The paper (`paper/arxiv_ref`) is pinned to
-  `a7559d4` (the code of this release); its experiment sections still report the legacy
-  arm and are being rewritten around the sequential test. The sprt arm of E0–E6 and E7
-  are committed under `paper/experiments/results/*_sprt.csv` and `e7_*.csv`.
-- **2026-10** — Paper and repository audited for submission: the manuscript
-  (`paper/arxiv_ref`, PDF `paper/strata_paper.pdf`) describes the code of commit
-  `312b09c`. Since the first release the periodicity test was corrected (centred
+  `a7559d4` (the code of this release). It reports the synthetic suite in two arms (the
+  legacy v0.1 arm and the sprt arm, with E7 for the sequential test), a calibration of the
+  pair on real data that did not freeze (the 2D pair is provisional, the 3D pair is not
+  calibrated), and an evaluation of seven evidence rules on four public datasets that
+  picks no winner. The real-data numbers come from an offline harness with reference poses,
+  not from the ROS node, and Periodic is validated on synthetic streams only. The sprt arm
+  of E0–E6 and E7 are committed under `paper/experiments/results/*_sprt.csv` and `e7_*.csv`.
+- **2026-10** — Paper and repository audited for submission: the first version of the
+  manuscript (tag `paper-v1`) described the code of commit `312b09c`; the manuscript now
+  describes `a7559d4` (see the entry above). Since the first release the periodicity test was corrected (centred
   amplitude, calibrated significance, level spent over repeated read-outs) and
   the node gained time-based windows, input diagnostics and a verified map save.
   The package version string was still `0.1.0` then.
@@ -133,8 +137,10 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 > · [long-form Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
 
 The manuscript is a preprint and has not been peer reviewed. It documents the
-architecture, the persistence and periodicity model, and the seeded synthetic
-characterization suite (calibration E0, experiments E1–E6), and it describes the
+architecture, the persistence and periodicity model, the seeded synthetic
+characterization suite (calibration E0, experiments E1–E7, in a legacy and a sprt arm),
+a calibration of the shipped pair on real LiDAR data (not frozen) and a held-out
+evaluation of seven evidence rules on four public datasets, and it describes the
 code of commit `a7559d4`; the first release of the manuscript is the tag `paper-v1`
 (commit `312b09c`). If you use `strata` in academic work, please cite:
 
@@ -211,13 +217,20 @@ paper audit of 2026-10-12. Build and CI cover ROS 2 Humble only.
 
 ## 📊 Evaluation
 
-**Scope: this is a seeded synthetic characterization suite, not a field
-dataset.** Every number below comes from a deterministic `strata_core` harness
-— no real sensor, no robot motion, no field deployment enters any result, and
-no external baseline is run. E1–E4 are single-seed point estimates (seed
-`12345`) with no cross-seed variance characterized, so they illustrate a
-mechanism rather than a distributional performance claim; E5 and E6 are multi-seed.
-`strata` itself performs no SLAM.
+**Scope: the numbers below are a seeded synthetic characterization suite (the
+legacy v0.1 arm, E0–E6), not a field dataset.** Every one comes from a deterministic
+`strata_core` harness: no real sensor, no robot motion and no field deployment enters
+it, and no external baseline is run. The 0.2.0 paper adds the sprt arm and E7 on the same
+harness, and a real-data part: a calibration of the pair on LILocBench, Oxford Spires
+and the KTH benchmark (pre-registered, amended after its first measurement, not frozen;
+the 2D pair is provisional and the 3D pair is not calibrated) and a held-out evaluation
+of seven evidence rules on LILocBench, Oxford Spires, the KTH benchmark and Boreas.
+Those runs use an offline harness with reference poses, not the ROS node, and pick no
+winner; the OctoMap and ELite rows apply their increments once per touched window and
+are not the published methods. Periodic is validated on synthetic streams only. E1–E4
+are single-seed point estimates (seed `12345`) with no cross-seed variance
+characterized, so they illustrate a mechanism rather than a distributional performance
+claim; E5 and E6 are multi-seed. `strata` itself performs no SLAM.
 
 <table>
 <tr>
@@ -261,13 +274,18 @@ repeated read-outs: over 1024-window runs on held-out seeds (E5), at most
 clutter, so slowly switching (temporally correlated) clutter is labelled
 Periodic at the shipped period (1908 of 2000 cells in E5).
 
-**Known defect of the default parameters.** The dominant labelling error is a
-false Static label. With the shipped defaults, 1960 of 2000 random clutter cells
-that are occupied in half of their windows end Static (E6): the graduation rule
-labels a cell Static when it is occupied in more than roughly 35 % of the windows
-in which it is observed, and it cannot tell such clutter from a noisy wall of
-similar occupancy. `l_miss` and `survival_decay` move that threshold (paper,
-the remark "Which occupancy rates graduate" and the E6 table); the defaults were left unchanged.
+**Known defect of the v0.1 parameters, and what 0.2.0 does about it.** The dominant
+labelling error is a false Static label. With the v0.1 defaults (the legacy arm, not
+the 0.2.0 default), 1960 of 2000 random clutter cells that are occupied in half of
+their windows end Static after 64 windows (E6, `results/e6_confusion.csv`): the
+graduation rule labels a cell Static when it is occupied in more than roughly 35 % of
+the windows in which it is observed, and it cannot tell such clutter from a noisy wall
+of similar occupancy. `l_miss` and `survival_decay` move that threshold (paper, the
+remark "Which occupancy rates graduate" and the E6 table). The 0.2.0 default is the
+sequential test, and 1120 of the same 2000 cells end Static (`results/e6_confusion_sprt.csv`):
+a hit rate of 0.5 lies between `m0` and `m1`, where the test promises nothing. The pair
+`(0.20, 0.70)` is provisional (the calibration did not freeze) and is not calibrated
+for 3D.
 
 Full setup, all tables and the limitations are in the
 [paper](paper/strata_paper.pdf) §4–§5. Reproduce end-to-end with

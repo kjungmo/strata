@@ -5,6 +5,7 @@ figures must not reappear. Run from anywhere: python3 paper/experiments/number_g
 Exits nonzero on any failure."""
 import csv
 import hashlib
+import json
 import math
 import re
 import sys
@@ -1048,7 +1049,7 @@ def guard_rules():
             runs += [str(a), str(b)]
             a = b = n
     R("4_experiments", r"at (\d+) of (\d+) lengths \(n=(\d+)\u2013(\d+), (\d+)\u2013(\d+) and (\d+)\u2013(\d+)\)", str(len(ref_fp)), str(len(tp)), *runs)
-    R("4_experiments", r"H\\,B=0.056<([\d.]+),", "0.1")
+    R("4_experiments", r"H\\,\\Theta=0.056<([\d.]+),", "0.1")
     s64 = lambda sub_: {r["metric"]: r for r in rows(sub_ + "e2_summary.csv")}["periodic_FPR"]["note"]
     R("4_experiments", r"false-positive rate of (\d)/(\d); the two earliest engines scored (\d)/(\d) \(v0\.1\.0\) and (\d)/(\d) \(centred only\)",
       s64(""), "5", s64("pre_fix_2026-09-28/"), "5", s64("pre_calibration_2026-09-28/"), "5")
@@ -1310,7 +1311,13 @@ def guard_v2():
     derived = {"PtRatioLe": "quotient of two printed rates", "PtRatioAll": "quotient of two printed rates",
                "PtVetoSpLo": "quotient of printed veto-on and veto-off rates", "PtVetoSpHi": "quotient of printed veto-on and veto-off rates",
                "PtLilLeN": "number of clutter cells at or below m0 (field n of the JSON; the report prints the rate)", "PtKthIdCount": "count of the finished policy-all conditions (summary: 5 + 4)", "PtFailAlloc": "count of failed runs whose log holds std::bad_alloc",
-               "PtFailAll": "count of failed runs (summary: 7 + 7)"}
+               "PtFailAll": "count of failed runs (summary: 7 + 7)",
+               "PtProbeCells": "cells of the Amendment 1 memory probe of PREREG_P3.md (checked against that table below)",
+               "PtProbeOff": "peak memory of that probe with the veto off (checked below)", "PtProbeOn": "peak memory of that probe with the veto on (checked below)",
+               "PtWallEverSprt": "count from the JSON of the SPRT arm (wall-run cells with a first Static window; checked below)",
+               "PtWallEndSprt": "count from the JSON of the SPRT arm (wall-run cells Static at the end; checked below)",
+               "PtWallLostSprt": "difference of two JSON counts (checked below)", "PtWallNotKSprt": "count from the JSON of the SPRT arm (checked below)",
+               "PtWallNeverSprt": "difference of two JSON counts (checked below)"}
     for k, (v, src) in sorted(mac.items()):
         if not k.startswith("Pt") or k in derived:
             continue
@@ -1318,6 +1325,21 @@ def guard_v2():
         check(f"P3 macro {k} = {v} is a number of P3_REPORT.md or of its summary", ok, src)
     for k, why in derived.items():
         check(f"P3 macro {k} is {why}", k in mac)
+    # memory probe of Amendment 1 of PREREG_P3.md: the table row is the source of the three macros
+    pre3 = (HERE / "realdata" / "PREREG_P3.md").read_text()
+    for on_off, name in (("off", "PtProbeOff"), ("on", "PtProbeOn")):
+        mrow = re.search(r"\| 3 to 50 m \| 0\.2 m \| " + on_off + r" \| ([\d,]+) \| ([\d,]+) MB \|", pre3)
+        check(f"memory probe: {name} and PtProbeCells are the 3 to 50 m, 0.2 m, veto {on_off} row of PREREG_P3.md Amendment 1",
+              mrow is not None and mrow.group(2).replace(",", "") == mac[name][0] and mrow.group(1).replace(",", "") == mac["PtProbeCells"][0])
+    check("memory probe: veto on needs more than five times the memory of veto off (the text says 'more than five times')",
+          float(mac["PtProbeOn"][0]) / float(mac["PtProbeOff"][0]) > 5)
+    # wall-run counts of the SPRT arm, recomputed from the JSON: ever Static, Static at the end, lost, never, not Static at the end
+    jw = json.loads((P3D / "lil_lt_changes_dynamics_0_sprt_p1.json").read_text())
+    ever, endk = jw["wall_run_windows_to_first_static"]["n"], jw["wall_runs_static"]["k"]
+    nn, kn = jw["wall_runs_not_static"]["n"], jw["wall_runs_not_static"]["k"]
+    check("wall-run counts of SPRT (0.20, 0.70): ever Static, Static at the end, lost = ever - end, never = n - ever, not Static = lost + never",
+          (str(ever), str(endk), str(ever - endk), str(kn), str(nn - ever)) == (mac["PtWallEverSprt"][0], mac["PtWallEndSprt"][0], mac["PtWallLostSprt"][0], mac["PtWallNotKSprt"][0], mac["PtWallNeverSprt"][0])
+          and kn == (ever - endk) + (nn - ever) and jw["false_reject_on_wall_runs"]["k"] == 0)
     check("PtFailAll = 7 + 7 failed runs, all std::bad_alloc", (mac["PtFailAll"][0], mac["PtFailAlloc"][0], mac["PtFailSpires"][0], mac["PtFailKth"][0]) == ("14", "14", "7", "7"))
     # the headline statements of the summary, in words
     for needle in ("The nominal bound `alpha = 0.01` is per history under independent windows", "No claim of the form \"the realised rate is below the bound\" is made",
@@ -1409,10 +1431,16 @@ def guard_v2():
                           ("independent windows", "independent windows"), ("ELite cited", "ELite"), ("MTD-Map cited", "MTD-Map"),
                           ("Periodic not validated on real data", "Periodic is not validated on real data"),
                           ("memory failures at 0.1 m with the veto on", "ran out of memory"), ("single pass KTH", "single pass"),
-                          ("Boreas has no truth", "no truth for structure or clutter"), ("no winner", "picks no winner")):
+                          ("Boreas has no truth", "no truth for structure or clutter"), ("no winner", "picks no winner"),
+                          ("demotion is CUSUM-like", "CUSUM-like"), ("bound is for the first test of a history", "first test"),
+                          ("zero-drift limit is -B/(A-B)", "-B/(A-B)"), ("pre-registration amended after the first calibration measurement", "amended after"),
+                          ("memory is unbounded over a lifelong run", "memory is unbounded"), ("offline harness, node not in the loop", "The ROS node was not in the loop")):
         in_paper(f"wording rail: {label}", needle)
     for label, needle in (("no 'below the bound' claim", "is below the bound"), ("no 'within the bound' claim", "is within the bound"),
-                          ("no frozen claim", "was frozen"), ("no winner word", "the best rule"), ("no 'outperform' claim", "outperform")):
+                          ("no frozen claim", "was frozen"), ("no winner word", "the best rule"), ("no 'outperform' claim", "outperform"),
+                          ("no SPRT-with-same-error-rates claim for demotion", "with the same error rates"), ("no 'ever graduates' claim for a history", " ever graduates"),
+                          ("no 'did not measure' memory claim", "we did not measure it"), ("no 'calibrated periodic' label", "calibrated periodic"),
+                          ("no 'times the bound' ratio", "times the bound")):
         check(f"forbidden wording absent: {label}", needle not in text, needle)
 
 

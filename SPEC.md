@@ -233,7 +233,7 @@ ceiling = A + 2 l_hit                 upper clamp (sprt_ceiling overrides it)
 test, and a reverse-test demotion restarts it at 0 with `l`; `T` is `period_windows`):
 
 ```
-l += l_hit (occ) or l_miss (free)        no multiplier: exp(l) is a supermartingale for every rate <= m0
+l += l_hit (occ) or l_miss (free)        no multiplier: exp(l) is a supermartingale for every rate <= m0, up to the first graduation or floor window
 l  = min(l, ceiling)
 n += 1
 if n >= T: l = max(l, B)                 no lower clamp before the periodicity gate
@@ -259,9 +259,12 @@ from 2.8 % to 3.5 % and halve the structure rejects (2.4 % to 1.3 %), at the pai
 (0.15, 0.65) on LILocBench with 0.67 s windows: rows 2 and 3 of
 `paper/experiments/realdata/results_p2/replay_advisory_table.txt` state this trade.
 
-**Demotion is a reverse test.** A graduated cell sits at the ceiling. It is demoted
+**Demotion is a one-sided reverse test.** A graduated cell sits at the ceiling. It is demoted
 when `l` falls by `A` from there: `ceil(A / |l_miss|)` all-miss windows (5 at the
-default pair, 6 at the pair (0.15, 0.65)). One miss never demotes. After a demotion by
+default pair, 6 at the pair (0.15, 0.65)). One miss never demotes. The test is CUSUM-like
+(the ceiling reflects the statistic from above). It is not the SPRT in the opposite direction
+and has no error bound per history; a wall at `m1` is demoted after a finite mean time that
+this repository does not bound. After a demotion by
 the reverse test the forward test restarts from `l = 0` and `n = 0`: the restarted test
 has the same no-clamp grace before `T`, and the same `n_max_undecided` read-out, as a new
 cell. A cell demoted after 100 hit windows is therefore not `Intermittent` until its new test
@@ -295,31 +298,36 @@ message of the evidence status and in the value of `evidence_calibration`). The 
 `PREREG.json`, the library defaults and both shipped YAMLs disagree.
 
 **What the error rates mean, and what they do not.**
-- *They hold for independent windows.* Under independent windows with hit rate at most
-  `m0`, a cell history graduates with probability at most `exp(-A) = alpha/(1-beta)`, about
-  `alpha` (0.0101 at the default pair; Ville's inequality), and the exact value for the default pair at `m0` is 0.0055
-  (`results/e7_oc.csv`). Real windows are autocorrelated (lag-1 0.2 to 0.5 on the
+- *They hold for independent windows, for the first test of a history.* Under independent
+  windows with hit rate at most `m0`, the first test of a cell history (from its creation to
+  its first graduation or its floor window, the first window with `n >= T` and `l <= B`)
+  graduates with probability at most `exp(-A) = alpha/(1-beta)`, about
+  `alpha` (0.0101 at the default pair; Ville's inequality). A restart after a demotion, and a
+  graduation after a floor window, are not covered. The exact value for the default pair at `m0`
+  is 0.0055 (`results/e7_oc.csv`, Periodic veto off). Real windows are autocorrelated (lag-1 0.2 to 0.5 on the
   calibration sequences). With lag-1 autocorrelation 0.23 at exactly `m0`, the
   per-history rate on the engine is 0.035, 3.5 times `alpha` (0.0056 at 0, 0.014 at 0.10,
   0.061 at 0.35; `results/e7_autocorr.csv`); a bare random walk floored at `B` without
   rejection, the first reading, gives 13 times at the pair (0.15, 0.65).
-- *Realised rates on real clutter: below the bound per first history, above it per cell.*
-  The first-history rate is lower than the bound only because most clutter lies far below
-  `m0`. Two units give two numbers
+- *Realised rates on real clutter: the per-cell rate is above the nominal level.*
+  The nominal level `alpha` is per first test of a history under independent windows. The
+  first-history rate below is low because most clutter lies far below `m0`; we make no claim
+  from it that the realised rate is below the bound. Two units give two numbers
   (`paper/experiments/realdata/results_p2/replay_shipped_pair_W15.txt`, W = 15 calibration
   sequences; clutter cells: n = 24,096, of which n = 22,273 at or below `m0` and n = 1,823 above):
   - *First history* (the unit of the bound; the replay stops at the first Static or Rejected
     verdict of each cell). The shipped rule graduates 0.40 % of the clutter cells whose
     observed rate is at most `m0`, 22.3 % of those above `m0`, and 2.06 % of all; it graduates
-    89.6 % of the structure cells and rejects 1.4 %. This figure is below `alpha`.
+    89.6 % of the structure cells and rejects 1.4 %. The population is mostly far below `m0`, so
+    this figure does not test the bound.
   - *Per cell* (the replay runs the whole sequence of each cell; the engine erases a rejected
     cell, and the next observation creates it again with a new history; ever-Static means the
     cell was Static at any window). With periodicity off: 1.64 % at or below `m0`, 33.8 % above,
     4.07 % of all clutter cells. With periodicity on, as the node ships it: 1.51 %, 30.5 %,
     3.71 %. Structure cells, periodicity on: 90.7 % ever-Static. **The per-cell figure at or below
     `m0` is above `alpha = 0.01`**: every new history is a new chance to graduate.
-  - Read the per-cell figure when you count wrongly graduated cells on a map. "Lower than the
-    bound" holds per first history, not per cell.
+  - Read the per-cell figure when you count wrongly graduated cells on a map. A comparison with
+    the bound is per first test of a history, not per cell.
   Walking people who linger belong to the cells above `m0`: no hit-rate test tells them from a
   wall.
 - *Wall thickening.* Free cells next to a wall graduate at 6 % to 10 % (edge noise; pair
@@ -646,7 +654,7 @@ CTest `defaults_match_yaml_and_prereg`:
   every bad `(m0, m1, alpha, beta, n_max_undecided, sprt_ceiling)` on both sides of
   each bound; an always-hit wall graduates at exactly the derived window and never
   earlier (7 parameter sets, periodicity on and off); a long miss run before the gate is
-  not clamped; Ville (per history, iid at `m0`, 1,024 windows, Wilson upper limit
+  not clamped; Ville (first test of a history, iid at `m0`, 1,024 windows, Wilson upper limit
   ≤ 0.01) with a negative control that autocorrelation breaks it; operating
   characteristic against the exact lattice computation (gate 1 and gate 24) and Wald's
   closed form; the periodicity-gate race (an all-miss cell survives to exactly `n = T`;

@@ -186,7 +186,7 @@ with open(TAB / "e7_oc.tex", "w") as f:
     f.write("\\begin{table}[t]\n\\centering\n")
     f.write("\\caption{Operating characteristic of the sequential test on the engine (E7), pair $(m_0,m_1,\\alpha,\\beta)=(%.2f,%.2f,%.2f,%.2f)$, "
             "independent windows. $P(\\mathrm{Static})$: share of %d cells per rate that graduate. \\emph{Engine}: Monte Carlo on "
-            "\\code{LayeredMap} with the periodicity gate $T{=}%d$ (the shipped rule) and Wilson 95\\%% limits; \\emph{Exact}: the same rule "
+            "\\code{LayeredMap} with the periodicity gate $T{=}%d$ (the shipped rule with the Periodic veto off) and Wilson 95\\%% limits; \\emph{Exact}: the same rule "
             "computed state by state on the lattice $l=h\\,l_{\\mathrm{hit}}+k\\,l_{\\mathrm{miss}}$, no sampling; \\emph{Wald}: the closed form of "
             "Eq.~\\eqref{eq:wald}, which ignores the overshoot of the statistic over the thresholds. The last column is the mean number of windows "
             "to a decision (engine / exact).}\n" % (D["m0"], D["m1"], D["alpha"], D["beta"], int(at0["cells"]), TGATE))
@@ -204,7 +204,7 @@ with open(TAB / "e7_oc.tex", "w") as f:
 with open(TAB / "e7_autocorr.tex", "w") as f:
     f.write(HDR % "e7_autocorr.csv")
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{The guarantee needs independent windows (E7). Share of cell histories that ever graduate when the windows of a cell at "
+    f.write("\\caption{The guarantee needs independent windows (E7). Share of cell histories whose first test graduates (Periodic veto off) when the windows of a cell at "
             "exactly $m_0$ follow a two-state chain with lag-1 autocorrelation $\\rho$ ($\\rho=0$: independent). \\emph{Engine}: "
             "per history, %d windows, shipped pair. \\emph{Bare walk}: a random walk floored at $B$ and never rejected, %d windows, "
             "the shipped pair; this is not the engine. Ratios are to $\\alpha{=}%.2f$. The band means of the lag-1 autocorrelation of the window outcomes of real "
@@ -777,6 +777,27 @@ mac("PtFailAll", len(final_failed), "those failed runs, total")
 mac("PtOffRuns", len(list(P3.glob("spires_*_r0.1_W*_p0.json"))), "spires_*_r0.1_W*_p0.json files (0.1 m, veto off)")
 mac("PtRunsOk", re.search(r"Run records: (\d+) with return code 0, (\d+) with a non-zero", rep).group(1), "P3_REPORT.md section 0: runs with return code 0")
 mac("PtRunsBad", re.search(r"Run records: (\d+) with return code 0, (\d+) with a non-zero", rep).group(2), "P3_REPORT.md section 0: runs with a non-zero return code")
+
+# attempts kept next to the final run records (P3_REPORT.md section 0, failed-steps table)
+mac("PtAttempts", re.search(r"(\d+) earlier attempts kept", rep).group(1), "P3_REPORT.md section 0: earlier attempts kept (repeats after a crash)")
+mac("PtRepeatOk", sum("ok after repeat" in ln for ln in rep.splitlines() if ln.startswith("| 2026")), "P3_REPORT.md failed-steps table: rows whose final state is 'ok after repeat' (cache-frame read failures)")
+# wall-run cells of the sequential test: graduated at some window, Static at the end (LILocBench, veto on)
+_dw = lil("lt_changes_dynamics_0", "sprt")
+_ever, _end = _dw["wall_run_windows_to_first_static"]["n"], _dw["wall_runs_static"]["k"]
+mac("PtWallEverSprt", _ever, "lil_lt_changes_dynamics_0_sprt_p1.json wall_run_windows_to_first_static.n (wall-run cells with a first Static window)")
+mac("PtWallEndSprt", _end, "same: wall_runs_static.k (Static at the end of the run)")
+mac("PtWallLostSprt", _ever - _end, "difference of the two: Static at some window, not Static at the end")
+mac("PtWallNotKSprt", _dw["wall_runs_not_static"]["k"], "lil_lt_changes_dynamics_0_sprt_p1.json wall_runs_not_static.k")
+mac("PtWallNeverSprt", _dw["wall_runs_not_static"]["n"] - _ever, "lil_lt_changes_dynamics_0_sprt_p1.json wall_runs_not_static.n minus the cells with a first Static window (never Static)")
+# the scan-to-pose shift of the LILocBench conversion (P3_REPORT.md, offset table)
+mac("PtLilOffset", re.search(r"\| lt_changes_dynamics_0 \| (-?[\d.]+) \| (-?[\d.]+) \|", rep).group(2), "P3_REPORT.md offset table: offset used by the conversion, seconds")
+# memory probe of Amendment 1 of PREREG_P3.md (first 10 frames of one Boreas session, 3 to 50 m, 0.2 m)
+_pre3 = (RD / "PREREG_P3.md").read_text()
+_probe = {m.group(1): (m.group(2), m.group(3)) for m in re.finditer(r"\| 3 to 50 m \| 0\.2 m \| (off|on) \| ([\d,]+) \| ([\d,]+) MB \|", _pre3)}
+assert set(_probe) == {"off", "on"} and _probe["off"][0] == _probe["on"][0], _probe
+mac("PtProbeCells", _probe["off"][0].replace(",", "{,}"), "PREREG_P3.md Amendment 1, probe table: cells after 10 frames (3 to 50 m, 0.2 m)")
+mac("PtProbeOff", _probe["off"][1].replace(",", "{,}"), "same: peak memory in MB with the Periodic veto off")
+mac("PtProbeOn", _probe["on"][1].replace(",", "{,}"), "same: peak memory in MB with the Periodic veto on")
 
 # -- the number list
 with open(TAB / "numbers_v2.tex", "w") as f:

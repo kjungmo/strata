@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# Build and run the full strata_core evaluation harness (E0/E5 calibration, E1-E5).
+# Build and run the full strata_core evaluation harness (E0 and E5 calibration, E1-E7).
 # Reproduction: bash paper/experiments/run_all.sh  (from the repository root)
 #
 # Every seeded executable runs twice: with no argument it is the "legacy" arm (the v0.1
 # arithmetic with explicit parameters; reproduces the committed results/*.csv byte for byte,
 # see check_legacy_equivalence.sh) and with the argument "sprt" it is the sequential-test arm
 # (evidence_model = Sprt at the shipped defaults; writes results/*_sprt.csv, new files).
-# E0-E3, E5 and E6 are seeded and rewrite results/*.csv byte for byte. E4 reads the
+# E0-E3, E5, E6 and E7 are seeded and rewrite results/*.csv byte for byte. E4 reads the
 # wall clock: here it only writes build/e4_throughput_local.csv, and check_e4_local.py
 # compares its deterministic columns (cell counts, byte estimates) with the committed
 # results/e4_throughput.csv. Timings for the paper are recorded separately, on a quiet

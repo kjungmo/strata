@@ -2,14 +2,16 @@ file	numeral	preceding text	reason
 sections/0_abstract.tex	0.85	at the OctoMap increments (+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.4	OctoMap increments (+0.85, -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.2	 error bound rests. \sname\ 	version of the engine (checked against strata_core/package.xml and CMakeLists.txt)
-sections/0_abstract.tex	1	ald's closed form; at a lag-	name of a statistic
+sections/0_abstract.tex	1	ald's closed form. At a lag-	name of a statistic
 sections/0_abstract.tex	0.23	 a lag-1 autocorrelation of 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/0_abstract.tex	0.5	AcTw{} times \alpha, and at 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.20	uence, so the shipped pair (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.70	, so the shipped pair (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.01	the shipped pair (0.20,0.70,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.01	hipped pair (0.20,0.70,0.01,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	3	.01) is provisional and the 	name of a scenario, data type, standard or layout width
 sections/0_abstract.tex	0.01	h exceed the nominal \alpha=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/0_abstract.tex	05	pposite direction, on KITTI 	identifier of a dataset sequence or of a pair of sequences
 sections/0_abstract.tex	2	ry-free state machine for a 	name of a scenario, data type, standard or layout width
 sections/0_abstract.tex	3	machine for a 2D grid and a 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	2	the FreMEn line: maintain a 	name of a scenario, data type, standard or layout width
@@ -21,7 +23,7 @@ sections/1_introduction.tex	2	achine serves a fixed-array 	name of a scenario, d
 sections/1_introduction.tex	3	-array 2D grid and a sparse 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	2	DS, TF or PCL, and choosing 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	3	 or PCL, and choosing 2D or 	name of a scenario, data type, standard or layout width
-sections/1_introduction.tex	1	 history is at most \alpha/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/1_introduction.tex	1	jection) is at most \alpha/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/1_introduction.tex	17	nterface and builds with C++	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	0.5	qCellsAperiodic{} Bernoulli(	name of a scenario, data type, standard or layout width
 sections/2_related_works.tex	1	rs printed in the paper are 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -44,6 +46,7 @@ sections/2_related_works.tex	2	yers, and SLAM Toolbox is a 	name of a scenario, 
 sections/2_related_works.tex	2	For swappable backends, ROS 	name of a scenario, data type, standard or layout width
 sections/2_related_works.tex	2	res, unchanged, between its 	name of a scenario, data type, standard or layout width
 sections/2_related_works.tex	3	changed, between its 2D and 	name of a scenario, data type, standard or layout width
+sections/2_related_works.tex	0.2	on , the default of version 	version of the engine (checked against strata_core/package.xml and CMakeLists.txt)
 sections/3_method.tex	2	me\ is delivered as two ROS 	name of a scenario, data type, standard or layout width
 sections/3_method.tex	17	th geometry backends, in C++	name of a scenario, data type, standard or layout width
 sections/3_method.tex	0.2	} is the default of version 	version of the engine (checked against strata_core/package.xml and CMakeLists.txt)
@@ -99,8 +102,8 @@ sections/3_method.tex	0	 window, 0<\lambda<1, \lhit>	inline or displayed mathema
 sections/3_method.tex	0	onverges monotonically from 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	th \ell^\star=\lambda\lhit/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	point \ell^\star; from \ell=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	0.97	d defaults (Table ; \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	0.85	Table ; \lambda=0.97, \lhit=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.97	ble , legacy group; \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0.85	 group; \lambda=0.97, \lhit=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	5	the clamp binds at l_{\max}=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	5	\max}=5 and p_{\max}=\sigma(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0.8	e default thresholds \pgrad=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -126,18 +129,18 @@ sections/3_method.tex	0	} n_i\mathrel{+}=1,\quad S_{	inline or displayed mathema
 sections/3_method.tex	0	eta_k, \end{equation} for k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	equation} for k=0,\dots,H{-}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	ed-window mean \bar{o}_i=S_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	2	} coefficients are \alpha_k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	2	^{c}_{k,i})/n_i and \beta_k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	2	_k+\mathrm{i}\beta_k=\tfrac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	2	ion} a_{i,k}=\sqrt{\alpha_k^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	2	k}=\sqrt{\alpha_k^2+\beta_k^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ntred} coefficients are u_k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	}_iE^{c}_{k,i})/n_i and v_k=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	.\ u_k+\mathrm{i}v_k=\tfrac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	equation} a_{i,k}=\sqrt{u_k^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	on} a_{i,k}=\sqrt{u_k^2+v_k^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	^2},\qquad a_i=\begin{cases}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	n{cases}0, & n_i<T,\\ \max_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	hat{p}_i(w)=\mathrm{clip}_{[	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	t{p}_i(w)=\mathrm{clip}_{[0,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	mathrm{clip}_{[0,1]}\big(S_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	1	_i+\sum_k[\alpha_k\cos((k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	1	)\omega w)+\beta_k\sin((k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	,i}/n_i+\sum_k[u_k\cos((k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	{+}1)\omega w)+v_k\sin((k{+}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	2	o_{i,w}-\bar{o}_i| averages 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	r{o}_i| averages 2\bar{o}_i(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	4	equality gives \[ a_i\;\le\;	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -162,14 +165,14 @@ sections/3_method.tex	8	dard deviation of \sqrt{0.5/	inline or displayed mathema
 sections/3_method.tex	8	}=0.25 at m=\tfrac12, n_i=T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	2	e{\mathbf{z}}_w=\tfrac{n_i}{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	k}^{\top}\mathbf{M}_{i,k}^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	2	k},\qquad B(r)=\begin{cases}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	1	ad B(r)=\begin{cases}2r\,e^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	2	 B(r)=\begin{cases}2r\,e^{1-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	quad \Theta(r)=\begin{cases}	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	heta(r)=\begin{cases}2r\,e^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	2	ta(r)=\begin{cases}2r\,e^{1-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	\,e^{1-2r}, & r>\tfrac12,\\ 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	2	in2\theta_k, since \sum c_w^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	li}(m) for one unknown m\in[	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	}(m) for one unknown m\in[0,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	0	}\ge r)\le B(r) for every r>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	0	r)\le \Theta(r) for every r>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	ly, for every \amin\ge0 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	tilde{\mathbf{z}}_w=\mathbf{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	hbf{b}_w=\mathbf{M}_{i,k}^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -202,7 +205,7 @@ sections/3_method.tex	2	ible for r>\tfrac12) yields 	inline or displayed mathema
 sections/3_method.tex	1	r r>\tfrac12) yields 2r\,e^{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	2	r>\tfrac12) yields 2r\,e^{1-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	 for r\le\tfrac12 the bound 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3_method.tex	1	. B decreases strictly from 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3_method.tex	1	eta decreases strictly from 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	0	ecreases strictly from 1 to 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	1	g} gives the smaller bound (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3_method.tex	2	s the smaller bound (1-\eta/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -333,7 +336,7 @@ sections/3b_evidence.tex	3	ple of 16 for which at most 	threshold or definition 
 sections/3b_evidence.tex	2	raduate or be rejected. The 	name of a scenario, data type, standard or layout width
 sections/3b_evidence.tex	1	l_{\max}\big), n_i\gets n_i+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	t is at most e^{-A}=\alpha/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/3b_evidence.tex	1	ted is at most e^{B}=\beta/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3b_evidence.tex	1	ed, is at most e^{B}=\beta/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	 of a cell begin in windows 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	} \begin{proof} Let \lambda(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	0	mbda(1)=m_1/m_0 and \lambda(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -347,6 +350,7 @@ sections/3b_evidence.tex	1	\frac{(p-m_1)(m_0-m_1)}{m_1(	inline or displayed math
 sections/3b_evidence.tex	1	ermartingale with \Lambda_0=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	s. For p\ge m_1 the process 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	ined in \{\sup_t\Lambda_t^{-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3b_evidence.tex	0	ts the forward test at \ell=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	ws, \SqAcShareTw\,\% at lag-	name of a statistic
 sections/3b_evidence.tex	0.23	\% at lag-1 autocorrelation 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	0.5	) and \SqAcShareHalf\,\% at 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -360,6 +364,10 @@ sections/3b_evidence.tex	1	0}\Big)^{h}+(1-m)\Big(\frac{	inline or displayed math
 sections/3b_evidence.tex	1	^{h}+(1-m)\Big(\frac{1-m_1}{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	frac{1-m_1}{1-m_0}\Big)^{h}=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	0	e zero-drift rate m^\ast (h=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3b_evidence.tex	1	) is the limit -B/(A-B)=\ln(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3b_evidence.tex	0	that a zero-drift walk from 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3b_evidence.tex	1	aches A before B; it equals 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3b_evidence.tex	2	hes A before B; it equals 1/	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	mula gives \alpha at m_0 (h=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	ves \alpha at m_0 (h=1) and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	h=1) and 1-\beta at m_1 (h=-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -588,6 +596,9 @@ sections/4_experiments.tex	0.60	 at 0.50, \SqEsixAtSix{} at 	inline or displayed
 sections/4_experiments.tex	0.70	 0.60 and \SqEsixAtSev{} at 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4_experiments.tex	100	 cells for \code{grid2d} at 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4_experiments.tex	2	ls for \code{grid2d} at 100^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4b_calibration.tex	00	e semantic classes of KITTI 	identifier of a dataset sequence or of a pair of sequences
+sections/4b_calibration.tex	3	 the one-second window, the 	name of a scenario, data type, standard or layout width
+sections/4b_calibration.tex	02	ranch and the move of Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	2	} and \texttt{dynamics\_0} (	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	00	TH benchmark sequence KITTI 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	3	enchmark sequence KITTI 00 (	name of a scenario, data type, standard or layout width
@@ -649,6 +660,9 @@ sections/4b_calibration.tex	0.01	ir (\CalMzero,\CalMone,0.01,	inline or displaye
 sections/4b_calibration.tex	3	e waived, not a freeze. The 	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	3	 rule gave no pair, and the 	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	2	D backend falls back on the 	name of a scenario, data type, standard or layout width
+sections/4b_calibration.tex	10	with \code{layer\_interval} 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4c_realdata.tex	0.1	limit of the Spires runs at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	9	lower value to the limit of 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	0.7	vidence}: the probabilities 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	0.4	: the probabilities 0.7 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	0	, no leak, occupied if \ell>	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -688,6 +702,11 @@ sections/4c_realdata.tex	3	 autumn, spring and summer, 	name of a scenario, data
 sections/4c_realdata.tex	0.2	umn, spring and summer, 3D, 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	3	d summer, 3D, 0.2 m, ranges 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	25	mer, 3D, 0.2 m, ranges 3 to 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	04	g them, \PtRepeatOk{} Keble 	identifier of a dataset sequence or of a pair of sequences
+sections/4c_realdata.tex	03	etried the read), one Keble 	identifier of a dataset sequence or of a pair of sequences
+sections/4c_realdata.tex	0.1	 read), one Keble 03 run at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	9	as repeated at the limit of 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	04	e first conversion of Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	95	 where tiles are known, the 	confidence level that defines an interval
 sections/4c_realdata.tex	10	nterval of a bootstrap over 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	0.01	LocBench)} The level \alpha=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -705,6 +724,8 @@ sections/4c_realdata.tex	0.20	llN{} wall-run cells, SPRT (	inline or displayed m
 sections/4c_realdata.tex	0.70	 wall-run cells, SPRT (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	0.20	PtWallNotSprt\,\% for SPRT (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	0.70	lNotSprt\,\% for SPRT (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4c_realdata.tex	0.20	for shipped v0.1. For SPRT (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4c_realdata.tex	0.70	hipped v0.1. For SPRT (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	90	ic window have a median and 	threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings
 sections/4c_realdata.tex	0.20	tWallNinetySprt{} for SPRT (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	0.70	NinetySprt{} for SPRT (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -788,6 +809,23 @@ sections/5_discussion.tex	3	D pair is used in 3D. Every 	name of a scenario, dat
 sections/5_discussion.tex	0.1	5). \item \emph{Memory.} At 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	9	 ended out of memory at the 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	03	limit of the harness (Keble 	identifier of a dataset sequence or of a pair of sequences
+sections/5_discussion.tex	0.2	ames of one Boreas session (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/5_discussion.tex	3	ssion (0.2 m voxels, ranges 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/5_discussion.tex	50	 (0.2 m voxels, ranges 3 to 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/5_discussion.tex	100	 map.} Only Static is drawn 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	2	 Static is drawn 100 on the 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	50	 observation was a hit read 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	75	hit read 50, Periodic reads 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	1	reads 75 and Unknown reads -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	100	r that reads only the value 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	100	de{lethal\_cost\_threshold} 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	100	_cost\_threshold} 100, only 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	50	00, only 100 is lethal, and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	75	y 100 is lethal, and 50 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	50	and a threshold at or below 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	3	ethal. \item \emph{Measured 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	3	e veto is on in the shipped 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	0.1	ry with it on, every run at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	2	ous integration runs on ROS 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	24	 null, and at the shipped T=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	50	etection delay: a noiseless 	duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval
@@ -800,8 +838,9 @@ sections/5_discussion.tex	3	, with revisit-rich data in 	name of a scenario, dat
 sections/5_discussion.tex	2	odic; field deployment on a 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	3	a 2D wheeled platform and a 	name of a scenario, data type, standard or layout width
 sections/6_conclusion.tex	0.2	bound rests. Engine version 	version of the engine (checked against strata_core/package.xml and CMakeLists.txt)
-sections/6_conclusion.tex	1	s closed form; and at a lag-	name of a statistic
-sections/6_conclusion.tex	0.23	 a lag-1 autocorrelation of 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/6_conclusion.tex	1	d's closed form; and at lag-	name of a statistic
+sections/6_conclusion.tex	0.23	t lag-1 autocorrelations of 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/6_conclusion.tex	0.5	utocorrelations of 0.23 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/6_conclusion.tex	0.20	sequence, the shipped pair (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/6_conclusion.tex	0.70	nce, the shipped pair (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/6_conclusion.tex	0.01	the shipped pair (0.20,0.70,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text

@@ -24,34 +24,37 @@ check of `numbers_v2.tex` (below, item 5) replaces it.
 
 | Numerals | Kind |
 |---:|---|
-| 106 | source: equal to a recomputed value (bare number, any location in the file) |
+| 107 | source: equal to a recomputed value (bare number, any location in the file) |
 | 119 | source: inside a phrase recomputed from the results or the code |
 | 248 | source: tied at this sentence to a value recomputed from the results or the code |
 | 19 | structural: duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval |
 | 1 | structural: confidence level that defines an interval |
-| 475 | structural: inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text |
-| 119 | structural: name of a scenario, data type, standard or layout width |
+| 495 | structural: inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text |
+| 123 | structural: name of a scenario, data type, standard or layout width |
 | 257 | structural: plot layout (axis limits, sizes, tick positions, styles) |
 | 102 | structural: scenario size or grid restated by hand from the harness source named in the sentence (not parsed) |
-| 43 | structural: dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; both files are checked for the strings |
-| 35 | structural: identifier of a dataset sequence or of a pair of sequences |
+| 51 | structural: dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; both files are checked for the strings |
+| 41 | structural: identifier of a dataset sequence or of a pair of sequences |
 | 13 | structural: threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings |
-| 10 | structural: version of the engine (checked against `package.xml` and `CMakeLists.txt`) |
+| 11 | structural: version of the engine (checked against `package.xml` and `CMakeLists.txt`) |
 | 6 | structural: name of a statistic (lag-1) |
 | 4 | structural: number of an equation or lemma of a cited source |
 | 4 | structural: year, date, version or licence identifier (versions are also checked against the records) |
 
 5. (`guard_v2`) checks every macro of `numbers_v2.tex` against a second source and enforces the wording rails:
    - every `Pt...` macro (real-data evaluation) is a number of the generated `P3_REPORT.md` (made from the JSON files by
-     `make_report_p3.py`) or of its hand-written summary; the derived ones (two quotients, three counts) are listed with the reason;
+     `make_report_p3.py`) or of its hand-written summary; the derived ones (two quotients, the counts of the failed runs, the wall-run counts of the SPRT arm, the three numbers of the memory probe of Amendment 1) are listed with the reason and checked against the JSON files or `PREREG_P3.md`;
    - every `Cal...` macro (calibration) is a number of `P1B_REPORT.md`, `PREREG.md`, the P2 replay or the Keble height record;
    - the sequential-test macros are recomputed here: the increments of the first release give `SqLegMzero` and `SqLegMone`;
      Ville's bound `exp(-A)` equals `alpha / (1 - beta)`; the two expectations of Proposition `prop:ville` are checked at several
      hit rates; the leak ratio of Proposition `prop:leak` is recomputed; the Wald column of `e7_oc.csv` is recomputed from the closed form;
      and the exact column is recomputed by an independent lattice computation (rates 0.05, 0.2, m*, 0.5, 0.7, 0.9; both rules);
    - the wording rails of the lead: provisional pair, nothing froze, not calibrated for 3D, Periodic not validated on real data,
-     realised rates above nominal, memory failures, single-pass KTH, no truth in Boreas, no winner; and the forbidden phrases
-     (`is below the bound`, `is within the bound`, `was frozen`, `the best rule`, `outperform`) are absent.
+     realised rates above nominal, memory failures, single-pass KTH, no truth in Boreas, no winner, demotion CUSUM-like, the bound
+     for the first test of a history, the zero-drift limit `-B/(A-B)`, amendment after the first calibration measurement, memory unbounded,
+     the node not in the loop of the real-data runs; and the forbidden phrases (`is below the bound`, `is within the bound`,
+     `was frozen`, `the best rule`, `outperform`, `with the same error rates`, `ever graduates`, `we did not measure it`,
+     `calibrated periodic`, `times the bound`) are absent.
 
 Limits, stated plainly:
 
@@ -66,9 +69,10 @@ Limits, stated plainly:
   `paper/experiments/mutation_report.txt`.
 - The Markdown companion is checked for the presence of the recomputed phrases only (step 2), not numeral by numeral.
 
-**Code pin.** The paper is pinned to `strata_core/`, `strata/` and `scripts/` at commit `a7559d4` (first pin: `312b09c`, tag `paper-v1`). E0–E3, E5 and E6 reproduce their
-committed CSVs byte for byte (`check_reproduction.sh`; compilers in `paper/experiments/reproduction_log.txt`). Under libc++ four
-files differ (`check_stdlib.sh`, record in `results/stdlib_libcxx/`).
+**Code pin.** The paper is pinned to `strata_core/`, `strata/` and `scripts/` at commit `a7559d4` (first pin: `312b09c`, tag `paper-v1`). E0–E3, E5, E6 (both arms) and E7 reproduce their
+committed CSVs byte for byte (`check_reproduction.sh`; compilers in `paper/experiments/reproduction_log.txt`). Under libc++ seven
+of the 39 seeded files differ: four of 19 in the legacy arm and three of 20 in the sprt arm and E7, `e4_cells_sprt.csv` among them
+(`check_stdlib.sh`, record in `results/stdlib_libcxx/summary.txt`).
 
 **E4 timings.** Recorded only with `paper/experiments/measure_e4.sh` on a quiet host (rules in the script). The paper uses a
 latency or a ratio only if at least three valid recordings exist and their backend ratios agree within 20 % at every extent;
@@ -263,4 +267,4 @@ item 7 to Section 7.6 and Table `tab:p3agree`; item 8 to Section 7.7 and Table `
   copies them from the committed `P3_REPORT.md`.
 - The pre-registered thresholds, the dataset configurations and the Option C reading that the text restates (structural numerals) are
   checked only by string against the pre-registration files, not parsed.
-- `paper/experiments/mutation_report.txt` is from the pin before this one and was not rerun for the v2 text.
+- `paper/experiments/mutation_report.txt` was rerun with `--tables` over the v2 text and tables (2522 numerals changed, all caught). The prose of the v2 sections holds macros, so those numbers are protected by the macro checks, not by this run.

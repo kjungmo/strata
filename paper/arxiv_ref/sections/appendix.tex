@@ -27,14 +27,23 @@ Alternative backends can be replayed against the reference scenario of the unit 
 
 \begin{table}[H]
 \centering
-\caption{Engine parameters and shipped defaults (the \code{LayeredMapParams} struct and both \code{params/*.yaml} files agree). Geometry and node parameters are not part of the engine: \code{grid\_width}/\code{grid\_height} 400, \code{grid\_resolution} 0.05~m and origin $(-10,-10)$~m for \code{grid2d}; \code{voxel\_size} 0.2~m for \code{voxel3d}; \code{publish\_period} 1.0~s; \code{window\_mode} \code{time} in both files (\code{scans} when the parameter is not set) with \code{window\_period\_s} 1.0~s; \code{expected\_scan\_rate\_hz} 0 (estimated from stamps), \code{rate\_warn\_drop\_fraction} 0.05, \code{input\_timeout\_s} 5~s and \code{startup\_timeout\_s} 30~s.}
+\caption{Engine parameters and shipped defaults (the \code{LayeredMapParams} struct and both \code{params/*.yaml} files agree). The nine keys of the legacy group are the defaults of the first release; the sequential test ignores them. Geometry and node parameters are not part of the engine: \code{grid\_width}/\code{grid\_height} 400, \code{grid\_resolution} 0.05~m and origin $(-10,-10)$~m for \code{grid2d}; \code{voxel\_size} 0.2~m for \code{voxel3d}; \code{publish\_period} 1.0~s; \code{window\_mode} \code{time} in both files (\code{scans} when the parameter is not set) with \code{window\_period\_s} 1.0~s; \code{expected\_scan\_rate\_hz} 0 (estimated from stamps), \code{rate\_warn\_drop\_fraction} 0.05, \code{input\_timeout\_s} 5~s and \code{startup\_timeout\_s} 30~s.}
 \label{tab:params}
 \small
 \begin{tabular}{llll}
 \toprule
 Parameter & Symbol & Default & Meaning \\
 \midrule
+\multicolumn{\paramcols}{l}{\emph{Shared by both evidence models}} \\
 \code{layer\_interval} & $L$ & 10 & integration ticks per window \\
+\code{enable\_periodicity} & --- & true & run the Fourier model \\
+\code{periodic\_amplitude\_min} & $\amin$ & 0.3 & minimum harmonic amplitude (effect size) \\
+\code{periodic\_false\_alarm} & $\delta$ & 0.2 & level of the significance test \\
+\code{periodic\_alpha\_spending} & $\delta_n$ & true & spend $\delta$ over the touch count, Eq.~\eqref{eq:spend} \\
+\code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
+\code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
+\midrule
+\multicolumn{\paramcols}{l}{\emph{Legacy evidence model (read only when \code{evidence\_model = legacy}; ignored by \code{sprt})}} \\
 \code{l\_hit} & $\lhit$ & 0.85 & log-odds increment on an occupied window \\
 \code{l\_miss} & $\lmiss$ & $-0.4$ & log-odds increment on a free window \\
 \code{l\_min}, \code{l\_max} & $l_{\min},l_{\max}$ & $-5.0$, $5.0$ & clamp bounds \\
@@ -43,13 +52,8 @@ Parameter & Symbol & Default & Meaning \\
 \code{demote\_prob} & $\pdem$ & 0.45 & probability at or below which Static demotes \\
 \code{min\_observations} & $\Nmin$ & 3 & touched windows before graduation \\
 \code{prune\_prob} & $\pprune$ & 0.05 & erase non-static, non-periodic cells below this \\
-\code{enable\_periodicity} & --- & true & run the Fourier model \\
-\code{periodic\_amplitude\_min} & $\amin$ & 0.3 & minimum harmonic amplitude (effect size) \\
-\code{periodic\_false\_alarm} & $\delta$ & 0.2 & level of the significance test \\
-\code{periodic\_alpha\_spending} & $\delta_n$ & true & spend $\delta$ over the touch count, Eq.~\eqref{eq:spend} \\
-\code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
-\code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
 \midrule
+\multicolumn{\paramcols}{l}{\emph{Sequential test (\code{evidence\_model = sprt}, the default)}} \\
 \code{evidence\_model} & --- & \code{sprt} & evidence rule (\code{legacy}: first release) \\
 \code{m0} & $m_0$ & 0.20 & clutter at or below this hit rate (provisional) \\
 \code{m1} & $m_1$ & 0.70 & structure at or above this hit rate (provisional) \\
@@ -142,7 +146,7 @@ From & To & Trigger \\
 \midrule
 Unknown (absent) & Transient & first hit or miss creates the cell: $\ell{=}0$, $p{=}0.5\ge\pprune$ \\
 Transient & Static & Eq.~\eqref{eq:grad}: $p\ge\pgrad$, $N\ge\Nmin$, $\lnot\pi$ \\
-Transient & Periodic & $\pi$, Eq.~\eqref{eq:periodic}: $n\ge T$ and, for some $k$, $a_k\ge\amin$ and $H\,B(d_k)\le\delta_n$ \\
+Transient & Periodic & $\pi$, Eq.~\eqref{eq:periodic}: $n\ge T$ and, for some $k$, $a_k\ge\amin$ and $H\,\Theta(d_k)\le\delta_n$ \\
 Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\lnot g$ \\
 Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
 Periodic & Transient / Unknown & $\pi$ becomes false (pruned only once also $a<\amin$) \\
@@ -176,8 +180,8 @@ $\tau_i$, $o_i$, $f_i$ & touched, occupied and free indicators of a window \\
 $\ell_i$, $p_i$ & log-odds occupancy and $\sigma(\ell_i)$ \\
 $N_i$, $n_i$ & touched-window counts for graduation and for the Fourier model \\
 $g_i$, $\pi_i$ & graduated flag and periodic predicate \\
-$a_i$, $a_{i,k}$, $\alpha_k$, $\beta_k$ & dominant and harmonic amplitudes, harmonic coefficients \\
-$d_{i,k}$, $\mathbf{M}_{i,k}$, $B$ & explained variance, centred phase design, Chernoff tail bound (Eq.~\ref{eq:dchi}) \\
+$a_i$, $a_{i,k}$, $u_k$, $v_k$ & dominant and harmonic amplitudes, cosine and sine coefficients of harmonic $k$ \\
+$d_{i,k}$, $\mathbf{M}_{i,k}$, $\Theta$ & explained variance, centred phase design, Chernoff tail bound (Eq.~\ref{eq:dchi}) \\
 $\delta$, $r^\star$, $a^\star(n)$ & nominal level, its critical $d$, amplitude threshold at uniform coverage (Eq.~\ref{eq:astar}) \\
 $\delta_n$, $L_N$ & level spent at touch count $n$ (Eq.~\ref{eq:spend}); histories begun by window $N$ (Prop.~\ref{prop:spend}) \\
 $\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments (derived ones: Eq.~\ref{eq:derive}) \\

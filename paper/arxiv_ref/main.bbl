@@ -230,7 +230,8 @@ F.~Pomerleau, P.~Kr\"{u}si, F.~Colas, P.~Furgale, and R.~Siegwart.
 \bibitem[Ramdas et~al.(2023)Ramdas, Gr{\"u}nwald, Vovk, and Shafer]{ramdas2023game}
 A.~Ramdas, P.~Gr{\"u}nwald, V.~Vovk, and G.~Shafer.
 \newblock Game-theoretic statistics and safe anytime-valid inference.
-\newblock \emph{Statistical Science}, 2023.
+\newblock \emph{Statistical Science}, 38\penalty0 (4):\penalty0 576--601, 2023.
+\newblock \doi{10.1214/23-STS894}.
 \newblock arXiv:2210.01948.
 
 \bibitem[Rosen et~al.(2016)Rosen, Mason, and Leonard]{rosen2016persistence}
@@ -294,8 +295,8 @@ G.~D. Tipaldi, D.~Meyer-Delius, and W.~Burgard.
 \newblock \emph{The International Journal of Robotics Research}, 32\penalty0 (14):\penalty0 1662--1678, 2013.
 \newblock \doi{10.1177/0278364913502830}.
 
-\bibitem[Trekel et~al.(2025)Trekel, Guadagnino, Labe, Wiesmann, Aguiar, Behley, and Stachniss]{trekel2025lilocbench}
-N.~Trekel, T.~Guadagnino, T.~Labe, L.~Wiesmann, P.~Aguiar, J.~Behley, and C.~Stachniss.
+\bibitem[Trekel et~al.(2025)Trekel, Guadagnino, L{\"a}be, Wiesmann, Aguiar, Behley, and Stachniss]{trekel2025lilocbench}
+N.~Trekel, T.~Guadagnino, T.~L{\"a}be, L.~Wiesmann, P.~Aguiar, J.~Behley, and C.~Stachniss.
 \newblock Benchmark for evaluating long-term localization in indoor environments under substantial static and dynamic scene changes.
 \newblock In \emph{IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 2025.
 
@@ -331,7 +332,8 @@ M.~Zechmeister and M.~K\"{u}rster.
 \bibitem[Zhang et~al.(2023)Zhang, Duberg, Geng, Jia, Wang, and Jensfelt]{zhang2023dynamic}
 Q.~Zhang, D.~Duberg, R.~Geng, M.~Jia, L.~Wang, and P.~Jensfelt.
 \newblock A dynamic points removal benchmark in point cloud maps.
-\newblock In \emph{IEEE International Conference on Intelligent Transportation Systems (ITSC)}, 2023.
+\newblock In \emph{IEEE International Conference on Intelligent Transportation Systems (ITSC)}, pages 608--614, 2023.
+\newblock \doi{10.1109/ITSC57777.2023.10422094}.
 \newblock arXiv:2307.07260.
 
 \end{thebibliography}

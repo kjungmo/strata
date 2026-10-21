@@ -47,6 +47,7 @@
 \newcommand{\CalRepLe}{1.51}% results_p2/replay_shipped_pair_W15.txt, whole sequence, periodicity on: at H/N <= m0 (percent)
 \newcommand{\CalRepN}{24{,}096}% results_p2/replay_shipped_pair_W15.txt, whole sequence, periodicity on: clutter cells
 \newcommand{\CalRepNle}{22{,}273}% results_p2/replay_shipped_pair_W15.txt, whole sequence, periodicity on: clutter cells at or below m0
+\newcommand{\PtAttempts}{82}% P3_REPORT.md section 0: earlier attempts kept (repeats after a crash)
 \newcommand{\PtBorAutSprElite}{0.544}% boreas_elite_like_independent.json jaccard of sessions (0,1)
 \newcommand{\PtBorAutSprHigh}{0.435}% boreas_sprt_high_end_independent.json jaccard of sessions (0,1)
 \newcommand{\PtBorAutSprLow}{0.511}% boreas_sprt_low_end_independent.json jaccard of sessions (0,1)
@@ -167,6 +168,7 @@
 \newcommand{\PtLilLeShipped}{13.90}% lil_lt_changes_dynamics_0_shipped_v0_1_p1.json: ever_static_on_clutter_at_or_below_m0.rate (percent)
 \newcommand{\PtLilLeSprt}{2.93}% lil_lt_changes_dynamics_0_sprt_p1.json: ever_static_on_clutter_at_or_below_m0.rate (percent)
 \newcommand{\PtLilLeSymm}{14.41}% lil_lt_changes_dynamics_0_symmetric_p1.json: ever_static_on_clutter_at_or_below_m0.rate (percent)
+\newcommand{\PtLilOffset}{-0.13}% P3_REPORT.md offset table: offset used by the conversion, seconds
 \newcommand{\PtLilRejElite}{95.78}% lil_lt_changes_dynamics_0_elite_like_p1.json: clutter_rejected.rate (percent)
 \newcommand{\PtLilRejHigh}{3.42}% lil_lt_changes_dynamics_0_sprt_high_end_p1.json: clutter_rejected.rate (percent)
 \newcommand{\PtLilRejLow}{3.16}% lil_lt_changes_dynamics_0_sprt_low_end_p1.json: clutter_rejected.rate (percent)
@@ -197,8 +199,12 @@
 \newcommand{\PtNearEverSymm}{38.50}% P3_REPORT.md, near-wall thickening table (ever Static, percent)
 \newcommand{\PtNearN}{6441}% P3_REPORT.md, near-wall thickening table: n eligible
 \newcommand{\PtOffRuns}{42}% spires_*_r0.1_W*_p0.json files (0.1 m, veto off)
+\newcommand{\PtProbeCells}{2{,}582{,}017}% PREREG_P3.md Amendment 1, probe table: cells after 10 frames (3 to 50 m, 0.2 m)
+\newcommand{\PtProbeOff}{221}% PREREG_P3.md Amendment 1, probe table: peak memory in MB with the Periodic veto off
+\newcommand{\PtProbeOn}{1{,}212}% PREREG_P3.md Amendment 1, probe table: peak memory in MB with the Periodic veto on
 \newcommand{\PtRatioAll}{2.4}% held-out rate for all clutter divided by the calibration row
 \newcommand{\PtRatioLe}{1.9}% held-out rate at or below m0 divided by the calibration row (results_p2/replay_shipped_pair_W15.txt)
+\newcommand{\PtRepeatOk}{3}% P3_REPORT.md failed-steps table: rows whose final state is 'ok after repeat' (cache-frame read failures)
 \newcommand{\PtRunsBad}{14}% P3_REPORT.md section 0: runs with a non-zero return code
 \newcommand{\PtRunsOk}{622}% P3_REPORT.md section 0: runs with return code 0
 \newcommand{\PtSemiAAElite}{73.34}% kth_semindoor_elite_like_r0.2_W10_p1_static_only.json AA
@@ -304,6 +310,9 @@
 \newcommand{\PtVetoTimesHigh}{21}% ratio of those two
 \newcommand{\PtVetoTimesLow}{19}% ratio of those two
 \newcommand{\PtVetoTimesSprt}{20}% ratio of those two
+\newcommand{\PtWallEndSprt}{314}% lil_lt_changes_dynamics_0_sprt_p1.json: wall_runs_static.k (Static at the end of the run)
+\newcommand{\PtWallEverSprt}{346}% lil_lt_changes_dynamics_0_sprt_p1.json wall_run_windows_to_first_static.n (wall-run cells with a first Static window)
+\newcommand{\PtWallLostSprt}{32}% difference of the two: Static at some window, not Static at the end
 \newcommand{\PtWallMedElite}{1}% lil_lt_changes_dynamics_0_elite_like_p1.json: wall_run_windows_to_first_static.p50
 \newcommand{\PtWallMedHigh}{41}% lil_lt_changes_dynamics_0_sprt_high_end_p1.json: wall_run_windows_to_first_static.p50
 \newcommand{\PtWallMedLow}{33}% lil_lt_changes_dynamics_0_sprt_low_end_p1.json: wall_run_windows_to_first_static.p50
@@ -312,6 +321,7 @@
 \newcommand{\PtWallMedSprt}{33}% lil_lt_changes_dynamics_0_sprt_p1.json: wall_run_windows_to_first_static.p50
 \newcommand{\PtWallMedSymm}{10}% lil_lt_changes_dynamics_0_symmetric_p1.json: wall_run_windows_to_first_static.p50
 \newcommand{\PtWallN}{366}% false_reject_on_wall_runs.n
+\newcommand{\PtWallNeverSprt}{20}% lil_lt_changes_dynamics_0_sprt_p1.json wall_runs_not_static.n minus the cells with a first Static window (never Static)
 \newcommand{\PtWallNinetyElite}{43}% lil_lt_changes_dynamics_0_elite_like_p1.json: wall_run_windows_to_first_static.p90
 \newcommand{\PtWallNinetyHigh}{190}% lil_lt_changes_dynamics_0_sprt_high_end_p1.json: wall_run_windows_to_first_static.p90
 \newcommand{\PtWallNinetyLow}{156}% lil_lt_changes_dynamics_0_sprt_low_end_p1.json: wall_run_windows_to_first_static.p90
@@ -321,6 +331,7 @@
 \newcommand{\PtWallNinetySymm}{50}% lil_lt_changes_dynamics_0_symmetric_p1.json: wall_run_windows_to_first_static.p90
 \newcommand{\PtWallNotElite}{5.19}% lil_lt_changes_dynamics_0_elite_like_p1.json: wall_runs_not_static.rate (percent)
 \newcommand{\PtWallNotHigh}{21.04}% lil_lt_changes_dynamics_0_sprt_high_end_p1.json: wall_runs_not_static.rate (percent)
+\newcommand{\PtWallNotKSprt}{52}% lil_lt_changes_dynamics_0_sprt_p1.json wall_runs_not_static.k
 \newcommand{\PtWallNotLow}{12.84}% lil_lt_changes_dynamics_0_sprt_low_end_p1.json: wall_runs_not_static.rate (percent)
 \newcommand{\PtWallNotOcto}{1.37}% lil_lt_changes_dynamics_0_octomap_p1.json: wall_runs_not_static.rate (percent)
 \newcommand{\PtWallNotShipped}{1.09}% lil_lt_changes_dynamics_0_shipped_v0_1_p1.json: wall_runs_not_static.rate (percent)
