@@ -23,7 +23,7 @@ sections/1_introduction.tex	2	achine serves a fixed-array 	name of a scenario, d
 sections/1_introduction.tex	3	-array 2D grid and a sparse 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	2	DS, TF or PCL, and choosing 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	3	 or PCL, and choosing 2D or 	name of a scenario, data type, standard or layout width
-sections/1_introduction.tex	1	jection) is at most \alpha/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/1_introduction.tex	1	ndidate) is at most \alpha/(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/1_introduction.tex	17	nterface and builds with C++	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	0.5	qCellsAperiodic{} Bernoulli(	name of a scenario, data type, standard or layout width
 sections/2_related_works.tex	1	rs printed in the paper are 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -761,7 +761,7 @@ sections/4c_realdata.tex	03	T (0.20,0.70) (pairs 03/04, 	identifier of a dataset
 sections/4c_realdata.tex	05	0.20,0.70) (pairs 03/04, 03/	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	04	,0.70) (pairs 03/04, 03/05, 	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	05	70) (pairs 03/04, 03/05, 04/	identifier of a dataset sequence or of a pair of sequences
-sections/4c_realdata.tex	0.1	able ). \textbf{Memory.} At 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	0.1	noindent\textbf{Memory.} At 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	03	 ran out of memory on Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	0.1	failed runs), and the later 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	0.1	ff all \PtOffRuns{} runs at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
@@ -812,18 +812,23 @@ sections/5_discussion.tex	03	limit of the harness (Keble 	identifier of a datase
 sections/5_discussion.tex	0.2	ames of one Boreas session (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	3	ssion (0.2 m voxels, ranges 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	50	 (0.2 m voxels, ranges 3 to 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/5_discussion.tex	3	 amendment), so the shipped 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	100	 map.} Only Static is drawn 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	2	 Static is drawn 100 on the 	name of a scenario, data type, standard or layout width
-sections/5_discussion.tex	50	 observation was a hit read 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/5_discussion.tex	75	hit read 50, Periodic reads 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/5_discussion.tex	1	reads 75 and Unknown reads -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	50	idence leans occupied, read 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	75	ed, read 50; Periodic reads 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	0	ll, Unknown included, reads 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	1	was last observed free and -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	100	r that reads only the value 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	100	de{lethal\_cost\_threshold} 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	100	_cost\_threshold} 100, only 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	50	00, only 100 is lethal, and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	75	y 100 is lethal, and 50 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	50	and a threshold at or below 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/5_discussion.tex	3	ethal. \item \emph{Measured 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	50	w 50 makes every cell drawn 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	50	ver} reads every cell drawn 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	75	eads every cell drawn 50 or 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	3	 them. \item \emph{Measured 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	3	e veto is on in the shipped 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	0.1	ry with it on, every run at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	2	ous integration runs on ROS 	name of a scenario, data type, standard or layout width
@@ -855,6 +860,7 @@ sections/appendix.tex	19	e of commit \code{a7559d4} (	year, date, version or lic
 sections/appendix.tex	2026	 \code{a7559d4} (19 October 	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	64	 with libstdc++, on one x86-	name of a scenario, data type, standard or layout width
 sections/appendix.tex	0.1	ve by one window (at \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/appendix.tex	2	e{sprt\_ceiling}, NaN for A+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/appendix.tex	2	[H] \centering \caption{ROS 	name of a scenario, data type, standard or layout width
 sections/appendix.tex	6	 is transformed with a full 	name of a scenario, data type, standard or layout width
 sections/appendix.tex	1	\code{OccupancyGrid}, depth 	name of a scenario, data type, standard or layout width

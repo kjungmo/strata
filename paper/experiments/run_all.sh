@@ -6,7 +6,7 @@
 # arithmetic with explicit parameters; reproduces the committed results/*.csv byte for byte,
 # see check_legacy_equivalence.sh) and with the argument "sprt" it is the sequential-test arm
 # (evidence_model = Sprt at the shipped defaults; writes results/*_sprt.csv, new files).
-# E0-E3, E5, E6 and E7 are seeded and rewrite results/*.csv byte for byte. E4 reads the
+# E0-E3, E5, E6, E7 and the sprt E4 cell counts (e4_cells_sprt.csv) are seeded and rewrite results/*.csv byte for byte. E4 reads the
 # wall clock: here it only writes build/e4_throughput_local.csv, and check_e4_local.py
 # compares its deterministic columns (cell counts, byte estimates) with the committed
 # results/e4_throughput.csv. Timings for the paper are recorded separately, on a quiet

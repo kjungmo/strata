@@ -247,7 +247,7 @@ wins: the cell stops being Static and keeps `l` and `n`; the restart `l := 0, n 
 when the reverse test fires alone. (Test `Sprt.PeriodicPathWinsWhenTheReverseTestFiresInTheSameWindow`:
 a door open 17 and closed 7 windows of 24, tie at window 45.)
 
-A rejected cell is erased. A later hit creates a new cell, which starts a new history
+A rejected cell is erased. A later observation (hit or miss) creates a new cell, which starts a new history
 at `n = 0`. A cell that is still a periodic candidate (`amp >= periodic_amplitude_min`)
 is kept until the periodicity test decides.
 
@@ -306,7 +306,7 @@ message of the evidence status and in the value of `evidence_calibration`). The 
   graduation after a floor window, are not covered. The exact value for the default pair at `m0`
   is 0.0055 (`results/e7_oc.csv`, Periodic veto off). Real windows are autocorrelated (lag-1 0.2 to 0.5 on the
   calibration sequences). With lag-1 autocorrelation 0.23 at exactly `m0`, the
-  per-history rate on the engine is 0.035, 3.5 times `alpha` (0.0056 at 0, 0.014 at 0.10,
+  rate per forward test (a history split at each demotion, within 1024 windows) on the engine is 0.035, 3.5 times `alpha` (0.0056 at 0, 0.014 at 0.10,
   0.061 at 0.35; `results/e7_autocorr.csv`); a bare random walk floored at `B` without
   rejection, the first reading, gives 13 times at the pair (0.15, 0.65).
 - *Realised rates on real clutter: the per-cell rate is above the nominal level.*

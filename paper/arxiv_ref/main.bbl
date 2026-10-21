@@ -213,7 +213,8 @@ M.~Nie{\ss}ner, M.~Zollh\"ofer, S.~Izadi, and M.~Stamminger.
 \bibitem[Page(1954)]{page1954continuous}
 E.~S. Page.
 \newblock Continuous inspection schemes.
-\newblock \emph{Biometrika}, 41:\penalty0 100--115, 1954.
+\newblock \emph{Biometrika}, 41\penalty0 (1/2):\penalty0 100--115, 1954.
+\newblock \doi{10.1093/biomet/41.1-2.100}.
 
 \bibitem[Palazzolo et~al.(2019)Palazzolo, Behley, Lottes, Gigu\`{e}re, and Stachniss]{palazzolo2019refusion}
 E.~Palazzolo, J.~Behley, P.~Lottes, P.~Gigu\`{e}re, and C.~Stachniss.

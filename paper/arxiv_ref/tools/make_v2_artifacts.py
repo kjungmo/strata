@@ -204,9 +204,9 @@ with open(TAB / "e7_oc.tex", "w") as f:
 with open(TAB / "e7_autocorr.tex", "w") as f:
     f.write(HDR % "e7_autocorr.csv")
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{The guarantee needs independent windows (E7). Share of cell histories whose first test graduates (Periodic veto off) when the windows of a cell at "
+    f.write("\\caption{The guarantee needs independent windows (E7). Share of forward tests (a cell history, split at each demotion) that graduate (Periodic veto off) when the windows of a cell at "
             "exactly $m_0$ follow a two-state chain with lag-1 autocorrelation $\\rho$ ($\\rho=0$: independent). \\emph{Engine}: "
-            "per history, %d windows, shipped pair. \\emph{Bare walk}: a random walk floored at $B$ and never rejected, %d windows, "
+            "per forward test, %d windows, shipped pair. \\emph{Bare walk}: a random walk floored at $B$ and never rejected, %d windows, "
             "the shipped pair; this is not the engine. Ratios are to $\\alpha{=}%.2f$. The band means of the lag-1 autocorrelation of the window outcomes of real "
             "LILocBench calibration cells lie between %.3f and %.3f (Table~\\ref{tab:optc}).}\n" % (int(ACM[("engine_per_history", "0.2", "0")]["horizon_windows"]),
                                  int(ACM[("reference_walk_floor_B", "0.2", "0")]["horizon_windows"]), D["alpha"], min(_lags), max(_lags)))

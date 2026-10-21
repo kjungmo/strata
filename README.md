@@ -54,7 +54,7 @@ fade. Sensor poses are full 6-DoF.
   not from the ROS node, and Periodic is validated on synthetic streams only. The sprt arm
   of E0–E6 and E7 are committed under `paper/experiments/results/*_sprt.csv` and `e7_*.csv`.
 - **2026-10** — Paper and repository audited for submission: the first version of the
-  manuscript (tag `paper-v1`) described the code of commit `312b09c`; the manuscript now
+  manuscript described the code of commit `312b09c`; the manuscript now
   describes `a7559d4` (see the entry above). Since the first release the periodicity test was corrected (centred
   amplitude, calibrated significance, level spent over repeated read-outs) and
   the node gained time-based windows, input diagnostics and a verified map save.
@@ -141,7 +141,7 @@ architecture, the persistence and periodicity model, the seeded synthetic
 characterization suite (calibration E0, experiments E1–E7, in a legacy and a sprt arm),
 a calibration of the shipped pair on real LiDAR data (not frozen) and a held-out
 evaluation of seven evidence rules on four public datasets, and it describes the
-code of commit `a7559d4`; the first release of the manuscript is the tag `paper-v1`
+code of commit `a7559d4`; the first release of the manuscript is commit `312b09c`
 (commit `312b09c`). If you use `strata` in academic work, please cite:
 
 ```bibtex
@@ -512,11 +512,11 @@ See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame convent
 | Document | Contents |
 |---|---|
 | [`paper/strata_paper.pdf`](paper/strata_paper.pdf) | The manuscript (built from [`paper/arxiv_ref/`](paper/arxiv_ref/), the LaTeX master) |
-| [`paper/strata_paper.md`](paper/strata_paper.md) | Long-form Markdown companion (EN): same numbers and claims, more implementation detail |
+| [`paper/strata_paper.md`](paper/strata_paper.md) | Long-form Markdown companion (EN), more implementation detail; still describes the first pin `312b09c` until it is re-synced |
 | [`paper/strata_paper_KR.md`](paper/strata_paper_KR.md) | Korean translation of the companion |
 | [`paper/README.md`](paper/README.md) | What is where under `paper/`, the code pin, how to reproduce |
 | [`SPEC.md`](SPEC.md) | Design spec — algorithm, parameters, frames, module layout, test strategy |
-| [`paper/experiments/`](paper/experiments/) | Reproduction harness (E0 calibration, E1–E6) + `run_all.sh` + `number_guard.py` |
+| [`paper/experiments/`](paper/experiments/) | Reproduction harness (E0 calibration, E1–E7) + `run_all.sh` + `number_guard.py` |
 | [`paper/figures/README.md`](paper/figures/README.md) | Figure design notes and CSV sources |
 
 ## 🗺️ Roadmap
@@ -530,7 +530,7 @@ next steps, drawn from `SPEC.md` §8 and the paper's future-work section:
 - [ ] **Multi-session map merge** — combine maps built across separate runs
 - [ ] **Loop closure** — rebase the map on an external pose graph (`strata` consumes pose; it does not close loops itself)
 - [ ] **Pluginlib-style dynamic backend loading** — once the backend count outgrows the current one-parameter `if`/`else`
-- [ ] **Real-robot and multi-session field validation** — close the synthetic-only evaluation gap
+- [ ] **Real-robot and multi-session field validation** — field and real-robot validation
 - [ ] **Learned per-cell ephemerality** — a per-cell-learned decay rate replacing the global `survival_decay` scalar
 
 ## 🙏 Acknowledgements
