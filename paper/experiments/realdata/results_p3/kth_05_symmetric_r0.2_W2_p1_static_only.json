@@ -1,0 +1,12 @@
+{
+ "AA": 77.9935944327722,
+ "DA": 99.46897042513054,
+ "HA": 75.74224366843261,
+ "SA": 61.1547575745984,
+ "gt": "/home/cona/datasets/strata/kth/05/gt_cloud.pcd",
+ "gt_dynamic": 684331,
+ "gt_static": 39264986,
+ "map": "/mnt/d/wsl/strata/p3/kth_05/symmetric_r0.2_W2_p1_static_only.pcd",
+ "map_points": 20097894,
+ "tol_m": 0.05
+}

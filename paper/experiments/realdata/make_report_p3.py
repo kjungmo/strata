@@ -119,11 +119,16 @@ def inventory(rd):
     return runs, attempts, failed, not_run, skipped
 
 
+NOT_RUN_NAMES = set()
+
+
 def step_status(name, runs, failed_names):
     if name in runs:
         return "ok" if runs[name] == 0 else "FAILED rc=%s" % runs[name]
     if name in failed_names:
         return "FAILED"
+    if name in NOT_RUN_NAMES:
+        return "not run (listed in not_run_steps.tsv)"
     return "missing"
 
 
@@ -178,6 +183,20 @@ def lil_section(rd, od, per, seqs=("lt_changes_dynamics_0", "lt_changes_0")):
     return "\n".join(out)
 
 
+def autocorr_rows(path):
+    """Rows of the committed Monte Carlo of the autocorrelation inflation (results/e7_autocorr.csv): the engine per history at (m0, m1) = (0.2, 0.7), m = m0."""
+    try:
+        with open(path) as f:
+            rows = [r for r in csv.DictReader(f) if not r["reading"].startswith("#")]
+    except OSError:
+        return []
+    out = []
+    for r in rows:
+        if r["m0"] == "0.2" and r["m1"] == "0.7" and r["m"] == "0.2" and r["reading"] in ("engine_per_history", "reference_walk_floor_B"):
+            out.append([r["reading"], r["rho"], r["units"], r["horizon_windows"], "%.3f%%" % (100 * float(r["share"])), "%.2f" % float(r["ratio_to_alpha"])])
+    return out
+
+
 def lil_reference_rows():
     return md(["reference row (calibration sequences, P2 replay, shipped pair)", "ever Static"],
               [["at H/N <= 0.20 (n = 22,273)", "1.51 % (veto on) / 1.64 % (veto off)"], ["above 0.20 (n = 1,823)", "30.5 % (veto on) / 33.8 % (veto off)"], ["all clutter (n = 24,096)", "3.71 % (veto on) / 4.07 % (veto off)"],
@@ -223,13 +242,12 @@ def spires_section(rd, od, per, failed_names, runs):
                     step = "spires_%s_%s_r%s_W%d_p%d" % (s, arm, r, w, per)
                     j = spires_json(rd, od, s, arm, r, w, per)
                     if j is None:
-                        rows.append(["Keble %s" % s, ARM_LABEL[arm], step_status(step, runs, failed_names)] + [""] * 4)
+                        rows.append(["Keble %s" % s, ARM_LABEL[arm], step_status(step, runs, failed_names), "", ""])
                         continue
                     b = j.get("ever_static_on_clutter_eligible_bound", {})
                     bound = "[%s, %s]" % (pc(b.get("lo")), pc(b.get("hi"))) if b else "n/a"
                     s3, s2 = j["structure_label_3"], j["structure_label_2"]
-                    nominal = "%.2f%% per history" % (100 * ALPHA) if arm in SPRT_ARMS else "none stated"
-                    rows.append(["Keble %s" % s, ARM_LABEL[arm], nominal, pc_ci(j["false_static_on_clutter"]), bound, "%d" % j["false_static_on_clutter"]["n"], ""])
+                    rows.append(["Keble %s" % s, ARM_LABEL[arm], pc_ci(j["false_static_on_clutter"]), bound, "%d" % j["false_static_on_clutter"]["n"]])
                     rows2.append(["Keble %s" % s, ARM_LABEL[arm], pc_ci({"rate": s3["false_reject_rate"], "wilson95": s3["wilson95"]}, nd=2), pc(s3["undecided_share"]),
                                   "%s / %s" % (num(s3["windows_to_first_static"]["p50"], 0), num(s3["windows_to_first_static"]["p90"], 0)),
                                   pc_ci({"rate": s2["false_reject_rate"], "wilson95": s2["wilson95"]}, nd=2), pc(s2["undecided_share"]),
@@ -238,8 +256,8 @@ def spires_section(rd, od, per, failed_names, runs):
                 pass
             tag = "veto ON (primary)" if per == 1 else "veto OFF (secondary)"
             out.append("#### Resolution %s m, W = %d, %s\n" % (r, w, tag))
-            out.append("False-Static on TLS-absent clutter (label 1, end of run, eligible cells; not the unit of the alpha test) and the bound on the ever-Static rate over eligible cells (Amendment 13):\n")
-            out.append(md(["sequence", "arm", "nominal", "Static at the end, Wilson", "ever Static, bound", "eligible n", ""], rows))
+            out.append("False-Static on TLS-absent clutter (label 1, end of run, eligible cells; this is not the unit of the alpha test, so no alpha is printed beside it, Amendments 12 and 13) and the bound on the ever-Static rate over eligible cells (Amendment 13). Wilson 95 % interval, cells treated as independent (the 3D counts table has no cell coordinates, so there is no block interval):\n")
+            out.append(md(["sequence", "arm", "Static at the end, Wilson", "ever Static, bound", "eligible n"], rows))
             out.append("False-reject, Undecided share and windows to first Static on non-ground structure (label 3) and ground (label 2). Latency population: all labelled cells ever Static, eligible or not (Amendment 12); it is not comparable with LILocBench latency.\n")
             out.append(md(["sequence", "arm", "label 3 Rejected", "label 3 Undecided", "label 3 windows p50 / p90", "label 2 Rejected", "label 2 Undecided", "label 2 windows p50 / p90", "n label 3", "n label 2"], rows2))
     return "\n".join(out)
@@ -261,7 +279,17 @@ def spires_agree_section(rd, per):
 
 # -------------------------------------------------------------------------------------------------------- KTH ------
 
-def kth_section(rd, od, per):
+def failure_reason(rd, step):
+    """The last error line of a step log (a line that starts with the program name), or an empty string."""
+    try:
+        with open(os.path.join(rd, "logs", step + ".log")) as f:
+            lines = [ln.strip() for ln in f if ln.startswith("p3_probe:") or "bad_alloc" in ln or ln.startswith("terminate")]
+        return lines[-1][:80] if lines else ""
+    except OSError:
+        return ""
+
+
+def kth_section(rd, od, per, runs=None, failed_names=None):
     out = []
     for seq, cfgs in (("05", (("0.2", 10), ("0.2", 2))), ("semindoor", (("0.2", 10), ("0.2", 2), ("0.1", 10)))):
         sc = jload(os.path.join(rd, "kth_selfcheck_%s.json" % seq))
@@ -272,7 +300,10 @@ def kth_section(rd, od, per):
                 for pol in ("static_only", "not_rejected"):
                     j = jload(os.path.join(rd, "kth_%s_%s_r%s_W%d_p%d_%s.json" % (seq, arm, r, w, per, pol)))
                     if j is None:
-                        rows.append([ARM_LABEL[arm], pol, "missing", "", "", "", "", ""])
+                        step = "kth_%s_%s_r%s_W%d_p%d" % (seq, arm, r, w, per)
+                        st = step_status(step, runs or {}, failed_names or set())
+                        why = failure_reason(rd, step) if st != "ok" and st != "missing" else ""
+                        rows.append([ARM_LABEL[arm], pol, (st + (" (%s)" % why if why else "")) if st != "ok" else "export ok, evaluation missing", "", "", "", "", ""])
                         continue
                     pts = int(m.get("points_in_range", 0)) or 1
                     rows.append([ARM_LABEL[arm], pol, num(j["SA"], 2), num(j["DA"], 2), num(j["AA"], 2), num(j["HA"], 2),
@@ -315,11 +346,63 @@ def boreas_section(rd, od):
     for arm in ARMS:
         for mode in ("independent", "cumulative"):
             m = meta_load(os.path.join(od, "boreas", "%s_%s.meta" % (arm, mode)))
-            if m:
-                srows.append([ARM_LABEL[arm], mode, m.get("windows_closed", ""), m.get("map_cells_end", ""), m.get("peak_rss_kb", ""), m.get("seconds", "")])
-    out.append("Run facts (map cells at the end, peak memory in kB, seconds; timing is stated, not measured under controlled load):\n")
-    out.append(md(["arm", "mode", "windows closed", "map cells end", "peak RSS kB", "seconds"], srows))
+            if not m:
+                continue
+            for i in range(int(m.get("sessions", 0))):
+                srows.append([ARM_LABEL[arm], mode, str(i), m.get("session%d_frames" % i, ""), m.get("session%d_windows_closed" % i, ""),
+                              m.get("session%d_static_cells" % i, ""), m.get("session%d_observed_cells" % i, ""),
+                              m.get("peak_rss_kb", "") if i == 0 else "", m.get("seconds", "") if i == 0 else ""])
+    zrows = []
+    for sid in ("boreas-2021-04-08-12-44", "boreas-2021-06-17-17-52"):
+        z = jload(os.path.join(rd, "boreas_ground_diagnostic_%s.json" % sid))
+        if z:
+            zrows.append([sid, str(z["tiles"]), num(z["median"], 3), num(z["p10"], 3), num(z["p90"], 3)])
+    out.append("Ground height difference to the first session per 10 m tile (diagnostic only, reported and never applied; Amendment 3 sets the vertical offset to 0 for every session). Metres, session minus reference:\n")
+    out.append(md(["session", "shared tiles", "median", "p10", "p90"], zrows))
+    out.append("Static and observed cells per session of each map (the cumulative map is one map, so its per-session lines are the state after that session), peak memory in kB and seconds of the whole run (two streams ran at the same time; timing is stated, not measured under controlled load, Amendment 15):\n")
+    out.append(md(["arm", "mode", "session", "frames", "windows closed", "Static cells", "observed cells", "peak RSS kB (run)", "seconds (run)"], srows))
     return "\n".join(out)
+
+
+def binary_commits(rd):
+    """Distinct (binary commit, strata_core tree) over the step logs of the evaluation steps, with the number of steps and the first and last start time."""
+    seen = {}
+    for p in sorted(glob.glob(os.path.join(rd, "logs", "*.log"))):
+        name = os.path.basename(p)
+        if ".attempt-" in name or not name.startswith(("lil_", "spires_", "kth_", "boreas_")):
+            continue
+        start = com = tree = None
+        try:
+            with open(p) as f:
+                for ln in f:
+                    if ln.startswith("START "):
+                        start = ln.split()[1]
+                    elif ln.startswith("BINARY_COMMIT "):
+                        com = ln.split()[1]
+                    elif ln.startswith("STRATA_CORE_TREE "):
+                        tree = ln.split()[1]
+                    if start and com and tree:
+                        break
+        except OSError:
+            continue
+        if com:
+            e = seen.setdefault((com, tree), [0, start, start])
+            e[0] += 1
+            e[1] = min(e[1], start)
+            e[2] = max(e[2], start)
+    return [[k[0][:10], (k[1] or "")[:10], str(v[0]), v[1], v[2]] for k, v in sorted(seen.items(), key=lambda kv: kv[1][1])]
+
+
+def amendment_headings(path):
+    out = []
+    try:
+        with open(path) as f:
+            for ln in f:
+                if ln.startswith("## ") and "Amendment" in ln:
+                    out.append([ln[3:].strip()])
+    except OSError:
+        pass
+    return out
 
 
 def main(argv=None):
@@ -331,8 +414,13 @@ def main(argv=None):
     rd, od = a.results_dir, a.out_dir
     runs, attempts, failed, not_run, skipped = inventory(rd)
     failed_names = {r[1] for r in failed if len(r) > 1}
+    NOT_RUN_NAMES.update(r[1] for r in not_run if len(r) > 1 and r[1] not in failed_names)
     doc = ["# STRATA v2 phase 3: test-split evaluation report\n"]
     doc.append("Generated by `make_report_p3.py` from `results_p3/` (Amendment 15). Every number is copied from the JSON, meta and run-record files; the only computed rows are the near-wall thickening rows.\n")
+    summ = os.path.join(rd, "P3_REPORT_summary.md")
+    if os.path.exists(summ):
+        with open(summ) as f:
+            doc.append(f.read())
     doc.append("## 0. Runs\n")
     ok = sum(1 for v in runs.values() if v == 0)
     bad = sorted(k for k, v in runs.items() if v not in (0, None))
@@ -357,6 +445,8 @@ def main(argv=None):
     doc.append("## 1. LILocBench\n")
     doc.append("Reference rows from the calibration sequences (same code and pair), quoted with the primary quantity (Amendment 5):\n")
     doc.append(lil_reference_rows())
+    doc.append("The bound alpha = 0.01 holds per history under independent windows (L-7). The committed Monte Carlo of the inflation by the lag-1 autocorrelation `rho` of the window outcomes (`paper/experiments/results/e7_autocorr.csv`, rows at m = m0 = 0.2, pair (0.20, 0.70)); the real windows of the calibration sequences have lag-1 autocorrelation 0.2 to 0.5:\n")
+    doc.append(md(["reading", "rho", "histories", "horizon (windows)", "share graduated", "ratio to alpha"], autocorr_rows(os.path.join(HERE, "..", "results", "e7_autocorr.csv"))))
     for per in (1, 0):
         doc.append(lil_section(rd, od, per))
     doc.append("## 2. Oxford Spires Keble 03 to 05\n")
@@ -370,9 +460,18 @@ def main(argv=None):
                "Every arm applies its increment once per touched window, so the rows labelled OctoMap parameters on window evidence and ELite factors on window evidence are not the published OctoMap and ELite methods. "
                "The `sprt` pair is the 2D pair, not calibrated for 3D. No arm is a competitive removal method.\n")
     for per in (1, 0):
-        doc.append(kth_section(rd, od, per))
+        doc.append(kth_section(rd, od, per, runs, failed_names))
     doc.append("## 4. Boreas\n")
     doc.append(boreas_section(rd, od))
+    doc.append("## 5. Provenance\n")
+    doc.append("Binary commit and `strata_core` tree of the evaluation step logs (a steps count per binary; the engine tree is the same for every row; Amendments 3, 5 and 14 pin it):\n")
+    doc.append(md(["binary commit", "strata_core tree", "steps", "first start", "last start"], binary_commits(rd)))
+    doc.append("Amendments of `PREREG_P3.md` (each committed before the run it affects; the text is in the file, the list of deviations in `results_p3/deviations.md`):\n")
+    doc.append(md(["heading"], amendment_headings(os.path.join(HERE, "PREREG_P3.md"))))
+    app = os.path.join(rd, "P3_REPORT_appendix.md")
+    if os.path.exists(app):
+        with open(app) as f:
+            doc.append(f.read())
     with open(a.out, "w") as f:
         f.write("\n".join(doc) + "\n")
     return 0

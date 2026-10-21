@@ -1,0 +1,69 @@
+{
+ "after": {
+  "loadavg": "1.15 1.17 1.18 2/1240 1633874",
+  "meminfo": {
+   "MemAvailable": "7581200 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31993788 kB"
+  },
+  "time": "2026-10-21T15:09:47+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.8 160552 malbeat",
+   " 2.3 635912 2.1.303",
+   " 1.1 558596 2.1.303",
+   " 0.8 409924 2.1.304",
+   " 0.6 420096 2.1.304"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "kth_selfcheck_semindoor",
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' kth-selfcheck --gt '~/datasets/strata/kth/semindoor/gt_cloud.pcd' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/kth_selfcheck_semindoor.json'"
+ ],
+ "before": {
+  "loadavg": "1.16 1.21 1.19 1/1270 1625060",
+  "meminfo": {
+   "MemAvailable": "7514224 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31993764 kB"
+  },
+  "time": "2026-10-21T14:46:04+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.7 160552 malbeat",
+   " 2.3 634856 2.1.303",
+   " 1.1 554860 2.1.303",
+   " 0.8 410340 2.1.304",
+   " 0.6 424672 2.1.304"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 1,
+  "uncommitted_in_repository": 526
+ },
+ "hash_inputs": true,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [
+  {
+   "mtime": 1682675741.0,
+   "path": "~/datasets/strata/kth/semindoor/gt_cloud.pcd",
+   "sha256": "89bf19e47368b7919e143fdca06bc1ccd782a0ca7f7ecc977b275ff82bc081ba",
+   "size": 424229303
+  }
+ ],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 1420.366,
+ "step": "kth_selfcheck_semindoor"
+}

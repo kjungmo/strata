@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "8.87 10.70 9.16 5/1399 101020",
+  "loadavg": "1.31 1.26 1.15 2/1192 764057",
   "meminfo": {
-   "MemAvailable": "6388860 kB",
+   "MemAvailable": "9079648 kB",
    "MemTotal": "12249904 kB",
-   "SwapFree": "33552192 kB"
+   "SwapFree": "31978224 kB"
   },
-  "time": "2026-10-19T10:53:51+0900",
+  "time": "2026-10-20T07:19:31+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 100 25756 exp_lever",
-   "99.9 25664 exp_lever",
-   "99.8 25612 exp_lever",
-   "99.8 25704 exp_lever",
-   "21.0 81920 python3"
+   " 3.7 437296 chrome",
+   " 2.9 562104 2.1.303",
+   " 1.4 521128 2.1.303",
+   " 1.2 54396 chrome",
+   " 0.7 13696 python3"
   ]
  },
  "argv": [
@@ -22,30 +22,30 @@
   "cd '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata' && python3 -I -m unittest discover -s . -p 'test_p3*.py'"
  ],
  "before": {
-  "loadavg": "8.69 10.70 9.15 8/1400 100905",
+  "loadavg": "1.34 1.26 1.16 1/1170 763876",
   "meminfo": {
-   "MemAvailable": "6471868 kB",
+   "MemAvailable": "9140932 kB",
    "MemTotal": "12249904 kB",
-   "SwapFree": "33552192 kB"
+   "SwapFree": "31978224 kB"
   },
-  "time": "2026-10-19T10:53:45+0900",
+  "time": "2026-10-20T07:19:27+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "99.9 25756 exp_lever",
-   "99.8 25612 exp_lever",
-   "99.8 25704 exp_lever",
-   "99.8 25664 exp_lever",
-   "21.0 81108 python3"
+   " 3.7 437324 chrome",
+   " 2.9 561928 2.1.303",
+   " 1.4 521100 2.1.303",
+   " 1.2 54396 chrome",
+   " 0.1 78472 Xvfb"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
-  "commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
   "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
   "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
   "uncommitted_in_experiment_dir": 0,
-  "uncommitted_in_repository": 17
+  "uncommitted_in_repository": 22
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -54,6 +54,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 6.045,
+ "seconds": 3.922,
  "step": "unit_py"
 }

@@ -1,19 +1,19 @@
 {
  "after": {
-  "loadavg": "8.55 11.58 9.18 5/1392 99052",
+  "loadavg": "1.40 1.25 1.14 1/1177 762794",
   "meminfo": {
-   "MemAvailable": "6187920 kB",
+   "MemAvailable": "9085116 kB",
    "MemTotal": "12249904 kB",
-   "SwapFree": "33552192 kB"
+   "SwapFree": "31978224 kB"
   },
-  "time": "2026-10-19T10:51:51+0900",
+  "time": "2026-10-20T07:18:11+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   " 100 13276 exp_lever",
-   " 100 13368 exp_lever",
-   " 100 13336 exp_lever",
-   " 100 13420 exp_lever",
-   "25.4 150088 python3"
+   " 3.7 437232 chrome",
+   " 2.9 574452 2.1.303",
+   " 1.4 521004 2.1.303",
+   " 1.2 54396 chrome",
+   " 0.1 78472 Xvfb"
   ]
  },
  "argv": [
@@ -25,30 +25,30 @@
   "-DCMAKE_BUILD_TYPE=Release"
  ],
  "before": {
-  "loadavg": "8.55 11.58 9.18 6/1392 99041",
+  "loadavg": "1.40 1.25 1.14 1/1177 762781",
   "meminfo": {
-   "MemAvailable": "6186432 kB",
+   "MemAvailable": "9095692 kB",
    "MemTotal": "12249904 kB",
-   "SwapFree": "33552192 kB"
+   "SwapFree": "31978224 kB"
   },
-  "time": "2026-10-19T10:51:51+0900",
+  "time": "2026-10-20T07:18:11+0900",
   "top_cpu": [
    "%CPU   RSS COMMAND",
-   "98.5 13276 exp_lever",
-   "98.5 13368 exp_lever",
-   "98.5 13336 exp_lever",
-   "98.5 13420 exp_lever",
-   "25.4 150060 python3"
+   " 3.7 437232 chrome",
+   " 2.9 574452 2.1.303",
+   " 1.4 521004 2.1.303",
+   " 1.2 54396 chrome",
+   " 0.1 78472 Xvfb"
   ]
  },
  "cores": 12,
  "git": {
-  "binary_commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
-  "commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
   "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
   "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
   "uncommitted_in_experiment_dir": 0,
-  "uncommitted_in_repository": 4
+  "uncommitted_in_repository": 10
  },
  "hash_inputs": false,
  "host": "DESKTOP-KCD7BRS",
@@ -57,6 +57,6 @@
  "outputs": [],
  "python": "3.8.10",
  "returncode": 0,
- "seconds": 0.141,
+ "seconds": 0.12,
  "step": "build_configure"
 }

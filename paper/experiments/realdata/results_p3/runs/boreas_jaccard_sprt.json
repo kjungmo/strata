@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "2.10 2.07 2.08 2/1257 1224061",
+  "meminfo": {
+   "MemAvailable": "7172720 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31977528 kB"
+  },
+  "time": "2026-10-20T22:00:31+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "96.7 484676 p3_probe",
+   " 2.6 652732 2.1.303",
+   " 1.2 450532 2.1.303",
+   " 0.9 395092 2.1.304",
+   " 0.7 395804 2.1.304"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' jaccard --ids '/mnt/d/wsl/strata/p3/boreas/sprt_independent_s0_static.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_independent_s1_static.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_independent_s2_static.ids' --observed '/mnt/d/wsl/strata/p3/boreas/sprt_independent_s0_observed.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_independent_s1_observed.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_independent_s2_observed.ids' --res 0.2 > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/boreas_sprt_independent.json'"
+ ],
+ "before": {
+  "loadavg": "2.02 2.06 2.07 2/1271 1223960",
+  "meminfo": {
+   "MemAvailable": "7249972 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31977528 kB"
+  },
+  "time": "2026-10-20T22:00:14+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "96.7 480604 p3_probe",
+   " 2.6 652952 2.1.303",
+   " 1.2 450496 2.1.303",
+   " 0.9 408384 2.1.304",
+   " 0.7 410232 2.1.304"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 200
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 16.639,
+ "step": "boreas_jaccard_sprt"
+}

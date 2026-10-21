@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "2.29 2.20 2.13 2/1255 1288508",
+  "meminfo": {
+   "MemAvailable": "6602112 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31978308 kB"
+  },
+  "time": "2026-10-21T00:42:01+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.3 1109796 p3_probe",
+   " 2.5 645452 2.1.303",
+   " 1.2 450804 2.1.303",
+   " 0.9 410656 2.1.304",
+   " 0.7 408276 2.1.304"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' jaccard --ids '/mnt/d/wsl/strata/p3/boreas/sprt_low_end_independent_s0_static.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_low_end_independent_s1_static.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_low_end_independent_s2_static.ids' --observed '/mnt/d/wsl/strata/p3/boreas/sprt_low_end_independent_s0_observed.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_low_end_independent_s1_observed.ids' '/mnt/d/wsl/strata/p3/boreas/sprt_low_end_independent_s2_observed.ids' --res 0.2 > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/boreas_sprt_low_end_independent.json'"
+ ],
+ "before": {
+  "loadavg": "2.21 2.18 2.12 2/1273 1288420",
+  "meminfo": {
+   "MemAvailable": "6641036 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31978308 kB"
+  },
+  "time": "2026-10-21T00:41:42+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.3 1092100 p3_probe",
+   " 2.5 645960 2.1.303",
+   " 1.2 451300 2.1.303",
+   " 1.0  3436 systemd-udevd",
+   " 0.9 408544 2.1.304"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 245
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 19.718,
+ "step": "boreas_jaccard_sprt_low_end"
+}

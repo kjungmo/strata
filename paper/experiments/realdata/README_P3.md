@@ -3,7 +3,7 @@
 ## Phase 3: the test evaluation harness (`PREREG_P3.md`)
 
 Read `PREREG_P3.md` first (arms, metrics, export policies, order, what each dataset can and cannot show; committed before any evaluation).
-The harness is built and tested; the test evaluation was run on 2026-10-18 to 2026-10-2x (see `results_p3/P3_REPORT.md`, `results_p3/deviations.md`). The evaluation stages of `reproduce_p3.sh` refuse to start unless
+The harness is built and tested; the test evaluation was run from 2026-10-18 to 2026-10-22 (see `results_p3/P3_REPORT.md`, `results_p3/deviations.md`). The evaluation stages of `reproduce_p3.sh` refuse to start unless
 `P3_RUN_EVALUATIONS=1` is set, `PREREG_P3.md` and the arm table are committed and unmodified, and the binary comes from HEAD.
 
 | File | Role |

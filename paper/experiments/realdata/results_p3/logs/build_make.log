@@ -1,16 +1,16 @@
 STEP build_make
-START 2026-10-19T10:51:51+09:00 host=DESKTOP-KCD7BRS load=8.55 11.58 9.18 cores=12
-COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+START 2026-10-20T07:18:11+09:00 host=DESKTOP-KCD7BRS load=1.40 1.25 1.14 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
 EXPERIMENT_DIR_UNCOMMITTED 0
-BINARY_COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
 STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
 STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
 CMD cmake --build <BUILD_DIR>/build -j4 --target p3_probe hitrate_probe p1b_probe test_p3
 Scanning dependencies of target strata_core
-[ 12%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/periodicity.cpp.o
-[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
-[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
+[ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/periodicity.cpp.o
 [ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
+[ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
+[ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp: In function ‘bool strata_core::worldToGrid(const strata_core::GridMeta&, double, double, int&, int&)’:
 ~/.cache/strata_p3_build/src/strata_core/src/types.cpp:6:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
     6 |   if(fx<0.0||fy<0.0) return false; gx=static_cast<int>(fx); gy=static_cast<int>(fy);
@@ -46,4 +46,4 @@ Scanning dependencies of target test_p3
 [100%] Linking CXX executable test_p3
 [100%] Built target test_p3
 run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/build_make.json rc=0
-END 2026-10-19T10:53:05+09:00 rc=0 load=8.96 11.02 9.18
+END 2026-10-20T07:18:58+09:00 rc=0 load=1.28 1.25 1.15

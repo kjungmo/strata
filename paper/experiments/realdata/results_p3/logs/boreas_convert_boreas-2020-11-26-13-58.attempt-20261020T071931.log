@@ -1,0 +1,8 @@
+STEP boreas_convert_boreas-2020-11-26-13-58
+START 2026-10-20T07:17:48+09:00 host=DESKTOP-KCD7BRS load=1.16 1.20 1.12 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD <BUILD_DIR>/build/realdata/p3_probe boreas-convert --seq <DATA_ROOT>/boreas/boreas-2020-11-26-13-58 --ref <DATA_ROOT>/boreas/boreas-2020-11-26-13-58 --r-max 25 --out <OUT_DIR>/boreas/cache_boreas-2020-11-26-13-58.bin --meta <OUT_DIR>/boreas/cache_boreas-2020-11-26-13-58.meta --z-offset 0

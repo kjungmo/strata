@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "1.05 1.11 1.15 1/1249 1550712",
+  "meminfo": {
+   "MemAvailable": "7383480 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31992204 kB"
+  },
+  "time": "2026-10-21T11:40:59+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.7 160552 malbeat",
+   " 2.3 653424 2.1.303",
+   " 1.5 13868 python3",
+   " 1.1 552900 2.1.303",
+   " 0.8 407268 2.1.304"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' jaccard --ids '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p0_s0_static.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p0_s1_static.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p0_s2_static.ids' --observed '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p0_s0_observed.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p0_s1_observed.ids' '/mnt/d/wsl/strata/p3/spires_agree_elite_like_p0_s2_observed.ids' --res 0.2 > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/spires_agree_elite_like_p0.json'"
+ ],
+ "before": {
+  "loadavg": "1.06 1.11 1.15 1/1244 1550684",
+  "meminfo": {
+   "MemAvailable": "7517900 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31992204 kB"
+  },
+  "time": "2026-10-21T11:40:56+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.7 160552 malbeat",
+   " 2.3 653352 2.1.303",
+   " 1.1 553524 2.1.303",
+   " 0.8 407780 2.1.304",
+   " 0.6 416360 2.1.304"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 1,
+  "uncommitted_in_repository": 340
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 2.845,
+ "step": "spires_jaccard_elite_like_p0"
+}

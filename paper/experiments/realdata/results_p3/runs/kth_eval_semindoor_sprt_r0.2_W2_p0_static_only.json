@@ -1,0 +1,62 @@
+{
+ "after": {
+  "loadavg": "1.25 1.22 1.19 1/1269 1791103",
+  "meminfo": {
+   "MemAvailable": "9295352 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "29867396 kB"
+  },
+  "time": "2026-10-21T21:49:03+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.8  3220 malbeat",
+   " 2.2 512540 2.1.303",
+   " 1.1 378120 2.1.303",
+   " 0.8 55676 Xvfb",
+   " 0.8 331132 2.1.304"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "kth_eval_semindoor_sprt_r0.2_W2_p0_static_only",
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' kth --gt '~/datasets/strata/kth/semindoor/gt_cloud.pcd' --map '/mnt/d/wsl/strata/p3/kth_semindoor/sprt_r0.2_W2_p0_static_only.pcd' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/kth_semindoor_sprt_r0.2_W2_p0_static_only.json'"
+ ],
+ "before": {
+  "loadavg": "1.35 1.20 1.19 1/1253 1790460",
+  "meminfo": {
+   "MemAvailable": "9339796 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "29849908 kB"
+  },
+  "time": "2026-10-21T21:47:30+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.8  3220 malbeat",
+   " 2.2 511612 2.1.303",
+   " 1.1 378532 2.1.303",
+   " 0.8 55676 Xvfb",
+   " 0.8 330972 2.1.304"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 1,
+  "uncommitted_in_repository": 1010
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 93.06,
+ "step": "kth_eval_semindoor_sprt_r0.2_W2_p0_static_only"
+}

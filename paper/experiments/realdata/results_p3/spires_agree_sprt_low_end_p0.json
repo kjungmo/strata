@@ -1,0 +1,65 @@
+[
+ {
+  "a": "/mnt/d/wsl/strata/p3/spires_agree_sprt_low_end_p0_s0_static.ids",
+  "b": "/mnt/d/wsl/strata/p3/spires_agree_sprt_low_end_p0_s1_static.ids",
+  "intersection": 250481,
+  "jaccard": 0.5820645455136964,
+  "pairwise_tiles": {
+   "intersection": 250481,
+   "jaccard": 0.5820645455136964,
+   "shared_tiles": 91,
+   "size_a": 315159,
+   "size_b": 365654,
+   "union": 430332
+  },
+  "scope": "tiles observed by all 3 sessions",
+  "session_a": 0,
+  "session_b": 1,
+  "shared_tiles": 90,
+  "size_a": 315159,
+  "size_b": 365654,
+  "union": 430332
+ },
+ {
+  "a": "/mnt/d/wsl/strata/p3/spires_agree_sprt_low_end_p0_s0_static.ids",
+  "b": "/mnt/d/wsl/strata/p3/spires_agree_sprt_low_end_p0_s2_static.ids",
+  "intersection": 280252,
+  "jaccard": 0.663371726955542,
+  "pairwise_tiles": {
+   "intersection": 280272,
+   "jaccard": 0.662953002036602,
+   "shared_tiles": 93,
+   "size_a": 315455,
+   "size_b": 387580,
+   "union": 422763
+  },
+  "scope": "tiles observed by all 3 sessions",
+  "session_a": 0,
+  "session_b": 2,
+  "shared_tiles": 90,
+  "size_a": 315159,
+  "size_b": 387559,
+  "union": 422466
+ },
+ {
+  "a": "/mnt/d/wsl/strata/p3/spires_agree_sprt_low_end_p0_s1_static.ids",
+  "b": "/mnt/d/wsl/strata/p3/spires_agree_sprt_low_end_p0_s2_static.ids",
+  "intersection": 320650,
+  "jaccard": 0.7412793049798526,
+  "pairwise_tiles": {
+   "intersection": 481985,
+   "jaccard": 0.7338349550778543,
+   "shared_tiles": 143,
+   "size_a": 565171,
+   "size_b": 573617,
+   "union": 656803
+  },
+  "scope": "tiles observed by all 3 sessions",
+  "session_a": 1,
+  "session_b": 2,
+  "shared_tiles": 90,
+  "size_a": 365654,
+  "size_b": 387559,
+  "union": 432563
+ }
+]

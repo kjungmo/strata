@@ -1,0 +1,11 @@
+STEP kth_selfcheck_semindoor
+START 2026-10-21T14:46:04+09:00 host=DESKTOP-KCD7BRS load=1.16 1.21 1.19 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' kth-selfcheck --gt '<DATA_ROOT>/kth/semindoor/gt_cloud.pcd' > '<RESULTS_DIR>/kth_selfcheck_semindoor.json'
+step kth_selfcheck_semindoor rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/kth_selfcheck_semindoor.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/kth_selfcheck_semindoor.json rc=0
+END 2026-10-21T15:09:47+09:00 rc=0 load=1.15 1.17 1.18

@@ -1,5 +1,5 @@
 # stat record of test-split files; root = datasets/strata; columns: path<TAB>size<TAB>mtime<TAB>atime<TAB>ctime
-# host=DESKTOP-KCD7BRS recorded=2026-10-18T13:11:18,555921445+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
+# host=DESKTOP-KCD7BRS recorded=2026-10-22T00:19:54,765130522+09:00 mount: D: is 9p drvfs with noatime, so atime is not informative
 boreas/_listings/2020-11-26-13-58.applanix.fresh.tsv	1430	2026-10-14 09:24:58.056640100 +0900	2026-10-14 09:24:58.056640100 +0900	2026-10-14 09:24:58.056640100 +0900
 boreas/_listings/2020-11-26-13-58.applanix.tsv	1430	2026-10-12 18:35:03.000000000 +0900	2026-10-14 08:56:42.840670500 +0900	2026-10-14 08:56:42.845723100 +0900
 boreas/_listings/2020-11-26-13-58.calib.fresh.tsv	265	2026-10-14 09:24:58.587616100 +0900	2026-10-14 09:24:58.587616100 +0900	2026-10-14 09:24:58.587616100 +0900
