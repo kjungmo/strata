@@ -734,3 +734,7 @@ with open(TAB / "e6.tex", "w") as f:
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
 print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e0 e1 e2 e3 e3_full e4 e5 e5_choice e5_confusion e5_full fix")
+
+# sequential-test and real-data tables and the number macros of those parts
+import runpy  # noqa: E402
+runpy.run_path(str(Path(__file__).resolve().with_name("make_v2_artifacts.py")), run_name="__main__")

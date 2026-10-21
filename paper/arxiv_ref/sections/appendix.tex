@@ -6,6 +6,8 @@
 
 \noindent\textbf{What reproduces.} \nolinkurl{paper/experiments/check_reproduction.sh} rebuilds the harness from a clean checkout and requires every result file of E0--E3, E5 and E6 (both arms) and of E7 to come out byte for byte; \nolinkurl{paper/experiments/reproduction_log.txt} lists the compilers with which it did (GCC~9.4.0 with libstdc++, on one x86-64 Linux host). The result is not independent of the C++ standard library. The streams come from \code{std::mt19937}, whose output the standard fixes, through three standard distributions, whose algorithms it does not fix. With clang~23.1.2 and libc++ (\nolinkurl{check_stdlib.sh}, record in \nolinkurl{results/stdlib_libcxx/}), 15 of the 19 seeded result files are byte-identical and four differ: the two E1 files, the E0 door file and the E6 confusion file. These are the experiments whose outcome depends on integers drawn with \code{std::uniform\_int\_distribution} (mover cells in E1's \code{grid2d} runs, door phases in E0 and E6). Under libc++ the final \code{grid2d} precision at high clutter in E1 is 0.9583 with 168 predicted cells instead of 0.9253 with 174, and every other final value of Table~\ref{tab:e1} is unchanged; five of the 20 E0 door medians move by one window (at $\delta{=}0.1$, 20 to 21 and 23 to 24) and the selected levels do not change; and 1976 instead of 1960 of the 2000 aperiodic cells of E6 are Static with the shipped defaults. E5's confusion draws door phases the same way, but its counts do not depend on the phases and its file is identical. 17 of the 20 result files of the sequential-test arm and E7 are byte-identical and three differ (the E0 door file, the E6 confusion file and the E4 cell counts of the sequential-test arm), again the files that depend on integers or reals drawn with a standard distribution; E7 draws from \code{std::mt19937\_64} directly and is identical. No third standard library was tried.
 
+\noindent\textbf{Real data.} The datasets are public and are not in the repository; their licences allow statistics and figures, not redistribution. Each is downloaded from its official source into a directory outside the repository. \nolinkurl{paper/experiments/realdata/check_realdata.sh} verifies the recorded checksums when the data are present and skips cleanly when they are absent. The calibration, the freeze record and the evaluation are \nolinkurl{reproduce_p1.sh}, \nolinkurl{reproduce_p1b.sh} and \nolinkurl{reproduce_p3.sh}. The repository holds the summary tables, the JSON results, the step logs (host, load, commit, input checksums), the stat records of the test files before and after each phase, and an access log with a file-open trace of every evaluation step. Cell-level dumps stay outside the repository, so the near-wall rows of Table~\ref{tab:p3wall} are copied from the committed report \nolinkurl{results_p3/P3_REPORT.md}, which is generated from those dumps, and the number check compares them there. Every other number of Sections~\ref{sec:seq} to~\ref{sec:realeval} that comes from a run is computed from committed files by \nolinkurl{tools/make_v2_artifacts.py} and enters the text as a macro, so the prose of these sections holds no hand-typed measured number.
+
 \noindent From the repository root:
 \begin{itemize}
   \item Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on \code{ubuntu-latest}):
@@ -13,7 +15,7 @@
 cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
 cmake -{}-build build \&\& (cd build \&\& ctest)
 \end{quote}
-  \item Unit tests, the calibration E0 (seeds from 20260928), experiments E1--E4 (seed 12345), E5 (calibration seeds from 30260928, evaluation seeds from 40260928) and E6 (sweep seeds from 50260928), writing the CSVs under \nolinkurl{paper/experiments/results/}. E0--E3, E5 and E6 rewrite their files byte for byte. E4 reads the wall clock: this script writes its output to \nolinkurl{paper/experiments/build/e4_throughput_local.csv} and fails if a cell count or byte estimate differs from the committed one (\nolinkurl{check_e4_local.py}); timings for the paper are recorded separately with \nolinkurl{paper/experiments/measure_e4.sh}. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}), against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}) and against the engine with the single-read-out level (\nolinkurl{results/pre_spending_2026-09-28/}):
+  \item Unit tests, the calibration E0 (seeds from 20260928), experiments E1--E4 (seed 12345), E5 (calibration seeds from 30260928, evaluation seeds from 40260928) and E6 (sweep seeds from 50260928), each in both arms, and E7 (its own seeds, drawn directly from \code{std::mt19937\_64}), writing the CSVs under \nolinkurl{paper/experiments/results/}. E0--E3, E5 and E6 (both arms) and E7 rewrite their files byte for byte. E4 reads the wall clock: this script writes its output to \nolinkurl{paper/experiments/build/e4_throughput_local.csv} and fails if a cell count or byte estimate differs from the committed one (\nolinkurl{check_e4_local.py}); timings for the paper are recorded separately with \nolinkurl{paper/experiments/measure_e4.sh}. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}), against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}) and against the engine with the single-read-out level (\nolinkurl{results/pre_spending_2026-09-28/}):
 \begin{quote}\small\ttfamily bash paper/experiments/run\_all.sh\end{quote}
   \item Tables and plot data of this paper, and the number check (\nolinkurl{paper/arxiv_ref/NUMBERS.md}). The check regenerates every table and plot-data file and compares it with the committed one. For the hand-written text it locates each numeral and requires it to be tied to a value recomputed from the result files or the code, or to be listed as structural with a reason (an experiment design constant restated from the harness, a symbol in a formula, a plot layout value). A numeral that is neither fails the check. Its limits are these. Structural numerals, among them the scenario sizes of \S\ref{subsec:setup} and the design constants written as symbol and value, are not parsed from the harness; they are kept in a committed list (\nolinkurl{paper/arxiv_ref/structural_numerals.tsv}), so that changing one fails the check until the list is rewritten on purpose. A numeral that is tied to a recomputed value only by being equal to it, and not by its sentence, could be exchanged for another recomputed value without the check noticing; \nolinkurl{NUMBERS.md} gives the count of each kind.
 \begin{quote}\small\ttfamily python3 paper/arxiv\_ref/tools/make\_artifacts.py\\
@@ -47,13 +49,20 @@ Parameter & Symbol & Default & Meaning \\
 \code{periodic\_alpha\_spending} & $\delta_n$ & true & spend $\delta$ over the touch count, Eq.~\eqref{eq:spend} \\
 \code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
 \code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
+\midrule
+\code{evidence\_model} & --- & \code{sprt} & evidence rule (\code{legacy}: first release) \\
+\code{m0} & $m_0$ & 0.20 & clutter at or below this hit rate (provisional) \\
+\code{m1} & $m_1$ & 0.70 & structure at or above this hit rate (provisional) \\
+\code{alpha} & $\alpha$ & 0.01 & error rate for clutter at $m_0$ \\
+\code{beta} & $\beta$ & 0.01 & error rate for structure at $m_1$ \\
+\code{n\_max\_undecided} & $n_{\max}$ & 80 & windows before the Intermittent read-out \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{Per-experiment deviations from the defaults of Table~\ref{tab:params}, as compiled into each harness. ``---'': default; ``swept'': varied over the E3 grid; ``n/a'': inert because periodicity is off; ``false / true'': run once each way, periodicity on at the defaults.}
+\caption{Per-experiment deviations from the defaults of Table~\ref{tab:params}, as compiled into each harness. They are the settings of the legacy arm, which also sets \code{evidence\_model = legacy}; the sprt arm changes only the evidence model to the shipped test and leaves the other settings of this table as they are (E3 sweeps the pairs of Table~\ref{tab:e3sprt} instead of the first-release knobs). ``---'': default; ``swept'': varied over the E3 grid; ``n/a'': inert because periodicity is off; ``false / true'': run once each way, periodicity on at the defaults.}
 \label{tab:eparams}
 \small
 \begin{tabular}{lcccc}
@@ -105,7 +114,7 @@ Publish & \code{/diagnostics} & \code{DiagnosticArray}, depth 10 & both, one sta
 \caption{Behaviour of the \code{strata} node at the pinned commit and the committed check that exercises each rule. Unit tests are the 71 gtest cases of the node package (\nolinkurl{strata/test/}); scripts are in \nolinkurl{scripts/} and run in the Humble job of the continuous integration against the launched node with synthetic input. ``---'': no dedicated check.}
 \label{tab:node}
 \footnotesize
-\begin{tabular}{>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.50\linewidth}>{\raggedright\arraybackslash}p{0.28\linewidth}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.49\linewidth}>{\raggedright\arraybackslash}p{0.28\linewidth}}
 \toprule
 Topic & Rule as implemented & Checked by \\
 \midrule
@@ -124,10 +133,10 @@ Parameters & Every key of both shipped YAML files is declared by the node and ho
 
 \begin{table}[H]
 \centering
-\caption{Cell-class transitions, all evaluated at window close.}
+\caption{Cell-class transitions of the legacy evidence model, all evaluated at window close. The transitions of the sequential model are those of Algorithm~\ref{alg:endwindowsprt}.}
 \label{tab:states}
 \footnotesize
-\begin{tabular}{lll}
+\begin{tabular}{@{}lll@{}}
 \toprule
 From & To & Trigger \\
 \midrule
@@ -171,7 +180,9 @@ $a_i$, $a_{i,k}$, $\alpha_k$, $\beta_k$ & dominant and harmonic amplitudes, harm
 $d_{i,k}$, $\mathbf{M}_{i,k}$, $B$ & explained variance, centred phase design, Chernoff tail bound (Eq.~\ref{eq:dchi}) \\
 $\delta$, $r^\star$, $a^\star(n)$ & nominal level, its critical $d$, amplitude threshold at uniform coverage (Eq.~\ref{eq:astar}) \\
 $\delta_n$, $L_N$ & level spent at touch count $n$ (Eq.~\ref{eq:spend}); histories begun by window $N$ (Prop.~\ref{prop:spend}) \\
-$\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments \\
+$\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments (derived ones: Eq.~\ref{eq:derive}) \\
+$m_0$, $m_1$, $\alpha$, $\beta$ & hit rates and error rates of the sequential test \\
+$A$, $B$, $\ell_{\max}$, $n_{\max}$ & thresholds, cap and truncation of the test \\
 $\pgrad$, $\pdem$, $\pprune$ & graduation, demotion and prune thresholds \\
 $T$, $H$, $\omega$, $\amin$ & base period, harmonics, base frequency, amplitude threshold \\
 \bottomrule

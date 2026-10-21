@@ -817,7 +817,7 @@ def guard_code(full):
     in_paper("m-dagger shipped", f"m^\\dagger={mdag(0.85, -0.4, 0.97, 0.8):.3f}")
     in_paper("m-dagger shipped symmetric", f"m^\\dagger to {mdag(0.85, -0.85, 0.97, 0.8):.3f}")
     in_paper("m-dagger E2", f"m^\\dagger={mdag(1.0, -1.0, 1.0, 0.9):.1f}")
-    in_paper("m-dagger shipped in limitations", f"{mdag(0.85, -0.4, 0.97, 0.8):.3f} with the shipped defaults")
+    in_paper("m-dagger shipped in limitations", f"{mdag(0.85, -0.4, 0.97, 0.8):.3f} with the v0.1 defaults", f"{mdag(0.85, -0.4, 0.97, 0.8):.3f} with the shipped defaults")
     st = lambda p, m: sw[(p, m)]["static_256"]
     in_paper("E6 shipped 0.25", f"{st('shipped', '0.25')} of 2000 Bernoulli(0.25) cells")
     in_paper("E6 shipped 0.30-0.50",
@@ -932,6 +932,19 @@ STRUCT = [
      "name of a scenario, data type, standard or layout width"),
     (r"sections/", r"\(20\d\d\)|Two 2026 works|19 October 2026|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
      "year, date, version or licence identifier (versions are also checked against the records)"),
+    (r"sections/", r"\\sname\\ 0\.2|\\sname\} 0\.2|[Vv]ersion 0\.2",
+     "version of the engine (checked against strata_core/package.xml and CMakeLists.txt)"),
+    (r"sections/", r"(?:KITTI|Keble(?: sequences?)?|pairs) \d+(?:/\d+)?(?:(?:,| and| to) \d+(?:/\d+)?)*",
+     "identifier of a dataset sequence or of a pair of sequences"),
+    (r"sections/(?:3b_|4b_|4c_|5_disc|appendix)",
+     r"ranges \d+ to \d+ m|\d+(?:\.\d+)?\s?(?:m|Hz|GB)(?![A-Za-z_])|\d+(?:\.\d+)?\s?s(?![A-Za-z_])|\d+(?: and \d+)?\s(?:scans|frames|beams)(?![A-Za-z])",
+     "dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings"),
+    (r"sections/(?:3b_|4b_|4c_)",
+     r"\d+th percentile|at least 100 cells|at least 0\.65 or at most 0\.35|multiple of 16|at most 3\\% of cells",
+     "threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings"),
+    (r"sections/", r"lag-1", "name of a statistic"),
+    (r"sections/", r"95\\% percentile interval", "confidence level that defines an interval"),
+    (r"sections/", r"Eqs?\. \(\d+\)(?: and \(\d+\))?|Lemma \d+", "number of an equation or lemma of a cited source"),
     (r"sections/appendix", r"\\begin\{table\}\[H\]\s*\\centering\s*\\caption\{Symbols used.*?\\end\{table\}",
      "notation table"),
     (r"sections/appendix", r"Unknown & Transient & .*?\\bottomrule", "transition table: conditions written as formulas"),
@@ -944,6 +957,22 @@ def guard_rules():
     A group must equal the source value as a string, or as a number when both parse."""
     R = lambda f, rx, *vals: RULES.append((f, rx, vals))
     root = HERE.parents[1]
+    # ---- facts that the structural categories of the v2 sections restate (checked by string) ----
+    pr = lambda n: (HERE / "realdata" / n).read_text()
+    check("engine version 0.2.0 (package.xml and CMakeLists.txt)", "<version>0.2.0</version>" in (root / "strata_core/package.xml").read_text()
+          and "VERSION 0.2.0" in (root / "strata_core/CMakeLists.txt").read_text())
+    for fn, needles in (
+            ("PREREG_P1B.md", ("W = 15", "1.0 s at 15 Hz", "0.05", "ceil_0.05", "smallest multiple of 16", "0.10 m", "0.20 m", "0.40 m")),
+            ("PREREG_P1.md", ("at least 0.65 or at most 0.35", "at least 100 cells", "10th percentile", "90th percentile", "q_s - q_c >= 0.15")),
+            ("PREREG.md", ("smallest multiple of 16", "<= 0.03", "(0.20, 0.65)", "(0.30, 0.75)")),
+            ("PREREG_P3.md", ("W = 15", "1.0 s at 15 Hz", "0.05 m", "0.2 m", "0.1 m", "10 and 20 steps", "1.0 s and 2.0 s at 10 Hz", "321 frames", "64 beams", "960 frames",
+                              "W = 10", "W = 2", "N_min = 5", "3 to 25 m")),
+            ("results_p3/deviations.md", ("9 GB",))):
+        txt = pr(fn)
+        for needle in needles:
+            check(f"{fn} holds the restated fact {needle!r}", needle in txt)
+    rho = {r["rho"] for r in rows("e7_autocorr.csv")}
+    check("E7 autocorrelations include 0.23 (the value quoted in the abstract, the introduction and Section 4)", "0.23" in rho, str(rho))
     src = lambda n: (HERE / "src" / n).read_text()
 
     def code(path, rx):
@@ -953,7 +982,7 @@ def guard_rules():
     e3 = {(r["graduate_prob"], r["demote_prob"], r["survival_decay"]): r for r in rows("e3_sensitivity.csv")}
     fl = lambda g, d, l: e3[(g, d, l)]["flicker_transitions"]
     wide, worst = fl("0.9", "0.3", "0.9"), fl("0.9", "0.9", "0.9")
-    for f in ("0_abstract", "1_introduction"):
+    for f in ("4_experiments",):    # the summary of the legacy arm (moved from the introduction in the v2 rewrite)
         R(f, r"flicker from (\d+) to (\d+) toggles", wide, worst)
     R("4_experiments", r"flickers (\d+) times and final F1 drops to ([\d.]+) \(recall ([\d.]+)\), whereas .*? band widened to ([\d.]+) .*? flickers (\d+) times at F1 ([\d.]+)",
       worst, e3[("0.9", "0.9", "0.9")]["final_f1"], e3[("0.9", "0.9", "0.9")]["final_recall"], "0.6", wide, e3[("0.9", "0.3", "0.9")]["final_f1"])
@@ -975,7 +1004,7 @@ def guard_rules():
     for f in ("0_abstract", "5_discussion", "6_conclusion", "3_method", "4_experiments", "1_introduction"):
         for m_ in (r"(?:within|over|in) (\d+) windows", r"a (\d+)-window run"):
             RULES.append((f, m_, (hor,), "optional", ("64", "256")))
-    for f in ("0_abstract", "5_discussion", "6_conclusion"):
+    for f in ("5_discussion",):
         R(f, r"(?:at most|no more than) (\d+) of 2000 (?:Bernoulli )?(?:clutter )?cells", str(sp))
     R("4_experiments", r"horizons of (\d+), (\d+) and (\d+) windows", *rep_)
     R("4_experiments", r"Periodic within (\d+) windows and 953 of 2000 within (\d+)", rep_[0], rep_[2])
@@ -997,11 +1026,10 @@ def guard_rules():
     first1 = str(min(n for n in one if all(one[k] == 2 for k in one if k >= n)))
     mid = {int(r["obs_length"]): int(r["tp"]) for r in rows("pre_calibration_2026-09-28/e2_rates_vs_length.csv")}
     first0 = str(min(n for n in mid if all(mid[k] == 2 for k in mid if k >= n)))
-    for f in ("0_abstract", "1_introduction", "6_conclusion"):
+    for f in ("4_experiments",):
         R(f, r"from (\d+) windows", first)
-    R("0_abstract", r"from \d+ windows \((\d+) without the test\)", first0)
-    R("1_introduction", r"from \d+ windows instead of (\d+),", first0)
-    R("1_introduction", r"every read-out length from (\d+) to (\d+) windows", str(min(tp)), str(max(tp)))
+    R("4_experiments", r"from \d+ windows instead of (\d+),", first0)
+    R("4_experiments", r"every read-out length from (\d+) to (\d+) windows", str(min(tp)), str(max(tp)))
     R("3_method", r"detected from (\d+) windows, against (\d+) with a single-read-out level of ([\d.]+) and (\d+) without the test",
       first, first1, "0.1", first0)
     t1 = sorted(n for n in tp if tp[n] == 1)
@@ -1031,9 +1059,8 @@ def guard_rules():
     lastw = str(max(int(r["window"]) for r in e1))
     s1 = src("e1_static_quality.cpp")
     mov = re.search(r"return d == 0 \? (\d+) : \(d == 1 \? (\d+) : (\d+)\);", s1).groups()
-    R("1_introduction", r"recall at ([\d.]+) through window (\d+)", "1.0", lastw)
-    R("1_introduction", r"under (\d+) movers per window", mov[2])
-    R("0_abstract", r"keep recall ([\d.]+);", "1.0")
+    R("4_experiments", r"recall at ([\d.]+) through window (\d+)", "1.0", lastw)
+    R("4_experiments", r"under (\d+) movers per window", mov[2])
     R("4_experiments", r"recall jumps from (\d) to ([\d.]+) exactly", "0", "1.0")
     R("4_experiments", r"then holds at ([\d.]+) through", "1.0")
     R("4_experiments", r"At (\d+) movers per window this never happens and precision stays at ([\d.]+); at (\d+) it saturates .*? at (\d+) false statics",
@@ -1055,12 +1082,21 @@ def guard_rules():
     R("3_method", r"single-read-out level of ([\d.]+), up to", "0.1")
     R("3_method", r"per-history bound ([\d.]+);", "0.2")
     R("5_discussion", r"probability at most ([\d.]+)\. The", "0.2")
-    R("0_abstract", r"the proved bound is ([\d.]+) per unpruned history", code("strata_core/include/strata_core/layered_map.hpp", r"periodic_false_alarm\{([\d.]+)\}"))
     c6 = {(r["params"], r["readout"], r["gt"]): r for r in rows("e6_confusion.csv")}
     tot = lambda g: str(sum(int(c6[("e2", "64", g)][k]) for k in ("pred_S", "pred_P", "pred_T", "pred_U")))
     R("4_experiments", r"over (\d+) held-out scenes", re.search(r"for \(int s = 0; s < (\d+); \+\+s\) \{\n      std::mt19937 rng\(kEvalSeed \+ 97000", s5).group(1))
     R("4_experiments", r"E5 does, over (\d+) scenes", "20")
-    R("1_introduction", r"Over (\d+) held-out scenes", "20")
+    R("4_experiments", r"Over (\d+) held-out scenes", "20")
+    # sprt arm of the synthetic suite (Section 5.4) and the readouts it quotes
+    ro6 = sorted({r["readout"] for r in rows("e6_confusion_sprt.csv")}, key=int)
+    R("4_experiments", r"recall reaches ([\d.]+) at the window index", "1.0")
+    R("4_experiments", r"the ([\d.]+) target is met only", re.search(r"kTarget = ([\d.]+);", s5).group(1))
+    R("4_experiments", r"clutter cells of (\d+) that are ever labelled", "2000")
+    R("4_experiments", r"SqEfiveMarkov\{\} of (\d+) cells", "2000")
+    R("4_experiments", r"Static at window (\d+),", ro6[0])
+    R("4_experiments", r"Intermittent after (\d+) windows", ro6[1])
+    R("4_experiments", r"After (\d+) windows, \\SqEsixAtTw", ro6[1])
+    R("4_experiments", r"Periodic after (\d+) windows and all \\SqEsixDoorsLate\{\} after (\d+)", ro6[0], ro6[1])
     R("4_experiments", r"one exception in (\d+)\.", tot("dynamic"))
     R("4_experiments", r"All (\d+) 50\\%-duty doors are Periodic and none of the (\d+) 25", c6[("e2", "64", "door")]["pred_P"], c6[("e2", "64", "door")]["pred_T"])
     R("4_experiments", r"Within (\d+) windows the single-read-out level", "256")
@@ -1082,7 +1118,7 @@ def guard_rules():
             y[m.group(1)] = m.group(2)
     y3 = re.search(r"voxel_size: ([\d.]+)", (root / "strata/params/voxel3d.yaml").read_text()).group(1)
     for k in ("layer_interval", "l_hit", "l_miss", "survival_decay", "graduate_prob", "demote_prob", "min_observations", "prune_prob",
-              "periodic_amplitude_min", "periodic_false_alarm", "period_windows", "n_harmonics"):
+              "periodic_amplitude_min", "periodic_false_alarm", "period_windows", "n_harmonics", "m0", "m1", "alpha", "beta", "n_max_undecided"):
         R("appendix", r"\\code\{%s\} & [^&]* & -?([\d.]+) &" % k.replace("_", r"\\_"), y[k].lstrip("-"))
     R("appendix", r"l_\{\\min\},l_\{\\max\} & -([\d.]+), ([\d.]+) &", y["l_min"].lstrip("-"), y["l_max"])
     R("appendix", r"grid\\_height\} (\d+), \\code\{grid\\_resolution\} ([\d.]+) m and origin \(-(\d+),-(\d+)\) m", y["grid_width"], y["grid_resolution"],
@@ -1113,6 +1149,8 @@ def guard_rules():
     R("appendix", r"T \((\d+)\) & \u2013- & (\d+) &", dflt("period_windows"), re.search(r"kPeriod = (\d+);", hs[2]).group(1))
     R("appendix", r"H \((\d+)\) & \u2013- & (\d+) &", dflt("n_harmonics"), re.search(r"kHarmonics = (\d+);", hs[2]).group(1))
     R("appendix", r"\\delta \(([\d.]+), spent\)", dflt("periodic_false_alarm"))
+    R("4c_realdata", r"\\lhit=([\d.]+), \\lmiss=-([\d.]+), leak ([\d.]+), graduate at ([\d.]+) after three touched windows, demote at ([\d.]+)",
+      dflt("l_hit"), dflt("l_miss"), dflt("survival_decay"), dflt("graduate_prob"), dflt("demote_prob"))
     # node behaviour table (appendix): constants against the node headers
     H = "strata/include/strata/"
     R("appendix", r"more than 10\^(\d) windows ahead", str(len(code(H + "window_clock.hpp", r"kMaxGapWindows = (\d+);")) - 1))
@@ -1244,11 +1282,146 @@ def coverage():
     return stats
 
 
+def guard_v2():
+    """Cross-checks of the sequential-test and real-data parts. Their numbers enter the text as the macros of
+    tables/numbers_v2.tex, which make_v2_artifacts.py writes from the committed result files; here every macro is checked against a
+    second source (the generated P3 and P1b reports, the pre-registration, an independent recomputation) and the wording rails are enforced."""
+    P3D = HERE / "realdata" / "results_p3"
+    lines = (ARXIV / "tables" / "numbers_v2.tex").read_text().splitlines()
+    mac = {}
+    for ln in lines:
+        if ln.startswith("\\newcommand{\\"):
+            name = ln[len("\\newcommand{\\"):ln.index("}")]
+            rest = ln[ln.index("}{") + 2:]
+            i = rest.rindex("}% ")
+            mac[name] = (rest[:i].replace("{,}", ""), rest[i + 3:])
+    check("numbers_v2.tex defines each macro once", len(mac) == sum(l.startswith("\\newcommand{\\") for l in lines), str(len(mac)))
+    used = set()
+    for f in sorted((ARXIV / "sections").glob("*.tex")) + sorted((ARXIV / "tables").glob("*.tex")) + sorted((ARXIV / "figures").glob("*.tex")):
+        if f.name != "numbers_v2.tex":
+            used |= set(re.findall(r"\\((?:Sq|Pt|Cal)[A-Za-z]+)", f.read_text()))
+    check("every number macro used in the text is defined", used <= set(mac), str(sorted(used - set(mac))))
+    unused = sorted(set(mac) - used)
+    passes.append(f"[arxiv_ref] number macros: {len(mac)} defined, {len(used & set(mac))} used, {len(unused)} unused")
+    # P3: each Pt macro is a number of the generated report or of the hand-written summary
+    summ = (P3D / "P3_REPORT_summary.md").read_text()
+    rep = (P3D / "P3_REPORT.md").read_text()
+    tok = set(re.findall(r"\d+(?:\.\d+)?", summ))
+    derived = {"PtRatioLe": "quotient of two printed rates", "PtRatioAll": "quotient of two printed rates",
+               "PtVetoSpLo": "quotient of printed veto-on and veto-off rates", "PtVetoSpHi": "quotient of printed veto-on and veto-off rates",
+               "PtLilLeN": "number of clutter cells at or below m0 (field n of the JSON; the report prints the rate)", "PtKthIdCount": "count of the finished policy-all conditions (summary: 5 + 4)", "PtFailAlloc": "count of failed runs whose log holds std::bad_alloc",
+               "PtFailAll": "count of failed runs (summary: 7 + 7)"}
+    for k, (v, src) in sorted(mac.items()):
+        if not k.startswith("Pt") or k in derived:
+            continue
+        ok = v in tok or re.search(r"(?<![\d.])" + re.escape(v) + r"(?![\d])", rep) is not None
+        check(f"P3 macro {k} = {v} is a number of P3_REPORT.md or of its summary", ok, src)
+    for k, why in derived.items():
+        check(f"P3 macro {k} is {why}", k in mac)
+    check("PtFailAll = 7 + 7 failed runs, all std::bad_alloc", (mac["PtFailAll"][0], mac["PtFailAlloc"][0], mac["PtFailSpires"][0], mac["PtFailKth"][0]) == ("14", "14", "7", "7"))
+    # the headline statements of the summary, in words
+    for needle in ("The nominal bound `alpha = 0.01` is per history under independent windows", "No claim of the form \"the realised rate is below the bound\" is made",
+                   "The pair is the 2D pair and is not calibrated for 3D", "What these runs cannot show"):
+        check(f"P3_REPORT_summary.md states: {needle[:60]}", needle in summ)
+    # calibration macros: numbers of the P1b report, PREREG.md, the P2 replay or the P1 report
+    srcs = "\n".join((HERE / "realdata" / fn).read_text() for fn in ("results_p1b/P1B_REPORT.md", "PREREG.md", "results_p2/replay_shipped_pair_W15.txt", "results_p1/P1_REPORT.md",
+                                                                "results_p1b/exploratory/keble_clutter_height_r0.2_W10_today.txt"))
+    for k, (v, src) in sorted(mac.items()):
+        if k.startswith("Cal") and k not in ("CalRepAll", "CalRepLe", "CalRepGt", "CalGateSeq", "CalGateTwoD", "CalGateGoneFail", "CalGateGtwoFail", "CalKittiMed", "CalKittiWindows",
+                                              "CalOptcLil", "CalOptcKebLo", "CalOptcKebHi", "CalOptcKth"):
+            vv = v.replace("-", "-")
+            check(f"calibration macro {k} = {v} is a number of the P1b report, PREREG.md, the P2 replay or the keble height record",
+                  re.search(r"(?<![\d.])" + re.escape(vv) + r"(?![\d])", srcs) is not None, src)
+    check("CalRepAll / CalRepLe / CalRepGt are the percentages of the P2 replay (whole sequence, periodicity on)",
+          all(re.search(r"ever-Static 0\.0371 .* at H/N <= m0 0\.0151 .* above m0 0\.3050", (HERE / "realdata/results_p2/replay_shipped_pair_W15.txt").read_text()) for _ in [0])
+          and (mac["CalRepAll"][0], mac["CalRepLe"][0], mac["CalRepGt"][0]) == ("3.71", "1.51", "30.5"))
+    check("G1 fails on all five calibration sequences, G2 passes on all five (macros)", (mac["CalGateGoneFail"][0], mac["CalGateGtwoFail"][0], mac["CalGateSeq"][0]) == ("5", "0", "5"))
+    check("Option C: AUCs of the three datasets have the signs the text states (LIL, Keble above 0.65; KITTI 00 below 0.35)",
+          float(mac["CalOptcLil"][0]) >= 0.65 and float(mac["CalOptcKebLo"][0]) >= 0.65 and float(mac["CalOptcKth"][0]) <= 0.35)
+    pr = (HERE / "realdata" / "PREREG.md").read_text()
+    check("PREREG.md: the 2D and the 3D pair are NOT FROZEN", pr.count("Status: **NOT FROZEN**") == 2)
+    # sequential test: independent recomputation
+    def f_(n):
+        return float(mac[n][0])
+    m0_, m1_ = f_("SqLegMzero"), f_("SqLegMone")
+    check("v0.1 increments are the SPRT between SqLegMzero and SqLegMone", abs(math.log(m1_ / m0_) - 0.85) < 2e-3 and abs(math.log((1 - m1_) / (1 - m0_)) + 0.4) < 2e-3, f"{m0_} {m1_}")
+    check("Ville bound exp(-A) = alpha / (1 - beta) = SqVille", abs(math.exp(-f_("SqA")) - f_("SqVille")) < 1e-4 and abs(0.01 / 0.99 - f_("SqVille")) < 1e-4)
+    check("Proposition ville: E_p[lambda] = 1 + (p - m0)(m1 - m0) / (m0 (1 - m0)) and E_p[1/lambda] = 1 + (p - m1)(m0 - m1) / (m1 (1 - m1))",
+          all(abs((p_ * 0.7 / 0.2 + (1 - p_) * 0.3 / 0.8) - (1 + (p_ - 0.2) * 0.5 / (0.2 * 0.8))) < 1e-12
+              and abs((p_ * 0.2 / 0.7 + (1 - p_) * 0.8 / 0.3) - (1 + (p_ - 0.7) * (-0.5) / (0.7 * 0.3))) < 1e-12 for p_ in (0.0, 0.1, 0.2, 0.45, 0.7, 1.0)))
+    lam = 0.97
+    ez = m0_ * math.exp(lam * 0.85) + (1 - m0_) * math.exp(lam * -0.4)
+    check("Proposition leak: E exp(l')/exp(l) at l = -4 is SqLeakRatio, and exceeds 1", abs(math.exp(0.03 * 4) * ez - f_("SqLeakRatio")) < 6e-3 and f_("SqLeakRatio") > 1)
+    check("Proposition leak: E_{m0} exp(Z) = 1", abs(m0_ * (m1_ / m0_) + (1 - m0_) * ((1 - m1_) / (1 - m0_)) - 1) < 1e-12)
+    # Wald's closed form and the exact lattice rule, recomputed independently of the harness
+    M0, M1, AL, BE = 0.2, 0.7, 0.01, 0.01
+    lh, lm = math.log(M1 / M0), math.log((1 - M1) / (1 - M0))
+    A_, B_ = math.log((1 - BE) / AL), math.log(BE / (1 - AL))
+    mstar = -lm / (lh - lm)
+
+    def wald(m):
+        if abs(m - mstar) < 1e-5:
+            return A_ / (A_ - B_)
+        g = lambda h: m * (M1 / M0) ** h + (1 - m) * ((1 - M1) / (1 - M0)) ** h - 1
+        lo, hi = (1e-9, 60.0) if m < mstar else (-60.0, -1e-9)
+        for _ in range(200):
+            mid = 0.5 * (lo + hi)
+            if (g(lo) > 0) == (g(mid) > 0):
+                lo = mid
+            else:
+                hi = mid
+        h = 0.5 * (lo + hi)
+        a, b = math.exp(A_), math.exp(B_)
+        return (1 - b ** h) / (a ** h - b ** h)
+
+    def exact(m, gate, nmax=4000):
+        cap = A_ + 2 * lh
+        cur, grad = {0: 1.0}, 0.0          # hits -> probability; misses = n - hits
+        for n in range(1, nmax + 1):
+            nxt = {}
+            for h, pr_ in cur.items():
+                for hit, q in ((1, m), (0, 1 - m)):
+                    if q == 0:
+                        continue
+                    hh = h + hit
+                    l_ = min(hh * lh + (n - hh) * lm, cap)
+                    if l_ >= A_:
+                        grad += pr_ * q
+                    elif n >= gate and l_ <= B_:
+                        pass
+                    else:
+                        nxt[hh] = nxt.get(hh, 0.0) + pr_ * q
+            cur = nxt
+            if not cur:
+                break
+        return grad
+
+    oc_rows = rows("e7_oc.csv")
+    worst_w = max(abs(wald(float(r["m"])) - float(r["p_graduate_wald"])) for r in oc_rows)
+    check("E7: Wald column of e7_oc.csv equals the closed form recomputed here", worst_w < 2e-6, f"{worst_w:.2e}")
+    worst_e = max(abs(exact(float(r["m"]), 1 if r["rule"] == "pure" else 24) - float(r["p_graduate_exact"])) for r in oc_rows if float(r["m"]) in (0.05, 0.2, 0.439126, 0.5, 0.7, 0.9))
+    check("E7: exact column of e7_oc.csv equals an independent lattice computation (rates 0.05, 0.2, m*, 0.5, 0.7, 0.9; both rules; the m* row is printed at six digits)", worst_e < 3e-6, f"{worst_e:.2e}")
+    check("E7: Wald gives alpha at m0 and 1 - beta at m1", abs(wald(M0) - AL) < 1e-9 and abs(wald(M1) - (1 - BE)) < 1e-9)
+    # wording rails
+    for label, needle in (("provisional pair", "provisional"), ("nothing froze", "Nothing froze"), ("3D not calibrated", "not calibrated for 3D"),
+                          ("Periodic validated on synthetic streams only", "validated on synthetic streams only"),
+                          ("realised above nominal", "do not claim that the realised rate is within the nominal level"),
+                          ("independent windows", "independent windows"), ("ELite cited", "ELite"), ("MTD-Map cited", "MTD-Map"),
+                          ("Periodic not validated on real data", "Periodic is not validated on real data"),
+                          ("memory failures at 0.1 m with the veto on", "ran out of memory"), ("single pass KTH", "single pass"),
+                          ("Boreas has no truth", "no truth for structure or clutter"), ("no winner", "picks no winner")):
+        in_paper(f"wording rail: {label}", needle)
+    for label, needle in (("no 'below the bound' claim", "is below the bound"), ("no 'within the bound' claim", "is within the bound"),
+                          ("no frozen claim", "was frozen"), ("no winner word", "the best rule"), ("no 'outperform' claim", "outperform")):
+        check(f"forbidden wording absent: {label}", needle not in text, needle)
+
+
 COVER, MATHDEC, LOCK = {}, [], []
 LOCKFILE = ARXIV / "structural_numerals.tsv"
 if len(TARGETS) > 1:
     target, text = TARGETS[1]
     guard_rules()
+    guard_v2()
     COVER = coverage()
     passes.append(f"[arxiv_ref] numeral coverage: {sum(COVER.values())} numerals located")
     # Structural numerals are not recomputed, so they are locked instead: the committed

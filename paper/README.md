@@ -16,7 +16,8 @@ reviewed.
 | [`strata_paper.md`](strata_paper.md) | Long-form Markdown companion: same numbers, claims and scope, more implementation detail |
 | [`strata_paper_KR.md`](strata_paper_KR.md) | Korean translation of the Markdown companion |
 | [`arxiv_ref/NUMBERS.md`](arxiv_ref/NUMBERS.md) | Every quantitative claim and the CSV field or code line it comes from |
-| [`experiments/`](experiments/) | Harness (E0 calibration, E1–E6), committed results, number guard |
+| [`experiments/`](experiments/) | Harness (E0 calibration, E1–E7, both evidence arms), committed results, number guard |
+| [`experiments/realdata/`](experiments/realdata/) | Real-data calibration (P1, P1b), replay (P2) and test evaluation (P3): pre-registrations with amendments, result tables and JSON, reports, deviations |
 | [`figures/`](figures/) | Matplotlib figures used by the Markdown companion and the repository README |
 | [`references.bib`](references.bib) | Copy of `arxiv_ref/main.bib` for the Markdown companion |
 | [`archive/`](archive/) | Drafting notes and section drafts of the first release (July 2026). **Not maintained**: their numbers and claims are superseded |
@@ -64,7 +65,7 @@ From the repository root, with a C++17 compiler, CMake, Eigen3 and GoogleTest
 
 ```bash
 bash paper/experiments/run_all.sh                   # build, unit tests, E0, E5, E1–E3, E6, E4 cell counts
-python3 paper/arxiv_ref/tools/make_artifacts.py     # tables, plot data and the E4 sentences of the manuscript
+python3 paper/arxiv_ref/tools/make_artifacts.py     # tables, plot data, the E4 sentences and (via make_v2_artifacts.py) the number macros of the manuscript
 python3 paper/experiments/number_guard.py           # every numeral against the CSVs and the code
 bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs matplotlib and numpy)
 ```
