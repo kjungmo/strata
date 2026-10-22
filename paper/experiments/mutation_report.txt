@@ -1,15 +1,15 @@
 baseline failures in the copy (not a git checkout): 0
-sections/0_abstract.tex: 15 numerals mutated, 15 caught, 0 survived
+sections/0_abstract.tex: 16 numerals mutated, 16 caught, 0 survived
 sections/1_introduction.tex: 13 numerals mutated, 13 caught, 0 survived
 sections/2_related_works.tex: 21 numerals mutated, 21 caught, 0 survived
 sections/3_method.tex: 270 numerals mutated, 270 caught, 0 survived
-sections/3b_evidence.tex: 112 numerals mutated, 112 caught, 0 survived
-sections/4_experiments.tex: 501 numerals mutated, 501 caught, 0 survived
-sections/4b_calibration.tex: 66 numerals mutated, 66 caught, 0 survived
-sections/4c_realdata.tex: 140 numerals mutated, 140 caught, 0 survived
-sections/5_discussion.tex: 82 numerals mutated, 82 caught, 0 survived
+sections/3b_evidence.tex: 114 numerals mutated, 114 caught, 0 survived
+sections/4_experiments.tex: 503 numerals mutated, 503 caught, 0 survived
+sections/4b_calibration.tex: 71 numerals mutated, 71 caught, 0 survived
+sections/4c_realdata.tex: 145 numerals mutated, 145 caught, 0 survived
+sections/5_discussion.tex: 87 numerals mutated, 87 caught, 0 survived
 sections/6_conclusion.tex: 13 numerals mutated, 13 caught, 0 survived
-sections/appendix.tex: 125 numerals mutated, 125 caught, 0 survived
+sections/appendix.tex: 126 numerals mutated, 126 caught, 0 survived
 figures/e1_f1.tex: 29 numerals mutated, 29 caught, 0 survived
 figures/e2_amplitude.tex: 73 numerals mutated, 73 caught, 0 survived
 figures/e2_fpr.tex: 79 numerals mutated, 79 caught, 0 survived
@@ -21,8 +21,8 @@ tables/e2.tex: 11 numerals mutated, 11 caught, 0 survived
 tables/e3.tex: 17 numerals mutated, 17 caught, 0 survived
 tables/e3_full.tex: 112 numerals mutated, 112 caught, 0 survived
 tables/e3_sprt.tex: 38 numerals mutated, 38 caught, 0 survived
-tables/e4.tex: 12 numerals mutated, 12 caught, 0 survived
-tables/e4_text.tex: 3 numerals mutated, 3 caught, 0 survived
+tables/e4.tex: 20 numerals mutated, 20 caught, 0 survived
+tables/e4_text.tex: 10 numerals mutated, 10 caught, 0 survived
 tables/e5.tex: 31 numerals mutated, 31 caught, 0 survived
 tables/e5_choice.tex: 14 numerals mutated, 14 caught, 0 survived
 tables/e5_confusion.tex: 39 numerals mutated, 39 caught, 0 survived
@@ -42,5 +42,5 @@ tables/p3_lil_wall.tex: 19 numerals mutated, 19 caught, 0 survived
 tables/p3_spires.tex: 47 numerals mutated, 47 caught, 0 survived
 tables/p3_veto.tex: 12 numerals mutated, 12 caught, 0 survived
 tables/sprt_arm.tex: 14 numerals mutated, 14 caught, 0 survived
-figures/e4_cost.tex: 7 numerals mutated, 7 caught, 0 survived
-TOTAL: 2535 numerals mutated, 2535 caught, 0 survived
+figures/e4_cost.tex: 10 numerals mutated, 10 caught, 0 survived
+TOTAL: 2574 numerals mutated, 2574 caught, 0 survived

@@ -18,7 +18,7 @@ reviewed.
 | [`arxiv_ref/NUMBERS.md`](arxiv_ref/NUMBERS.md) | Every quantitative claim and the CSV field or code line it comes from |
 | [`experiments/`](experiments/) | Harness (E0 calibration, E1–E7, both evidence arms), committed results, number guard |
 | [`experiments/realdata/`](experiments/realdata/) | Real-data calibration (P1, P1b), replay (P2) and test evaluation (P3): pre-registrations with amendments, result tables and JSON, reports, deviations |
-| [`figures/`](figures/) | Matplotlib figures used by the Markdown companion and the repository README |
+| [`figures/`](figures/) | Matplotlib figures used by the repository README (the Markdown companions do not embed figures; the PDF draws them with TikZ/pgfplots) |
 | [`references.bib`](references.bib) | Copy of `arxiv_ref/main.bib` for the Markdown companion |
 | [`archive/`](archive/) | Drafting notes and section drafts of the first release (July 2026). **Not maintained**: their numbers and claims are superseded |
 
