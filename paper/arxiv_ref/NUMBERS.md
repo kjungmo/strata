@@ -267,4 +267,4 @@ item 7 to Section 7.6 and Table `tab:p3agree`; item 8 to Section 7.7 and Table `
   copies them from the committed `P3_REPORT.md`.
 - The pre-registered thresholds, the dataset configurations and the Option C reading that the text restates (structural numerals) are
   checked only by string against the pre-registration files, not parsed.
-- `paper/experiments/mutation_report.txt` was rerun with `--tables` over the v2 text and tables (2522 numerals changed, all caught). The prose of the v2 sections holds macros, so those numbers are protected by the macro checks, not by this run.
+- `paper/experiments/mutation_report.txt` was rerun with `--tables` over the v2 text and tables of commit `afb6ae4`, the round-3 text (2535 numerals changed, all caught); rerun it after any later text edit. The prose of the v2 sections holds macros, so those numbers are protected by the macro checks, not by this run.
