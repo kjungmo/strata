@@ -40,8 +40,8 @@ jobs:
       - name: Number guard
         run: python3 paper/experiments/number_guard.py
 
-      # Rebuilds the harness and reruns E0-E5: every committed result file must come out
-      # byte for byte (E4's wall-clock timings go to build/; its cell counts are compared).
+      # Rebuilds the harness and reruns E0-E7 in both arms (E7 and the sprt E4 cell counts
+      # included): every committed result file must come out byte for byte (E4's wall-clock timings go to build/; its cell counts are compared).
       - name: Rerun the experiments and compare with the committed results
         run: bash paper/experiments/check_reproduction.sh
 

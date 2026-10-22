@@ -291,9 +291,9 @@ for 3D.
 Full setup, all tables and the limitations are in the
 [paper](paper/strata_paper.pdf) §4–§5. Reproduce end-to-end with
 [`paper/experiments/run_all.sh`](paper/experiments/run_all.sh) (see
-[`paper/README.md`](paper/README.md)); every quoted number is checked in CI by
+[`paper/README.md`](paper/README.md)); every number quoted in the manuscript is checked in CI by
 [`paper/experiments/number_guard.py`](paper/experiments/number_guard.py)
-against the committed CSVs in `paper/experiments/results/`.
+against the committed CSVs in `paper/experiments/results/` (the numbers in this README are not; see the P5 re-sync list in [`paper/README.md`](paper/README.md)).
 
 The ROS path is checked separately on Humble in CI:
 [`scripts/synthetic_e2e.py`](scripts/synthetic_e2e.py) feeds each launched node a

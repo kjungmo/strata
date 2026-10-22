@@ -12,6 +12,7 @@ sections/0_abstract.tex	0.01	hipped pair (0.20,0.70,0.01,	inline or displayed ma
 sections/0_abstract.tex	3	.01) is provisional and the 	name of a scenario, data type, standard or layout width
 sections/0_abstract.tex	0.01	h exceed the nominal \alpha=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	05	pposite direction, on KITTI 	identifier of a dataset sequence or of a pair of sequences
+sections/0_abstract.tex	0.2	ite direction, on KITTI 05 (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/0_abstract.tex	2	ry-free state machine for a 	name of a scenario, data type, standard or layout width
 sections/0_abstract.tex	3	machine for a 2D grid and a 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	2	the FreMEn line: maintain a 	name of a scenario, data type, standard or layout width
@@ -358,6 +359,8 @@ sections/3b_evidence.tex	0.23	SqRefWalk{} times \alpha at 	inline or displayed m
 sections/3b_evidence.tex	1	. The band means of the lag-	name of a statistic
 sections/3b_evidence.tex	60	roduced it.} A wall seen in 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	60	dows and clutter present in 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/3b_evidence.tex	3	step by the fallback of the 	name of a scenario, data type, standard or layout width
+sections/3b_evidence.tex	2	ck of the 3D backend on the 	name of a scenario, data type, standard or layout width
 sections/3b_evidence.tex	1	text{graduate})\approx\frac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	g(\frac{m_1}{m_0}\Big)^{h}+(	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/3b_evidence.tex	1	0}\Big)^{h}+(1-m)\Big(\frac{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -598,7 +601,7 @@ sections/4_experiments.tex	100	 cells for \code{grid2d} at 	inline or displayed 
 sections/4_experiments.tex	2	ls for \code{grid2d} at 100^	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4b_calibration.tex	00	e semantic classes of KITTI 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	3	 the one-second window, the 	name of a scenario, data type, standard or layout width
-sections/4b_calibration.tex	02	ranch and the move of Keble 	identifier of a dataset sequence or of a pair of sequences
+sections/4b_calibration.tex	02	s branch, the move of Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	2	} and \texttt{dynamics\_0} (	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	00	TH benchmark sequence KITTI 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	3	enchmark sequence KITTI 00 (	name of a scenario, data type, standard or layout width
@@ -612,8 +615,8 @@ sections/4b_calibration.tex	00	n \texttt{static\_0}; KITTI 	identifier of a data
 sections/4b_calibration.tex	02	els above the ground; Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	00	he mapping reference; KITTI 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	02	oint flagged dynamic; Keble 	identifier of a dataset sequence or of a pair of sequences
-sections/4b_calibration.tex	15	of the windows of the node: 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/4b_calibration.tex	15	ws of the node: 15 scans at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4b_calibration.tex	15	arameter files of the node: 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4b_calibration.tex	15	es of the node: 15 scans at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4b_calibration.tex	2	 node: 15 scans at 15 Hz in 	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	10	e: 15 scans at 15 Hz in 2D, 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4b_calibration.tex	10	at 15 Hz in 2D, 10 scans at 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
@@ -626,6 +629,9 @@ sections/4b_calibration.tex	0.05	 take m_0=\lceil q_c\rceil_{	inline or displaye
 sections/4b_calibration.tex	0.05	and m_1=\lfloor q_s\rfloor_{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4b_calibration.tex	0.01	centiles, with \alpha=\beta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4b_calibration.tex	3	endpoint of a grazing beam (	name of a scenario, data type, standard or layout width
+sections/4b_calibration.tex	3	ded, no pair is frozen: the 	name of a scenario, data type, standard or layout width
+sections/4b_calibration.tex	2	D backend falls back on the 	name of a scenario, data type, standard or layout width
+sections/4b_calibration.tex	2	 calibrated for 3D, and for 	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	16	is the smallest multiple of 	threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings
 sections/4b_calibration.tex	3	ple of 16 for which at most 	threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings
 sections/4b_calibration.tex	12	easures the thickness \sqrt{	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -652,6 +658,7 @@ sections/4b_calibration.tex	0.35	of at least 0.65 or at most 	threshold or defin
 sections/4b_calibration.tex	100	.35 in a band with at least 	threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings
 sections/4b_calibration.tex	02	(AUC \CalOptcLil) and Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	00	s the longer runs; in KITTI 	identifier of a dataset sequence or of a pair of sequences
+sections/4b_calibration.tex	02	second windows and on Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/4b_calibration.tex	2	ine on the three one-second 	name of a scenario, data type, standard or layout width
 sections/4b_calibration.tex	0.01	he per-history level \alpha=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4b_calibration.tex	2	did not} Nothing froze. The 	name of a scenario, data type, standard or layout width
@@ -681,8 +688,12 @@ sections/4c_realdata.tex	0.30	,0.65) and \emph{high end} (	inline or displayed m
 sections/4c_realdata.tex	0.75	) and \emph{high end} (0.30,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/4c_realdata.tex	2	(a control without people), 	name of a scenario, data type, standard or layout width
 sections/4c_realdata.tex	0.05	ontrol without people), 2D, 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/4c_realdata.tex	15	 people), 2D, 0.05 m cells, 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/4c_realdata.tex	1.0	cells, 15 scans per window (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	60	ple), 2D, 0.05 m cells on a 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	60	, 0.05 m cells on a 60 m by 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	30	m grid with its corner at (-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4c_realdata.tex	30	id with its corner at (-30,-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/4c_realdata.tex	15	ed file (pre-registration), 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/4c_realdata.tex	1.0	tion), 15 scans per window (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/4c_realdata.tex	03	d Spires} , Keble sequences 	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	05	es} , Keble sequences 03 to 	identifier of a dataset sequence or of a pair of sequences
 sections/4c_realdata.tex	3	 the terrestrial-laser map, 	name of a scenario, data type, standard or layout width
@@ -797,6 +808,8 @@ sections/4c_realdata.tex	0.70	 per window: for SPRT (0.20,	inline or displayed m
 sections/5_discussion.tex	0.2	stic of the test of version 	version of the engine (checked against strata_core/package.xml and CMakeLists.txt)
 sections/5_discussion.tex	3	ry large, sparsely occupied 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	1	. We accept the trade for O(	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	20	rigin} (caption of Table ), 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
+sections/5_discussion.tex	20	caption of Table ), 20 m by 	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/5_discussion.tex	0.90	ds F1 1.000 at both \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	1.0	00 at both \lambda=0.90 and 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	2	, at the raw cell level, in 	name of a scenario, data type, standard or layout width
@@ -806,7 +819,7 @@ sections/5_discussion.tex	0.70	l defaults.} The pair (0.20,	inline or displayed 
 sections/5_discussion.tex	0.01	aults.} The pair (0.20,0.70,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	0.01	.} The pair (0.20,0.70,0.01,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	2	 one-second windows and the 	name of a scenario, data type, standard or layout width
-sections/5_discussion.tex	3	s measured. \item \emph{The 	name of a scenario, data type, standard or layout width
+sections/5_discussion.tex	3	(Section ). \item \emph{The 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	3	pair is not calibrated.} No 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	02	 passed the rule, the Keble 	identifier of a dataset sequence or of a pair of sequences
 sections/5_discussion.tex	2	not walking people, and the 	name of a scenario, data type, standard or layout width
@@ -825,6 +838,8 @@ sections/5_discussion.tex	50	idence leans occupied, read 	inline or displayed ma
 sections/5_discussion.tex	75	ed, read 50; Periodic reads 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	0	ll, Unknown included, reads 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	1	was last observed free and -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	100	ecided. A Static cell stays 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/5_discussion.tex	100	at no ray re-observes stays 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	100	r that reads only the value 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	100	de{lethal\_cost\_threshold} 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	100	_cost\_threshold} 100, only 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -882,6 +897,7 @@ sections/appendix.tex	20	mated from gaps against the 	name of a scenario, data t
 sections/appendix.tex	256	ML records the size and SHA-	name of a scenario, data type, standard or layout width
 sections/appendix.tex	0	miss creates the cell: \ell=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/appendix.tex	0.5	creates the cell: \ell=0, p=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/appendix.tex	0.74	} \small \begin{tabular}{lp{	name of a scenario, data type, standard or layout width
 figures/e1_f1.tex	sha256:b03b1c6d600441fb	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
 figures/e2_amplitude.tex	sha256:cf3f0a9de65dadcd	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)
 figures/e2_fpr.tex	sha256:1111a31af764a1d1	(everything outside the caption)	plot layout (axis limits, sizes, tick positions, styles)

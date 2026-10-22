@@ -54,7 +54,8 @@ def rows(name):
 COMPANION = "strata_paper.md"
 DEFERRED_FOR_COMPANION = ("pin commit quoted", "strata_core/ is the tree", "strata/ is the tree", "scripts/ is the tree",
                           "working tree: pinned", "core gtest", "node gtest", "tests quoted", "test count",
-                          "stdlib", "reproduction log", "reproduction compiler")
+                          "stdlib", "reproduction log", "reproduction compiler",
+                          "six MapBackend methods quoted", "E6 ever-Static within 256 windows quoted", "E7 seed quoted")
 deferred = []
 
 
@@ -686,10 +687,11 @@ def guard_code(full):
             ("MapBackend::closeWindows", "virtual void closeWindows(int k) = 0;",
              (root / "strata_core/include/strata_core/map_backend.hpp").read_text())):
         check(f"code: {label}", tok in src)
-    check("MapBackend has five pure virtual methods",
-          (root / "strata_core/include/strata_core/map_backend.hpp").read_text().count(") = 0;")
-          + (root / "strata_core/include/strata_core/map_backend.hpp").read_text().count(") const = 0;") == 5)
-    in_paper("five MapBackend methods quoted", "five methods")
+    mb_hpp = (root / "strata_core/include/strata_core/map_backend.hpp").read_text()
+    check("MapBackend has five pure virtual methods and one non-pure counter (intermittentCellCount, returns 0)",
+          mb_hpp.count(") = 0;") + mb_hpp.count(") const = 0;") == 5
+          and "virtual std::size_t intermittentCellCount() const { return 0; }" in mb_hpp)
+    in_paper("six MapBackend methods quoted", "six methods")
 
     # ---- shipped YAML files against the code defaults and the parameter table ----
     def yaml_params(name):
@@ -802,6 +804,10 @@ def guard_code(full):
         if p_ != "e2_decay097":
             in_paper(f"E6 {lab} false Static share with interval", f"{k_/2000:.3f} [{lo_:.3f}, {hi_:.3f}]")
     in_paper("E6 shipped false Static after 256", f"{S('shipped', '256', 'aperiodic')} after 256 windows")
+    in_paper("E6 ever-Static within 256 windows quoted (macro SqEsixEverTw)", "at some window within 256 windows")
+    src7 = (HERE / "src/e7_sprt_oc.cpp").read_text()
+    check("E7 seed and generator", "kSeed = 70261018ull" in src7 and "std::mt19937_64" in src7)
+    in_paper("E7 seed quoted", "E7 draws from 70261018 upward with")
     in_paper("E6 shipped dynamic Static", f"{S('shipped', '64', 'dynamic')} of 1000 dynamic cells")
     in_paper("E6 shipped doors Periodic at 64", f"{c6[('shipped', '64', 'door')]['pred_P']} are Periodic after 64 windows")
     check("E6 shipped doors all Periodic at 256", c6[("shipped", "256", "door")]["pred_P"] == "1200")
@@ -937,7 +943,7 @@ STRUCT = [
      "version of the engine (checked against strata_core/package.xml and CMakeLists.txt)"),
     (r"sections/", r"(?:KITTI|Keble(?: sequences?)?|pairs) \d+(?:/\d+)?(?:(?:,| and| to) \d+(?:/\d+)?)*",
      "identifier of a dataset sequence or of a pair of sequences"),
-    (r"sections/(?:3b_|4b_|4c_|5_disc|appendix)",
+    (r"sections/(?:0_abs|3b_|4b_|4c_|5_disc|appendix)",
      r"ranges \d+ to \d+ m|\d+(?:\.\d+)?\s?(?:m|Hz|GB)(?![A-Za-z_])|\d+(?:\.\d+)?\s?s(?![A-Za-z_])|\d+(?: and \d+)?\s(?:scans|frames|beams)(?![A-Za-z])",
      "dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings"),
     (r"sections/(?:3b_|4b_|4c_)",

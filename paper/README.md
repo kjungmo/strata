@@ -71,7 +71,7 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
 ```
 
 - E0–E3, E5 and E6 (both arms), E7 and the sprt E4 cell counts (`e4_cells_sprt.csv`) are seeded and rewrite `experiments/results/*.csv`
-  byte for byte with GCC and libstdc++. `bash paper/experiments/check_reproduction.sh` runs
+  byte for byte with GCC 9.4.0 and libstdc++ (the compiler recorded in the log). `bash paper/experiments/check_reproduction.sh` runs
   the harness from a clean checkout and checks exactly that;
   `experiments/reproduction_log.txt` records the compilers it was run with.
 - The result depends on the C++ standard library: with clang and libc++ seven of the
@@ -114,6 +114,7 @@ They are re-synced at the end of P5, together with the companions:
   not using the map as the only obstacle source, how Nav2 reads 50 and 75 (live
   and saved map), the `~/map` topic name, and the extent of the shipped `grid2d` grid
   (endpoints outside it are dropped; a sensor outside it clears nothing).
+- Code strings and comments of the next pin: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` state alpha and beta without the first-test scope. The next pin changes them to the wording of Proposition ville (per first test of a history, independent windows). The pin `312b09c` is not moved for this; the manuscript says so in its Provisional-defaults bullet.
 - Release items: no tag `paper-v1` exists, so the text names commit `312b09c`;
   creating the tag is an author action. The code URL opens `main`, which is still the
   v0.1 code; before submission merge the code or tag `a7559d4` and name that tag in the

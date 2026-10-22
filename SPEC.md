@@ -304,7 +304,7 @@ message of the evidence status and in the value of `evidence_calibration`). The 
   graduates with probability at most `exp(-A) = alpha/(1-beta)`, about
   `alpha` (0.0101 at the default pair; Ville's inequality). A restart after a demotion, and a
   graduation after a floor window, are not covered. The exact value for the default pair at `m0`
-  is 0.0055 (`results/e7_oc.csv`, Periodic veto off). Real windows are autocorrelated (lag-1 0.2 to 0.5 on the
+  is 0.0055 (`results/e7_oc.csv`, Periodic veto off). Real windows are autocorrelated (lag-1 0.23 to 0.47 on the
   calibration sequences). With lag-1 autocorrelation 0.23 at exactly `m0`, the
   rate per forward test (a history split at each demotion, within 1024 windows) on the engine is 0.035, 3.5 times `alpha` (0.0056 at 0, 0.014 at 0.10,
   0.061 at 0.35; `results/e7_autocorr.csv`); a bare random walk floored at `B` without
@@ -535,8 +535,8 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `evidence_model` | `sprt` | `sprt`: sequential test (§3.2a); `legacy`: the v0.1 rule (§3.2–§3.4). In the library `EvidenceModel::Sprt` / `Legacy` |
 | `m0` | `0.20` | per-window hit rate at or below which a cell is clutter |
 | `m1` | `0.70` | per-window hit rate at or above which a cell is structure |
-| `alpha` | `0.01` | P(clutter at `m0` graduates), independent windows |
-| `beta` | `0.01` | P(structure at `m1` is rejected), independent windows |
+| `alpha` | `0.01` | P(clutter at `m0` graduates), per first test of a history, independent windows |
+| `beta` | `0.01` | P(structure at `m1` is rejected), per first test of a history, independent windows |
 | `n_max_undecided` | `80` | touched windows after which an undecided, non-periodic cell reads Intermittent; `0` never |
 | `sprt_ceiling` | derived, `A + 2 l_hit` | library only: upper clamp of the statistic (NaN derives it); not a node parameter |
 | `evidence_calibration` | `measured_2d` for `grid2d`, `fallback_2d_pair` for `voxel3d` (the shipped YAMLs say so, and so does the node when the key is missing; `measured_2d` on another backend is reported as `fallback_2d_pair`) | node only: states where `(m0, m1)` come from: `measured_2d`, `fallback_2d_pair` (not calibrated for this backend; logs a warning and says so on `/diagnostics`) or `user` ; while `PREREG.md` marks the 2D pair not frozen, the message and the value of `evidence_calibration` on `/diagnostics` also carry `provisional (PREREG not frozen: G1 failed)` (every value except `user`; `evidence_model: legacy` states no pair); if `m0`, `m1`, `alpha` or `beta` differs from the library default, the node logs a warning and sets the label to `user` (the pair is then the user's), so the source on `/diagnostics` is never the measured one for a changed pair |
