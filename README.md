@@ -143,7 +143,7 @@ architecture, the persistence and periodicity model, the seeded synthetic
 characterization suite (calibration E0, experiments E1–E7, in a legacy and a sprt arm),
 a calibration of the shipped pair on real LiDAR data (not frozen) and a held-out
 evaluation of seven evidence rules on four public datasets, and it describes the
-code of commit `708d62f`; the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
+code of commit `708d62f` (tag `paper-v2`); the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
 
 ```bibtex
 @misc{kang2026strata,

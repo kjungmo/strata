@@ -637,7 +637,7 @@ author:
     affiliation: Independent Researcher, Seoul, Republic of Korea
     email: kangjmo91@gmail.com
     orcid: 0009-0002-0394-1861
-    url: https://github.com/kjungmo/strata
+    url: https://github.com/kjungmo/strata/tree/paper-v2
 keywords:
   - lifelong mapping
   - occupancy grids

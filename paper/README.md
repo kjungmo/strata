@@ -131,10 +131,11 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   dates and interface values are listed in `README_ALLOW`); its other sections quote
   interface values and behaviour of the node that no check reads.
 - Scope of alpha and beta in the code strings: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` carry the wording of Proposition 'Error bounds under independent windows' (first test of a cell history, independent windows, Periodic veto off for beta, real per-cell rates above alpha) since the pin `708d62f` (the first step was `5c20bba`; the pin adds the bound forms alpha/(1-beta) and beta/(1-alpha), the continuations of a kept periodic candidate as not covered, and the real-data clause only when the calibration label is not `user`). Next code pin, recorded only (no change this round): (i) `params/grid2d.yaml` lines 26-28 and `params/voxel3d.yaml` lines 22-24 add 'continuations of a kept periodic candidate are not covered', and `voxel3d.yaml` scopes the real-data clause to '(real 2D clutter, shipped 2D pair)'; the current text is incomplete, not false (the 3D clutter rates of 28-37% bear out 'above alpha'); (ii) `test_evidence_status.cpp` asserts that the real-data clause is present for `measured_2d` and `fallback_2d_pair` and absent for `user`, and that 'continuations of a kept periodic candidate' is present. The status text already carries the full scope. The comment on `alpha` and `beta` in `strata_core/include/strata_core/layered_map.hpp` still says only "hold for independent windows only (SPEC 3.2a)"; it is in the pinned `strata_core` tree, whose id is tied to the committed result hashes, and was not changed.
-- Release items: no tag `paper-v1` exists, so the text names commit `312b09c`;
-  creating the tag is an author action. The code URL opens `main`, which is still the
-  v0.1 code; before submission merge the code or tag `708d62f` and name that tag in the
-  pin sentence. The citation audit of the keys added in v2 is
+- Release items: the local annotated tag `paper-v2` marks the revision that carries the v2
+  manuscript and its reproduction scripts (the code it describes is the pin `708d62f`); the
+  code URL of the paper opens `tree/paper-v2`. The tag is not pushed: pushing the branch
+  `v2/evidence-sprt` and the tag is an author action, and the URL resolves only after it. `main` is still the
+  v0.1 code, and the first release of the manuscript has no tag (it pinned `312b09c`). The citation audit of the keys added in v2 is
   `CITATION_AUDIT_V2_2026-10-22.md` (in the submission-kit directory). It verified the
   Boreas, Spires, DUFOMap, BeautyMap, LILocBench and Lorden entries against Crossref.
   Only the metadata of `krajnik2014froctomap` is unverified.
