@@ -1,0 +1,56 @@
+{
+ "after": {
+  "loadavg": "3.88 5.24 5.70 4/822 854130",
+  "meminfo": {
+   "MemAvailable": "7993320 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31847148 kB"
+  },
+  "time": "2026-10-18T11:40:31+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 1696040 cc1plus",
+   "99.5 327360 cc1plus",
+   "90.3 318240 cc1plus",
+   " 6.6 573904 2.1.299",
+   " 3.2 186348 claude"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' kth --gt '~/datasets/strata/kth/00/gt_cloud.pcd' --map '/mnt/d/wsl/strata/p3/smoke_kth00/octomap_not_rejected.pcd' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_kth00_octomap_not_rejected.json'"
+ ],
+ "before": {
+  "loadavg": "3.85 5.30 5.73 4/825 853917",
+  "meminfo": {
+   "MemAvailable": "8924948 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31847120 kB"
+  },
+  "time": "2026-10-18T11:40:14+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 100 923096 cc1plus",
+   "92.7 354312 cc1plus",
+   "51.0 108444 cc1plus",
+   " 6.6 577656 2.1.299",
+   " 3.2 166288 claude"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 27
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 16.575,
+ "step": "smoke_kth00_eval_octomap_not_rejected"
+}

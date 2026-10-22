@@ -12,8 +12,15 @@ endif()
 # Build strata_core directly from source (no ROS/ament required).
 add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/../../strata_core strata_core_build)
 
-foreach(exp e0_calibration e1_static_quality e2_periodicity e3_sensitivity e4_throughput e5_trajectory)
+foreach(exp e0_calibration e1_static_quality e2_periodicity e3_sensitivity e4_throughput e5_trajectory e6_default_confusion e7_sprt_oc)
   add_executable(${exp} src/${exp}.cpp)
   target_link_libraries(${exp} PRIVATE strata_core)
   target_include_directories(${exp} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/src)
 endforeach()
+
+# Phase 1 real-data probe and its tests (needs no data to build; run with reproduce_p1.sh).
+option(STRATA_BUILD_REALDATA "Build the real-data tools and their tests (need zlib; not used by E0-E7)" ON)
+enable_testing()
+if(STRATA_BUILD_REALDATA)
+  add_subdirectory(realdata)
+endif()

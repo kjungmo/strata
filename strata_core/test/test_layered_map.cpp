@@ -4,6 +4,7 @@ using namespace strata_core;
 
 static LayeredMapParams P() {
   LayeredMapParams p;
+  p.evidence_model = EvidenceModel::Legacy;   // these tests state the v0.1 arithmetic
   p.layer_interval = 1;          // 1 tick == 1 window
   p.l_hit = 1.0; p.l_miss = -1.0; p.l_min = -6; p.l_max = 6;
   p.survival_decay = 1.0;        // disable forgetting for deterministic threshold tests
@@ -63,8 +64,14 @@ TEST(LayeredMap, WindowIntervalGroupsTicks) {
 // ---- Regression: periodicity must never demote or relabel a constant wall ----
 
 static LayeredMapParams Shipped() {   // params/grid2d.yaml + voxel3d.yaml defaults
-  LayeredMapParams p;                 // struct defaults == shipped YAML (SPEC s.6)
+  LayeredMapParams p;                 // struct defaults == shipped YAML (SPEC s.6): evidence_model sprt
   p.layer_interval = 1;
+  return p;
+}
+// The v0.1 shipped defaults, kept reproducible by name (evidence_model legacy).
+static LayeredMapParams ShippedLegacy() {
+  LayeredMapParams p = Shipped();
+  p.evidence_model = EvidenceModel::Legacy;
   return p;
 }
 
@@ -79,12 +86,28 @@ TEST(LayeredMap, AlwaysHitWallNeverPeriodicT8) {
   }
 }
 
+// v0.2.0: the shipped model is the SPRT, and an always-hit wall graduates at the derived
+// latency ceil(A / l_hit) = 4 windows (not the v0.1 window 3), and never earlier. The
+// legacy twin keeps the v0.1 window 3.
 TEST(LayeredMap, AlwaysHitWallNeverPeriodicShippedDefaultsT24) {
   LayeredMap m(Shipped());            // T=24, H=2, a_min=0.3
   const CellId c = 101;
+  const int latency = m.sprt().latency;
+  ASSERT_EQ(latency, 4);
   for (int w = 1; w <= 400; ++w) {
     m.observeHit(c); m.tick();
     EXPECT_NE(m.classify(c), CellClass::Periodic) << "window " << w;   // was P at 29..40
+    if (w < latency) { EXPECT_FALSE(m.isStatic(c)) << "window " << w; }
+    else             { EXPECT_TRUE(m.isStatic(c)) << "window " << w; }
+  }
+}
+
+TEST(LayeredMap, AlwaysHitWallNeverPeriodicShippedLegacyDefaultsT24) {
+  LayeredMap m(ShippedLegacy());      // v0.1: window 3
+  const CellId c = 101;
+  for (int w = 1; w <= 400; ++w) {
+    m.observeHit(c); m.tick();
+    EXPECT_NE(m.classify(c), CellClass::Periodic) << "window " << w;
     if (w >= 3) { EXPECT_TRUE(m.isStatic(c)) << "window " << w; }
   }
 }
@@ -129,10 +152,24 @@ TEST(LayeredMap, GenuineDoorStillPeriodicE2Params) {
 // requires at least ~8.1% free windows: a wall with rarer free windows is never
 // demoted by the periodic path.
 TEST(LayeredMap, PeriodicDemotionNeedsContradictingFreeEvidence) {
+  // v0.2.0: static from the derived latency (4), not window 3. A miss at window 24, 48 ...
+  // lowers l by |l_miss| from the ceiling and the next hit restores it: never demoted.
   LayeredMap m(Shipped());             // T=24, a_min=0.3
   const CellId c = 104;
+  const int latency = m.sprt().latency;
   for (int w = 1; w <= 24 * 20; ++w) {
     if ((w % 24) == 0) m.observeMiss(c); else m.observeHit(c);   // free 1 of 24 (4.2%)
+    m.tick();
+    EXPECT_NE(m.classify(c), CellClass::Periodic) << "window " << w;
+    if (w >= latency) { EXPECT_TRUE(m.isStatic(c)) << "window " << w; }
+  }
+}
+
+TEST(LayeredMap, PeriodicDemotionNeedsContradictingFreeEvidenceLegacy) {
+  LayeredMap m(ShippedLegacy());       // v0.1: static from window 3
+  const CellId c = 104;
+  for (int w = 1; w <= 24 * 20; ++w) {
+    if ((w % 24) == 0) m.observeMiss(c); else m.observeHit(c);
     m.tick();
     EXPECT_NE(m.classify(c), CellClass::Periodic) << "window " << w;
     if (w >= 3) { EXPECT_TRUE(m.isStatic(c)) << "window " << w; }

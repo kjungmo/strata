@@ -1,0 +1,17 @@
+arm=sprt
+arm_params=sprt: sprt m0=0.2 m1=0.7 alpha=0.01 beta=0.01 n_max_undecided=80 binary=0
+engine_has_sprt=1
+mode=independent
+resolution_m=0.4
+window_steps=10
+periodicity=1
+sessions=1
+session0_cache=/mnt/d/wsl/strata/p3/feas_rerun/cache10_r25.bin
+session0_frames=10
+session0_windows_closed=1
+session0_hits_total=1206175
+session0_map_cells_end=72613
+session0_static_cells=0
+session0_observed_cells=72613
+seconds=1.587477005
+peak_rss_kb=39032

@@ -1,0 +1,74 @@
+{
+ "after": {
+  "loadavg": "2.09 2.07 2.08 2/1270 1317421",
+  "meminfo": {
+   "MemAvailable": "6569580 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31979004 kB"
+  },
+  "time": "2026-10-21T01:54:39+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "98.7 1152436 p3_probe",
+   " 2.5 654932 2.1.303",
+   " 1.2 451132 2.1.303",
+   " 0.9 404964 2.1.304",
+   " 0.7 409140 2.1.304"
+  ]
+ },
+ "argv": [
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "static-export",
+  "--caches",
+  "/mnt/d/wsl/strata/p3/boreas/cache_boreas-2020-11-26-13-58.bin,/mnt/d/wsl/strata/p3/boreas/cache_boreas-2021-04-08-12-44.bin,/mnt/d/wsl/strata/p3/boreas/cache_boreas-2021-06-17-17-52.bin",
+  "--arm",
+  "sprt_high_end",
+  "--res",
+  "0.2",
+  "--window",
+  "10",
+  "--periodicity",
+  "0",
+  "--mode",
+  "independent",
+  "--out-prefix",
+  "/mnt/d/wsl/strata/p3/boreas/sprt_high_end_independent",
+  "--meta",
+  "/mnt/d/wsl/strata/p3/boreas/sprt_high_end_independent.meta"
+ ],
+ "before": {
+  "loadavg": "2.29 2.20 2.13 2/1262 1288595",
+  "meminfo": {
+   "MemAvailable": "6558240 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31978308 kB"
+  },
+  "time": "2026-10-21T00:42:02+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.3 1109796 p3_probe",
+   " 2.5 645496 2.1.303",
+   " 1.2 450804 2.1.303",
+   " 0.9 407872 2.1.304",
+   " 0.7 408276 2.1.304"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 251
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 4356.695,
+ "step": "boreas_static_sprt_high_end_independent"
+}

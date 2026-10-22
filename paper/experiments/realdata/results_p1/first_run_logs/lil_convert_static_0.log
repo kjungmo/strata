@@ -1,0 +1,4 @@
+STEP lil_convert_static_0
+START 2026-10-14T09:37:38+09:00 host=DESKTOP-KCD7BRS load=6.37 4.95 4.55 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-convert --bag <DATA_ROOT>/lilocbench/bags/static_0.bag --gt <DATA_ROOT>/lilocbench/gt_x/static_0/gt_poses.txt --deskew 1 --out <DATA_ROOT>/p1/lil/cache_static_0.bin --meta <DATA_ROOT>/p1/lil/cache_static_0.meta
+END 2026-10-14T09:37:51+09:00 rc=0 load=7.67 5.31 4.67

@@ -5,6 +5,8 @@
 #include <cstdio>
 #include <stdexcept>
 #include <thread>
+#include <utility>
+#include "strata/evidence_status.hpp"
 #include "strata/map_writer.hpp"
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -23,6 +25,7 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
   const double publish_period = declare_parameter<double>("publish_period", 1.0);
 
   const strata_core::LayeredMapParams lp = readLayerParams();
+  buildEvidenceStatus(lp);
   layer_interval_ = lp.layer_interval;
   period_windows_ = lp.periodicity.period_windows;
   // Windows close every layer_interval integrated messages ("scans", the engine's own
@@ -89,6 +92,11 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
 
   RCLCPP_INFO(get_logger(), "strata up: backend=%s frame=%s window_mode=%s", backend_.c_str(),
               global_frame_.c_str(), window_mode_.c_str());
+  RCLCPP_INFO(get_logger(), "evidence: %s", evidence_message_.c_str());
+  if (evidence_model_ == "sprt" && evidence_calibration_ == "fallback_2d_pair" && backend_ != "grid2d")
+    RCLCPP_WARN(get_logger(), "evidence: m0 and m1 are the 2D pair, measured on a 2D scanner; they are not "
+                "calibrated for backend %s. On single-pass 3D data most structure stays Undecided "
+                "(see /diagnostics, \"%s: evidence model\", and SPEC 3.2a)", backend_.c_str(), get_name());
 }
 
 strata_core::LayeredMapParams MappingNode::readLayerParams() {
@@ -109,7 +117,77 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   p.periodic_alpha_spending = declare_parameter<bool>("periodic_alpha_spending", true);
   p.periodicity.period_windows = declare_parameter<int>("period_windows", 24);
   p.periodicity.n_harmonics    = declare_parameter<int>("n_harmonics", 2);
+  // Evidence model (version 0.2.0). The defaults are the library defaults, which are the shipped
+  // YAML values; "legacy" runs the v0.1 arithmetic above (l_hit ... prune_prob), "sprt"
+  // ignores those nine keys and derives its increments and thresholds from m0, m1, alpha, beta.
+  const strata_core::LayeredMapParams def;
+  evidence_model_ = declare_parameter<std::string>("evidence_model", "sprt");
+  p.m0 = declare_parameter<double>("m0", def.m0);
+  p.m1 = declare_parameter<double>("m1", def.m1);
+  p.alpha = declare_parameter<double>("alpha", def.alpha);
+  p.beta = declare_parameter<double>("beta", def.beta);
+  p.n_max_undecided = declare_parameter<int>("n_max_undecided", def.n_max_undecided);
+  // Where the pair comes from. Without the key, the 2D pair is measured for grid2d only; voxel3d
+  // reuses it uncalibrated, so the default for voxel3d is the fallback label (and its warning).
+  const std::string calibration_default = backend_ == "voxel3d" ? "fallback_2d_pair" : "measured_2d";
+  evidence_calibration_ = declare_parameter<std::string>("evidence_calibration", calibration_default);
+  if (evidence_model_ == "sprt") p.evidence_model = strata_core::EvidenceModel::Sprt;
+  else if (evidence_model_ == "legacy") p.evidence_model = strata_core::EvidenceModel::Legacy;
+  else throw std::invalid_argument("evidence_model must be \"sprt\" or \"legacy\", got \"" + evidence_model_ + "\"");
+  if (evidence_calibration_ != "measured_2d" && evidence_calibration_ != "fallback_2d_pair" &&
+      evidence_calibration_ != "user")
+    throw std::invalid_argument("evidence_calibration must be \"measured_2d\", \"fallback_2d_pair\" or "
+                                "\"user\", got \"" + evidence_calibration_ + "\"");
+  // The pair is measured on a 2D scanner only. "measured_2d" on another backend is a wrong label:
+  // report it as the fallback, so the start-up warning and /diagnostics say the truth.
+  if (evidence_calibration_ == "measured_2d" && backend_ != "grid2d") evidence_calibration_ = "fallback_2d_pair";
+  // A pair that differs from the measured values is the user's pair whatever the label says: relabel it
+  // "user" and warn, so the start-up line and /diagnostics do not claim a source the pair does not have.
+  if (p.evidence_model == strata_core::EvidenceModel::Sprt && evidence_calibration_ != "user" &&
+      (p.m0 != def.m0 || p.m1 != def.m1 || p.alpha != def.alpha || p.beta != def.beta)) {
+    RCLCPP_WARN(get_logger(), "evidence: m0, m1, alpha or beta differ from the measured values (m0=%g, m1=%g, "
+                "alpha=%g, beta=%g), so evidence_calibration \"%s\" is changed to \"user\"; set "
+                "evidence_calibration:=user to silence this", def.m0, def.m1, def.alpha, def.beta,
+                evidence_calibration_.c_str());
+    evidence_calibration_ = "user";
+  }
+  // A tuned v0.1 YAML on the sprt default (or sprt keys on legacy) is silently ignored otherwise: say so.
+  {
+    std::string changed;
+    auto note = [&changed](const char* key, double v, double dflt) {
+      if (v != dflt) { changed += changed.empty() ? "" : ", "; changed += key; }
+    };
+    if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
+      note("l_hit", p.l_hit, 0.85); note("l_miss", p.l_miss, -0.4); note("l_min", p.l_min, -5.0);
+      note("l_max", p.l_max, 5.0); note("survival_decay", p.survival_decay, 0.97);
+      note("graduate_prob", p.graduate_prob, 0.8); note("demote_prob", p.demote_prob, 0.45);
+      note("min_observations", p.min_observations, 3); note("prune_prob", p.prune_prob, 0.05);
+      if (!changed.empty())
+        RCLCPP_WARN(get_logger(), "evidence: evidence_model is sprt, so these v0.1 keys are ignored: %s. Set "
+                    "evidence_model:=legacy to use them, or tune m0, m1, alpha, beta and n_max_undecided (SPEC 5)",
+                    changed.c_str());
+    } else {
+      note("m0", p.m0, def.m0); note("m1", p.m1, def.m1); note("alpha", p.alpha, def.alpha);
+      note("beta", p.beta, def.beta); note("n_max_undecided", p.n_max_undecided, def.n_max_undecided);
+      if (!changed.empty())
+        RCLCPP_WARN(get_logger(), "evidence: evidence_model is legacy, so these sprt keys are ignored: %s",
+                    changed.c_str());
+    }
+  }
+  if (p.evidence_model == strata_core::EvidenceModel::Sprt) {
+    try {
+      (void)strata_core::deriveSprt(p);   // reject an unusable (m0, m1, alpha, beta, n_max_undecided) at startup
+    } catch (const std::invalid_argument& e) {
+      throw std::invalid_argument(std::string("evidence parameters: ") + e.what());
+    }
+  }
   return p;
+}
+
+void MappingNode::buildEvidenceStatus(const strata_core::LayeredMapParams& p) {
+  EvidenceStatus s = evidenceStatus(p, evidence_model_, evidence_calibration_, backend_);   // evidence_status.hpp
+  evidence_message_ = std::move(s.message);
+  evidence_values_ = std::move(s.values);
 }
 
 void MappingNode::onScan(const sensor_msgs::msg::LaserScan::SharedPtr msg) {
@@ -421,6 +499,17 @@ void MappingNode::onDiagnostics() {
   // The tf2 text of the last failed lookup while the streak runs; "" when it is 0.
   kv("last_tf_error", tally_.last_tf_error);
   arr.status.push_back(st);
+  // Constant standing note on the evidence model; level OK (a property, not a fault). A second
+  // status, so the values and their order in the "input rate" status stay as they were.
+  DS ev;
+  ev.name = std::string(get_name()) + ": evidence model";
+  ev.hardware_id = st.hardware_id;
+  ev.level = static_cast<unsigned char>(DS::OK);
+  ev.message = evidence_message_;
+  for (const auto& p : evidence_values_) {
+    diagnostic_msgs::msg::KeyValue e; e.key = p.first; e.value = p.second; ev.values.push_back(e);
+  }
+  arr.status.push_back(ev);
   diag_pub_->publish(arr);
   zero_stamps_ = 0;
   // Throttled on the wall clock: a live robot without /clock still gets the warning.

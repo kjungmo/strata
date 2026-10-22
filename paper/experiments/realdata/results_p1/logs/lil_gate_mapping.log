@@ -1,0 +1,4 @@
+STEP lil_gate_mapping
+START 2026-10-18T05:50:44+09:00 host=DESKTOP-KCD7BRS load=2.58 3.33 5.61 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-gate --cache <DATA_ROOT>/p1/lil/cache_mapping.bin --res 0.05 --stride 5 --meta <DATA_ROOT>/p1/lil/gate_mapping.meta
+END 2026-10-18T05:51:05+09:00 rc=0 load=2.28 3.21 5.52

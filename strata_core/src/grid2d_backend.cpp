@@ -64,6 +64,8 @@ GridMap Grid2DBackend::toOccupancyGrid() const {
   // Otherwise a Transient cell is drawn as an obstacle only while its evidence leans
   // occupied; one that leans free (or is undecided at p = 0.5) keeps 0 or -1.
   for(CellId id: layered_.transientCells()) if(layered_.occupancyProb(id)>0.5) put(id,50);
+  // Intermittent (sprt, undecided after n_max_undecided windows): drawn like Transient.
+  for(CellId id: layered_.intermittentCells()) if(layered_.occupancyProb(id)>0.5) put(id,50);
   for(CellId id: layered_.periodicCells())  put(id,75);
   for(CellId id: layered_.staticCells())    put(id,100);
   return g;

@@ -1,0 +1,12 @@
+{
+ "AA": 21.842049328281373,
+ "DA": 4.832502559159681,
+ "HA": 9.213976084958956,
+ "SA": 98.72216579685264,
+ "gt": "/home/cona/datasets/strata/kth/semindoor/gt_cloud.pcd",
+ "gt_dynamic": 568546,
+ "gt_static": 25945776,
+ "map": "/mnt/d/wsl/strata/p3/kth_semindoor/shipped_v0_1_r0.2_W2_p1_not_rejected.pcd",
+ "map_points": 25381912,
+ "tol_m": 0.05
+}

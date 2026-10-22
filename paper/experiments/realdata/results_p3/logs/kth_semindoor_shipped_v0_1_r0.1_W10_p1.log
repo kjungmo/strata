@@ -1,0 +1,12 @@
+STEP kth_semindoor_shipped_v0_1_r0.1_W10_p1
+START 2026-10-21T18:29:17+09:00 host=DESKTOP-KCD7BRS load=1.06 1.21 1.24 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD <BUILD_DIR>/build/realdata/p3_probe kth-export --dir <DATA_ROOT>/kth/semindoor --arm shipped_v0_1 --res 0.1 --window 10 --periodicity 1 --policies static_only,not_rejected,all --out-prefix <OUT_DIR>/kth_semindoor/shipped_v0_1_r0.1_W10_p1 --meta <OUT_DIR>/kth_semindoor/shipped_v0_1_r0.1_W10_p1.meta
+p3_probe: std::bad_alloc
+step kth_semindoor_shipped_v0_1_r0.1_W10_p1 rc=1 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/kth_semindoor_shipped_v0_1_r0.1_W10_p1.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/kth_semindoor_shipped_v0_1_r0.1_W10_p1.json rc=1
+END 2026-10-21T18:32:04+09:00 rc=1 load=1.14 1.16 1.21

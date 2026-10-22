@@ -1,0 +1,10 @@
+STEP boreas_newstatic_symmetric
+START 2026-10-20T13:53:46+09:00 host=DESKTOP-KCD7BRS load=2.23 2.20 2.16 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' newstatic --cum '<OUT_DIR>/boreas/symmetric_cumulative_s2_static.ids' --ind '<OUT_DIR>/boreas/symmetric_independent_s0_static.ids' '<OUT_DIR>/boreas/symmetric_independent_s1_static.ids' '<OUT_DIR>/boreas/symmetric_independent_s2_static.ids' > '<RESULTS_DIR>/boreas_symmetric_newstatic.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/boreas_newstatic_symmetric.json rc=0
+END 2026-10-20T13:53:47+09:00 rc=0 load=2.21 2.19 2.15

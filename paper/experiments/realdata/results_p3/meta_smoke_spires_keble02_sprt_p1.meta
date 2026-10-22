@@ -1,0 +1,18 @@
+arm=sprt
+arm_params=sprt: sprt m0=0.2 m1=0.7 alpha=0.01 beta=0.01 n_max_undecided=80 binary=0
+engine_has_sprt=1
+dim=3
+resolution_m=0.2
+window_steps=10
+periodicity=1
+nmin=5
+format=counts
+frames=3005
+steps=3005
+windows_closed=300
+hits_total=164038139
+hits_off_grid=0
+map_cells_end=3275072
+labelled_cells=605256
+seconds=927.8836726
+peak_rss_kb=1529004

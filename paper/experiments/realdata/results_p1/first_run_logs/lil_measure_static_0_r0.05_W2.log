@@ -1,0 +1,4 @@
+STEP lil_measure_static_0_r0.05_W2
+START 2026-10-14T10:00:54+09:00 host=DESKTOP-KCD7BRS load=2.41 5.01 5.49 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-measure --cache <DATA_ROOT>/p1/lil/cache_static_0.bin --labels <DATA_ROOT>/p1/lil/ref_r0.05.bin --res 0.05 --window 2 --out <DATA_ROOT>/p1/lil/cells_static_0_r0.05_W2.csv --meta <DATA_ROOT>/p1/lil/cells_static_0_r0.05_W2.meta
+END 2026-10-14T10:01:59+09:00 rc=0 load=1.83 4.36 5.23

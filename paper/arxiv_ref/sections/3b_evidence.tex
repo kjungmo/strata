@@ -1,0 +1,129 @@
+\section{Evidence as a Sequential Test}\label{sec:seq}
+
+For each cell, \sname\ decides between two stories: its occupancy is clutter, or it is structure. The state of that decision is one number, the log-odds $\ell$ of Eq.~\eqref{eq:logodds}. This section shows what that number is a test of, why the leak of Eq.~\eqref{eq:logodds} removes the property on which an error bound rests, and how engine version 0.2 replaces the rule of the first release with a test whose hypotheses and error rates the user states. The first release is still in the code as \code{evidence\_model = legacy}; the experiments run both. Every number of this section that comes from a run is generated from the committed results (Appendix~\ref{app:repro}).
+
+\subsection{The v0.1 increments are a sequential probability ratio test}\label{subsec:seqv01}
+
+Let a cell be touched in a sequence of windows, and let $x_t\in\{0,1\}$ record whether window $t$ held a hit ($x_t=1$) or only misses ($x_t=0$). Let $m$ be the probability of a hit in a touched window, the \emph{hit rate} of the cell. Wald's sequential probability ratio test (SPRT) \citep{wald1947sequential} of $H_0\!:m=m_0$ (clutter) against $H_1\!:m=m_1$ (structure), with $m_0<m_1$, adds the log-likelihood ratio of each observation to a statistic,
+\begin{equation}\label{eq:sprtinc}
+  \ell_t=\ell_{t-1}+\begin{cases}\ln\dfrac{m_1}{m_0}, & x_t=1,\\[4pt] \ln\dfrac{1-m_1}{1-m_0}, & x_t=0,\end{cases}\qquad \ell_0=0,
+\end{equation}
+decides for $H_1$ when $\ell_t\ge A$, for $H_0$ when $\ell_t\le B$, and otherwise takes one more observation. For the error rates $\alpha$ (decide $H_1$ under $H_0$) and $\beta$ (decide $H_0$ under $H_1$), Wald's thresholds are $A=\ln\frac{1-\beta}{\alpha}$ and $B=\ln\frac{\beta}{1-\alpha}$. Compare Eq.~\eqref{eq:sprtinc} with Eq.~\eqref{eq:logodds}: the first release adds $\lhit$ in a hit window and $\lmiss$ in a miss window. The two pairs of increments determine each other.
+
+\begin{proposition}[Increments determine the hypotheses]\label{prop:invert}
+For every $\lhit>0>\lmiss$ there is exactly one pair $0<m_0<m_1<1$ with $\ln(m_1/m_0)=\lhit$ and $\ln\big((1-m_1)/(1-m_0)\big)=\lmiss$, namely
+\begin{equation}\label{eq:invert}
+  m_0=\frac{1-e^{\lmiss}}{e^{\lhit}-e^{\lmiss}},\qquad m_1=m_0\,e^{\lhit}.
+\end{equation}
+\end{proposition}
+\begin{proof}
+The two conditions read $m_1=m_0e^{\lhit}$ and $1-m_1=(1-m_0)e^{\lmiss}$. Substituting the first into the second gives $m_0\,(e^{\lhit}-e^{\lmiss})=1-e^{\lmiss}$, which is Eq.~\eqref{eq:invert}. Since $\lmiss<0<\lhit$, the numerator and the denominator are positive, so $m_0>0$, and $m_1>m_0$ follows from $\lhit>0$. Finally $m_1<1$ is equivalent to $e^{\lmiss}<e^{\lhit+\lmiss}$, which holds because $\lhit>0$.
+\end{proof}
+
+The shipped values of the first release are the sensor model of OctoMap, $\lhit=0.85$ and $\lmiss=-0.4$ \citep{hornung2013octomap}, which the engine applies once per touched window. By Eq.~\eqref{eq:invert} they are the increments of an SPRT between the hit rates $m_0=\SqLegMzero$ and $m_1=\SqLegMone$. The graduation probability $\pgrad{=}0.8$ is the threshold $A=\operatorname{logit}\pgrad=\SqLegThreshold$, and without the leak a cell with the hit rate $m^\ast=-\lmiss/(\lhit-\lmiss)=\SqLegMstar$ has zero drift. In the first release of \sname\ these hypotheses were not chosen; the two increments imply them. In this reading Static means that the evidence favours a hit rate near $\SqLegMone$ over one near $\SqLegMzero$ by a factor of four, and a cell whose hit rate is above $m^\ast$ drifts toward Static. This is the reason for the false Static labels that E6 measures (Remark~\ref{rem:drift} gives the same threshold in the form that includes the leak).
+
+\subsection{A leak breaks the premise of the error bound}\label{subsec:leak}
+
+An error statement for a sequential test rests on the fact that $e^{\ell_t}$ is a nonnegative supermartingale when $H_0$ is true. Then Ville's maximal inequality bounds the probability that the statistic ever reaches a threshold \citep[Lemma~1]{howard2020timeuniform}; \citet[Section~4.6]{howard2020timeuniform} state that this is an open-ended SPRT with a valid type-I error. The recursion of the first release, $\ell\leftarrow\lambda(\ell+x)$ with $\lambda=0.97$, breaks the property.
+
+\begin{proposition}[A leak breaks the supermartingale]\label{prop:leak}
+Let $Z=\ln(m_1/m_0)$ with probability $m_0$ and $Z=\ln\frac{1-m_1}{1-m_0}$ otherwise, so that $\mathbb{E}\,e^{Z}=1$. For $\lambda\in(0,1)$ and a level $\ell<0$, the leaky update $\ell'=\lambda(\ell+Z)$ satisfies
+\[
+  \frac{\mathbb{E}\,e^{\ell'}}{e^{\ell}}=e^{(1-\lambda)|\ell|}\;\mathbb{E}\,e^{\lambda Z},
+\]
+and this ratio exceeds $1$ for every $|\ell|>\ln\!\big(1/\mathbb{E}\,e^{\lambda Z}\big)/(1-\lambda)$. Hence $e^{\ell_t}$ is not a supermartingale under $H_0$.
+\end{proposition}
+\begin{proof}
+$\mathbb{E}\,e^{\lambda(\ell+Z)}=e^{\lambda\ell}\,\mathbb{E}\,e^{\lambda Z}$, and $e^{\lambda\ell}/e^{\ell}=e^{(1-\lambda)|\ell|}$ for $\ell<0$. The factor $\mathbb{E}\,e^{\lambda Z}$ is a positive constant, so the product grows without bound in $|\ell|$.
+\end{proof}
+At the values of the first release ($\lambda=0.97$, increments $(0.85,-0.4)$, hit rate $m_0=\SqLegMzero$) the ratio at the level $\ell=-\SqLeakLevel$ is $\SqLeakRatio$, and the level lies inside the clamp $[-5,5]$ of Table~\ref{tab:params}. The leak is also what moves the zero-drift rate from $\SqLegMstar$ to the value of Remark~\ref{rem:drift}. We found no result that gives error rates for a Wald test with a multiplicative leak; leaky accumulators are studied as models of decision making \citep{bogacz2006physics}, not as tests with a stated error. Where forgetting is wanted, version 0.2 provides it by a separate mechanism (the ceiling and the reverse test below), not by shrinking the statistic.
+
+\subsection{The test of engine version 0.2}\label{subsec:sprtengine}
+
+\noindent\textbf{What the user states.} The user states two hit rates and two error rates: $m_0$, the hit rate at or below which a cell is clutter; $m_1$, the hit rate at or above which it is structure; $\alpha$, the probability that clutter at $m_0$ is declared Static; $\beta$, the probability that structure at $m_1$ is rejected. The engine requires $0<m_0<m_1<1$, $\alpha,\beta>0$ and $\alpha+\beta<1$, and derives
+\begin{equation}\label{eq:derive}
+  \begin{gathered}
+  \lhit=\ln\frac{m_1}{m_0},\qquad \lmiss=\ln\frac{1-m_1}{1-m_0},\\
+  A=\ln\frac{1-\beta}{\alpha},\qquad B=\ln\frac{\beta}{1-\alpha},\qquad \ell_{\max}=A+2\lhit .
+  \end{gathered}
+\end{equation}
+The increments, the thresholds and the cap follow from these four numbers. The periodicity gate $T$ (the parameter \code{period\_windows}) is a parameter with a fixed default, not derived from the pair. The truncation $n_{\max}$ depends on the pair through its zero-drift rate, but the engine does not derive it: it was computed once, offline, for the shipped pair by the pre-registered rule of Section~\ref{sec:calib} (below). The engine does not recompute it when the pair changes, so a user who re-derives the pair should recompute $n_{\max}$. The shipped values are $(m_0,m_1,\alpha,\beta)=(0.20,0.70,0.01,0.01)$. They are \emph{provisional}: they are the pair measured on one calibration set, whose quality gate failed (Section~\ref{sec:calib}), and the node says so on its diagnostics topic unless \code{evidence\_calibration} is \code{user} or the pair is changed. Table~\ref{tab:sprtdefaults} lists what Eq.~\eqref{eq:derive} gives for them.
+
+\begin{table}[t]
+\centering
+\caption{Quantities derived from the shipped pair $(m_0,m_1,\alpha,\beta)=(0.20,0.70,0.01,0.01)$ (generated from the library defaults by the rule of the engine). Windows are touched windows. \emph{Always-hit}: windows an always-hit cell needs to graduate; \emph{demote}: all-miss windows that demote a graduated cell.}
+\label{tab:sprtdefaults}
+\small
+\begin{tabular}{lcccccccc}
+\toprule
+$\lhit$ & $\lmiss$ & $A=-B$ & $\ell_{\max}$ & $m^\ast$ & Always-hit & Demote & $T$ & $n_{\max}$ \\
+\midrule
+\SqLhit & $-\SqLmiss$ & \SqA & \SqCeil & \SqMstar & \SqLatency & \SqDemote & \SqGate & \SqNmax \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Three outcomes.} For each touched window the statistic moves by $\lhit$ (a hit) or $\lmiss$ (only misses), with no multiplier, and is capped at $\ell_{\max}$. A cell ends in one of three states:
+\begin{itemize}
+  \item \emph{Static}: the cell graduated and has been neither demoted nor vetoed since. It graduates when $\ell\ge A$ while it is not Periodic, and its statistic then restarts at the cap $\ell_{\max}$. After graduation $\ell$ can fall below $A$ (to just above $\ell_{\max}-A$) while the cell stays Static.
+  \item \emph{Rejected}: $n\ge T$ touched windows and $\ell\le B$. From $n\ge T$ the statistic is floored at $B$, and a hit can still raise it. The cell is erased when its amplitude is below $\amin$ (the effect-size screen of the periodicity test), and its next observation (a hit or a miss) starts a new history. A cell with $\ell\le B$ and an amplitude of at least $\amin$ is kept as a periodic candidate: its statistic stays at or above $B$, and the cell is erased once its amplitude falls below $\amin$ while $\ell\le B$.
+  \item \emph{Undecided}: everything else. Undecided cells are never promoted by a timer, and they are kept. The backend interface counts Static, Transient and Intermittent cells, and an Undecided cell that is not Periodic is counted as one of the last two. The node publishes no count of Undecided cells and no memory value.
+\end{itemize}
+The \emph{periodicity gate} $n\ge T$ closes the prune/maturity race of Proposition~\ref{prop:race}: a cell cannot be rejected, and its statistic is not bounded below, before it has $T$ touches for the periodicity test to read. The price is that a clutter cell lives at least $T$ touched windows before it is erased (Table~\ref{tab:e7oc}). The Periodic veto is unchanged from Section~\ref{subsec:fremen}: a cell for which $\pi_i$ holds does not graduate and is demoted if it is Static.
+
+\noindent\textbf{Demotion is a one-sided reverse test.} A graduated cell sits at the cap. It is demoted when $\ell\le\ell_{\max}-A$, that is, after $\lceil A/|\lmiss|\rceil=\SqDemote$ all-miss windows at the shipped pair; one miss never demotes. This is a CUSUM-like test \citep{page1954continuous}: the cap reflects the statistic from above, and the cell is demoted when the statistic falls $A$ below the cap. It is not the SPRT in the opposite direction, and it has no error bound per history. A wall at the hit rate $m_1$ is demoted after a finite mean time, which we do not bound; Section~\ref{subsec:p3walls} counts the real wall cells that were Static and later were not. After a reverse-test demotion the forward test restarts from $\ell=0$ and $n=0$, so a history can hold several forward tests. A demotion by the Periodic veto keeps $\ell$ and $n$, so the cell graduates again as soon as the veto clears while $\ell\ge A$. Proposition~\ref{prop:ville} covers the first forward test of a history.
+
+\noindent\textbf{Truncation.} An undecided cell that is not Periodic is read out as \emph{Intermittent} once it has $n_{\max}$ touched windows ($n_{\max}{=}\SqNmax$, the smallest multiple of 16 for which at most 3\% of cells at the zero-drift rate $m^\ast$ are still undecided; the rule is pre-registered in Section~\ref{sec:calib}). Intermittent is a read-out only: the test keeps running, and the cell can still graduate or be rejected. The 2D grid renders it like Transient. The occupancy probability that the engine reports (\code{occupancyProb}) is $\sigma(\ell)$, the posterior probability of ``structure'' for equal priors on the two hypotheses; it is not a calibrated occupancy.
+
+\begin{algorithm}[t]
+\caption{\code{endWindow} for \code{evidence\_model = sprt}, as in \code{layered\_map.cpp}}\label{alg:endwindowsprt}
+\KwIn{live cells $\mathcal{X}$ with window counters; derived $\lhit,\lmiss,A,B,\ell_{\max}$; gate $T$}
+\ForEach{live cell $i$}{
+  \If{$i$ was touched}{
+    $\ell_i\gets\min\big(\ell_i+o_i\,\lhit+f_i\,\lmiss,\,\ell_{\max}\big)$, $n_i\gets n_i+1$\tcp*{Eq.~\eqref{eq:score}}
+    \lIf{$n_i\ge T$}{$\ell_i\gets\max(\ell_i,B)$}
+    update the Fourier model $\boldsymbol{\phi}_i$ with $(o_i,w)$ and recompute $\pi_i$\;
+  }
+  \If{$\lnot g_i\land\lnot\pi_i\land\ell_i\ge A$}{$g_i\gets\text{true}$, $\ell_i\gets\ell_{\max}$\tcp*{graduate}}
+  \If{$g_i$}{\lIf{$\pi_i$}{$g_i\gets\text{false}$}\lElseIf{$\ell_i\le\ell_{\max}-A$}{$g_i\gets\text{false}$, $\ell_i\gets0$, $n_i\gets0$}}
+  \lIf{$\lnot g_i\land n_i\ge T\land\ell_i\le B\land a_i<\amin$}{erase $i$ and $\boldsymbol{\phi}_i$\tcp*[f]{rejected}}
+}
+\KwOut{classes: Static if $g_i$; Periodic if $\pi_i$; otherwise Unknown if rejected and kept, Intermittent if $n_i\ge n_{\max}$, else Transient}
+\end{algorithm}
+
+\subsection{What the error rates promise}\label{subsec:promise}
+
+\begin{proposition}[Error bounds under independent windows]\label{prop:ville}
+Call a \emph{history} of a cell its touched windows from its creation until it is erased or the run ends. Call its \emph{first test} the windows from its creation up to its first graduation or, if that comes first, up to its \emph{floor window}: the first window with $n\ge T$ in which the updated statistic is at or below $B$ (the engine floors the statistic at $B$ there and either erases the cell or keeps it as a periodic candidate). Suppose that, given everything observed before the history begins, its touched windows are fixed independently of its occupancy and its outcomes $x_1,x_2,\dots$ are independent Bernoulli($p$). If $p\le m_0$, the probability that the history graduates in its first test is at most $e^{-A}=\alpha/(1-\beta)$. If $p\ge m_1$, the probability that the first test ends in its floor window, that is, that the history is rejected or held as a periodic candidate before it has graduated, is at most $e^{B}=\beta/(1-\alpha)$ with the Periodic veto off; with the veto on it is at most $e^{B}$ plus the probability that the statistic reaches $A$ in the first test while $\pi_i$ blocks graduation. If $L_N$ histories of a cell begin in windows $1,\dots,N$, the probability that, for a clutter rate $p\le m_0$, the cell becomes Static at some window up to $N$ by a graduation in a first test is at most $e^{-A}\,\mathbb{E}[L_N]$. The statement does not cover a graduation after a demotion (a reverse-test demotion starts a new forward test; a veto demotion keeps $\ell$ and $n$), nor one after a floor window, from which a kept periodic candidate continues at $B$.
+\end{proposition}
+\begin{proof}
+Let $\lambda(1)=m_1/m_0$ and $\lambda(0)=(1-m_1)/(1-m_0)$ and $\Lambda_t=\prod_{s\le t}\lambda(x_s)$, so that $\ell_t=\ln\Lambda_t$ while no clamp has acted. A direct computation gives
+\begin{align*}
+  \mathbb{E}_p\,\lambda(x)&=1+\frac{(p-m_0)(m_1-m_0)}{m_0(1-m_0)}\le1\quad(p\le m_0),\\
+  \mathbb{E}_p\,\frac{1}{\lambda(x)}&=1+\frac{(p-m_1)(m_0-m_1)}{m_1(1-m_1)}\le1\quad(p\ge m_1).
+\end{align*}
+Hence for $p\le m_0$ the process $\Lambda_t$ is a nonnegative supermartingale with $\Lambda_0=1$, and Ville's inequality \citep[Lemma~1]{howard2020timeuniform} gives $\Pr(\sup_t\Lambda_t\ge e^{A})\le e^{-A}$. In the first test, up to the first window in which the statistic reaches $A$, the engine's statistic equals $\ln\Lambda_t$: the cap (at least $A$) can act only in a window in which the uncapped statistic exceeds it, that is, not before the statistic reaches $A$, nothing is floored before the periodicity gate, and the floor acts only in the floor window, where it replaces a value at or below $B$. The event that the history graduates in its first test is contained in $\{\sup_t\Lambda_t\ge e^{A}\}$, because the first window with $\ell\ge A$ comes before the floor window and has $\ell=\ln\Lambda_t$; the Periodic veto only removes graduations. For $p\ge m_1$ the process $1/\Lambda_t$ is a supermartingale. If the statistic has not reached $A$ before the floor window, no cap has acted and $\ln\Lambda_t\le B$ there, so the event that the first test ends there is contained in $\{\sup_t\Lambda_t^{-1}\ge e^{-B}\}$. With the veto off, the first window with $\ell\ge A$ is a graduation and ends the first test, so this covers every floor window of a first test. With the veto on, the remaining case is a first test in which the statistic reached $A$ while $\pi_i$ blocked graduation; after that the cap can act, and its probability is the added term. The third statement follows as in Proposition~\ref{prop:spend}: the $\ell$-th history begins at a window determined by the past.
+\end{proof}
+
+Four limits of this statement matter for how the numbers of Section~\ref{sec:realeval} are read.
+\begin{itemize}
+  \item \emph{The unit is the first test of a history.} The bound is for the first test of one history. A reverse-test demotion restarts the forward test at $\ell=0$, and a rejected cell is erased and its next observation (a hit or a miss) starts a new history. Each restart after a reverse-test demotion, and each continuation of a kept periodic candidate, is a chance to graduate that the proposition does not bound; restarts after a rejection are bounded only through the expected number of histories. The share of cells that are ever Static in a run can therefore exceed the bound (Proposition~\ref{prop:ville} bounds the graduations in first tests by the bound times the expected number of histories). The per-cell rates on real clutter are reported in Section~\ref{sec:realeval} and are above $\alpha$.
+  \item \emph{Independence is an assumption.} Real windows of one cell are correlated. Table~\ref{tab:e7ac} measures the effect on the engine for a cell at exactly $m_0$: the share of forward tests (a cell history, split at each demotion) that graduate within \SqAcHorizon{} windows is \SqAcShareZero\,\% for independent windows, \SqAcShareTw\,\% at lag-1 autocorrelation $0.23$ (\SqAcTw{} times $\alpha$) and \SqAcShareHalf\,\% at $0.5$. A bare random walk floored at $B$ and never rejected, which is not the engine, reaches \SqRefWalk{} times $\alpha$ at $0.23$. The band means of the lag-1 autocorrelation of real LILocBench calibration cells lie between \CalLagLo{} and \CalLagHi{} (Table~\ref{tab:optc}), so independence does not hold, and no guarantee of the paper is stated for real windows.
+  \item \emph{Nothing is promised between the hypotheses.} A cell with a hit rate between $m_0$ and $m_1$ is neither clutter nor structure in the test, and it graduates with the probability of the operating characteristic below. The sweep of Table~\ref{tab:e7oc} shows how steeply that probability rises between $m_0$ and $m_1$.
+  \item \emph{A hit rate cannot say which kind of object produced it.} A wall seen in $60\,\%$ of its windows and clutter present in $60\,\%$ are the same input for this test. A pre-registered rule named a second statistic (run lengths) as a third step. Its trigger fired on the first (ten-scan) calibration measurement with opposite signs in the two datasets that it was read on; the second amendment replaced that step by the fallback of the 3D backend on the 2D pair, flagged not calibrated, and decided not to implement Option C (Section~\ref{sec:calib}). The engine of this paper has no second statistic.
+\end{itemize}
+
+\input{tables/e7_autocorr}
+
+\subsection{Operating characteristic and latency}\label{subsec:oc}
+
+For the hit rate $m$ the probability that the test graduates a cell follows from Wald's operating characteristic, which neglects the overshoot of the statistic over the thresholds \citep[Chapter~3]{wald1947sequential}. With $a=e^{A}$ and $b=e^{B}$,
+\begin{equation}\label{eq:wald}
+  P_m(\text{graduate})\approx\frac{1-b^{h}}{a^{h}-b^{h}},\qquad
+  m\Big(\frac{m_1}{m_0}\Big)^{h}+(1-m)\Big(\frac{1-m_1}{1-m_0}\Big)^{h}=1,
+\end{equation}
+where $h=h(m)\ne0$ solves the second equation, and the value at the zero-drift rate $m^\ast$ ($h=0$) is the limit $-B/(A-B)=\ln(1/b)/(\ln a-\ln b)$, the probability that a zero-drift walk from $0$ reaches $A$ before $B$; it equals $1/2$ only when $\alpha=\beta$. The formula gives $\alpha$ at $m_0$ ($h=1$) and $1-\beta$ at $m_1$ ($h=-1$). Experiment E7 compares three quantities on the same pair: Monte Carlo on the real engine with the Periodic veto off (\SqCells{} cells per rate, one first test each), the exact value of the same rule computed state by state on the lattice $\ell=h\,\lhit+k\,\lmiss$, and Eq.~\eqref{eq:wald} (Table~\ref{tab:e7oc}). The engine and the exact computation agree: the exact value lies inside the Wilson interval of the Monte Carlo share in \SqMcInside{} of \SqMcRows{} rows, and the mean number of windows to a decision differs by at most \SqWinGap{} windows. At $m_0$ the exact graduation probability is \SqExactMzero{}, below both $\alpha$ and the Ville bound \SqVille, because the statistic overshoots the threshold. Eq.~\eqref{eq:wald} departs from the exact value by at most \SqWaldGapPure{} for the rule without a gate (at $m=\SqWaldGapPureM$) and by at most \SqWaldGapShipped{} for the shipped rule with the periodicity gate (at $m=\SqWaldGapShippedM$; E7 runs it with the Periodic veto off); the gate keeps cells from being rejected early, which is why the shipped rule graduates \SqExactMone{} of the cells at $m_1$ where the closed form says $1-\beta$. A cell that is clutter lives \SqWinMzero{} windows on average under the shipped rule ($T=\SqGate$) against \SqWinMzeroPure{} without the gate.
+
+\input{tables/e7_oc}
+
+The latency of an always-hit wall is a consequence of the error rates, not a free constant: it graduates at the window $\lceil A/\lhit\rceil=\lceil\ln\frac{1-\beta}{\alpha}/\ln\frac{m_1}{m_0}\rceil$, which is \SqLatency{} at the shipped pair, not the third window of the first release. We report the latency; we do not advertise it. A graduated cell is demoted after $\lceil A/|\lmiss|\rceil$ all-miss windows. Rejection waits for the $T$ touched windows of the gate, so on a short pass a cell touched fewer than $T$ times can end Static or Undecided but never Rejected; Section~\ref{sec:realeval} reports the Undecided share on real data.

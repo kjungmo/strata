@@ -1,0 +1,57 @@
+{
+ "ever_static_on_clutter_eligible_bound": {
+  "consistent": true,
+  "hi": 0.14654738995509786,
+  "k_hi": 8453,
+  "k_lo": 8368,
+  "lo": 0.14507376779182052,
+  "n": 57681,
+  "population": "eligible label-1 cells; bounds from the counts and latency files, not an exact rate (PREREG_P3.md Amendment 13)"
+ },
+ "false_static_on_clutter": {
+  "k": 8368,
+  "n": 57681,
+  "rate": 0.14507376779182052,
+  "unit": "end of run, eligible cells; not the unit of the alpha test (PREREG_P3.md Amendments 5 and 12)",
+  "wilson95": [
+   0.14222337769044752,
+   0.14797142974113273
+  ]
+ },
+ "structure_label_2": {
+  "false_reject_rate": 0.0022580804667798452,
+  "n": 182013,
+  "rejected": 411,
+  "static": 157158,
+  "undecided": 24444,
+  "undecided_share": 0.1342980995862933,
+  "wilson95": [
+   0.002050274858106385,
+   0.0024868957260115597
+  ],
+  "windows_to_first_static": {
+   "n": 164837,
+   "p50": 8.0,
+   "p90": 126.0,
+   "population": "all labelled cells ever Static, eligible or not (PREREG_P3.md Amendment 12)"
+  }
+ },
+ "structure_label_3": {
+  "false_reject_rate": 0.001296448405644301,
+  "n": 326276,
+  "rejected": 423,
+  "static": 239976,
+  "undecided": 85877,
+  "undecided_share": 0.263203545464576,
+  "wilson95": [
+   0.0011787139355784308,
+   0.0014259258579234775
+  ],
+  "windows_to_first_static": {
+   "n": 245878,
+   "p50": 6.0,
+   "p90": 162.0,
+   "population": "all labelled cells ever Static, eligible or not (PREREG_P3.md Amendment 12)"
+  }
+ }
+}

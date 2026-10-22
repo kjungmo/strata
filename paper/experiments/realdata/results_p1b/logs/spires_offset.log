@@ -1,0 +1,5 @@
+STEP spires_offset
+START 2026-10-18T07:35:54+09:00 host=DESKTOP-KCD7BRS load=10.95 6.34 4.77 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe spires-offset --zip <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-02/raw/lidar-clouds.zip --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-02/processed/trajectory/gt-tum.txt --tls-dir <OUT_DIR> --csv <OUT_DIR>/spires_offset.csv --meta <OUT_DIR>/spires_offset.meta
+2026-10-18T07:36:13+0900 loaded 101 sample scans of 3007
+END 2026-10-18T07:37:18+09:00 rc=0 load=14.29 8.56 5.69

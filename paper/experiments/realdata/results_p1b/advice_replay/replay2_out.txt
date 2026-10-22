@@ -1,0 +1,41 @@
+
+W=10 (m0,m1,a=b)=(0.15,0.65,0.01)
+  T= 1: clutter false-Static overall 0.0253 (n=24099) | among r<=m0: 0.0065 (n=21849) | among r>m0: 0.2080 (n=2250) || structure S 0.8681 R 0.0664
+  T= 8: clutter false-Static overall 0.0265 (n=24099) | among r<=m0: 0.0065 (n=21849) | among r>m0: 0.2200 (n=2250) || structure S 0.8802 R 0.0519
+  T=24: clutter false-Static overall 0.0346 (n=24099) | among r<=m0: 0.0078 (n=21849) | among r>m0: 0.2947 (n=2250) || structure S 0.9146 R 0.0131
+  control near-wall free, dynamics_0 (H>=1)    n=  3473 graduated 0.0965
+  control near-wall free, static_0 (H>=1)      n=  6605 graduated 0.0645
+  control ref_free hit in static_0 (H>=1)      n= 34247 graduated 0.0071
+  structure rejected: N<5: 0, N>=5: 732 (of which r<m1: 337) out of 11027 structure cells
+
+W=10 (m0,m1,a=b)=(0.15,0.65,0.05)
+  T= 1: clutter false-Static overall 0.0315 (n=24099) | among r<=m0: 0.0105 (n=21849) | among r>m0: 0.2347 (n=2250) || structure S 0.8653 R 0.0918
+  T= 8: clutter false-Static overall 0.0364 (n=24099) | among r<=m0: 0.0113 (n=21849) | among r>m0: 0.2809 (n=2250) || structure S 0.8994 R 0.0534
+  T=24: clutter false-Static overall 0.0644 (n=24099) | among r<=m0: 0.0280 (n=21849) | among r>m0: 0.4187 (n=2250) || structure S 0.9378 R 0.0111
+  control near-wall free, dynamics_0 (H>=1)    n=  3473 graduated 0.1206
+  control near-wall free, static_0 (H>=1)      n=  6605 graduated 0.0821
+  control ref_free hit in static_0 (H>=1)      n= 34247 graduated 0.0121
+  structure rejected: N<5: 8, N>=5: 1004 (of which r<m1: 429) out of 11027 structure cells
+
+W=2 (m0,m1,a=b)=(0.10,0.55,0.01)
+  T= 1: clutter false-Static overall 0.0260 (n=24119) | among r<=m0: 0.0104 (n=22551) | among r>m0: 0.2513 (n=1568) || structure S 0.8343 R 0.1346
+  T= 8: clutter false-Static overall 0.0269 (n=24119) | among r<=m0: 0.0107 (n=22551) | among r>m0: 0.2589 (n=1568) || structure S 0.8397 R 0.1290
+  T=24: clutter false-Static overall 0.0415 (n=24119) | among r<=m0: 0.0197 (n=22551) | among r>m0: 0.3559 (n=1568) || structure S 0.8918 R 0.0724
+  control near-wall free, dynamics_0 (H>=1)    n=  3478 graduated 0.0926
+  control near-wall free, static_0 (H>=1)      n=  6605 graduated 0.0427
+  control ref_free hit in static_0 (H>=1)      n= 34247 graduated 0.0069
+  structure rejected: N<5: 0, N>=5: 1484 (of which r<m1: 503) out of 11027 structure cells
+
+W=2 (m0,m1,a=b)=(0.10,0.55,0.05)
+  T= 1: clutter false-Static overall 0.0299 (n=24119) | among r<=m0: 0.0130 (n=22551) | among r>m0: 0.2730 (n=1568) || structure S 0.8282 R 0.1525
+  T= 8: clutter false-Static overall 0.0338 (n=24119) | among r<=m0: 0.0150 (n=22551) | among r>m0: 0.3048 (n=1568) || structure S 0.8481 R 0.1310
+  T=24: clutter false-Static overall 0.0574 (n=24119) | among r<=m0: 0.0305 (n=22551) | among r>m0: 0.4445 (n=1568) || structure S 0.9080 R 0.0668
+  control near-wall free, dynamics_0 (H>=1)    n=  3478 graduated 0.1067
+  control near-wall free, static_0 (H>=1)      n=  6605 graduated 0.0642
+  control ref_free hit in static_0 (H>=1)      n= 34247 graduated 0.0104
+  structure rejected: N<5: 0, N>=5: 1682 (of which r<m1: 540) out of 11027 structure cells
+
+KITTI 0.2 W10 moving cells graduated under (0.15,0.65,0.01), by rate band
+  r<=0.15      n= 5025 graduated=0 (0.000)
+  0.15<r<0.65  n=  694 graduated=121 (0.174)
+  r>=0.65      n=  182 graduated=179 (0.984)

@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "6.82 10.56 9.86 2/774 1091437",
+  "meminfo": {
+   "MemAvailable": "10092620 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31939136 kB"
+  },
+  "time": "2026-10-18T14:19:25+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 173 239704 cc1plus",
+   " 6.2 604704 2.1.299",
+   " 3.1 188480 claude",
+   " 0.8 12840 x-terminal-emul",
+   " 0.4 57168 Xvfb"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' spires --counts '/mnt/d/wsl/strata/p3/smoke_spires/counts_sprt_p1.csv' --latency '/mnt/d/wsl/strata/p3/smoke_spires/counts_sprt_p1.csv.latency' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_spires_keble02_sprt_p1.json'"
+ ],
+ "before": {
+  "loadavg": "6.82 10.56 9.86 2/774 1091429",
+  "meminfo": {
+   "MemAvailable": "10115300 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31939136 kB"
+  },
+  "time": "2026-10-18T14:19:25+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 152 212636 cc1plus",
+   " 6.2 604688 2.1.299",
+   " 3.1 188468 claude",
+   " 0.8 12840 x-terminal-emul",
+   " 0.4 57168 Xvfb"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "commit": "5626dd0e8f6902d24fdbb2eca65301da168cc7dc",
+  "strata_core_tree_binary": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "strata_core_tree_head": "d8db00efc9e04d1c1880cd55cf75bd90a018b5c0",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 108
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.174,
+ "step": "smoke_spires_eval_sprt_p1"
+}

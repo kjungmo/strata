@@ -33,11 +33,18 @@ confirms it over time, and **graduates** only durable cells into the static map:
   so evidence must be *refreshed* to persist. This is the forgetting term of a
   **Persistence Filter** (Rosen/Mason/Leonard, ICRA 2016): an unobserved cell's
   belief that it is still occupied decays over time.
-- **Schmitt-trigger graduation** — a cell promotes to **Static** when its
-  occupancy probability rises above `graduate_prob` (and it has been observed at
-  least `min_observations` times), and demotes only when it falls below the lower
-  `demote_prob`. The `[demote_prob, graduate_prob]` gap is hysteresis: it stops a
-  cell flickering between map and not-map on borderline evidence.
+- **Graduation by a sequential test** (`evidence_model = sprt`, the default since
+  0.2.0) — a cell promotes to **Static** when a Wald probability-ratio test on its
+  per-window hit rate accepts "structure" (rate at or above `m1`) against "clutter"
+  (rate at or below `m0`), at stated error rates `alpha` and `beta` (§3.2a). Three
+  outcomes are possible: Static, rejected, and undecided. The v0.1 rule is still
+  available as `evidence_model = legacy`.
+- **Schmitt-trigger graduation** (`evidence_model = legacy`, the v0.1 rule) — a cell
+  promotes to **Static** when its occupancy probability rises above `graduate_prob`
+  (and it has been observed at least `min_observations` times), and demotes only
+  when it falls below the lower `demote_prob`. The `[demote_prob, graduate_prob]`
+  gap is hysteresis: it stops a cell flickering between map and not-map on
+  borderline evidence.
 - **FreMEn periodicity** — a parallel per-cell frequency model
   (Krajník et al., T-RO 2017) detects cells whose occupancy oscillates. A cell
   with a strong, statistically significant harmonic is classified **Periodic**
@@ -187,12 +194,13 @@ volumetrically; `grid2d` projects transformed endpoints onto its 2D plane.
 
 ### 3.1 Layered evidence per cell
 Each known cell holds `{ log_odds, observations, window_hits, window_misses,
-graduated }`. Observations arrive per integration frame as **hits** (an endpoint
+graduated }` (24 bytes in both evidence models). Observations arrive per integration frame as **hits** (an endpoint
 fell in the cell) and **misses** (a ray passed through the cell — free-space /
 negative information). Frames are grouped into **windows** of `layer_interval`
 ticks; the layered update runs once per window (`endWindow`).
 
-### 3.2 Log-odds occupancy
+### 3.2 Log-odds occupancy (`evidence_model = legacy`)
+This section and §3.3–§3.4 describe the v0.1 rule. The default rule is §3.2a.
 At window close, the cell's window state is `occ = (window_hits >= 1)`,
 `free = (!occ && window_misses > 0)`. Then:
 
@@ -206,13 +214,145 @@ log_odds  = clamp(log_odds, l_min, l_max)
 Occupancy probability is `p = sigmoid(log_odds)`. Touched cells increment
 `observations`.
 
+### 3.2a Sequential test (`evidence_model = sprt`, default since 0.2.0)
+
+**What you state.** `m0`: the per-window hit rate at or below which a cell is clutter.
+`m1`: the rate at or above which it is structure. `alpha`: the chance that clutter at
+`m0` graduates. `beta`: the chance that structure at `m1` is rejected. Everything else
+is derived once, in `deriveSprt()`:
+
+```
+l_hit  = ln(m1 / m0)                 added in a hit window
+l_miss = ln((1 - m1) / (1 - m0))     added in a miss window (negative)
+A      = ln((1 - beta) / alpha)      graduate at l >= A
+B      = ln(beta / (1 - alpha))      reject at l <= B, once n >= T
+ceiling = A + 2 l_hit                 upper clamp (sprt_ceiling overrides it)
+```
+
+**Update at window close**, for a touched cell (`n` counts the touched windows of the current
+test, and a reverse-test demotion restarts it at 0 with `l`; `T` is `period_windows`):
+
+```
+l += l_hit (occ) or l_miss (free)        no multiplier: exp(l) is a supermartingale for every rate <= m0, up to the first graduation or floor window
+l  = min(l, ceiling)
+n += 1
+if n >= T: l = max(l, B)                 no lower clamp before the periodicity gate
+graduate : !graduated && !periodic && l >= A          -> graduated, l := ceiling
+demote   : graduated && (periodic || l <= ceiling - A) -> not graduated; after the reverse test l := 0, n := 0
+reject   : !graduated && n >= T && l <= B && amp < periodic_amplitude_min -> erase the cell
+```
+
+If the periodic predicate and the reverse test both fire in the same window, the periodic path
+wins: the cell stops being Static and keeps `l` and `n`; the restart `l := 0, n := 0` runs only
+when the reverse test fires alone. (Test `Sprt.PeriodicPathWinsWhenTheReverseTestFiresInTheSameWindow`:
+a door open 17 and closed 7 windows of 24, tie at window 45.)
+
+A rejected cell is erased. A later observation (hit or miss) creates a new cell, which starts a new history
+at `n = 0`. A cell with `n >= T` and `l <= B` is kept as a periodic candidate while `amp >= periodic_amplitude_min`
+and erased once `amp < periodic_amplitude_min`; the periodicity test need not have decided.
+
+**Why no lower clamp before the gate.** The periodicity test withholds its answer
+until `n >= T` windows. If a cell could be rejected earlier, a door with a long closed
+phase would be erased before it can be read as Periodic (the prune/maturity race of
+v0.1). Clamping at `B` before the gate would also raise the false-Static rate on clutter
+from 2.8 % to 3.5 % and halve the structure rejects (2.4 % to 1.3 %), at the pair
+(0.15, 0.65) on LILocBench with 0.67 s windows: rows 2 and 3 of
+`paper/experiments/realdata/results_p2/replay_advisory_table.txt` state this trade.
+
+**Demotion is a one-sided reverse test.** A graduated cell sits at the ceiling. It is demoted
+when `l` falls by `A` from there: `ceil(A / |l_miss|)` all-miss windows (5 at the
+default pair, 6 at the pair (0.15, 0.65)). One miss never demotes. The test is CUSUM-like
+(the ceiling reflects the statistic from above). It is not the SPRT in the opposite direction
+and has no error bound per history; a wall at `m1` is demoted after a finite mean time that
+this repository does not bound. After a demotion by
+the reverse test the forward test restarts from `l = 0` and `n = 0`: the restarted test
+has the same no-clamp grace before `T`, and the same `n_max_undecided` read-out, as a new
+cell. A cell demoted after 100 hit windows is therefore not `Intermittent` until its new test
+has run `n_max_undecided` windows.
+
+**Truncation.** An undecided, non-periodic cell is read out `Intermittent` once
+`n >= n_max_undecided` (`0`: never), where `n` is the window count of the current test
+(restarted by a reverse-test demotion). It is a read-out only; the test continues, and the
+cell can still graduate or be rejected. `n_max_undecided = 80` is the smallest multiple
+of 16 for which the share still undecided at the zero-drift rate `m*` is at most 3 %
+(1.5 % at 80; `PREREG.md`).
+
+**`occupancyProb(id)`** is `sigmoid(l)`: the posterior probability of "structure" for
+equal priors on the two hypotheses. It is not a calibrated occupancy.
+
+**Default pair and what follows from it** (`m0 = 0.20`, `m1 = 0.70`, `alpha = beta = 0.01`):
+
+| Quantity | Value |
+|---|---|
+| `l_hit`, `l_miss` | 1.2528, -0.9808 |
+| `A = -B`, ceiling | 4.5951, 7.1006 |
+| windows for an always-hit cell to graduate | **4** (never fewer; v0.1: 3) |
+| all-miss windows to demote a graduated cell | 5 |
+| zero-drift rate `m*` | 0.4391 |
+
+The pair is the one measured on LILocBench (2D, 0.05 m, 1.0 s windows = 15 scans at
+15 Hz) by `paper/experiments/realdata`; `PREREG.md` marks it **not frozen** (the wall
+thickness gate G1 failed on all three calibration sequences), so the defaults are
+provisional. The node says so on `/diagnostics` ("provisional (PREREG not frozen: G1 failed)" in the
+message of the evidence status and in the value of `evidence_calibration`). The CTest `defaults_match_yaml_and_prereg` (`strata_core/test/check_defaults.py`) fails if
+`PREREG.json`, the library defaults and both shipped YAMLs disagree.
+
+**What the error rates mean, and what they do not.**
+- *They hold for independent windows, for the first test of a history.* Under independent
+  windows with hit rate at most `m0`, the first test of a cell history (from its creation to
+  its first graduation or its floor window, the first window with `n >= T` and `l <= B`)
+  graduates with probability at most `exp(-A) = alpha/(1-beta)`, about
+  `alpha` (0.0101 at the default pair; Ville's inequality). A restart after a demotion, and a
+  graduation after a floor window, are not covered. The exact value for the default pair at `m0`
+  is 0.0055 (`results/e7_oc.csv`, Periodic veto off). Real windows are autocorrelated (lag-1 0.23 to 0.47 on the
+  calibration sequences). With lag-1 autocorrelation 0.23 at exactly `m0`, the
+  rate per forward test (a history split at each demotion, within 1024 windows) on the engine is 0.035, 3.5 times `alpha` (0.0056 at 0, 0.014 at 0.10,
+  0.061 at 0.35; `results/e7_autocorr.csv`); a bare random walk floored at `B` without
+  rejection, the first reading, gives 13 times at the pair (0.15, 0.65).
+- *Realised rates on real clutter: the per-cell rate is above the nominal level.*
+  The nominal level `alpha` is per first test of a history under independent windows. The
+  first-history rate below is low because most clutter lies far below `m0`; we make no claim
+  from it that the realised rate is below the bound. Two units give two numbers
+  (`paper/experiments/realdata/results_p2/replay_shipped_pair_W15.txt`, W = 15 calibration
+  sequences; clutter cells: n = 24,096, of which n = 22,273 at or below `m0` and n = 1,823 above):
+  - *First history* (the unit of the bound; the replay stops at the first Static or Rejected
+    verdict of each cell). The shipped rule graduates 0.40 % of the clutter cells whose
+    observed rate is at most `m0`, 22.3 % of those above `m0`, and 2.06 % of all; it graduates
+    89.6 % of the structure cells and rejects 1.4 %. The population is mostly far below `m0`, so
+    this figure does not test the bound.
+  - *Per cell* (the replay runs the whole sequence of each cell; the engine erases a rejected
+    cell, and the next observation creates it again with a new history; ever-Static means the
+    cell was Static at any window). With periodicity off: 1.64 % at or below `m0`, 33.8 % above,
+    4.07 % of all clutter cells. With periodicity on, as the node ships it: 1.51 %, 30.5 %,
+    3.71 %. Structure cells, periodicity on: 90.7 % ever-Static. **The per-cell figure at or below
+    `m0` is above `alpha = 0.01`**: every new history is a new chance to graduate.
+  - Read the per-cell figure when you count wrongly graduated cells on a map. A comparison with
+    the bound is per first test of a history, not per cell.
+  Walking people who linger belong to the cells above `m0`: no hit-rate test tells them from a
+  wall.
+- *Wall thickening.* Free cells next to a wall graduate at 6 % to 10 % (edge noise; pair
+  (0.15, 0.65), `replay_advisory_table.txt`, controls). A localiser matching against the
+  map feels it.
+- *Rejected structure costs latency, not a hole.* A rejected wall cell is re-created by
+  its next hit and graduates again.
+- *The pair belongs to a window length, a resolution and a sensor class.* Re-derive it
+  with `hitrate_probe` when you change any of the three.
+
+**3D (`voxel3d`) is not calibrated.** No 3D measurement passed the pre-registered rule,
+so the 2D pair is the shipped 3D default (`evidence_calibration: "fallback_2d_pair"`).
+On single-pass driving data (KITTI 00, 0.2 m, 4 windows per structure voxel, replay
+with the pair (0.15, 0.65)) 73 % of structure voxels stay undecided
+(`paper/experiments/realdata/results_p2/replay_kitti.txt`). A lifelong mapper needs revisits. The node logs a
+warning at start and publishes the limitation on `/diagnostics` in the status
+`<node>: evidence model`.
+
 ### 3.3 Survival decay (Persistence Filter)
 The `*= survival_decay` step every window pulls belief back toward unknown
 (log-odds 0). A cell that stops being observed decays out; only **refreshed**
 evidence persists. This is the discrete forgetting term of Rosen et al.'s
 Persistence Filter, and it is what makes transient clutter fade.
 
-### 3.4 Schmitt-trigger graduate / demote
+### 3.4 Schmitt-trigger graduate / demote (`evidence_model = legacy`)
 ```
 graduate: !graduated && !periodic && p >= graduate_prob && observations >= min_observations  -> graduated = true
 demote  :  graduated && (p <= demote_prob || periodic)                                     -> graduated = false
@@ -291,6 +431,7 @@ before `period_windows` touched windows the harmonic estimate is withheld, so a
 freshly seen oscillating cell will not yet read as Periodic.
 
 ### 3.6 Classification & pruning
+`legacy`:
 ```
 classify(cell):
   graduated                                     -> Static
@@ -299,6 +440,20 @@ classify(cell):
   else                                          -> Unknown
 prune: erase cell if  !graduated && p < prune_prob && amp < periodic_amplitude_min
 ```
+`sprt` (n = touched windows, T = `period_windows`):
+
+| State of the cell | Read-out (`classify`) | Grid2D draws |
+|---|---|---|
+| graduated | Static | 100 |
+| not graduated, Periodic | Periodic | 75 |
+| n >= T, l <= B, kept only as a periodic candidate | Unknown | free or last-seen value |
+| n >= `n_max_undecided` > 0, otherwise undecided | Intermittent | 50 if `p > 0.5`, as Transient |
+| otherwise (undecided, or n < T) | Transient | 50 if `p > 0.5` |
+| erased (rejected, or never seen) | Unknown | free or last-seen value |
+
+A rejected cell is erased in the window in which `l <= B` and `n >= T` hold, unless it
+is a periodic candidate. Static cells are never erased.
+
 Static cells are never pruned; periodic cells survive on their amplitude even
 when momentarily free.
 
@@ -340,7 +495,7 @@ unit-tests with the plain system toolchain. The ROS/PCL surface is confined to
 ```
 strata_core/                         # pure C++17 + Eigen, no ROS, no PCL
   include/strata_core/
-    version.hpp           # STRATA_CORE_VERSION "0.1.0"
+    version.hpp           # STRATA_CORE_VERSION "0.2.0"
     types.hpp             # Pose2D, Pose3D(=Isometry3d), GridMeta, GridMap, CellId, world<->grid, flatten
     periodicity.hpp       # PeriodicityModel (FreMEn-lite incremental Fourier)
     layered_map.hpp       # LayeredMap + LayeredMapParams + CellClass + CellEvidence (THE HEART)
@@ -374,7 +529,29 @@ strata/                              # ROS 2 Humble node
 Defaults below are the actual `params/grid2d.yaml` / `params/voxel3d.yaml` values
 and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 
-### Layered persistence engine (`LayeredMapParams`)
+### Evidence model (`LayeredMapParams`, version 0.2.0)
+| Param | Default | Meaning |
+|---|---|---|
+| `evidence_model` | `sprt` | `sprt`: sequential test (§3.2a); `legacy`: the v0.1 rule (§3.2–§3.4). In the library `EvidenceModel::Sprt` / `Legacy` |
+| `m0` | `0.20` | per-window hit rate at or below which a cell is clutter |
+| `m1` | `0.70` | per-window hit rate at or above which a cell is structure |
+| `alpha` | `0.01` | about alpha (alpha/(1-beta)) bounds P(clutter at `m0` or less graduates), first test of a cell history, independent windows |
+| `beta` | `0.01` | about beta (beta/(1-alpha)) bounds P(structure at `m1` or more is rejected), first test, independent windows, Periodic veto off |
+| `n_max_undecided` | `80` | touched windows after which an undecided, non-periodic cell reads Intermittent; `0` never |
+| `sprt_ceiling` | derived, `A + 2 l_hit` | library only: upper clamp of the statistic (NaN derives it); not a node parameter |
+| `evidence_calibration` | `measured_2d` for `grid2d`, `fallback_2d_pair` for `voxel3d` (the shipped YAMLs say so, and so does the node when the key is missing; `measured_2d` on another backend is reported as `fallback_2d_pair`) | node only: states where `(m0, m1)` come from: `measured_2d`, `fallback_2d_pair` (not calibrated for this backend; logs a warning and says so on `/diagnostics`) or `user` ; while `PREREG.md` marks the 2D pair not frozen, the message and the value of `evidence_calibration` on `/diagnostics` also carry `provisional (PREREG not frozen: G1 failed)` (every value except `user`; `evidence_model: legacy` states no pair); if `m0`, `m1`, `alpha` or `beta` differs from the library default, the node logs a warning and sets the label to `user` (the pair is then the user's), so the source on `/diagnostics` is never the measured one for a changed pair |
+
+With `sprt` the nine keys `l_hit` to `prune_prob` below are ignored, and the node logs a warning that names any of them set away from its v0.1 default. With `legacy`
+`m0` to `n_max_undecided` are ignored (and not validated), with the same kind of warning. The node refuses to start
+on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
+`alpha + beta < 1`, `n_max_undecided >= 0`) and names the parameter.
+
+**API and ABI note for library users (0.2.0).**
+1. Rebuild against 0.2.0. `MapBackend` gains a virtual (`intermittentCellCount`), and `LayeredMapParams` and `LayeredMap` change layout.
+2. If you set the v0.1 keys (`l_hit`, `graduate_prob` and the others), set `evidence_model = EvidenceModel::Legacy` too. `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, which ignores those keys without an error.
+3. Handle `CellClass::Intermittent` in every `switch` over `CellClass`. With `Legacy` it never occurs.
+
+### Layered persistence engine (`LayeredMapParams`, legacy keys)
 | Param | Default | Meaning |
 |---|---|---|
 | `layer_interval` | `10` | integration ticks (frames) per window |
@@ -389,7 +566,7 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 | `prune_prob` | `0.05` | erase a non-static, non-periodic cell below this P(occ) |
 | `enable_periodicity` | `true` | run the FreMEn model |
 | `periodic_amplitude_min` | `0.3` | minimum harmonic amplitude (effect size) to classify Periodic |
-| `periodic_false_alarm` | `0.1` | nominal level of the Chernoff significance test (§3.5); `>= 1` disables it |
+| `periodic_false_alarm` | `0.2` | nominal level of the Chernoff significance test (§3.5); `>= 1` disables it |
 
 ### Periodicity model (`PeriodicityParams`)
 | Param | Default | Meaning |
@@ -433,8 +610,10 @@ and the `LayeredMapParams` / `PeriodicityParams` struct defaults — they agree.
 
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
-streams) in `strata_core/test`, runnable with **no ROS** — **56 gtests across 9
-suites**:
+streams, or `std::mt19937_64` raw output where the standard library must not matter) in
+`strata_core/test`, runnable with **no ROS** — **114 gtests across 12 suites** (7 of
+them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
+CTest `defaults_match_yaml_and_prereg`:
 
 - **Smoke** (1): version macro is defined.
 - **Types** (4): world↔grid round-trip; out-of-bounds rejection; cell-id
@@ -450,7 +629,10 @@ suites**:
   amplitude-only rule would fire on > 20 % of such cells; square-wave doors are
   still detected (50 %-duty from n = 16, 25 %-duty from n = 32); a constant cell is
   never Periodic under any sampling; nothing is Periodic below the n ≥ T gate.
-- **LayeredMap** (18): graduates only when P(occ) ≥ threshold AND observed ≥
+- **LayeredMap** (20; the tests that state the v0.1 arithmetic name
+  `evidence_model = legacy`; the shipped-defaults tests exist twice, once for the
+  default `sprt` — static from the derived window 4 — and once for `legacy` — window 3):
+  graduates only when P(occ) ≥ threshold AND observed ≥
   `min_observations`; a moving obstacle (each cell hit once) never graduates;
   Schmitt hysteresis demotes only after sustained free; a square-wave cell is
   classified Periodic, not Static; `layer_interval` groups ticks into windows;
@@ -465,6 +647,27 @@ suites**:
 - **PeriodicitySpending** (4): the spent levels are zero below the n ≥ T gate
   and sum to alpha; the per-read-out rule is not trajectory-valid but spending
   is; doors are still detected, later; the amplitude-only rule is unaffected.
+- **WindowObserver** (10): the read-only window hook reports exactly the touched
+  cells with the hit-wins rule, changes no state, and leaves the map's read-outs
+  byte-identical with and without it.
+- **Sprt** (39): derived quantities (default pair, the advisory pairs); validation of
+  every bad `(m0, m1, alpha, beta, n_max_undecided, sprt_ceiling)` on both sides of
+  each bound; an always-hit wall graduates at exactly the derived window and never
+  earlier (7 parameter sets, periodicity on and off); a long miss run before the gate is
+  not clamped; Ville (first test of a history, iid at `m0`, 1,024 windows, Wilson upper limit
+  ≤ 0.01) with a negative control that autocorrelation breaks it; operating
+  characteristic against the exact lattice computation (gate 1 and gate 24) and Wald's
+  closed form; the periodicity-gate race (an all-miss cell survives to exactly `n = T`;
+  a 25 %-duty door survives the gate and becomes Periodic); restart after rejection;
+  demotion by the reverse test after exactly `demote_misses` windows and never by one
+  miss; Intermittent at `n_max_undecided`, never when it is 0, Periodic wins over it;
+  `occupancyProb = sigmoid(l)`; `closeWindows(k)` equals k `endWindow()` calls; the
+  window observer sees the same touches as under `legacy`.
+- **ReplayP1** (7): the advisor's derived table, Wald operating characteristic and
+  truncation table; the advisory empirical table replayed through `LayeredMap` on the
+  committed phase 1 run sequences to ±0.002 (`paper/experiments/realdata/run_replay_p2.sh`);
+  the in-sample KITTI 00 replay; the realised rates of the shipped pair on the 1.0 s
+  sequences, per first history and per cell (whole sequence, three engine settings).
 - **Grid2DBackend** (10): a hit marks the endpoint and clears the ray; repeated
   hits graduate; occupancy-grid render (100 static, 50 transient, 0 free, -1
   unknown); a cleared cell stays free after pruning; a freed transient reads
@@ -479,7 +682,7 @@ suites**:
   half of each period — asserts wall → **Static**, mover → **never static**,
   door → **Periodic**.
 
-Plus **64 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
+Plus **71 node gtests** in `strata/test`: `test_grid_math` (3; world↔grid
 round-trip, no rclcpp), `test_scan_adapter` (1; a single beam under a 6-DoF
 yaw+translation transform lands at the expected map point, z preserved),
 `test_window_clock` (6; anchoring, gaps close every skipped window, epoch
@@ -537,6 +740,17 @@ of `input_status.hpp` (every comparison, every count, time and frame used in a
 message, the tally updates and the text rules) were run against it: 96 fail
 it, 2 are equivalent (the streak and the failure total are equal while nothing
 has integrated; a space is already a space).
+
+`test_evidence_status` (7) covers the `/diagnostics` status of the evidence model
+(`evidence_status.hpp`), one test per row of the table in that header: `grid2d` with
+`measured_2d` starts the message with `provisional (PREREG not frozen: G1 failed)` and
+carries it in the value of `evidence_calibration`; `voxel3d` with `fallback_2d_pair`
+says `NOT calibrated for voxel3d` first and then the provisional note; the fallback
+label on `grid2d` is provisional but not called uncalibrated; `user` and `legacy` carry
+no note; every value (`m0`, `m1`, `alpha`, `beta`, the two derived window counts,
+`n_max_undecided`) and the order of the values are pinned. 10 mutants of the header
+were run against it and all fail it; `check_defaults.py` fails if the note is present
+while `PREREG.json` says the 2D pair is frozen, or absent while it says it is not.
 
 CI-equivalent gates: `strata_core` builds + all ctest green with the system
 toolchain; both packages build clean and test green under colcon in the
@@ -605,8 +819,10 @@ and follow the keys map_server reads. The hash is single-quoted so that it is
 a string whatever its digits. SHA-256 is implemented in
 `strata/include/strata/sha256.hpp` (no new dependency). `nav2_map_server`
 (yaml-cpp) ignores unknown keys, which the round-trip scenario confirms on
-every CI run, and it does **not** check them. This was verified on Humble only:
-CI has no Jazzy job, so Jazzy's map_server is untested with the extra keys. A
+every CI run, and it does **not** check them. CI verifies this on Humble only:
+it has no Jazzy job. One manual load of a saved pair in Jazzy's
+`nav2_map_server` 1.3.11 succeeded (160000 cells, 0 mismatches); the script, the
+pair and the recorded output are in `paper/deploy_checks/jazzy_map_server/`. A
 deployer must run the check
 before trusting a saved pair after an unclean shutdown or a failed `save_map`.
 The checker is `strata/scripts/check_saved_map.py`, installed to `lib/strata`:
@@ -662,19 +878,17 @@ has no pair to mismatch.
 
 **Core only (no ROS):**
 ```bash
-cmake -S /home/cona/kangj/strata/strata_core -B /home/cona/kangj/strata/build/core -DSTRATA_CORE_BUILD_TESTS=ON
-cmake --build /home/cona/kangj/strata/build/core -j
-( cd /home/cona/kangj/strata/build/core && ctest --output-on-failure )
+cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
+cmake --build build/core -j
+( cd build/core && ctest --output-on-failure )     # the 114 engine gtests and the defaults check
 ```
 
-**Full ROS 2 build & test (Humble via micromamba; clean env to avoid distro leak):**
+**Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
 ```bash
-env -u ROS_DISTRO -u ROS_VERSION -u ROS_PACKAGE_PATH \
-  /home/cona/.local/bin/micromamba run -n ros2_humble bash -c '
-    cd /home/cona/kangj/strata_ws &&
-    colcon build --symlink-install &&
-    colcon test --packages-select strata_core strata &&
-    colcon test-result --verbose'
+colcon build --symlink-install
+source install/setup.bash
+colcon test --packages-select strata      # the 71 node gtests (the engine gtests run in the step above)
+colcon test-result --verbose
 ```
 
 **Run (a pose source — e.g. prism_loc — must already publish `map → sensor` TF):**
@@ -723,6 +937,3 @@ ros2 service call /strata/save_map std_srvs/srv/Trigger   # persist static map
   (lineage for static-map distillation).
 - **Occupancy log-odds** — Thrun/Burgard/Fox, *Probabilistic Robotics* ch. 9
   (occupancy grid mapping, inverse sensor model, log-odds accumulation).
-
-Research note (137-source survey, the design's grounding):
-`~/kangj/general_vault/Work/ROS2 & AMR Research/평생 매핑 모듈 리서치 자료 (선택형 2D·3D LiDAR, 137선).md`.

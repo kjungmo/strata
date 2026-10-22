@@ -1,0 +1,5 @@
+STEP spires_labels_r0.1
+START 2026-10-18T07:40:09+09:00 host=DESKTOP-KCD7BRS load=4.79 6.70 5.45 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe spires-labels --tls-dir <OUT_DIR> --cache <OUT_DIR>/cache_keble02.bin --res 0.1 --out <OUT_DIR>/labels_keble02_r0.1.bin --meta <OUT_DIR>/labels_keble02_r0.1.meta
+2026-10-18T07:40:10+0900 collecting hit voxels at 0.100000 m
+END 2026-10-18T07:40:27+09:00 rc=0 load=4.71 6.55 5.43

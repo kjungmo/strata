@@ -1,0 +1,71 @@
+{
+ "after": {
+  "loadavg": "1.23 1.45 2.74 1/937 125170",
+  "meminfo": {
+   "MemAvailable": "8452608 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "33552192 kB"
+  },
+  "time": "2026-10-19T11:51:08+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 4.8 543988 2.1.303",
+   " 2.2 572948 2.1.303",
+   " 0.5 134340 Xvfb",
+   " 0.3 22416 x11vnc",
+   " 0.3 187440 claude"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "spires_05_tls",
+  "~/.cache/strata_p3_build/build/realdata/p1b_probe",
+  "spires-tls",
+  "--pcd",
+  "~/datasets/strata/spires/keble/ground_truth_map/keble-college/merged-cloud-1cm.pcd",
+  "--gt",
+  "~/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-05/processed/trajectory/gt-tum.txt",
+  "--radius",
+  "30",
+  "--out-dir",
+  "/mnt/d/wsl/strata/p3/spires_05",
+  "--meta",
+  "/mnt/d/wsl/strata/p3/spires_05/spires_tls.meta"
+ ],
+ "before": {
+  "loadavg": "1.59 1.54 2.82 1/974 124505",
+  "meminfo": {
+   "MemAvailable": "8402448 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "33552192 kB"
+  },
+  "time": "2026-10-19T11:50:29+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 9.2 74088 python3",
+   " 4.8 524436 2.1.303",
+   " 2.2 572584 2.1.303",
+   " 1.5 63132 prism_loc_node_",
+   " 0.8 26480 python"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 44
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 39.869,
+ "step": "spires_05_tls"
+}

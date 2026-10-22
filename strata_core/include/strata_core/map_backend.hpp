@@ -12,5 +12,8 @@ class MapBackend {
   virtual void closeWindows(int k) = 0;   // close k windows now, whatever the count (time-based windows)
   virtual std::size_t staticCellCount() const = 0;
   virtual std::size_t transientCellCount() const = 0;
+  // Cells read out as Intermittent (evidence_model sprt: undecided after n_max_undecided
+  // touched windows). Not pure, so a backend written for 0.1.0 still compiles.
+  virtual std::size_t intermittentCellCount() const { return 0; }
 };
 }  // namespace strata_core

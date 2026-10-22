@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(strata_core VERSION 0.1.0 LANGUAGES CXX)
+project(strata_core VERSION 0.2.0 LANGUAGES CXX)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -43,10 +43,20 @@ if(BUILD_TESTING OR STRATA_CORE_BUILD_TESTS)
     test/test_layered_map.cpp
     test/test_grid2d_backend.cpp
     test/test_voxel3d_backend.cpp
-    test/test_integration.cpp)
+    test/test_integration.cpp
+    test/test_window_observer.cpp
+    test/test_sprt.cpp
+    test/test_replay_p1.cpp)
   add_executable(strata_core_tests ${STRATA_CORE_TESTS})
   target_link_libraries(strata_core_tests strata_core GTest::gtest GTest::gtest_main)
   add_test(NAME strata_core_tests COMMAND strata_core_tests)
+  # The library defaults, both shipped YAMLs and the frozen/conditional values in PREREG.json agree
+  # (needs python3; skipped silently by CTest if the repository layout above strata_core is absent).
+  find_package(Python3 QUIET COMPONENTS Interpreter)
+  if(Python3_Interpreter_FOUND AND EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/../strata/params/grid2d.yaml)
+    add_test(NAME defaults_match_yaml_and_prereg
+             COMMAND ${Python3_EXECUTABLE} -I ${CMAKE_CURRENT_SOURCE_DIR}/test/check_defaults.py ${CMAKE_CURRENT_SOURCE_DIR}/..)
+  endif()
 endif()
 
 # ament install/export only when built inside a ROS 2 workspace.

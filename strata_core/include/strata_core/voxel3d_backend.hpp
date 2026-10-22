@@ -11,10 +11,13 @@ class Voxel3DBackend : public MapBackend {
   void closeWindows(int k) override;
   std::size_t staticCellCount() const override { return layered_.staticCells().size(); }
   std::size_t transientCellCount() const override { return layered_.transientCells().size(); }
+  std::size_t intermittentCellCount() const override { return layered_.intermittentCells().size(); }
   std::vector<Eigen::Vector3d> staticPoints() const;
   CellId voxelId(const Eigen::Vector3d& p) const;
   Eigen::Vector3d voxelCenter(CellId id) const;
   const LayeredMap& layered() const { return layered_; }
+  // Forwards to LayeredMap::setWindowObserver (read-only window observer).
+  void setWindowObserver(WindowObserver* observer) { layered_.setWindowObserver(observer); }
  private:
   double voxel_size_;
   LayeredMap layered_;

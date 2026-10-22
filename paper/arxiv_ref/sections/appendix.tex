@@ -1,15 +1,23 @@
 \section{Reproduction}\label{app:repro}
 
-\sname\ is released under the Apache-2.0 license at \url{https://github.com/kjungmo/strata} and targets ROS~2 Humble. From the repository root:
+\sname\ is released under the Apache-2.0 license at \url{https://github.com/kjungmo/strata/tree/paper-v2} (tag \code{paper-v2}) and targets ROS~2 Humble.
+
+\noindent\textbf{Code pin.} The engine (\code{strata\_core}), the node (\code{strata}) and the check scripts (\nolinkurl{scripts/}) of the repository \url{https://github.com/kjungmo/strata} that this paper describes are those of commit \code{708d62f} (22 October 2026). The tag \code{paper-v2} (\url{https://github.com/kjungmo/strata/tree/paper-v2}) marks the revision that carries this manuscript and its reproduction scripts; the code it describes is that of the pin. The evidence model \code{sprt} was added in commit \code{0f5befc} (18 October 2026). \code{a7559d4} (19 October 2026) is the last commit of the v2 work in \nolinkurl{strata_core/}, \nolinkurl{strata/} and \nolinkurl{scripts/} before the status-text commits; two later commits, the last of them the pin, changed only the status text of the node and the comments of the two shipped parameter files (they now state the scope of $\alpha$ and $\beta$ of Proposition~\ref{prop:ville}), and \code{strata\_core} and \code{scripts/} are identical to those of \code{a7559d4}. The experiment harness builds only \code{strata\_core}. Every seeded synthetic result file (E0--E3, E5 and E6 in both arms, E7, and the E4 cell counts of the sprt arm) reproduces byte for byte from the \code{strata\_core} tree \code{c780639} of \code{a7559d4}, which is identical at the pin (\nolinkurl{paper/experiments/reproduction_log.txt}, its last two lines, which carry the sha256 of the result files). The real-data evaluation runs were built from the \code{strata\_core} tree \code{bf96e78}, \code{d8db00e} or \code{c780639}, whose source and header trees are identical (paragraph Real data below). The calibration runs record a commit in their run manifests and step logs (\nolinkurl{results_p1/}, \nolinkurl{results_p1b/}); for P1b, \nolinkurl{results_p1b/deviations.md} items 25 and 30 list the steps whose build tree is not recorded. No experiment builds or reads the node status text or the YAML comments, so the results hold for the pin. After the pin only documents and the checks of the paper changed (the manuscript, the READMEs, \nolinkurl{SPEC.md}, the number check and its mutation report, the bibliography, and an editorial note in \nolinkurl{PREREG_P3.md}); no file in \nolinkurl{strata_core/}, \nolinkurl{strata/} or \nolinkurl{scripts/} and no result file changed. The number check compares the tree identifiers of the three directories with the pin's. The first release of this manuscript pinned an earlier commit with the v0.1 evidence rule (named in \nolinkurl{paper/README.md}); the pin moved on purpose during the v2 work. The harness runs every seeded experiment in two arms: the \emph{legacy} arm, the v0.1 arithmetic with the explicit parameters of the first release, reproduces the earlier result files byte for byte (\nolinkurl{paper/experiments/check_legacy_equivalence.sh}), and the \emph{sprt} arm writes new files \nolinkurl{results/*_sprt.csv}.
+
+\noindent\textbf{What reproduces.} \nolinkurl{paper/experiments/check_reproduction.sh} rebuilds the harness from a clean checkout and requires every result file of E0--E3, E5 and E6 (both arms), of E7 and the E4 cell-count file of the sprt arm (\nolinkurl{results/e4_cells_sprt.csv}) to come out byte for byte; \nolinkurl{paper/experiments/reproduction_log.txt} lists the compilers with which it did (GCC~9.4.0 with libstdc++, on one x86-64 Linux host). The result is not independent of the C++ standard library. The streams come from \code{std::mt19937}, whose output the standard fixes, through three standard distributions, whose algorithms it does not fix. With clang~23.1.2 and libc++ (\nolinkurl{check_stdlib.sh}, record in \nolinkurl{results/stdlib_libcxx/}), 15 of the 19 seeded result files are byte-identical and four differ: the two E1 files, the E0 door file and the E6 confusion file. These are the experiments whose outcome depends on integers drawn with \code{std::uniform\_int\_distribution} (mover cells in E1's \code{grid2d} runs, door phases in E0 and E6). Under libc++ the final \code{grid2d} precision at high clutter in E1 is 0.9583 with 168 predicted cells instead of 0.9253 with 174, and every other final value of Table~\ref{tab:e1} is unchanged; five of the 20 E0 door medians move by one window (at $\delta{=}0.1$, 20 to 21 and 23 to 24) and the selected levels do not change; and 1976 instead of 1960 of the 2000 aperiodic cells of E6 are Static with the shipped defaults. E5's confusion draws door phases the same way, but its counts do not depend on the phases and its file is identical. 17 of the 20 result files of the sequential-test arm and E7 are byte-identical and three differ (the E0 door file, the E6 confusion file and the E4 cell counts of the sequential-test arm), again the files that depend on integers or reals drawn with a standard distribution; E7 draws from \code{std::mt19937\_64} directly and is identical. No third standard library was tried.
+
+\noindent\textbf{Real data.} The datasets are public and are not in the repository; their licences allow statistics and figures, not redistribution. Each is downloaded from its official source into a directory outside the repository. \nolinkurl{paper/experiments/realdata/check_realdata.sh} verifies the recorded checksums when the data are present and skips cleanly when they are absent. The calibration, the freeze record and the evaluation are \nolinkurl{reproduce_p1.sh}, \nolinkurl{reproduce_p1b.sh} and \nolinkurl{reproduce_p3.sh}. The evaluation steps before the fourteenth amendment were built from \code{strata\_core} tree \code{bf96e78}, except one Boreas overlap step built from \code{d8db00e} (Amendment 3); the later steps, most of them, were built from \code{c780639}. The source and header trees of the three are identical, and only the unit-test directory differs (\nolinkurl{results_p3/P3_REPORT.md}, section 5). The repository holds the summary tables, the JSON results, the step logs (host, load, commit, input checksums), the stat records of the test files before and after each phase, and an access log with a file-open trace of every evaluation step. Cell-level dumps stay outside the repository, so the near-wall rows of Table~\ref{tab:p3wall} are copied from the committed report \nolinkurl{results_p3/P3_REPORT.md}, which is generated from those dumps, and the number check compares them there. Every other number of Sections~\ref{sec:seq} to~\ref{sec:realeval} that comes from a run is computed from committed files by \nolinkurl{tools/make_v2_artifacts.py} and enters the text as a macro, so the prose of these sections holds no hand-typed measured number.
+
+\noindent From the repository root:
 \begin{itemize}
   \item Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on \code{ubuntu-latest}):
 \begin{quote}\small\ttfamily
 cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
-cmake --build build \&\& (cd build \&\& ctest)
+cmake -{}-build build \&\& (cd build \&\& ctest)
 \end{quote}
-  \item Unit tests, the calibration E0 (seeds from 20260928), experiments E1--E4 (seed 12345) and E5 (calibration seeds from 30260928, evaluation seeds from 40260928), writing the CSVs under \nolinkurl{paper/experiments/results/}. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}), against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}) and against the engine with the single-read-out level (\nolinkurl{results/pre_spending_2026-09-28/}):
+  \item Unit tests, the calibration E0 (seeds from 20260928), experiments E1--E4 (seed 12345), E5 (calibration seeds from 30260928, evaluation seeds from 40260928) and E6 (sweep seeds from 50260928), each in both arms, and E7 (its own seeds, drawn directly from \code{std::mt19937\_64}), writing the CSVs under \nolinkurl{paper/experiments/results/}. E0--E3, E5 and E6 (both arms) and E7 rewrite their files byte for byte, and so does the E4 cell-count file of the sprt arm (\nolinkurl{results/e4_cells_sprt.csv}). E4 reads the wall clock: this script writes its output to \nolinkurl{paper/experiments/build/e4_throughput_local.csv} and fails if a cell count or byte estimate differs from the committed one (\nolinkurl{check_e4_local.py}); timings for the paper are recorded separately with \nolinkurl{paper/experiments/measure_e4.sh}. The comparison columns of Table~\ref{tab:fix} are the same harness built against the v0.1.0 \code{strata\_core} (\nolinkurl{results/pre_fix_2026-09-28/}), against the centred engine before the significance test (\nolinkurl{results/pre_calibration_2026-09-28/}) and against the engine with the single-read-out level (\nolinkurl{results/pre_spending_2026-09-28/}):
 \begin{quote}\small\ttfamily bash paper/experiments/run\_all.sh\end{quote}
-  \item Tables and plot data of this paper, and the number check that maps every quantitative claim to its CSV field (see \nolinkurl{paper/arxiv_ref/NUMBERS.md}):
+  \item Tables and plot data of this paper, and the number check (\nolinkurl{paper/arxiv_ref/NUMBERS.md}). The check regenerates every table and plot-data file and compares it with the committed one. For the hand-written text it locates each numeral and requires it to be tied to a value recomputed from the result files or the code, or to be listed as structural with a reason (an experiment design constant restated from the harness, a symbol in a formula, a plot layout value). A numeral that is neither fails the check. Its limits are these. Structural numerals, among them the scenario sizes of \S\ref{subsec:setup} and the design constants written as symbol and value, are not parsed from the harness; they are kept in a committed list (\nolinkurl{paper/arxiv_ref/structural_numerals.tsv}), so that changing one fails the check until the list is rewritten on purpose. A numeral that is tied to a recomputed value only by being equal to it, and not by its sentence, could be exchanged for another recomputed value without the check noticing; \nolinkurl{NUMBERS.md} gives the count of each kind.
 \begin{quote}\small\ttfamily python3 paper/arxiv\_ref/tools/make\_artifacts.py\\
 python3 paper/experiments/number\_guard.py\end{quote}
 \end{itemize}
@@ -19,14 +27,23 @@ Alternative backends can be replayed against the reference scenario of the unit 
 
 \begin{table}[H]
 \centering
-\caption{Engine parameters and shipped defaults (the \code{LayeredMapParams} struct and both \code{params/*.yaml} files agree). Geometry and node parameters are not part of the engine: \code{grid\_width}/\code{grid\_height} 400, \code{grid\_resolution} 0.05~m and origin $(-10,-10)$~m for \code{grid2d}; \code{voxel\_size} 0.2~m for \code{voxel3d}; \code{publish\_period} 1.0~s.}
+\caption{Engine parameters and shipped defaults (the \code{LayeredMapParams} struct and both \code{params/*.yaml} files agree; the struct also holds the library-only \code{sprt\_ceiling}, NaN for $A+2\lhit$, which the node does not declare; \code{layer\_interval} applies only to scan windows and is ignored with \code{window\_mode} \code{time}, the setting of both files). The nine keys of the legacy group are the defaults of the first release; the sequential test ignores them. Geometry and node parameters are not part of the engine: \code{grid\_width}/\code{grid\_height} 400, \code{grid\_resolution} 0.05~m and origin $(-10,-10)$~m for \code{grid2d}; \code{voxel\_size} 0.2~m for \code{voxel3d}; \code{publish\_period} 1.0~s; \code{window\_mode} \code{time} in both files (\code{scans} when the parameter is not set) with \code{window\_period\_s} 1.0~s; \code{expected\_scan\_rate\_hz} 0 (estimated from stamps), \code{rate\_warn\_drop\_fraction} 0.05, \code{input\_timeout\_s} 5~s and \code{startup\_timeout\_s} 30~s. The node also declares \code{evidence\_calibration}, a label that it sets to \code{user} when the pair differs from the shipped one.}
 \label{tab:params}
 \small
 \begin{tabular}{llll}
 \toprule
 Parameter & Symbol & Default & Meaning \\
 \midrule
-\code{layer\_interval} & $L$ & 10 & integration ticks per window \\
+\multicolumn{\paramcols}{l}{\emph{Shared by both evidence models}} \\
+\code{layer\_interval} & $L$ & 10 & integration ticks per scan window \\
+\code{enable\_periodicity} & --- & true & run the Fourier model \\
+\code{periodic\_amplitude\_min} & $\amin$ & 0.3 & minimum harmonic amplitude (effect size) \\
+\code{periodic\_false\_alarm} & $\delta$ & 0.2 & level of the significance test \\
+\code{periodic\_alpha\_spending} & $\delta_n$ & true & spend $\delta$ over the touch count, Eq.~\eqref{eq:spend} \\
+\code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
+\code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
+\midrule
+\multicolumn{\paramcols}{l}{\emph{Legacy evidence model (read only when \code{evidence\_model = legacy}; ignored by \code{sprt})}} \\
 \code{l\_hit} & $\lhit$ & 0.85 & log-odds increment on an occupied window \\
 \code{l\_miss} & $\lmiss$ & $-0.4$ & log-odds increment on a free window \\
 \code{l\_min}, \code{l\_max} & $l_{\min},l_{\max}$ & $-5.0$, $5.0$ & clamp bounds \\
@@ -35,19 +52,21 @@ Parameter & Symbol & Default & Meaning \\
 \code{demote\_prob} & $\pdem$ & 0.45 & probability at or below which Static demotes \\
 \code{min\_observations} & $\Nmin$ & 3 & touched windows before graduation \\
 \code{prune\_prob} & $\pprune$ & 0.05 & erase non-static, non-periodic cells below this \\
-\code{enable\_periodicity} & --- & true & run the Fourier model \\
-\code{periodic\_amplitude\_min} & $\amin$ & 0.3 & minimum harmonic amplitude (effect size) \\
-\code{periodic\_false\_alarm} & $\delta$ & 0.2 & level of the significance test \\
-\code{periodic\_alpha\_spending} & $\delta_n$ & true & spend $\delta$ over the touch count, Eq.~\eqref{eq:spend} \\
-\code{period\_windows} & $T$ & 24 & base period and amplitude gate \\
-\code{n\_harmonics} & $H$ & 2 & harmonics per cell \\
+\midrule
+\multicolumn{\paramcols}{l}{\emph{Sequential test (\code{evidence\_model = sprt}, the default)}} \\
+\code{evidence\_model} & --- & \code{sprt} & evidence rule (\code{legacy}: first release) \\
+\code{m0} & $m_0$ & 0.20 & clutter at or below this hit rate (provisional) \\
+\code{m1} & $m_1$ & 0.70 & structure at or above this hit rate (provisional) \\
+\code{alpha} & $\alpha$ & 0.01 & error rate for clutter at $m_0$ \\
+\code{beta} & $\beta$ & 0.01 & error rate for structure at $m_1$ \\
+\code{n\_max\_undecided} & $n_{\max}$ & 80 & windows before the Intermittent read-out \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{Per-experiment deviations from the defaults of Table~\ref{tab:params}, as compiled into each harness. ``---'': default; ``swept'': varied over the E3 grid; ``n/a'': inert because periodicity is off; ``false / true'': run once each way, periodicity on at the defaults.}
+\caption{Per-experiment deviations from the defaults of Table~\ref{tab:params}, as compiled into each harness. They are the settings of the legacy arm, which also sets \code{evidence\_model = legacy}; the sprt arm changes only the evidence model to the shipped test and leaves the other settings of this table as they are (E3 sweeps the pairs of Table~\ref{tab:e3sprt} instead of the first-release knobs). ``---'': default; ``swept'': varied over the E3 grid; ``n/a'': inert because periodicity is off; ``false / true'': run once each way, periodicity on at the defaults.}
 \label{tab:eparams}
 \small
 \begin{tabular}{lcccc}
@@ -74,7 +93,7 @@ $\delta$ (0.2, spent) & --- & --- & --- & n/a \\
 
 \begin{table}[H]
 \centering
-\caption{ROS~2 input/output contract of the \code{strata} node. Every scan or cloud is transformed with a full 6-DoF lookup of \code{global\_frame} (default \code{map}) $\leftarrow$ sensor frame at the message stamp; lookup failures drop the message with a throttled warning. The node neither subscribes to \code{/initialpose} nor broadcasts \code{map}$\to$\code{odom}; one mutex serialises integration, publishing and saving.}
+\caption{ROS~2 input/output contract of the \code{strata} node. Every scan or cloud is transformed with a full 6-DoF lookup of \code{global\_frame} (default \code{map}) $\leftarrow$ sensor frame at the message stamp; a lookup that still fails after the wait of Table~\ref{tab:node} drops the message with a throttled warning. The node neither subscribes to \code{/initialpose} nor broadcasts \code{map}$\to$\code{odom}; one mutex serialises integration, publishing, saving and the diagnostics status. Both timers run on the wall clock.}
 \label{tab:io}
 \footnotesize
 \begin{tabular}{llll}
@@ -87,28 +106,52 @@ Publish & \code{\textasciitilde/map} & \code{OccupancyGrid}, depth 1, transient 
 Publish & \code{\textasciitilde/map\_points} & \code{PointCloud2}, depth 1, volatile & \code{voxel3d} \\
 Service & \code{\textasciitilde/save\_map} & \code{Trigger} & both (\code{.pgm}+\code{.yaml} / \code{.pcd}) \\
 Timer & \code{publish\_period} (1.0~s) & --- & both \\
-Publish & \code{/diagnostics} & \code{DiagnosticArray}, depth 10 & both, once a second \\
+Publish & \code{/diagnostics} & \code{DiagnosticArray}, depth 10 & both, one status a second \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\noindent\textbf{Node behaviour that a deployment depends on.} The node's rules for time, transforms, input health and saving live in ROS-free headers with their own unit tests, and continuous integration runs the launched node against synthetic input on ROS~2 Humble. Table~\ref{tab:node} states each rule as implemented and names the check that exercises it; a rule without a check says so. None of these checks uses a robot or a recorded bag (\S\ref{sec:disc}).
+
+\begin{table}[H]
+\centering
+\caption{Behaviour of the \code{strata} node at the pinned commit and the committed check that exercises each rule. Unit tests are the 71 gtest cases of the node package (\nolinkurl{strata/test/}); scripts are in \nolinkurl{scripts/} and run in the Humble job of the continuous integration against the launched node with synthetic input. ``---'': no dedicated check.}
+\label{tab:node}
+\footnotesize
+\begin{tabular}{>{\raggedright\arraybackslash}p{0.14\linewidth}>{\raggedright\arraybackslash}p{0.49\linewidth}>{\raggedright\arraybackslash}p{0.28\linewidth}}
+\toprule
+Topic & Rule as implemented & Checked by \\
+\midrule
+Time windows & Windows of \code{window\_period\_s} on header stamps, in integer nanoseconds from the first stamp. A later stamp closes the open window and every silent one. A stamp more than half a window behind the newest, or more than $10^6$ windows ahead, re-anchors the clock after closing the open window. & \code{test\_window\_clock} (6 cases); \nolinkurl{synthetic_e2e.py} with time windows \\
+Zero stamps & Dropped with time windows, integrated with scan windows; reported as a warning in both. & --- \\
+TF wait & The lookup at the message stamp is polled without blocking for 0.1~s of ROS time, at most 1~s of steady time. A ROS clock unchanged for 1~s counts as frozen and is not waited on. A clock that steps past the budget gets 20~ms more. A failed lookup drops the message. & \code{test\_tf\_wait} (7 cases); \nolinkurl{check_coarse_clock.py}; \nolinkurl{check_sim_clock_stall.py} \\
+Input status & One status a second on \code{/diagnostics}. No message yet: OK, then ERROR after \code{startup\_timeout\_s}. Messages stop: ERROR after \code{input\_timeout\_s}. Lookups fail before anything was integrated: OK with the failing lookup named, then WARN after \code{startup\_timeout\_s}. Lookups fail later: named once nothing was integrated for 1~s, then ERROR after \code{input\_timeout\_s}. Every status carries message, integration and TF-failure totals, the running failure streak and the last tf2 error text. & \code{test\_input\_status} (18 cases); \nolinkurl{check_no_localizer.py} on both backends \\
+Clock and stamp warnings & WARN when \code{use\_sim\_time} is set and the ROS clock stands still for 3~s while messages arrive, and when messages are integrated but no time window closes for 10 window periods (and more than 2~s). & \nolinkurl{check_sim_clock_stall.py} (clock); --- (no window closing) \\
+Rate statistics & Per sensor frame, from the stamps of integrated messages: rate, window duration, and loss estimated from gaps against the 20th-percentile interval or \code{expected\_scan\_rate\_hz}. At most 16 frames are tracked; a frame silent for 10 window closes is forgotten. WARN on loss above \code{rate\_warn\_drop\_fraction} or jittery scan windows, and on empty or thin time windows. & \code{test\_rate\_monitor} (4 cases); \nolinkurl{synthetic_e2e.py} with 40\,\% of the scans withheld; --- (frame cap and expiry) \\
+Saving & \code{grid2d}: PGM and \code{nav2\_map\_server} YAML are written to temporary files, flushed, renamed (image first) and the directory flushed. A save that fails before the renames leaves the previous pair untouched and answers \code{success: false} with the reason. A failure between the two renames can leave the new image beside the previous YAML, so the YAML records the size and SHA-256 of its image and \nolinkurl{check_saved_map.py} verifies a pair; neither the node nor Nav2 runs that check. \code{voxel3d}: one PCD through the same steps. & \code{test\_map\_writer} (25 cases); saved-pair step of the CI job; \nolinkurl{synthetic_e2e.py} with \code{-{}-check-map-server} \\
+Saved-map values & Free 254, Transient and Periodic 100, Static 0, Unknown 205 with thresholds 0.65 and 0.196, so \code{nav2\_map\_server} serves free, unknown, occupied and unknown. & \nolinkurl{synthetic_e2e.py} with \code{-{}-check-map-server}: all 160{,}000 cells of the synthetic scene, which holds no Transient cell \\
+Parameters & Every key of both shipped YAML files is declared by the node and holds the file's value. & \nolinkurl{check_param_binding.py} on both backends \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 \begin{table}[H]
 \centering
-\caption{Cell-class transitions, all evaluated at window close.}
+\caption{Cell-class transitions of the legacy evidence model, all evaluated at window close. The transitions of the sequential model are those of Algorithm~\ref{alg:endwindowsprt}.}
 \label{tab:states}
 \footnotesize
-\begin{tabular}{lll}
+\begin{tabular}{@{}lll@{}}
 \toprule
 From & To & Trigger \\
 \midrule
 Unknown (absent) & Transient & first hit or miss creates the cell: $\ell{=}0$, $p{=}0.5\ge\pprune$ \\
 Transient & Static & Eq.~\eqref{eq:grad}: $p\ge\pgrad$, $N\ge\Nmin$, $\lnot\pi$ \\
-Transient & Periodic & $\pi$, Eq.~\eqref{eq:periodic}: $n\ge T$ and, for some $k$, $a_k\ge\amin$ and $H\,B(d_k)\le\delta_n$ \\
+Transient & Periodic & $\pi$, Eq.~\eqref{eq:periodic}: $n\ge T$ and, for some $k$, $a_k\ge\amin$ and $H\,\Theta(d_k)\le\delta_n$ \\
 Transient & Unknown (erased) & Eq.~\eqref{eq:prune}: $p<\pprune$, $a<\amin$, $\lnot g$ \\
 Static & Transient / Periodic / Unknown & Eq.~\eqref{eq:demote}, then re-read by Eq.~\eqref{eq:classify} \\
 Periodic & Transient / Unknown & $\pi$ becomes false (pruned only once also $a<\amin$) \\
 Periodic & Static & $\lnot\pi$ and Eq.~\eqref{eq:grad} holds \\
-Periodic & --- & never graduates; never pruned while $a\ge\amin$ \\
+Periodic & --- & never graduates while $\pi$; never pruned while $a\ge\amin$ \\
 Static & --- & never pruned while $g$ \\
 \bottomrule
 \end{tabular}
@@ -122,10 +165,10 @@ Static & --- & never pruned while $g$ \\
 
 \begin{table}[H]
 \centering
-\caption{Symbols used in \S\ref{sec:method}.}
+\caption{Symbols used in \S\ref{sec:method}. In the sequential model (Algorithm~\ref{alg:endwindowsprt}, Proposition~\ref{prop:ville}) $n_i$ is the length of the current forward test and is reset at a reverse-test demotion (a veto demotion keeps it); the count of the Fourier model is not reset.}
 \label{tab:notation}
 \small
-\begin{tabular}{ll}
+\begin{tabular}{lp{0.74\linewidth}}
 \toprule
 Symbol & Meaning \\
 \midrule
@@ -135,13 +178,15 @@ $\Gamma_b$, $\Phi$, $\Psi$ & evidence extractor, engine update, class read-out (
 $h_{i,w}$, $m_{i,w}$ & hit and miss counts of cell $i$ in window $w$ \\
 $\tau_i$, $o_i$, $f_i$ & touched, occupied and free indicators of a window \\
 $\ell_i$, $p_i$ & log-odds occupancy and $\sigma(\ell_i)$ \\
-$N_i$, $n_i$ & touched-window counts for graduation and for the Fourier model \\
+$N_i$, $n_i$ & touched windows for legacy graduation and for the Fourier model (sequential: caption) \\
 $g_i$, $\pi_i$ & graduated flag and periodic predicate \\
-$a_i$, $a_{i,k}$, $\alpha_k$, $\beta_k$ & dominant and harmonic amplitudes, harmonic coefficients \\
-$d_{i,k}$, $\mathbf{M}_{i,k}$, $B$ & explained variance, centred phase design, Chernoff tail bound (Eq.~\ref{eq:dchi}) \\
+$a_i$, $a_{i,k}$, $u_k$, $v_k$ & dominant and harmonic amplitudes, cosine and sine coefficients of harmonic $k$ \\
+$d_{i,k}$, $\mathbf{M}_{i,k}$, $\Theta$ & explained variance, centred phase design, Chernoff tail bound (Eq.~\ref{eq:dchi}) \\
 $\delta$, $r^\star$, $a^\star(n)$ & nominal level, its critical $d$, amplitude threshold at uniform coverage (Eq.~\ref{eq:astar}) \\
 $\delta_n$, $L_N$ & level spent at touch count $n$ (Eq.~\ref{eq:spend}); histories begun by window $N$ (Prop.~\ref{prop:spend}) \\
-$\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments \\
+$\lambda$, $\lhit$, $\lmiss$ & survival decay and log-odds increments (derived ones: Eq.~\ref{eq:derive}) \\
+$m_0$, $m_1$, $\alpha$, $\beta$ & hit rates and error rates of the sequential test \\
+$A$, $B$, $\ell_{\max}$, $n_{\max}$ & thresholds, cap and truncation of the test \\
 $\pgrad$, $\pdem$, $\pprune$ & graduation, demotion and prune thresholds \\
 $T$, $H$, $\omega$, $\amin$ & base period, harmonics, base frequency, amplitude threshold \\
 \bottomrule

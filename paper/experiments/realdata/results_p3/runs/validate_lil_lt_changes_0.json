@@ -1,0 +1,64 @@
+{
+ "after": {
+  "loadavg": "5.14 5.74 5.81 4/898 815757",
+  "meminfo": {
+   "MemAvailable": "9857204 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849952 kB"
+  },
+  "time": "2026-10-18T11:16:09+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 173  4752 strata_core_tes",
+   " 133 172336 cc1plus",
+   " 100 73980 test_closed_loo",
+   "78.0 69792 python3",
+   "69.0 73424 python3"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "validate_lil_lt_changes_0",
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "lil-validate",
+  "--bag",
+  "~/datasets/strata/lilocbench/bags/lt_changes_0.bag",
+  "--gt",
+  "~/datasets/strata/lilocbench/gt_x/lt_changes_0/gt_poses.txt",
+  "--n",
+  "10"
+ ],
+ "before": {
+  "loadavg": "5.14 5.74 5.81 6/900 815708",
+  "meminfo": {
+   "MemAvailable": "9877508 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849952 kB"
+  },
+  "time": "2026-10-18T11:16:09+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 158  4752 strata_core_tes",
+   " 118 160608 cc1plus",
+   " 100 73980 test_closed_loo",
+   "76.0 69760 python3",
+   "67.0 73152 python3"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "774812177c00c9279717c552d1fc38a43d0bcf62",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 19
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.119,
+ "step": "validate_lil_lt_changes_0"
+}

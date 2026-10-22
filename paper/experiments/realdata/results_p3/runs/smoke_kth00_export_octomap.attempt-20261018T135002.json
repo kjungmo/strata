@@ -1,0 +1,71 @@
+{
+ "after": {
+  "loadavg": "3.97 5.43 5.78 4/872 853547",
+  "meminfo": {
+   "MemAvailable": "9882392 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31847100 kB"
+  },
+  "time": "2026-10-18T11:39:58+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 117 328552 cc1plus",
+   "21.7 75640 python3",
+   " 6.6 586096 2.1.299",
+   " 5.0 82288 fusion_node_mai",
+   " 4.0 22492 tracker-store"
+  ]
+ },
+ "argv": [
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "kth-export",
+  "--dir",
+  "~/datasets/strata/kth/00",
+  "--arm",
+  "octomap",
+  "--res",
+  "0.2",
+  "--window",
+  "10",
+  "--periodicity",
+  "1",
+  "--policies",
+  "static_only,not_rejected,all",
+  "--out-prefix",
+  "/mnt/d/wsl/strata/p3/smoke_kth00/octomap",
+  "--meta",
+  "/mnt/d/wsl/strata/p3/smoke_kth00/octomap.meta"
+ ],
+ "before": {
+  "loadavg": "4.92 6.36 6.09 5/825 850510",
+  "meminfo": {
+   "MemAvailable": "8682112 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31841620 kB"
+  },
+  "time": "2026-10-18T11:37:42+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 101 668508 cc1plus",
+   "97.2 1004032 cc1plus",
+   " 6.6 553568 2.1.299",
+   " 3.3 44732 colcon",
+   " 3.2 178236 claude"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 27
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 135.115,
+ "step": "smoke_kth00_export_octomap"
+}

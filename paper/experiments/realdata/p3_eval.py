@@ -1,0 +1,593 @@
+#!/usr/bin/env python3
+"""Phase 3 evaluators (PREREG_P3.md). numpy only, deterministic (fixed seeds), no data in the repository.
+
+    kth            SA / DA / AA / HA of a method map against a KTH ground-truth cloud (PREREG_P3.md section 4)
+    kth-selfcheck  the two validation cases on a ground-truth cloud: GT static points only -> SA = 100 and DA equal to the oracle ceiling
+                   (100 unless dynamic points touch static ones within tol); remove nothing (the whole GT) -> SA = 100, DA = 0
+    lil            false-Static on clutter and false-reject on wall runs from an `arm-eval` cell dump (section 6)
+    spires         the same rates from an `arm-eval` counts table of a 3D label file (section 7)
+    jaccard        Jaccard of Static voxel sets of several sequences or sessions, inside the tiles they share (sections 5 and 7)
+    newstatic      Static voxels of a cumulative map that no single session makes Static (section 8)
+    zoffset        vertical offset between two sessions from the tile ground heights of `p3_probe tile-ground` (section 5)
+
+Run with `python3 -I p3_eval.py <command> ...`.
+"""
+import argparse
+import csv
+import json
+import math
+import sys
+
+import numpy as np
+
+BOOT_SEED = 20261014          # the bootstrap seed of phase 1 (PREREG_P1 section 4)
+BOOT_REPS = 2000
+TILE_M = 10.0                 # the block size of phase 1
+
+
+# ----------------------------------------------------------------------------------- PCD ------
+
+def read_pcd(path):
+    """Binary PCD v0.7 with float32 x, y, z (and optionally intensity). Returns (xyz float32 (N,3), intensity float32 (N,) or None)."""
+    with open(path, "rb") as f:
+        fields, sizes, types, counts, points = None, None, None, None, None
+        consumed = 0
+        while True:
+            line = f.readline()
+            if not line:
+                raise ValueError(f"{path}: no DATA line")
+            consumed += len(line)
+            parts = line.decode("ascii", "replace").split()
+            if not parts:
+                continue
+            key = parts[0]
+            if key == "FIELDS":
+                fields = parts[1:]
+            elif key == "SIZE":
+                sizes = [int(v) for v in parts[1:]]
+            elif key == "TYPE":
+                types = parts[1:]
+            elif key == "COUNT":
+                counts = [int(v) for v in parts[1:]]
+            elif key == "POINTS":
+                points = int(parts[1])
+            elif key == "DATA":
+                if parts[1] != "binary":
+                    raise ValueError(f"{path}: only DATA binary is supported")
+                break
+        if fields is None or sizes is None or types is None or points is None:
+            raise ValueError(f"{path}: incomplete header")
+        counts = counts or [1] * len(fields)
+        dt = []
+        for name, sz, ty, ct in zip(fields, sizes, types, counts):
+            if ct != 1:
+                raise ValueError(f"{path}: COUNT {ct} for {name} is not supported")
+            code = {"F": "f", "U": "u", "I": "i"}[ty] + str(sz)
+            dt.append((name, "<" + code))
+        dtype = np.dtype(dt)
+        data = np.fromfile(f, dtype=dtype, count=points)
+        if data.shape[0] != points:
+            raise ValueError(f"{path}: truncated ({data.shape[0]} of {points} points)")
+    for k in ("x", "y", "z"):
+        if k not in data.dtype.names or data.dtype[k] != np.dtype("<f4"):
+            raise ValueError(f"{path}: x, y, z must be float32")
+    xyz = np.empty((points, 3), dtype=np.float32)
+    xyz[:, 0] = data["x"]
+    xyz[:, 1] = data["y"]
+    xyz[:, 2] = data["z"]
+    inten = data["intensity"].astype(np.float32) if "intensity" in data.dtype.names else None
+    del data
+    return xyz, inten
+
+
+def write_pcd(path, xyz, intensity=None):
+    xyz = np.asarray(xyz, dtype=np.float32)
+    n = xyz.shape[0]
+    names = ["x", "y", "z"] + (["intensity"] if intensity is not None else [])
+    hdr = ("# .PCD v0.7 - Point Cloud Data file format\nVERSION 0.7\nFIELDS " + " ".join(names) + "\nSIZE " + " ".join(["4"] * len(names)) +
+           "\nTYPE " + " ".join(["F"] * len(names)) + "\nCOUNT " + " ".join(["1"] * len(names)) + f"\nWIDTH {n}\nHEIGHT 1\nVIEWPOINT 0 0 0 1 0 0 0\nPOINTS {n}\nDATA binary\n")
+    cols = [xyz[:, 0], xyz[:, 1], xyz[:, 2]] + ([np.asarray(intensity, dtype=np.float32)] if intensity is not None else [])
+    with open(path, "wb") as f:
+        f.write(hdr.encode("ascii"))
+        np.stack(cols, axis=1).astype("<f4").tofile(f)
+
+
+# ------------------------------------------------------------------------ radius matching ------
+
+_OFF = 1 << 20
+
+
+def _pack(ix, iy, iz):
+    return ((ix + _OFF) << 42) | ((iy + _OFF) << 21) | (iz + _OFF)
+
+
+def _keys(xyz, tol):
+    c = np.floor(np.asarray(xyz, dtype=np.float64) / tol).astype(np.int64)
+    return _pack(c[:, 0], c[:, 1], c[:, 2]), c
+
+
+def matched(queries, targets, tol, chunk=2_000_000):
+    """bool (len(queries),): True if some target lies within distance tol (<=) of the query. Exact: a grid of edge tol
+    makes every match lie in the 3 x 3 x 3 cells around the query cell; distances are then computed in float64.
+    Memory: the targets are kept once (as given, float32 stays float32) plus one sorted copy and the cell tables."""
+    q = np.asarray(queries).reshape(-1, 3)
+    t = np.asarray(targets).reshape(-1, 3)
+    out = np.zeros(q.shape[0], dtype=bool)
+    if q.shape[0] == 0 or t.shape[0] == 0:
+        return out
+    if tol <= 0:
+        raise ValueError("tol must be positive")
+    lim = (_OFF - 2) * tol
+    if np.abs(q).max() >= lim or np.abs(t).max() >= lim:
+        raise ValueError("coordinates exceed the grid range")
+    tk = np.empty(t.shape[0], dtype=np.int64)
+    for lo in range(0, t.shape[0], chunk):
+        tk[lo:lo + chunk] = _keys(t[lo:lo + chunk], tol)[0]
+    order = np.argsort(tk, kind="stable")
+    tk = tk[order]
+    ts = t[order]                                              # sorted copy, original dtype
+    del order
+    brk = np.flatnonzero(tk[1:] != tk[:-1]) + 1
+    start = np.concatenate(([0], brk))
+    cnt = np.diff(np.concatenate((start, [tk.size])))
+    uk = tk[start]
+    del tk
+    tol2 = tol * tol
+    offsets = [(0, 0, 0)] + [(a, b, c) for a in (-1, 0, 1) for b in (-1, 0, 1) for c in (-1, 0, 1) if (a, b, c) != (0, 0, 0)]
+    for lo in range(0, q.shape[0], chunk):
+        qc = np.asarray(q[lo:lo + chunk], dtype=np.float64)
+        _, qi = _keys(qc, tol)
+        done = np.zeros(qc.shape[0], dtype=bool)
+        for (a, b, c) in offsets:
+            todo = np.nonzero(~done)[0]
+            if todo.size == 0:
+                break
+            key = _pack(qi[todo, 0] + a, qi[todo, 1] + b, qi[todo, 2] + c)
+            pos = np.searchsorted(uk, key)
+            pos[pos >= uk.size] = uk.size - 1
+            hit = uk[pos] == key
+            idx = todo[hit]
+            if idx.size == 0:
+                continue
+            st = start[pos[hit]]
+            ct = cnt[pos[hit]]
+            for k in range(int(ct.max())):
+                sel = np.nonzero((ct > k) & ~done[idx])[0]
+                if sel.size == 0:
+                    continue
+                d = ts[st[sel] + k].astype(np.float64) - qc[idx[sel]]
+                ok = (d * d).sum(axis=1) <= tol2
+                done[idx[sel[ok]]] = True
+        out[lo:lo + chunk] = done
+    return out
+
+
+# ------------------------------------------------------------------------------- KTH scores ------
+
+def kth_scores(gt_xyz, gt_dynamic, out_xyz, tol=0.05):
+    """The scores of the KTH benchmark (evaluate_all.py on the output of export_eval_pcd): a GT point is predicted static
+    (kept) if some point of the method map lies within tol; otherwise predicted dynamic (removed).
+    SA = kept static / static; DA = removed dynamic / dynamic; AA = sqrt(SA DA); HA = 2 SA DA / (SA + DA). In percent."""
+    dyn = np.asarray(gt_dynamic).astype(bool)
+    n_dyn = int(dyn.sum())
+    n_sta = int((~dyn).sum())
+    if n_dyn == 0 or n_sta == 0:
+        raise ValueError("the ground truth needs static and dynamic points")
+    kept = matched(gt_xyz, out_xyz, tol)
+    sa = 100.0 * int((kept & ~dyn).sum()) / n_sta
+    da = 100.0 * int((~kept & dyn).sum()) / n_dyn
+    aa = math.sqrt(sa * da)
+    ha = 0.0 if sa + da == 0 else 2.0 * sa * da / (sa + da)
+    return {"SA": sa, "DA": da, "AA": aa, "HA": ha, "gt_static": n_sta, "gt_dynamic": n_dyn,
+            "map_points": int(np.asarray(out_xyz).reshape(-1, 3).shape[0]), "tol_m": tol}
+
+
+def cmd_kth(args):
+    gt, lab = read_pcd(args.gt)
+    if lab is None:
+        raise SystemExit("the GT cloud has no intensity field (the dynamic flag)")
+    vals = np.unique(lab)
+    if not set(vals.tolist()) <= {0.0, 1.0}:
+        raise SystemExit(f"GT intensity must be 0 or 1, found {vals[:10].tolist()}")
+    out, _ = read_pcd(args.map)
+    res = kth_scores(gt, lab != 0, out, args.tol)
+    res["gt"] = args.gt
+    res["map"] = args.map
+    print(json.dumps(res, indent=1, sort_keys=True))
+    return 0
+
+
+def shadowed_independent(static_xyz, dyn_xyz, tol):
+    """Number of dynamic points that have a static point within tol, by a method that shares no code with `matched`: a sort on x,
+    a window of +-tol in x, and a brute-force distance test inside the window."""
+    st = np.asarray(static_xyz, dtype=np.float64).reshape(-1, 3)
+    dy = np.asarray(dyn_xyz, dtype=np.float64).reshape(-1, 3)
+    if st.shape[0] == 0:
+        return 0
+    order = np.argsort(st[:, 0], kind="stable")
+    sx = st[order]
+    xs = sx[:, 0]
+    count = 0
+    for p in dy:
+        lo = np.searchsorted(xs, p[0] - tol, side="left")
+        hi = np.searchsorted(xs, p[0] + tol, side="right")
+        if hi > lo:
+            d = sx[lo:hi] - p
+            if ((d * d).sum(axis=1) <= tol * tol).any():
+                count += 1
+    return count
+
+
+def cmd_kth_selfcheck(args):
+    """Two validation cases on a ground-truth cloud (PREREG_P3.md section 4.3).
+    1. The map is the GT static points: SA must be 100, and DA must equal the share of dynamic points that have NO static point within
+       tol, counted independently. On real clouds that share is below 100 (dynamic points that touch static ground within 5 cm cannot
+       be removed by any map), so DA = 100 holds only when no dynamic point is that close; the ceiling is printed.
+    2. The map is the whole GT (remove nothing): SA must be 100 and DA 0."""
+    gt, lab = read_pcd(args.gt)
+    dyn = lab != 0
+    a = kth_scores(gt, dyn, gt[~dyn], args.tol)
+    b = kth_scores(gt, dyn, gt, args.tol)
+    shadowed = shadowed_independent(gt[~dyn], gt[dyn], args.tol)
+    ceiling = 100.0 * (a["gt_dynamic"] - shadowed) / a["gt_dynamic"]
+    out = {"gt_static_only": a, "remove_nothing": b, "dynamic_points_within_tol_of_a_static_point": shadowed, "DA_oracle_ceiling": ceiling}
+    print(json.dumps(out, indent=1, sort_keys=True))
+    ok = (a["SA"] == 100.0 and abs(a["DA"] - ceiling) < 1e-9 and b["SA"] == 100.0 and b["DA"] == 0.0)
+    print("SELFCHECK " + ("PASS" if ok else "FAIL"))
+    return 0 if ok else 3
+
+
+# ----------------------------------------------------------------------------- statistics ------
+
+def wilson(k, n, z=1.959964):
+    if n == 0:
+        return (float("nan"), float("nan"))
+    p = k / n
+    d = 1 + z * z / n
+    c = p + z * z / (2 * n)
+    h = z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))
+    return ((c - h) / d, (c + h) / d)
+
+
+def block_bootstrap_rate(flag, den_mask, tile, reps=BOOT_REPS, seed=BOOT_SEED):
+    """95 % percentile interval of sum(flag & den) / sum(den) resampling whole tiles. flag, den_mask: bool arrays; tile: int tile id per cell."""
+    den = np.asarray(den_mask, dtype=bool)
+    if not den.any():
+        return (float("nan"), float("nan"))
+    t = np.asarray(tile)[den]
+    f = np.asarray(flag, dtype=bool)[den]
+    u, inv = np.unique(t, return_inverse=True)
+    num = np.bincount(inv, weights=f.astype(float), minlength=u.size)
+    cn = np.bincount(inv, minlength=u.size).astype(float)
+    rng = np.random.RandomState(seed)
+    r = np.empty(reps)
+    for i in range(reps):
+        s = rng.randint(0, u.size, u.size)
+        r[i] = num[s].sum() / cn[s].sum()
+    return (float(np.percentile(r, 2.5)), float(np.percentile(r, 97.5)))
+
+
+def pct(v, q):
+    return float("nan") if len(v) == 0 else float(np.percentile(np.asarray(v, dtype=float), q))
+
+
+# ------------------------------------------------------------------------------ LILocBench ------
+
+VERDICTS = {"rejected": 0, "undecided": 1, "static": 2}
+REF_OCCUPIED, REF_FREE, REF_FREE_NEAR = 1, 2, 3
+
+
+def read_dump(path):
+    with open(path) as f:
+        rows = list(csv.DictReader(f))
+    if not rows:
+        raise ValueError(f"{path}: empty")
+    out = {k: np.array([int(r[k]) for r in rows]) for k in ("label", "ix", "iy", "iz", "n", "h", "first_static", "first_touch")}
+    out["verdict"] = np.array([VERDICTS[r["verdict"]] for r in rows])
+    return out
+
+
+def wall_run_mask(ix, iy, res, rho=1.0, min_cells=20, ratio_max=0.02, min_extent=1.0):
+    """Cells of a set that belong to a straight run (PREREG_P3.md section 6.2): the cells of the set within rho of a cell form a
+    patch with at least min_cells cells, minor/major eigenvalue ratio <= ratio_max and extent sqrt(12 * major eigenvalue) >= min_extent.
+    The shape rule of G1 (PREREG_P1B section 3.1) applied to cell centres."""
+    ix = np.asarray(ix, dtype=np.int64)
+    iy = np.asarray(iy, dtype=np.int64)
+    n = ix.size
+    if n == 0:
+        return np.zeros(0, dtype=bool)
+    key = (ix + _OFF) * (1 << 22) + (iy + _OFF)
+    order = np.argsort(key)
+    sk = key[order]
+    r = int(math.floor(rho / res + 1e-9))
+    cnt = np.zeros(n)
+    sx = np.zeros(n)
+    sy = np.zeros(n)
+    sxx = np.zeros(n)
+    sxy = np.zeros(n)
+    syy = np.zeros(n)
+    for dx in range(-r, r + 1):
+        for dy in range(-r, r + 1):
+            if (dx * dx + dy * dy) * res * res > rho * rho + 1e-12:
+                continue
+            nk = (ix + dx + _OFF) * (1 << 22) + (iy + dy + _OFF)
+            pos = np.searchsorted(sk, nk)
+            pos[pos >= n] = n - 1
+            present = sk[pos] == nk
+            x = dx * res
+            y = dy * res
+            cnt += present
+            sx += present * x
+            sy += present * y
+            sxx += present * x * x
+            sxy += present * x * y
+            syy += present * y * y
+    with np.errstate(divide="ignore", invalid="ignore"):
+        mx, my = sx / cnt, sy / cnt
+        cxx, cxy, cyy = sxx / cnt - mx * mx, sxy / cnt - mx * my, syy / cnt - my * my
+        tr = cxx + cyy
+        det = cxx * cyy - cxy * cxy
+        disc = np.sqrt(np.maximum(tr * tr / 4 - det, 0.0))
+        l1, l2 = tr / 2 + disc, np.maximum(tr / 2 - disc, 0.0)
+        ok = (cnt >= min_cells) & (l1 > 0) & (l2 / l1 <= ratio_max) & (np.sqrt(12 * np.maximum(l1, 0)) >= min_extent)
+    return ok
+
+
+def lil_metrics(d, res, origin=-30.0, nmin=5, bands=(0.0, 0.15, 0.30, 0.65, 1.0001), m0=0.20):
+    """Rates for one arm on one sequence from an arm-eval dump of the reference label file (section 6)."""
+    n, h, lab, ver = d["n"], d["h"], d["label"], d["verdict"]
+    x = origin + (d["ix"] + 0.5) * res
+    y = origin + (d["iy"] + 0.5) * res
+    tile = (np.floor(x / TILE_M).astype(np.int64) + 4096) * 8192 + (np.floor(y / TILE_M).astype(np.int64) + 4096)
+    occ = lab == REF_OCCUPIED
+    wall = np.zeros(lab.size, dtype=bool)
+    wall[occ] = wall_run_mask(d["ix"][occ], d["iy"][occ], res)
+    clutter = (lab == REF_FREE) & (h >= 1) & (n >= nmin)             # hit_in_free of the calibration, near-wall cells excluded by label
+    structure = wall & (n >= nmin)
+    out = {"nmin": nmin, "cells_labelled": int(lab.size), "wall_run_cells_total": int(wall.sum())}
+
+    def block(mask, flag, name):
+        k = int((flag & mask).sum())
+        m = int(mask.sum())
+        lo, hi = wilson(k, m)
+        blo, bhi = block_bootstrap_rate(flag, mask, tile)
+        out[name] = {"k": k, "n": m, "rate": (k / m if m else float("nan")), "wilson95": [lo, hi], "tile_bootstrap95": [blo, bhi]}
+
+    block(clutter, ver == VERDICTS["static"], "false_static_on_clutter")
+    # Amendment 5 of PREREG_P3.md: the unit of the alpha test is the CELL, ever-Static = Static at the close of any window
+    # (first_static >= 0). false_static_on_clutter above is Static at the END of the run; the two differ because a Static cell
+    # can be demoted and rejected later, and a rejected cell is erased and starts a new history.
+    block(clutter, d["first_static"] >= 0, "ever_static_on_clutter")
+    block(clutter, ver == VERDICTS["undecided"], "clutter_undecided")
+    block(clutter, ver == VERDICTS["rejected"], "clutter_rejected")
+    block(structure, ver == VERDICTS["rejected"], "false_reject_on_wall_runs")
+    block(structure, ver != VERDICTS["static"], "wall_runs_not_static")
+    block(structure, ver == VERDICTS["static"], "wall_runs_static")
+    r = np.where(n > 0, h / np.maximum(n, 1), 0.0)
+    # The population of the replay reference rows (results_p2/replay_shipped_pair_W15.txt): observed rate H/N at or below m0.
+    block(clutter & (r <= m0), d["first_static"] >= 0, "ever_static_on_clutter_at_or_below_m0")
+    out["false_static_by_hit_rate_band"] = []
+    for lo_b, hi_b in zip(bands[:-1], bands[1:]):
+        m = clutter & (r >= lo_b) & (r < hi_b)
+        k = int((m & (ver == VERDICTS["static"])).sum())
+        out["false_static_by_hit_rate_band"].append({"band": [lo_b, min(hi_b, 1.0)], "k": k, "n": int(m.sum()), "rate": (k / int(m.sum()) if m.any() else float("nan"))})
+    got = structure & (d["first_static"] >= 0)
+    lat = (d["first_static"] - d["first_touch"] + 1)[got]
+    out["wall_run_windows_to_first_static"] = {"n": int(lat.size), "p50": pct(lat, 50), "p90": pct(lat, 90), "min": float(lat.min()) if lat.size else float("nan")}
+    # qualitative change counts (lt_changes_0): no truth per cell, counts only
+    elig = n >= nmin
+    out["qualitative"] = {
+        "ref_free_cells_static": int(((lab == REF_FREE) & elig & (ver == VERDICTS["static"])).sum()),
+        "ref_free_cells_eligible": int(((lab == REF_FREE) & elig).sum()),
+        "ref_occupied_cells_not_static": int((occ & elig & (ver != VERDICTS["static"])).sum()),
+        "ref_occupied_cells_rejected": int((occ & elig & (ver == VERDICTS["rejected"])).sum()),
+        "ref_occupied_cells_eligible": int((occ & elig).sum()),
+    }
+    return out
+
+
+def cmd_lil(args):
+    d = read_dump(args.dump)
+    print(json.dumps(lil_metrics(d, args.res, args.origin, args.nmin), indent=1, sort_keys=True))
+    return 0
+
+
+# --------------------------------------------------------------------------- Spires, Boreas ------
+
+SPIRES_STRUCTURE_LABELS = (3, 2)     # PREREG_P3.md section 7.2: non-ground structure (3) and, separately, ground (2)
+
+
+def spires_metrics(counts_csv, latency_csv=None, structure_labels=SPIRES_STRUCTURE_LABELS, clutter_label=1):
+    """Spires rates from a counts table (label, eligible, verdict, count) and the optional latency table (label, windows_to_static, count).
+    One block per structure label, each with its own false-reject rate, undecided share and windows to first Static."""
+    with open(counts_csv) as f:
+        rows = list(csv.DictReader(f))
+    c = {}
+    for r in rows:
+        c[(int(r["label"]), int(r["eligible"]), r["verdict"])] = int(r["count"])
+
+    def tot(label, elig=1):
+        return sum(v for (l, e, _), v in c.items() if l == label and e == elig)
+
+    lat = {lab: [] for lab in structure_labels}
+    clutter_ever = 0                                                  # label-1 cells with a first Static window, eligible or not (Amendment 12)
+    if latency_csv:
+        with open(latency_csv) as f:
+            for r in csv.DictReader(f):
+                if int(r["label"]) in lat:
+                    lat[int(r["label"])] += [int(r["windows_to_static"])] * int(r["count"])
+                if int(r["label"]) == clutter_label:
+                    clutter_ever += int(r["count"])
+
+    out = {}
+    nc = tot(clutter_label)
+    kc = c.get((clutter_label, 1, "static"), 0)
+    out["false_static_on_clutter"] = {"k": kc, "n": nc, "rate": (kc / nc if nc else float("nan")), "wilson95": list(wilson(kc, nc)),
+                                 "unit": "end of run, eligible cells; not the unit of the alpha test (PREREG_P3.md Amendments 5 and 12)"}
+    if latency_csv:
+        # Amendment 13 replaces the all-cells ever-Static row of Amendment 12 (its denominator held ineligible and never-touched cells and
+        # differed between arms). The .latency file has no eligible column, so the ever-Static count of ELIGIBLE label-1 cells is bounded:
+        #   lo = end-Static eligible cells (a cell Static at the end has been Static)
+        #   hi = ever-Static label-1 cells minus the ineligible cells that are Static at the end (those are ever-Static and ineligible), capped at n_elig
+        k_inelig_end = c.get((clutter_label, 0, "static"), 0)
+        hi_k = min(clutter_ever - k_inelig_end, nc)
+        out["ever_static_on_clutter_eligible_bound"] = {
+            "n": nc, "k_lo": kc, "k_hi": hi_k,
+            "lo": (kc / nc if nc else float("nan")), "hi": (hi_k / nc if nc else float("nan")),
+            "consistent": bool(hi_k >= kc),
+            "population": "eligible label-1 cells; bounds from the counts and latency files, not an exact rate (PREREG_P3.md Amendment 13)"}
+    for lab in structure_labels:
+        ns = tot(lab)
+        kr = c.get((lab, 1, "rejected"), 0)
+        ku = c.get((lab, 1, "undecided"), 0)
+        ks = c.get((lab, 1, "static"), 0)
+        blk = {"n": ns, "rejected": kr, "undecided": ku, "static": ks,
+               "false_reject_rate": (kr / ns if ns else float("nan")), "wilson95": list(wilson(kr, ns)),
+               "undecided_share": (ku / ns if ns else float("nan"))}
+        if latency_csv:
+            w = lat[lab]
+            blk["windows_to_first_static"] = {"n": len(w), "p50": pct(w, 50), "p90": pct(w, 90),
+                                              "population": "all labelled cells ever Static, eligible or not (PREREG_P3.md Amendment 12)"}
+        out[f"structure_label_{lab}"] = blk
+    return out
+
+
+def decode_voxel_ids(ids):
+    ids = np.asarray(ids, dtype=np.int64)
+    mask = (1 << 21) - 1
+    return (((ids >> 42) & mask) - _OFF, ((ids >> 21) & mask) - _OFF, (ids & mask) - _OFF)
+
+
+def jaccard(a, b):
+    a = np.unique(np.asarray(a, dtype=np.int64))
+    b = np.unique(np.asarray(b, dtype=np.int64))
+    inter = np.intersect1d(a, b, assume_unique=True).size
+    union = a.size + b.size - inter
+    return {"intersection": int(inter), "union": int(union), "jaccard": (inter / union if union else float("nan")), "size_a": int(a.size), "size_b": int(b.size)}
+
+
+def tiles_of_ids(ids, res, tile_m=TILE_M):
+    ix, iy, _ = decode_voxel_ids(ids)
+    t = int(round(tile_m / res))
+    return (np.floor_divide(ix, t) + 4096) * 8192 + (np.floor_divide(iy, t) + 4096)
+
+
+def _in_tiles(ids, res, tiles, tile_m=TILE_M):
+    ids = np.unique(np.asarray(ids, dtype=np.int64))
+    return ids[np.isin(tiles_of_ids(ids, res, tile_m), tiles)]
+
+
+def jaccard_in_shared_tiles(a, b, res, all_a=None, all_b=None, tile_m=TILE_M):
+    """Jaccard of two Static voxel sets inside the tiles where BOTH sessions have observed anything (all_a, all_b: the observed voxels
+    of each session; default the sets themselves, which is NOT the pre-registered rule: tiles without a Static voxel drop out)."""
+    ta = np.unique(tiles_of_ids(all_a if all_a is not None else a, res, tile_m))
+    tb = np.unique(tiles_of_ids(all_b if all_b is not None else b, res, tile_m))
+    shared = np.intersect1d(ta, tb, assume_unique=True)
+    out = jaccard(_in_tiles(a, res, shared, tile_m), _in_tiles(b, res, shared, tile_m))
+    out["shared_tiles"] = int(shared.size)
+    return out
+
+
+def jaccard_over_sessions(static_sets, observed_sets, res, tile_m=TILE_M):
+    """Pairwise Jaccard of the Static sets of several sessions, inside the tiles that ALL sessions observed (PREREG_P3.md sections 7.2 and
+    8.3, as amended). observed_sets[i] holds every voxel the map of session i held (Static or not), so a tile in which one session has no
+    Static voxel still counts as shared. Each pair also carries `pairwise_tiles`: the Jaccard inside the tiles that only the two
+    sessions of the pair observed (secondary). A Static set must lie inside its observed set."""
+    if len(static_sets) != len(observed_sets) or len(static_sets) < 2:
+        raise ValueError("need the same number (at least two) of Static sets and observed sets")
+    static_sets = [np.unique(np.asarray(x, dtype=np.int64)) for x in static_sets]
+    observed_sets = [np.unique(np.asarray(x, dtype=np.int64)) for x in observed_sets]
+    for i, (s_, o_) in enumerate(zip(static_sets, observed_sets)):
+        if np.setdiff1d(s_, o_, assume_unique=True).size:
+            raise ValueError("session %d: the Static set is not inside the observed set" % i)
+    tiles = [np.unique(tiles_of_ids(o_, res, tile_m)) for o_ in observed_sets]
+    shared = tiles[0]
+    for t in tiles[1:]:
+        shared = np.intersect1d(shared, t, assume_unique=True)
+    out = []
+    for i in range(len(static_sets)):
+        for j in range(i + 1, len(static_sets)):
+            r = jaccard(_in_tiles(static_sets[i], res, shared, tile_m), _in_tiles(static_sets[j], res, shared, tile_m))
+            r["shared_tiles"] = int(shared.size)
+            r["scope"] = "tiles observed by all %d sessions" % len(static_sets)
+            r["pairwise_tiles"] = jaccard_in_shared_tiles(static_sets[i], static_sets[j], res, observed_sets[i], observed_sets[j], tile_m)
+            r["session_a"], r["session_b"] = i, j
+            out.append(r)
+    return out
+
+
+def new_static(cumulative, independent):
+    """Static voxels of a cumulative map that are Static in none of the independent single-session maps: the cells that graduated only
+    because of more than one session. Returns the sizes and the share."""
+    cum = np.unique(np.asarray(cumulative, dtype=np.int64))
+    ind = np.unique(np.concatenate([np.asarray(s, dtype=np.int64) for s in independent])) if independent else np.zeros(0, dtype=np.int64)
+    only = np.setdiff1d(cum, ind, assume_unique=True)
+    return {"cumulative_static": int(cum.size), "static_in_any_independent_session": int(ind.size), "only_in_cumulative": int(only.size),
+            "share_only_in_cumulative": (only.size / cum.size if cum.size else float("nan"))}
+
+
+def cmd_newstatic(args):
+    ind = [np.fromfile(p, dtype="<i8") for p in args.ind]
+    print(json.dumps(new_static(np.fromfile(args.cum, dtype="<i8"), ind), indent=1, sort_keys=True))
+    return 0
+
+
+def zoffset(csv_a, csv_b, min_count=500):
+    """Offset to ADD to the z of session B so that its ground meets the ground of session A: the median over the tiles present in both
+    tables (at least min_count returns in each) of ground_a - ground_b. (n_tiles, median, p10, p90) in a dict; NaN if no shared tile."""
+    def load(p):
+        with open(p) as f:
+            return {(int(r["tx"]), int(r["ty"])): float(r["ground_z"]) for r in csv.DictReader(f) if int(r["count"]) >= min_count}
+    a, b = load(csv_a), load(csv_b)
+    d = np.array([a[k] - b[k] for k in a if k in b])
+    if d.size == 0:
+        return {"tiles": 0, "median": float("nan"), "p10": float("nan"), "p90": float("nan")}
+    return {"tiles": int(d.size), "median": float(np.median(d)), "p10": float(np.percentile(d, 10)), "p90": float(np.percentile(d, 90))}
+
+
+def cmd_zoffset(args):
+    r = zoffset(args.a, args.b, args.min_count)
+    if args.field:
+        print(repr(r[args.field]))
+    else:
+        print(json.dumps(r, indent=1, sort_keys=True))
+    return 0
+
+
+def cmd_spires(args):
+    labels = tuple(int(x) for x in args.structure_labels.split(","))
+    print(json.dumps(spires_metrics(args.counts, args.latency, labels), indent=1, sort_keys=True))
+    return 0
+
+
+def cmd_jaccard(args):
+    if len(args.observed) != len(args.ids):
+        print("jaccard: --observed needs one file per --ids file (the voxels each session held, Static or not)", file=sys.stderr)
+        return 2
+    try:
+        out = jaccard_over_sessions([np.fromfile(p, dtype="<i8") for p in args.ids], [np.fromfile(p, dtype="<i8") for p in args.observed], args.res)
+    except ValueError as e:
+        print("jaccard: %s" % e, file=sys.stderr)
+        return 2
+    for r in out:
+        r["a"], r["b"] = args.ids[r["session_a"]], args.ids[r["session_b"]]
+    print(json.dumps(out, indent=1, sort_keys=True))
+    return 0
+
+
+def main(argv=None):
+    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    sub = ap.add_subparsers(dest="cmd", required=True)
+    p = sub.add_parser("kth"); p.add_argument("--gt", required=True); p.add_argument("--map", required=True); p.add_argument("--tol", type=float, default=0.05); p.set_defaults(fn=cmd_kth)
+    p = sub.add_parser("kth-selfcheck"); p.add_argument("--gt", required=True); p.add_argument("--tol", type=float, default=0.05); p.set_defaults(fn=cmd_kth_selfcheck)
+    p = sub.add_parser("lil"); p.add_argument("--dump", required=True); p.add_argument("--res", type=float, required=True); p.add_argument("--origin", type=float, default=-30.0); p.add_argument("--nmin", type=int, default=5); p.set_defaults(fn=cmd_lil)
+    p = sub.add_parser("spires"); p.add_argument("--counts", required=True); p.add_argument("--latency"); p.add_argument("--structure-labels", default="3,2"); p.set_defaults(fn=cmd_spires)
+    p = sub.add_parser("newstatic"); p.add_argument("--cum", required=True); p.add_argument("--ind", nargs="+", required=True); p.set_defaults(fn=cmd_newstatic)
+    p = sub.add_parser("zoffset"); p.add_argument("--a", required=True); p.add_argument("--b", required=True); p.add_argument("--min-count", type=int, default=500); p.add_argument("--field", choices=("tiles", "median", "p10", "p90")); p.set_defaults(fn=cmd_zoffset)
+    p = sub.add_parser("jaccard"); p.add_argument("--ids", nargs="+", required=True); p.add_argument("--observed", nargs="+", required=True); p.add_argument("--res", type=float, required=True); p.set_defaults(fn=cmd_jaccard)
+    args = ap.parse_args(argv)
+    return args.fn(args)
+
+
+if __name__ == "__main__":
+    sys.exit(main())

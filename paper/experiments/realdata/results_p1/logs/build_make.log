@@ -1,0 +1,12 @@
+STEP build_make
+START 2026-10-18T05:48:05+09:00 host=DESKTOP-KCD7BRS load=2.52 3.76 6.15 cores=12
+CMD cmake --build <BUILD_DIR> -j1 --target hitrate_probe
+Scanning dependencies of target strata_core
+[ 12%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
+[ 25%] Linking CXX static library libstrata_core.a
+[ 75%] Built target strata_core
+Scanning dependencies of target hitrate_probe
+[ 87%] Building CXX object realdata/CMakeFiles/hitrate_probe.dir/hitrate_probe.cpp.o
+[100%] Linking CXX executable hitrate_probe
+[100%] Built target hitrate_probe
+END 2026-10-18T05:48:15+09:00 rc=0 load=2.59 3.74 6.12

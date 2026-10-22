@@ -2,7 +2,8 @@
 #include "strata_core/grid2d_backend.hpp"
 using namespace strata_core;
 static GridMeta meta(){GridMeta m;m.width=20;m.height=20;m.resolution=1.0;m.origin_x=0;m.origin_y=0;return m;}
-static LayeredMapParams P(){LayeredMapParams p;p.layer_interval=1;p.l_hit=1.0;p.l_miss=-1.0;p.survival_decay=1.0;
+// These tests state the v0.1 arithmetic (l_hit, l_miss, graduate_prob ...), so they name it.
+static LayeredMapParams P(){LayeredMapParams p;p.evidence_model=EvidenceModel::Legacy;p.layer_interval=1;p.l_hit=1.0;p.l_miss=-1.0;p.survival_decay=1.0;
   p.graduate_prob=0.85;p.demote_prob=0.4;p.min_observations=3;p.prune_prob=0.05;p.enable_periodicity=false;return p;}
 
 TEST(Grid2DBackend, HitMarksEndpointAndClearsRay) {

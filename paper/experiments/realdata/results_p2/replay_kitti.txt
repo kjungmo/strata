@@ -1,0 +1,5 @@
+In-sample replay on KITTI 00 (KTH benchmark, 0.2 m voxels, W = 10, single pass), pair (0.15, 0.65, 0.01), pure rule.
+Structure: static_structure voxels (n=283511); moving voxels (n=5901).
+  structure  S 0.1963  R 0.0759  U 0.7277  windows to Static p50 4.0000
+  structure voxels touched in >= 4 windows: n=145520  S 0.3825  U 0.4696
+  moving voxels graduated, by hit-rate band: <= 0.15: 0 of 5025; (0.15, 0.65): 121 of 694; >= 0.65: 179 of 182

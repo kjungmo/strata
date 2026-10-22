@@ -1,0 +1,49 @@
+STEP build_make
+START 2026-10-18T13:41:19+09:00 host=DESKTOP-KCD7BRS load=2.94 4.41 6.06 cores=12
+COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+CMD cmake --build <BUILD_DIR>/build -j4 --target p3_probe hitrate_probe p1b_probe test_p3
+Scanning dependencies of target strata_core
+[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/grid2d_backend.cpp.o
+[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/periodicity.cpp.o
+[ 37%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/types.cpp.o
+[ 50%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/layered_map.cpp.o
+~/.cache/strata_p3_build/src/strata_core/src/types.cpp: In function ‘bool strata_core::worldToGrid(const strata_core::GridMeta&, double, double, int&, int&)’:
+~/.cache/strata_p3_build/src/strata_core/src/types.cpp:6:3: warning: this ‘if’ clause does not guard... [-Wmisleading-indentation]
+    6 |   if(fx<0.0||fy<0.0) return false; gx=static_cast<int>(fx); gy=static_cast<int>(fy);
+      |   ^~
+~/.cache/strata_p3_build/src/strata_core/src/types.cpp:6:36: note: ...this statement, but the latter is misleadingly indented as if it were guarded by the ‘if’
+    6 |   if(fx<0.0||fy<0.0) return false; gx=static_cast<int>(fx); gy=static_cast<int>(fy);
+      |                                    ^~
+[ 62%] Building CXX object strata_core_build/CMakeFiles/strata_core.dir/src/voxel3d_backend.cpp.o
+[ 75%] Linking CXX static library libstrata_core.a
+[ 75%] Built target strata_core
+Scanning dependencies of target p3_probe
+[ 87%] Building CXX object realdata/CMakeFiles/p3_probe.dir/p3_probe.cpp.o
+[100%] Linking CXX executable p3_probe
+[100%] Built target p3_probe
+[ 75%] Built target strata_core
+Scanning dependencies of target hitrate_probe
+[ 87%] Building CXX object realdata/CMakeFiles/hitrate_probe.dir/hitrate_probe.cpp.o
+[100%] Linking CXX executable hitrate_probe
+[100%] Built target hitrate_probe
+[ 75%] Built target strata_core
+Scanning dependencies of target p1b_probe
+[ 87%] Building CXX object realdata/CMakeFiles/p1b_probe.dir/p1b_probe.cpp.o
+[100%] Linking CXX executable p1b_probe
+[100%] Built target p1b_probe
+[ 60%] Built target strata_core
+[ 80%] Built target p3_probe
+Scanning dependencies of target test_p3
+[ 90%] Building CXX object realdata/CMakeFiles/test_p3.dir/test_p3.cpp.o
+~/.cache/strata_p3_build/src/paper/experiments/realdata/test_p3.cpp: In function ‘void __static_initialization_and_destruction_0(int, int)’:
+~/.cache/strata_p3_build/src/paper/experiments/realdata/test_p3.cpp:32:28: warning: ignoring return value of ‘int chdir(const char*)’, declared with attribute warn_unused_result [-Wunused-result]
+   32 | const int kChdir = (::chdir(tmpDir().c_str()), 0);
+      |                     ~~~~~~~^~~~~~~~~~~~~~~~~~
+[100%] Linking CXX executable test_p3
+[100%] Built target test_p3
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/build_make.json rc=0
+END 2026-10-18T13:42:10+09:00 rc=0 load=3.41 4.30 5.93

@@ -2,7 +2,7 @@
 \usepackage[authoryear,sort&compress,round]{natbib}
 \bibliographystyle{abbrvnat}
 \usepackage{float}
-\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc}
+\usetikzlibrary{positioning,arrows.meta,fit,backgrounds,calc,patterns}
 \usepgfplotslibrary{groupplots,colormaps}
 \pgfplotsset{discard if not/.style 2 args={y filter/.append code={%
   \edef\kjtempa{\thisrow{#1}}\edef\kjtempb{#2}\ifx\kjtempa\kjtempb\else\def\pgfmathresult{nan}\fi}},
@@ -17,19 +17,26 @@
 \newcommand{\lmiss}{l_{\mathrm{miss}}}
 \newcommand{\amin}{a_{\min}}
 \newcommand{\Nmin}{N_{\min}}
+\newcommand{\paramcols}{4}
+\setlength{\emergencystretch}{2em}
+\input{tables/e4_text}
+\input{tables/numbers_v2}
 \title{\sname: One Geometry-Free Persistence-and-Periodicity Engine for Selectable 2D/3D Lifelong LiDAR Mapping}
 \correspondingauthor{kangjmo91@gmail.com}
-\paperurl{https://github.com/kjungmo/strata}
+\paperurl{https://github.com/kjungmo/strata/tree/paper-v2}
 \author[1]{Jungmo Kang}
-\affil[1]{Independent Researcher, Seoul, Republic of Korea}
-\keywords{lifelong mapping, occupancy grids, voxel hashing, persistence filtering, FreMEn periodicity, ROS~2}
+\affil[1]{Independent Researcher, Seoul, Republic of Korea. ORCID: 0009-0002-0394-1861}
+\keywords{lifelong mapping, occupancy grids, sequential probability ratio test, persistence filtering, FreMEn periodicity, ROS~2}
 \begin{document}
 \input{sections/0_abstract}
 \maketitle
 \input{sections/1_introduction}
 \input{sections/2_related_works}
 \input{sections/3_method}
+\input{sections/3b_evidence}
 \input{sections/4_experiments}
+\input{sections/4b_calibration}
+\input{sections/4c_realdata}
 \input{sections/5_discussion}
 \input{sections/6_conclusion}
 \bibliography{main}

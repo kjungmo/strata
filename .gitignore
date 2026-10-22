@@ -2,3 +2,4 @@
 /install/
 /log/
 /paper/experiments/build/
+/paper/experiments/build_libcxx*

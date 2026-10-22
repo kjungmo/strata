@@ -1,0 +1,21 @@
+STEP validate_kth_05
+START 2026-10-18T11:16:08+09:00 host=DESKTOP-KCD7BRS load=5.14 5.74 5.81 cores=12
+COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+CMD <BUILD_DIR>/build/realdata/p3_probe kth-validate --dir <DATA_ROOT>/kth/05 --n 10
+frames_in_directory=321 first=002350.pcd last=002670.pcd
+002350.pcd points=125426 finite=125426 viewpoint=1 q_norm=1 range_median=12.1426 range_max=79.979 elev_deg=[-23.7197,3.24594]
+002351.pcd points=125231 finite=125231 viewpoint=1 q_norm=1 range_median=12.1267 range_max=79.9534 elev_deg=[-23.7147,3.24333]
+002352.pcd points=125236 finite=125236 viewpoint=1 q_norm=1 range_median=12.1313 range_max=79.9946 elev_deg=[-23.7138,3.25131]
+002353.pcd points=125274 finite=125274 viewpoint=1 q_norm=1 range_median=12.1323 range_max=79.9809 elev_deg=[-23.7143,3.24565]
+002354.pcd points=125349 finite=125349 viewpoint=1 q_norm=1 range_median=12.1331 range_max=79.9971 elev_deg=[-23.713,3.25018]
+002355.pcd points=125319 finite=125319 viewpoint=1 q_norm=1 range_median=12.1142 range_max=79.985 elev_deg=[-23.8091,3.25036]
+002356.pcd points=125382 finite=125382 viewpoint=1 q_norm=1 range_median=12.1269 range_max=79.9894 elev_deg=[-23.8045,3.24723]
+002357.pcd points=125217 finite=125217 viewpoint=1 q_norm=1 range_median=12.125 range_max=79.9563 elev_deg=[-23.7822,3.24722]
+002358.pcd points=125227 finite=125227 viewpoint=1 q_norm=1 range_median=12.1055 range_max=80.004 elev_deg=[-23.7129,3.24953]
+002359.pcd points=125057 finite=125057 viewpoint=1 q_norm=0.999999 range_median=12.1094 range_max=79.9945 elev_deg=[-23.7136,3.24869]
+VERDICT kth reader OK
+step validate_kth_05 rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/validate_kth_05.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/validate_kth_05.json rc=0
+END 2026-10-18T11:16:09+09:00 rc=0 load=5.14 5.74 5.81

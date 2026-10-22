@@ -1,0 +1,12 @@
+STEP spires_04_convert
+START 2026-10-18T21:23:54+09:00 host=DESKTOP-KCD7BRS load=5.71 5.10 5.58 cores=12
+COMMIT 4fe45f08f81b319115988d0d918b15c7c1575aac
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 4fe45f08f81b319115988d0d918b15c7c1575aac
+STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+CMD <BUILD_DIR>/build/realdata/p1b_probe spires-convert --zip <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-04/raw/lidar-clouds.zip --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-04/processed/trajectory/gt-tum.txt --dt 0 --out <OUT_DIR>/spires_04/cache.bin --meta <OUT_DIR>/spires_04/spires_convert.meta
+p1b_probe: ~/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-04/raw/lidar-clouds.zip: zip64 archives are not supported
+step spires_04_convert rc=1 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/spires_04_convert.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_04_convert.json rc=1
+END 2026-10-18T21:23:54+09:00 rc=1 load=5.71 5.10 5.58

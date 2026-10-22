@@ -1,0 +1,10 @@
+STEP smoke_kth00_eval_octomap_not_rejected
+START 2026-10-18T13:53:20+09:00 host=DESKTOP-KCD7BRS load=9.90 7.37 6.54 cores=12
+COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' kth --gt '<DATA_ROOT>/kth/00/gt_cloud.pcd' --map '<OUT_DIR>/smoke_kth00/octomap_not_rejected.pcd' > '<RESULTS_DIR>/smoke_kth00_octomap_not_rejected.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_kth00_eval_octomap_not_rejected.json rc=0
+END 2026-10-18T13:53:46+09:00 rc=0 load=10.62 7.74 6.69

@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "10.62 7.74 6.69 12/774 1065960",
+  "meminfo": {
+   "MemAvailable": "9987468 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31952016 kB"
+  },
+  "time": "2026-10-18T13:53:46+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "97.9 44368 exp_new",
+   "97.7 45212 exp_new",
+   "97.5 44476 exp_new",
+   "97.4 44352 exp_new",
+   "97.3 45284 exp_new"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' kth --gt '~/datasets/strata/kth/00/gt_cloud.pcd' --map '/mnt/d/wsl/strata/p3/smoke_kth00/octomap_not_rejected.pcd' > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/smoke_kth00_octomap_not_rejected.json'"
+ ],
+ "before": {
+  "loadavg": "9.90 7.37 6.54 12/797 1065808",
+  "meminfo": {
+   "MemAvailable": "10154288 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31952012 kB"
+  },
+  "time": "2026-10-18T13:53:21+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "97.8  4552 exp_new",
+   "97.5 25924 exp_new",
+   "97.3 25696 exp_new",
+   "97.2 25604 exp_new",
+   "97.1 25912 exp_new"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "commit": "38782a506cde55e95250c64cd87f17b8a5debac3",
+  "strata_core_tree_binary": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "strata_core_tree_head": "87bee34e3d6e7861d45eef80ad5069ff54fd12da",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 97
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 25.688,
+ "step": "smoke_kth00_eval_octomap_not_rejected"
+}

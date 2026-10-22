@@ -1,0 +1,5 @@
+STEP check_inputs
+START 2026-10-14T09:36:54+09:00 host=DESKTOP-KCD7BRS load=1.69 4.01 4.24 cores=12
+CMD bash <REALDATA_DIR>/check_realdata.sh <DATA_ROOT>
+OK: 148 files match the recorded sha256
+END 2026-10-14T09:37:06+09:00 rc=0 load=3.44 4.30 4.33

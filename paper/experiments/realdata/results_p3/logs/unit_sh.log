@@ -1,0 +1,12 @@
+STEP unit_sh
+START 2026-10-20T07:19:31+09:00 host=DESKTOP-KCD7BRS load=1.31 1.26 1.15 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD bash -c cd '<REALDATA_DIR>' && bash test_p3_not_run_split.sh && bash test_p3_step_names.sh
+OK: failed step -> skipped_repeat.tsv, never-run step -> not_run_steps.tsv
+OK: step names, spires_agree prefixes and finish_eval names carry p$PER
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/unit_sh.json rc=0
+END 2026-10-20T07:19:31+09:00 rc=0 load=1.31 1.26 1.15

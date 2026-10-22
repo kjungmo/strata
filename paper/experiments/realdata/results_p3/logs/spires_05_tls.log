@@ -1,0 +1,12 @@
+STEP spires_05_tls
+START 2026-10-19T11:50:28+09:00 host=DESKTOP-KCD7BRS load=1.59 1.54 2.82 cores=12
+COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 448b635d2e9aa3780d87ec76e7b001b6d3b19ae9
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD <BUILD_DIR>/build/realdata/p1b_probe spires-tls --pcd <DATA_ROOT>/spires/keble/ground_truth_map/keble-college/merged-cloud-1cm.pcd --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-05/processed/trajectory/gt-tum.txt --radius 30 --out-dir <OUT_DIR>/spires_05 --meta <OUT_DIR>/spires_05/spires_tls.meta
+2026-10-19T11:50:29+0900 reading the TLS map, keeping points within 30.000000 m of the Keble 02 track
+step spires_05_tls rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/spires_05_tls.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_05_tls.json rc=0
+END 2026-10-19T11:51:08+09:00 rc=0 load=1.23 1.45 2.74

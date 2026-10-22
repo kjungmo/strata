@@ -1,0 +1,6 @@
+STEP report
+START 2026-10-18T10:27:02+09:00 host=DESKTOP-KCD7BRS load=8.77 7.98 7.01 cores=12
+COMMIT 91532aac3b945adc6e7664fa6405d9c1ed69c472
+TREE_STATUS_PORCELAIN_LINES 7 (whole repository outside the result directories: 2)
+CMD python3 -I <REALDATA_DIR>/make_report_p1b.py --results-dir <RESULTS_DIR> --prereg-dir <REALDATA_DIR> --out <RESULTS_DIR>/P1B_REPORT.md
+END 2026-10-18T10:27:03+09:00 rc=0 load=8.77 7.98 7.01

@@ -1,0 +1,33 @@
+STEP validate_boreas_2020
+START 2026-10-18T14:51:08+09:00 host=DESKTOP-KCD7BRS load=4.03 3.40 6.13 cores=12
+COMMIT a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7
+STRATA_CORE_TREE d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
+STRATA_CORE_TREE_PINNED d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
+CMD <BUILD_DIR>/build/realdata/p3_probe boreas-validate --seq <DATA_ROOT>/boreas/boreas-2020-11-26-13-58 --ref <DATA_ROOT>/boreas/boreas-2020-11-26-13-58 --n 10
+frames=1736 first=1606417543533737.bin last=1606417723461609.bin
+origin_lat_rad=0.764143 origin_lon_rad=-1.38695 gps_rows_in_window=387 lidar_pose_rows_in_window=10
+T_applanix_lidar.txt t=(   0    0 0.13) yaw_deg=42.6035
+gps_x_calib_vs_lidar_poses: worst_position_diff_m=6.28106e-06 worst_rotation_diff_deg=0.000255421
+enu_from_latlon_vs_files (reference origin lat_deg=43.7821 lon_deg=-79.4661): rows=387 worst_horizontal_diff_m=0.0489338 mean_dx_m=-0.0260169 mean_dy_m=0.0414391
+first_row: file east,north=(1.12727e-05,-1.21723e-05) geodetic ENU at the reference origin=(0,0) (the old common frame moved the session by the geodetic part, 0 m)
+1606417543533737.bin bytes=5134224 bytes/24=213926 points=213926 range_median=23.908 range_max=248.088 z=[-6.74864,19.6495] intensity=[0,241] ring=[0,127] ring_integer_share=1 t=[-0.0518339,0.0518343] layout_ok
+1606417543637467.bin bytes=5128152 bytes/24=213673 points=213673 range_median=23.792 range_max=239.812 z=[-5.59877,20.7428] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.051743,0.0517421] layout_ok
+1606417543741196.bin bytes=5140968 bytes/24=214207 points=214207 range_median=23.824 range_max=247.736 z=[-5.69399,44.4933] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0518343,0.0518339] layout_ok
+1606417543844910.bin bytes=5116656 bytes/24=213194 points=213194 range_median=23.44 range_max=246.188 z=[-5.39264,19.4508] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0517275,0.0517271] layout_ok
+1606417543948624.bin bytes=5116536 bytes/24=213189 points=213189 range_median=23 range_max=247.452 z=[-4.83346,36.3004] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0518038,0.0518034] layout_ok
+1606417544052429.bin bytes=5133120 bytes/24=213880 points=213880 range_median=22.912 range_max=240.52 z=[-5.67092,25.0729] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0518186,0.0518191] layout_ok
+1606417544156159.bin bytes=5140392 bytes/24=214183 points=214183 range_median=22.588 range_max=246.636 z=[-5.63768,33.5415] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0517278,0.0517268] layout_ok
+1606417544259873.bin bytes=5144424 bytes/24=214351 points=214351 range_median=22.5 range_max=249.632 z=[-4.36463,19.3379] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0518346,0.0518336] layout_ok
+1606417544363678.bin bytes=5143920 bytes/24=214330 points=214330 range_median=22.6 range_max=247.12 z=[-5.61614,44.5707] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0518188,0.0518188] layout_ok
+1606417544467377.bin bytes=5124000 bytes/24=213500 points=213500 range_median=22.928 range_max=237.132 z=[-6.11353,30.3699] intensity=[0,255] ring=[0,127] ring_integer_share=1 t=[-0.0517275,0.0517271] layout_ok
+converted: scans=10 dropped_no_pose=0 points_used=1879379 out_of_range=259054 no_pose=0
+frame_consistency: frames 0 and 9 moved 2.25634 m between them (lidar_poses.csv)
+frame_consistency,lidar_poses.csv,points=188293,in_0.1m=0.397498,near_0.1m=0.80208,in_0.3m=0.757033,near_0.3m=0.950795
+frame_consistency,gps_x_calibration,points=188293,in_0.1m=0.397503,near_0.1m=0.802037,in_0.3m=0.757028,near_0.3m=0.9508
+frame_consistency,contrast_transposed_rotation,points=188293,in_0.1m=0.110078,near_0.1m=0.52404,in_0.3m=0.480793,near_0.3m=0.861885
+VERDICT boreas reader OK
+step validate_boreas_2020 rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/validate_boreas_2020.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/validate_boreas_2020.json rc=0
+END 2026-10-18T14:51:11+09:00 rc=0 load=4.03 3.40 6.13

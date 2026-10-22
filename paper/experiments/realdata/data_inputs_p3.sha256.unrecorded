@@ -1,0 +1,7 @@
+# files read by phase 3 whose sha256 was not recorded at download; the run record (p3_runlog.py run --hash-inputs) hashes them when they are read
+kth/05/gt_cloud.pcd
+kth/05/pcd/*.pcd
+kth/semindoor/gt_cloud.pcd
+kth/semindoor/pcd/*.pcd
+lilocbench/gt_x/lt_changes_0/gt_poses.txt
+lilocbench/gt_x/lt_changes_dynamics_0/gt_poses.txt

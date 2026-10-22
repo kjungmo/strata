@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "7.31 6.88 6.10 10/941 844822",
+  "meminfo": {
+   "MemAvailable": "7245032 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31873764 kB"
+  },
+  "time": "2026-10-18T11:34:11+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 141 151440 cc1plus",
+   " 117 204680 cc1plus",
+   " 117 220476 cc1plus",
+   " 117 201016 cc1plus",
+   " 117 213768 cc1plus"
+  ]
+ },
+ "argv": [
+  "python3",
+  "-I",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py",
+  "kth-selfcheck",
+  "--gt",
+  "~/datasets/strata/kth/00/gt_cloud.pcd"
+ ],
+ "before": {
+  "loadavg": "6.90 6.69 5.98 6/893 843827",
+  "meminfo": {
+   "MemAvailable": "5856588 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31873764 kB"
+  },
+  "time": "2026-10-18T11:33:06+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 115 308532 cc1plus",
+   " 105 621260 cc1plus",
+   " 100 1614808 cc1plus",
+   " 100 1715808 cc1plus",
+   "21.8 114052 python3"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "9848b41db22e7e4e9d51243878ab60aa13ec8387",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 27
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 65.221,
+ "step": "smoke_kth00_selfcheck"
+}

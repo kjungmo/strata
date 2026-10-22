@@ -1,0 +1,54 @@
+{
+ "after": {
+  "loadavg": "9.48 8.66 7.45 11/740 987816",
+  "meminfo": {
+   "MemAvailable": "10386504 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31948252 kB"
+  },
+  "time": "2026-10-18T13:11:14+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.5  6940 eskf_lever",
+   "99.5  6920 eskf_lever",
+   "99.5  6984 eskf_lever",
+   "99.5  6984 eskf_lever",
+   "99.5  7004 eskf_lever"
+  ]
+ },
+ "argv": [
+  "~/.cache/strata_p3_build/build/realdata/test_p3"
+ ],
+ "before": {
+  "loadavg": "9.48 8.66 7.45 11/740 987705",
+  "meminfo": {
+   "MemAvailable": "10390356 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31948252 kB"
+  },
+  "time": "2026-10-18T13:11:13+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.1  6940 eskf_lever",
+   "99.1  6920 eskf_lever",
+   "99.1  6984 eskf_lever",
+   "99.1  6984 eskf_lever",
+   "99.1  7004 eskf_lever"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "c9fa37104e833bee4efe61207893f5e3454ba85c",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 23
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.244,
+ "step": "unit_cpp"
+}

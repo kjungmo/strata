@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.16)
-project(strata VERSION 0.1.0 LANGUAGES CXX)
+project(strata VERSION 0.2.0 LANGUAGES CXX)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 17)
@@ -75,6 +75,9 @@ if(BUILD_TESTING)
   target_include_directories(test_tf_wait PRIVATE include)
   ament_add_gtest(test_input_status test/test_input_status.cpp)
   target_include_directories(test_input_status PRIVATE include)
+  ament_add_gtest(test_evidence_status test/test_evidence_status.cpp)
+  target_include_directories(test_evidence_status PRIVATE include)
+  target_link_libraries(test_evidence_status strata_core::strata_core)
 endif()
 
 ament_package()

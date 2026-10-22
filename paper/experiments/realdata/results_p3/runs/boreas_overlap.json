@@ -1,0 +1,63 @@
+{
+ "after": {
+  "loadavg": "4.03 3.41 6.12 4/863 1145824",
+  "meminfo": {
+   "MemAvailable": "9565628 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31939612 kB"
+  },
+  "time": "2026-10-18T14:51:17+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 117 317504 cc1plus",
+   "99.2  4152 e5_trajectory",
+   "17.7 82928 python3",
+   "16.2 76676 python3",
+   "13.0 81864 fusion_node_mai"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "boreas_overlap",
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "boreas-overlap",
+  "--seqs",
+  "~/datasets/strata/boreas/boreas-2020-11-26-13-58,~/datasets/strata/boreas/boreas-2021-04-08-12-44,~/datasets/strata/boreas/boreas-2021-06-17-17-52"
+ ],
+ "before": {
+  "loadavg": "4.03 3.40 6.13 5/861 1145563",
+  "meminfo": {
+   "MemAvailable": "9027708 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31939608 kB"
+  },
+  "time": "2026-10-18T14:51:11+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 731088 cc1plus",
+   "99.9  4152 e5_trajectory",
+   "17.9 82196 python3",
+   "16.4 76604 python3",
+   " 6.1 646292 2.1.299"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7",
+  "commit": "a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7",
+  "strata_core_tree_binary": "d8db00efc9e04d1c1880cd55cf75bd90a018b5c0",
+  "strata_core_tree_head": "d8db00efc9e04d1c1880cd55cf75bd90a018b5c0",
+  "uncommitted_in_experiment_dir": 1,
+  "uncommitted_in_repository": 29
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 6.43,
+ "step": "boreas_overlap"
+}

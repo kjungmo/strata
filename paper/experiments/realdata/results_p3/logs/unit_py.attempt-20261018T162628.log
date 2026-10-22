@@ -1,0 +1,48 @@
+STEP unit_py
+START 2026-10-18T16:09:56+09:00 host=DESKTOP-KCD7BRS load=6.02 5.39 4.19 cores=12
+COMMIT 040b5ece1f819ebaf00f965f4ec3e035a36d0d3a
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 040b5ece1f819ebaf00f965f4ec3e035a36d0d3a
+STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+CMD bash -c cd '<REALDATA_DIR>' && python3 -I -m unittest discover -s . -p 'test_p3*.py'
+.......................................~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:154: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmpmyjvdl7d/l.sha256' mode='w' encoding='UTF-8'>
+  open(lst, "w").write(f"# c\n{h(b'hello')}  5  a.bin\n{h(b'world')}  5  b.bin\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:109: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp77vp_kiu/root/_scripts/test_split/spires_verify.tsv' mode='w' encoding='UTF-8'>
+  open(root + "/_scripts/test_split/spires_verify.tsv", "w").write("\n".join(sp) + "\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:116: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp77vp_kiu/root/_scripts/test_split/boreas_verify_full.tsv' mode='w' encoding='UTF-8'>
+  open(root + "/_scripts/test_split/boreas_verify_full.tsv", "w").write("\n".join(bo) + "\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:118: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp77vp_kiu/root/kth/SHA256SUMS.txt' mode='w' encoding='UTF-8'>
+  open(root + "/kth/SHA256SUMS.txt", "w").write(f"{h(b'k0')}  00.zip\n{h(b'k5')}  05.zip\n{h(b'ks')}  semindoor.zip\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:121: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp77vp_kiu/root/lilocbench/bags_sha256.txt' mode='w' encoding='UTF-8'>
+  open(root + "/lilocbench/bags_sha256.txt", "w").write(f"{h(b'b1')}  bags/lt_changes_0.bag\n{h(b'b2')}  bags/mapping.bag\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:122: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp77vp_kiu/root/lilocbench/sha256.txt' mode='w' encoding='UTF-8'>
+  open(root + "/lilocbench/sha256.txt", "w").write(f"{h(b'gt')}  gt_poses_public.zip\n")
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:131: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp77vp_kiu/list.sha256' mode='r' encoding='UTF-8'>
+  paths = [l.split()[2] for l in open(out) if not l.startswith("#")]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:61: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp07i15rzk/runs/b.json' mode='r' encoding='UTF-8'>
+  return json.load(open(d + "/runs/b.json"))["git"]
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:76: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmpq9n8ufma/runs/bad.json' mode='r' encoding='UTF-8'>
+  self.assertEqual(json.load(open(d + "/runs/bad.json"))["returncode"], 7)
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+..~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:84: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmpsveuaw7m/runs/nohash.json' mode='r' encoding='UTF-8'>
+  rec = json.load(open(d + "/runs/nohash.json"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/test_p3_runlog.py:31: ResourceWarning: unclosed file <_io.TextIOWrapper name='/tmp/tmp_fg8f5mw/res/runs/unit.json' mode='r' encoding='UTF-8'>
+  rec = json.load(open(d + "/res/runs/unit.json"))
+ResourceWarning: Enable tracemalloc to get the object allocation traceback
+.
+----------------------------------------------------------------------
+Ran 46 tests in 4.951s
+
+OK
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/unit_py.json rc=0
+END 2026-10-18T16:10:01+09:00 rc=0 load=6.10 5.41 4.20

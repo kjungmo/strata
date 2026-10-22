@@ -1,0 +1,25 @@
+Replay of P1_DECISION_ADVICE section 1 through LayeredMap (evidence_model sprt, periodicity off, one window per step).
+Structure: static_0 cells labelled structure (all N >= 1). Clutter: dynamics_0 cells labelled free with H >= 1.
+S, R, U: share graduated, rejected, undecided. lat: windows to Static, p50/p90 (interpolated | by index).
+FS: clutter false-Static; FS<=m0 and FS>m0 split the clutter at hit rate H/N = m0.
+
+row 1 pure (m0 0.1500 m1 0.6500 alpha=beta 0.0100, T 1)
+  structure n=11027  S 0.8681 R 0.0664 U 0.0655  lat 4.0000/7.0000 | 4.0000/7.0000
+  clutter   n=24099  FS 0.0253  FS<=m0 0.0065 (n=21849)  FS>m0 0.2080 (n=2250)
+  structure rejected with N >= 5: 732, of which hit rate < m1: 337
+  controls (graduated share): near-wall free dynamics_0 0.0965 (n=3473), near-wall free static_0 0.0645 (n=6605), reference-free hit in static_0 0.0071 (n=34247)
+row 2 gate 24, floor at B (not the engine's rule) (m0 0.1500 m1 0.6500 alpha=beta 0.0100, T 24, floor at B)
+  structure n=11027  S 0.9146 R 0.0131 U 0.0723  lat 4.0000/10.0000 | 4.0000/10.0000
+  clutter   n=24099  FS 0.0346  FS<=m0 0.0078 (n=21849)  FS>m0 0.2947 (n=2250)
+row 3 gate 24, no lower clamp before the gate (the engine) (m0 0.1500 m1 0.6500 alpha=beta 0.0100, T 24)
+  structure n=11027  S 0.9044 R 0.0242 U 0.0714  lat 4.0000/8.0000 | 4.0000/8.0000
+  clutter   n=24099  FS 0.0279  FS<=m0 0.0065 (n=21849)  FS>m0 0.2351 (n=2250)
+row 4 pure (m0 0.1500 m1 0.6500 alpha=beta 0.0500, T 1)
+  structure n=11027  S 0.8653 R 0.0918 U 0.0429  lat 3.0000/4.0000 | 3.0000/4.0000
+  clutter   n=24099  FS 0.0315  FS<=m0 0.0105 (n=21849)  FS>m0 0.2347 (n=2250)
+row 5 pure (m0 0.3000 m1 0.6000 alpha=beta 0.0100, T 1)
+  structure n=11027  S 0.8297 R 0.0421 U 0.1282  lat 7.0000/14.0000 | 7.0000/14.0000
+  clutter   n=24099  FS 0.0112  FS<=m0 0.0029 (n=23387)  FS>m0 0.2837 (n=712)
+row 6 (W = 2) pure (m0 0.1000 m1 0.5500 alpha=beta 0.0100, T 1)
+  structure n=11027  S 0.8343 R 0.1346 U 0.0311  lat 3.0000/7.0000 | 3.0000/7.0000
+  clutter   n=24119  FS 0.0260  FS<=m0 0.0104 (n=22551)  FS>m0 0.2513 (n=1568)

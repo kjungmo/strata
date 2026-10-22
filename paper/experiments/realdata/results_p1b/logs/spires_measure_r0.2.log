@@ -1,0 +1,16 @@
+STEP spires_measure_r0.2
+START 2026-10-18T07:40:35+09:00 host=DESKTOP-KCD7BRS load=4.57 6.49 5.42 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe spires-measure --cache <OUT_DIR>/cache_keble02.bin --labels <OUT_DIR>/labels_keble02_r0.2.bin --res 0.2 --windows 10,20 --out-prefix <OUT_DIR>/keble02_r0.2
+2026-10-18T07:40:49+0900 spires-measure: 250 frames, 13125728 returns
+2026-10-18T07:41:04+0900 spires-measure: 500 frames, 25354917 returns
+2026-10-18T07:41:21+0900 spires-measure: 750 frames, 38479921 returns
+2026-10-18T07:41:40+0900 spires-measure: 1000 frames, 50509186 returns
+2026-10-18T07:41:58+0900 spires-measure: 1250 frames, 62615347 returns
+2026-10-18T07:42:17+0900 spires-measure: 1500 frames, 75204327 returns
+2026-10-18T07:42:30+0900 spires-measure: 1750 frames, 89895721 returns
+2026-10-18T07:42:47+0900 spires-measure: 2000 frames, 108273865 returns
+2026-10-18T07:43:00+0900 spires-measure: 2250 frames, 125221491 returns
+2026-10-18T07:43:12+0900 spires-measure: 2500 frames, 138970836 returns
+2026-10-18T07:43:30+0900 spires-measure: 2750 frames, 151632544 returns
+2026-10-18T07:43:45+0900 spires-measure: 3000 frames, 163806575 returns
+END 2026-10-18T07:43:51+09:00 rc=0 load=5.89 6.01 5.41

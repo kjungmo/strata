@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "1.31 1.26 1.15 1/1192 764141",
+  "meminfo": {
+   "MemAvailable": "9087728 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31978224 kB"
+  },
+  "time": "2026-10-20T07:19:31+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.7 437316 chrome",
+   " 2.9 562152 2.1.303",
+   " 1.4 521132 2.1.303",
+   " 1.2 54396 chrome",
+   " 0.1 78472 Xvfb"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "cd '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata' && bash test_p3_not_run_split.sh && bash test_p3_step_names.sh"
+ ],
+ "before": {
+  "loadavg": "1.31 1.26 1.15 1/1192 764096",
+  "meminfo": {
+   "MemAvailable": "9086692 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31978224 kB"
+  },
+  "time": "2026-10-20T07:19:31+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.7 437296 chrome",
+   " 2.9 562152 2.1.303",
+   " 1.4 521128 2.1.303",
+   " 1.2 54396 chrome",
+   " 0.1 78472 Xvfb"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 26
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.037,
+ "step": "unit_sh"
+}

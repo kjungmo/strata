@@ -1,0 +1,21 @@
+commit=134001ac35b5b8b67e5ccfa57d3151721dccc943
+binary_commit=134001ac35b5b8b67e5ccfa57d3151721dccc943
+strata_core_tree_head=c780639aec9402da556bd33b91ff9acbc06c0cd0
+strata_core_tree_binary=c780639aec9402da556bd33b91ff9acbc06c0cd0
+strata_core_tree_pinned=c780639aec9402da556bd33b91ff9acbc06c0cd0
+experiment_dir_uncommitted=0
+host=DESKTOP-KCD7BRS
+kernel=6.18.54.1-microsoft-standard-WSL2
+cores=12
+cpu=AMD Ryzen 5 5500GT with Radeon Graphics
+loadavg=1.28 1.25 1.15 1/1195 763465
+mem_available_kb=9020100
+compiler=c++ (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0
+cmake=cmake version 3.16.3
+python=Python 3.8.10
+numpy=1.17.4
+p3_probe_sha256=aa16aba44c6a146aba49ed25cfff46d4eb13fd31d2625c6e0403574f5046e4f6
+engine_has_sprt=1
+data_root=<DATA_ROOT>
+out_dir=<OUT_DIR>
+OK: 5231 files checked (size), 0 problems

@@ -1,0 +1,10 @@
+STEP spires_eval_04_sprt_low_end_r0.2_W10_p1
+START 2026-10-19T02:59:50+09:00 host=DESKTOP-KCD7BRS load=3.20 3.08 3.04 cores=12
+COMMIT 8a1e4d30430eb87d842fc550fbdbc90e25362f4d
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 8a1e4d30430eb87d842fc550fbdbc90e25362f4d
+STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' spires --counts '<OUT_DIR>/spires_04/counts_sprt_low_end_r0.2_W10_p1.csv' --latency '<OUT_DIR>/spires_04/counts_sprt_low_end_r0.2_W10_p1.csv.latency' > '<RESULTS_DIR>/spires_04_sprt_low_end_r0.2_W10_p1.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/spires_eval_04_sprt_low_end_r0.2_W10_p1.json rc=0
+END 2026-10-19T02:59:50+09:00 rc=0 load=3.20 3.08 3.04

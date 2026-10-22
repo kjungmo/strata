@@ -23,6 +23,33 @@ jobs:
           cmake --build build/core -j
           ( cd build/core && ctest --output-on-failure )
 
+  paper:
+    name: paper numbers and experiment reproduction (no ROS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake g++ libeigen3-dev libgtest-dev
+
+      # Every number the paper quotes against the committed CSVs, the generated tables
+      # against a fresh regeneration, and the pinned code directories against their tree ids.
+      - name: Number guard
+        run: python3 paper/experiments/number_guard.py
+
+      # Rebuilds the harness and reruns E0-E7 in both arms (E7 and the sprt E4 cell counts
+      # included): every committed result file must come out byte for byte (E4's wall-clock timings go to build/; its cell counts are compared).
+      - name: Rerun the experiments and compare with the committed results
+        run: bash paper/experiments/check_reproduction.sh
+
+      # evidence_model = legacy is the v0.1 arithmetic bit for bit: E0-E3, E5 and E6 name it and
+      # their committed CSVs must come out unchanged (E7 is new in 0.2.0).
+      - name: Legacy bit-equivalence on the committed E0-E3, E5, E6 results
+        run: bash paper/experiments/check_legacy_equivalence.sh
+
   ros-humble:
     name: ROS 2 Humble build, test and parameter binding
     runs-on: ubuntu-22.04
@@ -75,6 +102,14 @@ jobs:
             stop "$pid"
             if [ "$status" -ne 0 ]; then cat "launch_${backend}.log"; exit 1; fi
           done
+
+      - name: An unusable evidence configuration stops the node with a named message; legacy still starts
+        shell: bash
+        timeout-minutes: 5
+        run: |
+          source /opt/ros/humble/setup.bash
+          source install/setup.bash
+          bash scripts/check_evidence_params.sh
 
       - name: Feed each backend a synthetic scene and check the map it publishes
         shell: bash

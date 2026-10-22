@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "4.99 3.22 3.43 7/834 1298404",
+  "meminfo": {
+   "MemAvailable": "10098616 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31941020 kB"
+  },
+  "time": "2026-10-18T16:26:33+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.6 19192 lever_final2",
+   "99.5 19256 lever_final2",
+   "99.4 19228 lever_final2",
+   "16.0 107372 python3",
+   "15.3 81788 python3"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "cd '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata' && python3 -I -m unittest discover -s . -p 'test_p3*.py'"
+ ],
+ "before": {
+  "loadavg": "4.90 3.17 3.41 8/845 1298321",
+  "meminfo": {
+   "MemAvailable": "10190560 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31941020 kB"
+  },
+  "time": "2026-10-18T16:26:28+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.5 19076 lever_final2",
+   "99.4  9220 lever_final2",
+   "99.4 19256 lever_final2",
+   "99.3 19164 lever_final2",
+   "16.0 106776 python3"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
+  "commit": "6b654580eb8c4646d923f7f35a20fc1ff0c97926",
+  "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 17
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 5.038,
+ "step": "unit_py"
+}

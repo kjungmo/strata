@@ -12,8 +12,8 @@
 % ---- engine (geometry-free) ----
 \node[eng, minimum width=10.4cm, minimum height=15mm] (lm) at (0,0)
   {\textbf{\code{LayeredMap} + \code{PeriodicityModel}} \quad (shared, keyed only by \code{int64} \code{CellId})\\[2pt]
-   window counters $\to$ log-odds $+$ survival decay $\lambda$ $\to$ Schmitt trigger $[\pdem,\pgrad]$ $\to$ FreMEn-lite amplitude $a$ $\to$ prune\\[1pt]
-   \emph{Static} \;/\; \emph{Periodic} \;/\; \emph{Transient} \;/\; \emph{Unknown}};
+   window counters $\to$ sequential test $(m_0,m_1,\alpha,\beta)\to(\ell,A,B)$ \; [legacy: log-odds, decay $\lambda$, Schmitt trigger] $\to$ FreMEn-lite amplitude $a$ $\to$ prune\\[1pt]
+   \emph{Static} \;/\; \emph{Periodic} \;/\; \emph{Transient} \;/\; \emph{Intermittent} \;/\; \emph{Unknown}};
 % ---- backends ----
 \node[geo, below left=11mm and -48mm of lm, minimum width=4.9cm] (g2)
   {\textbf{\code{Grid2DBackend}}\\ $\kappa_{2\mathrm{D}}$: row-major array index\\ ray walk: integer Bresenham};
@@ -24,7 +24,7 @@
 % band labels
 \begin{scope}[on background layer]
 \node[fit=(lm)(g2)(v3), draw=blue!40, dashed, rounded corners=4pt, inner sep=6pt,
-  label={[lab, anchor=north east]north east:\code{strata\_core}: C++17 + Eigen, no ROS/PCL, 56 gtest cases}] (core) {};
+  label={[lab, anchor=north east]north east:\code{strata\_core}: C++17 + Eigen, no ROS/PCL, 114 gtest cases}] (core) {};
 \end{scope}
 % ---- ROS node ----
 \node[ros, below=12mm of core.south, minimum width=10.4cm] (node)

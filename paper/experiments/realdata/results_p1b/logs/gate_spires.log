@@ -1,0 +1,4 @@
+STEP gate_spires
+START 2026-10-18T07:38:33+09:00 host=DESKTOP-KCD7BRS load=7.29 7.67 5.60 cores=12
+CMD <BUILD_DIR>/realdata/p1b_probe gate-spires --cache <OUT_DIR>/cache_keble02.bin --meta <OUT_DIR>/gate_spires.meta
+END 2026-10-18T07:39:55+09:00 rc=0 load=4.91 6.82 5.47

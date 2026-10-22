@@ -1,4 +1,4 @@
-\begin{thebibliography}{46}
+\begin{thebibliography}{57}
 \providecommand{\natexlab}[1]{#1}
 \providecommand{\url}[1]{\texttt{#1}}
 \expandafter\ifx\csname urlstyle\endcsname\relax
@@ -28,11 +28,24 @@ P.~Biber and T.~Duckett.
 \newblock Dynamic maps for long-term operation of mobile service robots.
 \newblock In \emph{Robotics: Science and Systems I (RSS)}, Cambridge, MA, USA, 2005.
 
+\bibitem[Bogacz et~al.(2006)Bogacz, Brown, Moehlis, Holmes, and Cohen]{bogacz2006physics}
+R.~Bogacz, E.~Brown, J.~Moehlis, P.~Holmes, and J.~D. Cohen.
+\newblock The physics of optimal decision making: A formal analysis of models of performance in two-alternative forced-choice tasks.
+\newblock \emph{Psychological Review}, 113\penalty0 (4):\penalty0 700--765, 2006.
+\newblock \doi{10.1037/0033-295X.113.4.700}.
+
 \bibitem[Bresenham(1965)]{bresenham1965}
 J.~E. Bresenham.
 \newblock Algorithm for computer control of a digital plotter.
 \newblock \emph{IBM Systems Journal}, 4\penalty0 (1):\penalty0 25--30, 1965.
 \newblock \doi{10.1147/sj.41.0025}.
+
+\bibitem[Burnett et~al.(2023)Burnett, Yoon, Wu, Li, Zhang, Lu, Qian, Tseng, Lambert, Leung, Schoellig, and Barfoot]{burnett2022boreas}
+K.~Burnett, D.~J. Yoon, Y.~Wu, A.~Z. Li, H.~Zhang, S.~Lu, J.~Qian, W.-K. Tseng, A.~Lambert, K.~Y.~K. Leung, A.~P. Schoellig, and T.~D. Barfoot.
+\newblock Boreas: A multi-season autonomous driving dataset.
+\newblock \emph{The International Journal of Robotics Research}, 42\penalty0 (1--2):\penalty0 33--42, 2023.
+\newblock \doi{10.1177/02783649231160195}.
+\newblock arXiv:2203.10168.
 
 \bibitem[Chen and Sun(2026)]{chen2026layer}
 X.~Chen and B.~Sun.
@@ -46,9 +59,16 @@ D.~Duberg and P.~Jensfelt.
 \newblock \emph{IEEE Robotics and Automation Letters}, 5\penalty0 (4):\penalty0 6411--6418, 2020.
 \newblock \doi{10.1109/LRA.2020.3013861}.
 
+\bibitem[Duberg et~al.(2024)Duberg, Zhang, Jia, and Jensfelt]{duberg2024dufomap}
+D.~Duberg, Q.~Zhang, M.~Jia, and P.~Jensfelt.
+\newblock {DUFOMap}: Efficient dynamic awareness mapping.
+\newblock \emph{IEEE Robotics and Automation Letters}, 9\penalty0 (6):\penalty0 5038--5045, 2024.
+\newblock \doi{10.1109/LRA.2024.3387658}.
+\newblock arXiv:2403.01449.
+
 \bibitem[Gil et~al.(2025)Gil, Lee, Kim, and Kim]{gil2025elite}
 H.~Gil, D.~Lee, G.~Kim, and A.~Kim.
-\newblock {ELite}: Ephemerality meets {LiDAR}-based lifelong mapping.
+\newblock Ephemerality meets {LiDAR}-based lifelong mapping.
 \newblock In \emph{2025 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3312--3319, 2025.
 \newblock \doi{10.1109/ICRA55743.2025.11127618}.
 
@@ -67,14 +87,21 @@ A.~Hornung, K.~M. Wurm, M.~Bennewitz, C.~Stachniss, and W.~Burgard.
 \bibitem[Howard et~al.(2020)Howard, Ramdas, McAuliffe, and Sekhon]{howard2020timeuniform}
 S.~R. Howard, A.~Ramdas, J.~McAuliffe, and J.~Sekhon.
 \newblock Time-uniform {Chernoff} bounds via nonnegative supermartingales.
-\newblock \emph{Probability Surveys}, 17, 2020.
+\newblock \emph{Probability Surveys}, 17:\penalty0 257--317, 2020.
 \newblock \doi{10.1214/18-PS321}.
 
 \bibitem[Hsu et~al.(2012)Hsu, Kakade, and Zhang]{hsu2012tail}
 D.~Hsu, S.~Kakade, and T.~Zhang.
 \newblock A tail inequality for quadratic forms of subgaussian random vectors.
-\newblock \emph{Electronic Communications in Probability}, 17, 2012.
+\newblock \emph{Electronic Communications in Probability}, 17:\penalty0 1--6, 2012.
 \newblock \doi{10.1214/ECP.v17-2079}.
+
+\bibitem[Jia et~al.(2024)Jia, Zhang, Yang, Wu, Liu, and Jensfelt]{jia2024beautymap}
+M.~Jia, Q.~Zhang, B.~Yang, J.~Wu, M.~Liu, and P.~Jensfelt.
+\newblock {BeautyMap}: Binary-encoded adaptable ground matrix for dynamic points removal in global maps.
+\newblock \emph{IEEE Robotics and Automation Letters}, 9\penalty0 (7):\penalty0 6256--6263, 2024.
+\newblock \doi{10.1109/LRA.2024.3402625}.
+\newblock arXiv:2405.07283.
 
 \bibitem[Kim and Kim(2020)]{kim2020removert}
 G.~Kim and A.~Kim.
@@ -103,7 +130,7 @@ T.~Krajn\'{i}k, J.~P. Fentanes, G.~Cielniak, C.~Dondrup, and T.~Duckett.
 \bibitem[Krajn\'{i}k et~al.(2014{\natexlab{b}})Krajn\'{i}k, Santos, Seemann, and Duckett]{krajnik2014froctomap}
 T.~Krajn\'{i}k, J.~Santos, B.~Seemann, and T.~Duckett.
 \newblock {FROctomap}: An efficient spatio-temporal environment representation.
-\newblock In \emph{Advances in Autonomous Robotics Systems (TAROS 2014)}, Lecture Notes in Computer Science. Springer, 2014{\natexlab{b}}.
+\newblock In \emph{Advances in Autonomous Robotics Systems (TAROS 2014)}, volume 8717 of \emph{Lecture Notes in Computer Science}, pages 281--282, Cham, 2014{\natexlab{b}}. Springer.
 
 \bibitem[Krajn\'{i}k et~al.(2015)Krajn\'{i}k, Santos, and Duckett]{krajnik2015exploration}
 T.~Krajn\'{i}k, J.~M. Santos, and T.~Duckett.
@@ -129,11 +156,6 @@ T.~Krajn\'{i}k, T.~Vintr, S.~Molina, J.~P. Fentanes, G.~Cielniak, O.~M. Mozos, G
 \newblock \emph{IEEE Robotics and Automation Letters}, 4\penalty0 (4):\penalty0 3310--3317, 2019.
 \newblock \doi{10.1109/LRA.2019.2926682}.
 
-\bibitem[Labb\'{e} and Michaud(2019)]{labbe2019rtabmap}
-M.~Labb\'{e} and F.~Michaud.
-\newblock {RTAB}-map as an open-source lidar and visual {SLAM} library for large-scale and long-term online operation.
-\newblock \emph{Journal of Field Robotics}, 36\penalty0 (2):\penalty0 416--446, 2019.
-
 \bibitem[Lan and DeMets(1983)]{lan1983discrete}
 K.~K.~G. Lan and D.~L. DeMets.
 \newblock Discrete sequential boundaries for clinical trials.
@@ -145,6 +167,12 @@ H.~Lim, S.~Hwang, and H.~Myung.
 \newblock {ERASOR}: Egocentric ratio of pseudo occupancy-based dynamic object removal for static 3d point cloud map building.
 \newblock \emph{IEEE Robotics and Automation Letters}, 6\penalty0 (2):\penalty0 2272--2279, 2021.
 \newblock \doi{10.1109/LRA.2021.3061363}.
+
+\bibitem[Lorden(1971)]{lorden1971procedures}
+G.~Lorden.
+\newblock Procedures for reacting to a change in distribution.
+\newblock \emph{Annals of Mathematical Statistics}, 42\penalty0 (6):\penalty0 1897--1908, 1971.
+\newblock \doi{10.1214/aoms/1177693055}.
 
 \bibitem[Lu et~al.(2014)Lu, Hershberger, and Smart]{lu2014layered}
 D.~V. Lu, D.~Hershberger, and W.~D. Smart.
@@ -187,6 +215,12 @@ M.~Nie{\ss}ner, M.~Zollh\"ofer, S.~Izadi, and M.~Stamminger.
 \newblock \url{https://docs.ros.org/en/jazzy/Tutorials/Beginner-Client-Libraries/Pluginlib.html}, 2024.
 \newblock Accessed 2026-07-02.
 
+\bibitem[Page(1954)]{page1954continuous}
+E.~S. Page.
+\newblock Continuous inspection schemes.
+\newblock \emph{Biometrika}, 41\penalty0 (1/2):\penalty0 100--115, 1954.
+\newblock \doi{10.1093/biomet/41.1-2.100}.
+
 \bibitem[Palazzolo et~al.(2019)Palazzolo, Behley, Lottes, Gigu\`{e}re, and Stachniss]{palazzolo2019refusion}
 E.~Palazzolo, J.~Behley, P.~Lottes, P.~Gigu\`{e}re, and C.~Stachniss.
 \newblock {ReFusion}: 3d reconstruction in dynamic environments for {RGB-D} cameras exploiting residuals.
@@ -198,6 +232,13 @@ F.~Pomerleau, P.~Kr\"{u}si, F.~Colas, P.~Furgale, and R.~Siegwart.
 \newblock Long-term {3D} map maintenance in dynamic environments.
 \newblock In \emph{2014 IEEE International Conference on Robotics and Automation (ICRA)}, pages 3712--3719, 2014.
 \newblock \doi{10.1109/ICRA.2014.6907397}.
+
+\bibitem[Ramdas et~al.(2023)Ramdas, Gr{\"u}nwald, Vovk, and Shafer]{ramdas2023game}
+A.~Ramdas, P.~Gr{\"u}nwald, V.~Vovk, and G.~Shafer.
+\newblock Game-theoretic statistics and safe anytime-valid inference.
+\newblock \emph{Statistical Science}, 38\penalty0 (4):\penalty0 576--601, 2023.
+\newblock \doi{10.1214/23-STS894}.
+\newblock arXiv:2210.01948.
 
 \bibitem[Rosen et~al.(2016)Rosen, Mason, and Leonard]{rosen2016persistence}
 D.~M. Rosen, J.~Mason, and J.~J. Leonard.
@@ -212,8 +253,8 @@ J.~Saarinen, H.~Andreasson, and A.~J. Lilienthal.
 \bibitem[Saavedra-Ruiz et~al.(2025)Saavedra-Ruiz, Nashed, Gauthier, and Paull]{saavedraruiz2025perpetua}
 M.~Saavedra-Ruiz, S.~B. Nashed, C.~Gauthier, and L.~Paull.
 \newblock Perpetua: Multi-hypothesis persistence modeling for semi-static environments.
-\newblock arXiv:2507.18808, 2025.
-\newblock Accepted to IROS 2025.
+\newblock In \emph{2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 13843--13850, 2025.
+\newblock \doi{10.1109/IROS60139.2025.11247086}.
 
 \bibitem[Schmid et~al.(2024)Schmid, Abate, Chang, and Carlone]{schmid2024khronos}
 L.~Schmid, M.~Abate, Y.~Chang, and L.~Carlone.
@@ -244,6 +285,13 @@ E.~Stefanini, E.~Ciancolini, A.~Settimi, and L.~Pallottino.
 \newblock \url{https://github.com/strands-project/fremen}, 2017.
 \newblock Last commit December 2017; accessed 2026-09-30.
 
+\bibitem[Tao et~al.(2026)Tao, Mu{\~n}oz-Ba{\~n}{\'o}n, Zhang, Wang, Fu, and Fallon]{tao2024spires}
+Y.~Tao, M.~A. Mu{\~n}oz-Ba{\~n}{\'o}n, L.~Zhang, J.~Wang, L.~F.~T. Fu, and M.~Fallon.
+\newblock The {Oxford Spires} dataset: Benchmarking large-scale {LiDAR}-visual localisation, reconstruction and radiance field methods.
+\newblock \emph{The International Journal of Robotics Research}, 45\penalty0 (6):\penalty0 839--857, 2026.
+\newblock \doi{10.1177/02783649251369905}.
+\newblock arXiv:2411.10546.
+
 \bibitem[Thrun et~al.(2005)Thrun, Burgard, and Fox]{thrun2005probabilistic}
 S.~Thrun, W.~Burgard, and D.~Fox.
 \newblock \emph{Probabilistic Robotics}.
@@ -254,6 +302,23 @@ G.~D. Tipaldi, D.~Meyer-Delius, and W.~Burgard.
 \newblock Lifelong localization in changing environments.
 \newblock \emph{The International Journal of Robotics Research}, 32\penalty0 (14):\penalty0 1662--1678, 2013.
 \newblock \doi{10.1177/0278364913502830}.
+
+\bibitem[Trekel et~al.(2025)Trekel, Guadagnino, L{\"a}be, Wiesmann, Aguiar, Behley, and Stachniss]{trekel2025lilocbench}
+N.~Trekel, T.~Guadagnino, T.~L{\"a}be, L.~Wiesmann, P.~Aguiar, J.~Behley, and C.~Stachniss.
+\newblock Benchmark for evaluating long-term localization in indoor environments under substantial static and dynamic scene changes.
+\newblock In \emph{2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 10770--10777, 2025.
+\newblock \doi{10.1109/IROS60139.2025.11246416}.
+
+\bibitem[Wald(1947)]{wald1947sequential}
+A.~Wald.
+\newblock \emph{Sequential Analysis}.
+\newblock John Wiley \& Sons, New York, 1947.
+
+\bibitem[Wald and Wolfowitz(1948)]{wald1948optimum}
+A.~Wald and J.~Wolfowitz.
+\newblock Optimum character of the sequential probability ratio test.
+\newblock \emph{Annals of Mathematical Statistics}, 19\penalty0 (3):\penalty0 326--339, 1948.
+\newblock \doi{10.1214/aoms/1177730197}.
 
 \bibitem[Wilson(1927)]{wilson1927}
 E.~B. Wilson.
@@ -272,5 +337,12 @@ M.~Zechmeister and M.~K\"{u}rster.
 \newblock The generalised {Lomb-Scargle} periodogram: A new formalism for the floating-mean and {Keplerian} periodograms.
 \newblock \emph{Astronomy \& Astrophysics}, 496\penalty0 (2):\penalty0 577--584, 2009.
 \newblock \doi{10.1051/0004-6361:200811296}.
+
+\bibitem[Zhang et~al.(2023)Zhang, Duberg, Geng, Jia, Wang, and Jensfelt]{zhang2023dynamic}
+Q.~Zhang, D.~Duberg, R.~Geng, M.~Jia, L.~Wang, and P.~Jensfelt.
+\newblock A dynamic points removal benchmark in point cloud maps.
+\newblock In \emph{IEEE International Conference on Intelligent Transportation Systems (ITSC)}, pages 608--614, 2023.
+\newblock \doi{10.1109/ITSC57777.2023.10422094}.
+\newblock arXiv:2307.07260.
 
 \end{thebibliography}

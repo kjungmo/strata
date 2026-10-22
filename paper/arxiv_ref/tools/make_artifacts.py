@@ -374,12 +374,21 @@ with open(TAB / "fix.tex", "w") as f:
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
 # ---------------------------------------------------------------- E4
-e4 = rows("e4_throughput.csv")
-with open(DATA / "e4.dat", "w") as f:
-    f.write("backend extent us cells upd\n")
-    for r in e4:
-        f.write(f"{r['backend']} {r['extent']} {float(r['us_per_integrate']):.1f} {r['final_cells']} "
-                f"{float(r['cell_updates_per_sec'])/1e6:.3f}\n")
+# Cell counts and byte estimates are exact and come from e4_throughput.csv. Timings are
+# used only from recordings that measure_e4.sh marked valid (quiet host, pinned core,
+# warm-up discarded), and only if at least E4_MIN_RECORDINGS exist. If the ratio between
+# backends then still differs between recordings by more than E4_MAX_SPREAD at any
+# extent, or if there are too few valid recordings, the paper reports the direction of
+# the difference and the cell counts only. The rule was fixed before any quiet-host
+# recording was taken.
+E4_MIN_RECORDINGS = 3
+E4_MAX_SPREAD = 1.20
+EXTENTS = ("100", "250", "500")
+
+
+def med(v):
+    v = sorted(v)
+    return v[len(v) // 2] if len(v) % 2 else 0.5 * (v[len(v) // 2 - 1] + v[len(v) // 2])
 
 
 def mem(b):
@@ -390,37 +399,173 @@ def mem(b):
     return (f"{mb:.2f}" if mb < 10 else f"{mb:.1f}") + "~MB"
 
 
-def sci(x):
-    x = float(x)
-    e = len(str(int(x))) - 1
-    return f"${x/10**e:.2f}{{\\times}}10^{{{e}}}$"
+def e4_medians(path):
+    with open(path, newline="") as fh:
+        rs = [r for r in csv.DictReader(fh) if not r["backend"].startswith("#")]
+    return {(r["backend"], r["extent"]): float(r["us_per_integrate"]) for r in rs}
 
 
+def e4_ratios(m):
+    return [m[("voxel3d", x)] / m[("grid2d", x)] for x in EXTENTS]
+
+
+e4 = rows("e4_throughput.csv")
 by = {(r["backend"], r["extent"]): r for r in e4}
+cell_ratio = [float(by[("voxel3d", x)]["final_cells"]) / float(by[("grid2d", x)]["final_cells"]) for x in EXTENTS]
+
+# every timing file that exists: exploratory ones, and all recordings (valid or not)
+EXPL = RES / "e4_exploratory"
+with open(EXPL / "index.csv", newline="") as fh:
+    expl_files = [EXPL / r["file"] for r in csv.DictReader(fh)]
+recs = []
+RECDIR = RES / "e4_recordings"
+for d in sorted(RECDIR.iterdir()) if RECDIR.is_dir() else []:
+    if (d / "summary.csv").exists():
+        env = dict(l.split(": ", 1) for l in (d / "env.txt").read_text().splitlines() if ": " in l)
+        recs.append((d, env, e4_medians(d / "summary.csv")))
+valid = [r for r in recs if r[1]["valid"] == "yes"]
+invalid = [r for r in recs if r[1]["valid"] != "yes"]
+all_ratios = [e4_ratios(e4_medians(p)) for p in expl_files] + [e4_ratios(r[2]) for r in recs]
+n_all = len(all_ratios)
+direction_all = all(x > 1.0 for rr in all_ratios for x in rr)
+n_expl = len(expl_files) + len(invalid)
+
+vr = [e4_ratios(r[2]) for r in valid]
+spread = [max(rr[i] for rr in vr) / min(rr[i] for rr in vr) for i in range(3)] if valid else []
+full = len(valid) >= E4_MIN_RECORDINGS and max(spread) <= E4_MAX_SPREAD
+assert direction_all, "a timing file has voxel3d cheaper than grid2d at some extent: rewrite the E4 text by hand"
+
+
+def tex_num(x):
+    return thou(f"{x:.1f}")
+
+
 with open(TAB / "e4.tex", "w") as f:
-    f.write(HDR % "e4_throughput.csv")
+    f.write(HDR % "e4_throughput.csv, e4_recordings/, e4_exploratory/")
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{Cost of the shared engine under each backend (E4): 150 random hits per window, 20 windows, "
-            "resolution 1.0, periodicity off. Latency and throughput are single-machine wall-clock samples; "
-            "live-cell counts, ratios and memory (at %s~B per cell) are geometry-determined and reproducible. "
-            "Ratios are voxel3d over grid2d at equal extent; bold marks the cheaper backend.}\n" % e4[0]["bytes_per_cell"])
-    f.write("\\label{tab:e4}\n\\small\n\\begin{tabular}{llrrrr}\n\\toprule\n")
-    f.write("Backend & Extent & $\\mu$s / \\texttt{integrate} $\\downarrow$ & Cell updates/s & Live cells & Memory \\\\\n\\midrule\n")
-    for x in sorted({r["extent"] for r in e4}, key=int):
-        g, v = by[("grid2d", x)], by[("voxel3d", x)]
-        for r in (g, v):
-            us = thou(f"{float(r['us_per_integrate']):.1f}")
-            if r is g:
-                us = f"\\textbf{{{us}}}"
-            f.write(f"{tt(r['backend'])} & ${x}^2$ & {us} & {sci(r['cell_updates_per_sec'])} & "
-                    f"{thou(r['final_cells'])} & {mem(r['est_bytes'])} \\\\\n")
-        cr = float(v["us_per_integrate"]) / float(g["us_per_integrate"])
-        lr = float(v["final_cells"]) / float(g["final_cells"])
-        f.write(f"\\multicolumn{{2}}{{l}}{{\\quad\\emph{{ratio}}}} & \\emph{{{cr:.1f}$\\times$}} & & "
-                f"\\emph{{{lr:.1f}$\\times$}} & \\\\\n")
-        if x != "500":
+    if full:
+        f.write("\\caption{Cost of the shared engine under each backend (E4): 150 random hits per window, 20 windows, "
+                "resolution 1.0, periodicity off. Latency per \\texttt{integrate()} call: median over the %d quiet-host "
+                "recordings of each recording's median of 15 repeats, with the smallest and largest recording median in "
+                "brackets; it depends on the machine. Live-cell counts, their ratios and memory (at %s~B per cell) follow "
+                "from the seeded geometry and reproduce exactly. Ratios are voxel3d over grid2d at equal extent, the "
+                "latency ratio as its range over the recordings.}\n" % (len(valid), e4[0]["bytes_per_cell"]))
+        f.write("\\label{tab:e4}\n\\small\n\\begin{tabular}{llrrr}\n\\toprule\n")
+        f.write("Backend & Extent & $\\mu$s / \\texttt{integrate} [min, max] & Live cells & Memory \\\\\n\\midrule\n")
+    else:
+        f.write("\\caption{Size of the map each backend builds from the same number of hits (E4): 150 random hits per "
+                "window, 20 windows, resolution 1.0, periodicity off. Live-cell counts and memory (at %s~B per cell) "
+                "follow from the seeded geometry and reproduce exactly; the ratio is voxel3d over grid2d at equal "
+                "extent. No latency is tabulated (see text).}\n" % e4[0]["bytes_per_cell"])
+        f.write("\\label{tab:e4}\n\\small\n\\begin{tabular}{llrr}\n\\toprule\n")
+        f.write("Backend & Extent & Live cells & Memory \\\\\n\\midrule\n")
+    for i, x in enumerate(EXTENTS):
+        for b in ("grid2d", "voxel3d"):
+            r = by[(b, x)]
+            lat = ""
+            if full:
+                ms = [v[2][(b, x)] for v in valid]
+                lat = f"{tex_num(med(ms))} {{\\scriptsize[{thou(f'{min(ms):.0f}')}, {thou(f'{max(ms):.0f}')}]}} & "
+            f.write(f"{tt(b)} & ${x}^2$ & {lat}{thou(r['final_cells'])} & {mem(r['est_bytes'])} \\\\\n")
+        lat = ""
+        if full:
+            lat = f"\\emph{{{min(rr[i] for rr in vr):.1f}--{max(rr[i] for rr in vr):.1f}$\\times$}} & "
+        f.write(f"\\multicolumn{{2}}{{l}}{{\\quad\\emph{{ratio}}}} & {lat}\\emph{{{cell_ratio[i]:.1f}$\\times$}} & \\\\\n")
+        if x != EXTENTS[-1]:
             f.write("\\midrule\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+with open(DATA / "e4.dat", "w") as f:
+    f.write("backend extent cells us usminus usplus\n")
+    for b in ("grid2d", "voxel3d"):
+        for x in EXTENTS:
+            if full:
+                ms = [v[2][(b, x)] for v in valid]
+                f.write(f"{b} {x} {by[(b, x)]['final_cells']} {med(ms):.1f} {med(ms) - min(ms):.1f} {max(ms) - med(ms):.1f}\n")
+            else:
+                f.write(f"{b} {x} {by[(b, x)]['final_cells']} nan nan nan\n")
+
+AXIS = ("  symbolic x coords={100,250,500}, xtick=data, xticklabels={$100^2$,$250^2$,$500^2$},\n"
+        "  xlabel={nominal extent}, enlarge x limits=0.25, grid=major, grid style={gray!20}, ybar=1pt, /pgf/bar width=7pt, ymode=log,\n"
+        "  tick label style={font=\\scriptsize}, label style={font=\\small},\n"
+        "  legend style={font=\\scriptsize, at={(0.03,0.97)}, anchor=north west}, legend cell align=left")
+BARS = ("\\addplot[fill=blue!55, draw=blue!70!black%s] table[x=extent, y=%s%s, discard if not={backend}{grid2d}] {figures/data/e4.dat};\n"
+        "\\addplot[fill=orange!60, draw=orange!80!black, postaction={pattern=north east lines}%s] table[x=extent, y=%s%s, discard if not={backend}{voxel3d}] {figures/data/e4.dat};\n")
+with open(PKG / "figures" / "e4_cost.tex", "w") as f:
+    f.write(HDR % "e4_throughput.csv, e4_recordings/")
+    f.write("\\begin{figure}[t]\n\\centering\n\\begin{tikzpicture}\n")
+    if full:
+        eb = ", error bars/.cd, y dir=both, y explicit"
+        f.write("\\begin{groupplot}[group style={group size=2 by 1, horizontal sep=18mm},\n  width=0.46\\linewidth, height=0.34\\linewidth,\n" + AXIS + "]\n")
+        f.write("\\nextgroupplot[ylabel={$\\mu$s per \\code{integrate()}}]\n")
+        f.write(BARS % (eb, "us", ", y error minus=usminus, y error plus=usplus", eb, "us", ", y error minus=usminus, y error plus=usplus"))
+        f.write("\\legend{\\code{grid2d}, \\code{voxel3d}}\n\\nextgroupplot[ylabel={live cells at end of run}]\n")
+        f.write(BARS % ("", "cells", "", "", "cells", ""))
+        f.write("\\end{groupplot}\n\\end{tikzpicture}\n")
+        f.write("\\caption{\\textbf{Per-call cost and live-cell count (E4)}, log scale. Latency bars are the median over the "
+                "%d quiet-host recordings and whiskers span the recordings; the live-cell counts are exact. Plotted from "
+                "\\nolinkurl{results/e4_recordings/} and \\code{e4\\_throughput.csv}.}\n" % len(valid))
+    else:
+        f.write("\\begin{axis}[width=0.5\\linewidth, height=0.34\\linewidth, ylabel={live cells at end of run},\n" + AXIS + "]\n")
+        f.write(BARS % ("", "cells", "", "", "cells", ""))
+        f.write("\\legend{\\code{grid2d}, \\code{voxel3d} (hatched)}\n\\end{axis}\n\\end{tikzpicture}\n")
+        f.write("\\caption{\\textbf{Live-cell count at the end of the run (E4)}, log scale. The counts are exact and follow "
+                "from the seeded geometry. Plotted from \\code{e4\\_throughput.csv}.}\n")
+    f.write("\\label{fig:e4}\n\\end{figure}\n")
+
+
+def rng(i, rr):
+    return f"{min(r[i] for r in rr):.1f}--{max(r[i] for r in rr):.1f}"
+
+
+with open(TAB / "e4_text.tex", "w") as f:
+    f.write(HDR % "e4_throughput.csv, e4_recordings/, e4_exploratory/")
+    f.write("% E4 sentences that depend on the timing recordings; rule in tools/make_artifacts.py.\n")
+    proto = ("with \\nolinkurl{paper/experiments/measure_e4.sh}: the script refuses to start unless the 1-minute load "
+             "average is below 0.50, pins the benchmark to one core, discards one warm-up run per configuration, records "
+             "the load and the largest CPU consumers before and after, and marks a recording invalid when the load "
+             "afterwards is 1.50 or more")
+    if full:
+        env = valid[0][1]
+        gcc = env["compiler"].split()[-1]
+        f.write("\\newcommand{\\EfourSetup}{Its timings are %d separate recordings taken on a quiet host %s (an %s with %s "
+                "logical CPUs, GCC~%s, \\code{-O3}; every repeat and the environment are in \\nolinkurl{results/e4_recordings/}); "
+                "they are not claimed to be portable.}\n"
+                % (len(valid), proto, env["cpu"].replace(" with Radeon Graphics", ""), env["logical_cpus"], gcc))
+        f.write("\\newcommand{\\EfourResult}{At every tested extent \\code{grid2d}'s \\code{integrate()} is cheaper than "
+                "\\code{voxel3d}'s at the same nominal extent and hit rate. Over the %d quiet-host recordings the ratio of "
+                "median latencies is %s$\\times$ at $100^2$, %s$\\times$ at $250^2$ and %s$\\times$ at $500^2$ "
+                "(Table~\\ref{tab:e4}, Figure~\\ref{fig:e4}); the recordings agree to within a factor of %.2f. "
+                "In all %d timing files that exist, including %d taken earlier on a loaded host or marked invalid "
+                "(\\nolinkurl{results/e4_exploratory/}), \\code{grid2d} is the cheaper backend at every extent, but the "
+                "ratio in those files varies widely and is not used.}\n"
+                % (len(valid), rng(0, vr), rng(1, vr), rng(2, vr), max(spread), n_all, n_expl))
+        f.write("\\newcommand{\\EfourIntro}{\\code{grid2d} is cheaper per call than \\code{voxel3d} at every tested extent, "
+                "by %s$\\times$ to %s$\\times$ over %d quiet-host recordings on one machine, alongside}\n"
+                % (f"{min(min(r) for r in vr):.1f}", f"{max(max(r) for r in vr):.1f}", len(valid)))
+        f.write("\\newcommand{\\EfourLimit}{E4's timings are %d recordings on one quiet host and are not portable.}\n" % len(valid))
+    else:
+        if len(valid) >= E4_MIN_RECORDINGS:
+            why = ("The %d recordings taken on a quiet host %s still disagree on the ratio between the backends by more than "
+                   "20\\,\\%% (%s$\\times$ at $100^2$, %s$\\times$ at $250^2$, %s$\\times$ at $500^2$), so we report no "
+                   "latency and no ratio"
+                   % (len(valid), proto, rng(0, vr), rng(1, vr), rng(2, vr)))
+        else:
+            have = ("No such recording exists" if not valid else
+                    "%s such recording%s, fewer than the three we require"
+                    % (("One", "Two")[len(valid) - 1], " exists" if len(valid) == 1 else "s exist"))
+            why = ("Timings are to be taken on a quiet host %s. %s, so we report no latency and no ratio" % (proto, have))
+        f.write("\\newcommand{\\EfourSetup}{%s.}\n" % why)
+        f.write("\\newcommand{\\EfourResult}{In all %d timing files that exist, \\code{grid2d}'s \\code{integrate()} is "
+                "cheaper than \\code{voxel3d}'s at every tested extent. %s taken on a loaded host or "
+                "marked invalid, and in those the ratio of median latencies varies between files (%s$\\times$ at $100^2$), "
+                "so only the direction is reported; all files are kept in \\nolinkurl{results/e4_exploratory/} and "
+                "\\nolinkurl{results/e4_recordings/} (Table~\\ref{tab:e4}, Figure~\\ref{fig:e4}).}\n"
+                % (n_all, "All of them were" if n_expl == n_all else "%d of them were" % n_expl, rng(0, all_ratios)))
+        f.write("\\newcommand{\\EfourIntro}{\\code{grid2d} is cheaper per call than \\code{voxel3d} at every tested extent "
+                "in every timing recording, by a factor that we do not report because it was not measured reliably, alongside}\n")
+        f.write("\\newcommand{\\EfourLimit}{E4 reports no latency: its timing recordings establish only which backend is "
+                "cheaper per call.}\n")
 
 
 # ---------------------------------------------------------------- E5: trajectory level
@@ -508,11 +653,11 @@ with open(TAB / "e5_full.tex", "w") as f:
     f.write("\\begin{table}[H]\n\\centering\n")
     f.write("\\caption{All E5 held-out configurations: cells (of 2000) labelled Periodic at some window up to $N{=}1024$, "
             "and in parentheses the mean number of histories a cell began (pruning and re-creation). Columns: parameter set, "
-            "touch probability $q$, rule (S: single read-out, $\\delta{=}%g$; P: spent, $\\delta{=}%g$).}\n" % (DELTA0, DELTA))
+            "touch probability $q$, rule (S: single read-out, $\\delta{=}%g$; Sp: spent, $\\delta{=}%g$).}\n" % (DELTA0, DELTA))
     f.write("\\label{tab:e5full}\n\\scriptsize\n\\setlength{\\tabcolsep}{2.5pt}\n\\begin{tabular}{lcccccccc}\n\\toprule\n")
     f.write("& \\multicolumn{4}{c}{E2 parameters ($T{=}8$, $H{=}3$)} & \\multicolumn{4}{c}{Shipped ($T{=}24$, $H{=}2$)} \\\\\n"
             "\\cmidrule(lr){2-5}\\cmidrule(lr){6-9}\n")
-    f.write("Cell & $q{=}1$, S & $q{=}1$, P & $q{=}0.5$, S & $q{=}0.5$, P & $q{=}1$, S & $q{=}1$, P & $q{=}0.5$, S & $q{=}0.5$, P \\\\\n\\midrule\n")
+    f.write("Cell & $q{=}1$, S & $q{=}1$, Sp & $q{=}0.5$, S & $q{=}0.5$, Sp & $q{=}1$, S & $q{=}1$, Sp & $q{=}0.5$, S & $q{=}0.5$, Sp \\\\\n\\midrule\n")
     kinds = []
     for r in e5t:
         k = (r["kind"], r["m"])
@@ -534,38 +679,62 @@ with open(TAB / "e5_full.tex", "w") as f:
 
 e5d = rows("e5_doors.csv")
 e5f = rows("e5_confusion.csv")
+e6c = rows("e6_confusion.csv")
 with open(TAB / "e5_confusion.tex", "w") as f:
-    f.write(HDR % "e5_confusion.csv")
+    f.write(HDR % "e5_confusion.csv, e6_confusion.csv")
     f.write("\\begin{table}[t]\n\\centering\n")
-    f.write("\\caption{Four-class confusion on 20 held-out E2-style scenes (E2 parameters, touched every window), read "
-            "out after 64 windows with the shipped test. Per scene: 50 walls, 20 doors of each E2 type at random phase, "
-            "100 aperiodic Bernoulli(0.5) cells, and 50 dynamic cells crossed by a mover with probability 0.1 per window. "
-            "\\emph{Single P}: Periodic count under the single-read-out rule. Precision and recall use the decision classes "
-            "Static (walls), Periodic (doors) and not persistent (Transient or Unknown; aperiodic and dynamic cells), with "
-            "Wilson 95\\% intervals.}\n")
-    f.write("\\label{tab:e5conf}\n\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{lcccccc}\n\\toprule\n")
-    f.write("Ground truth (cells) & Static & Periodic & Transient & Unknown & Single P & Ever P, $N{=}256$ (Single / Spent) \\\\\n\\midrule\n")
+    f.write("\\caption{Four-class confusion on 20 held-out scenes, touched every window, read out after 64 windows with "
+            "the shipped test (E5 for the E2 parameters, E6 for the others; same seeds). Per scene: 50 walls, 20 doors "
+            "of each of three types at random phase, 100 aperiodic Bernoulli(0.5) cells, and 50 dynamic cells crossed by "
+            "a mover with probability 0.1 per window. Doors: 4-on/4-off, 2-on/6-off and 2-on/2-off for the E2 parameter "
+            "sets ($T{=}8$); the same duty cycles at three times the period for the shipped defaults ($T{=}24$). "
+            "\\emph{Single P}: Periodic count under the single-read-out rule and, after the slash, cells labelled Periodic "
+            "at some window up to 256 under the single-read-out and the spent rule (E2 parameters only). The recall of a "
+            "class over this fixed mix of cell types is a property of the mix, so counts are reported per type.}\n")
+    f.write("\\label{tab:e5conf}\n\\footnotesize\n\\setlength{\\tabcolsep}{4pt}\n\\begin{tabular}{llccccc}\n\\toprule\n")
+    f.write("Parameters & Ground truth (cells) & Static & Periodic & Transient & Unknown & Single P / ever P (single, spent) \\\\\n\\midrule\n")
     C = {(r["rule"], r["readout"], r["gt"]): r for r in e5f}
-    for g in ("wall", "door", "aperiodic", "dynamic"):
-        r = C[("spending", "64", g)]
-        r1 = C[("single_readout", "64", g)]
-        tot = sum(int(r[k]) for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
-        f.write(f"{g} ({tot}) & {r['pred_S']} & {r['pred_P']} & {r['pred_T']} & {r['pred_U']} & {r1['pred_P']} & "
-                f"{C[('single_readout', '256', g)]['ever_periodic']} / {C[('spending', '256', g)]['ever_periodic']} \\\\\n")
-    f.write("\\midrule\n")
-    get = lambda g, k: int(C[("spending", "64", g)][k])
-    gts = ("wall", "door", "aperiodic", "dynamic")
-    predS = sum(get(g, "pred_S") for g in gts)
-    predP = sum(get(g, "pred_P") for g in gts)
-    predN = sum(get(g, "pred_T") + get(g, "pred_U") for g in gts)
-    tpS, tpP = get("wall", "pred_S"), get("door", "pred_P")
-    tpN = sum(get(g, "pred_T") + get(g, "pred_U") for g in ("aperiodic", "dynamic"))
-    nS = sum(get("wall", k) for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
-    nP = sum(get("door", k) for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
-    nN = sum(get(g, k) for g in ("aperiodic", "dynamic") for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
-    f.write("\\multicolumn{7}{l}{Precision / recall (95\\% intervals)} \\\\\n")
-    for lab, tp, pr, gt in (("Static", tpS, predS, nS), ("Periodic", tpP, predP, nP), ("Not persistent", tpN, predN, nN)):
-        f.write(f"\\multicolumn{{7}}{{l}}{{\\quad {lab}: {tp/pr:.3f} {ci(tp, pr)} / {tp/gt:.3f} {ci(tp, gt)}}} \\\\\n")
+    C6 = {(r["params"], r["readout"], r["gt"]): r for r in e6c}
+    names = (("e2", "E2 ($\\lambda{=}1$)"), ("e2_decay097", "E2 with $\\lambda{=}0.97$"), ("shipped", "Shipped defaults"))
+    for key, lab in names:
+        for g in ("wall", "door", "aperiodic", "dynamic"):
+            r = C6[(key, "64", g)]
+            tot = sum(int(r[k]) for k in ("pred_S", "pred_P", "pred_T", "pred_U"))
+            extra = "--"
+            if key == "e2":
+                extra = (f"{C[('single_readout', '64', g)]['pred_P']} / "
+                         f"{C[('single_readout', '256', g)]['ever_periodic']}, {C[('spending', '256', g)]['ever_periodic']}")
+            f.write(f"{lab if g == 'wall' else ''} & {g} ({tot}) & {r['pred_S']} & {r['pred_P']} & {r['pred_T']} & "
+                    f"{r['pred_U']} & {extra} \\\\\n")
+        k_, n_ = int(C6[(key, "64", "aperiodic")]["pred_S"]), 2000
+        f.write(f"\\multicolumn{{7}}{{l}}{{\\quad aperiodic cells falsely Static: {k_/n_:.3f} {ci(k_, n_)} (Wilson 95\\%); "
+                f"after 256 windows {C6[(key, '256', 'aperiodic')]['pred_S']} of 2000}} \\\\\n")
+        if key != "shipped":
+            f.write("\\midrule\n")
+    f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
+
+# ---------------------------------------------------------------- E6: Static share of Bernoulli(m) cells
+e6s = rows("e6_static_vs_m.csv")
+S6 = {(r["params"], f"{float(r['m']):.2f}"): r for r in e6s}
+with open(TAB / "e6.tex", "w") as f:
+    f.write(HDR % "e6_static_vs_m.csv")
+    f.write("\\begin{table}[t]\n\\centering\n")
+    f.write("\\caption{Bernoulli($m$) cells labelled Static (E6): of 2000 cells per entry (10 seeds of 200), touched every "
+            "window, the number Static after 256 windows and, in parentheses, the number Static at some window up to 256. "
+            "\\emph{Shipped, symmetric}: the shipped defaults with $\\lmiss=-\\lhit$. $m^\\dagger$ is the mean-field "
+            "threshold of Remark~\\ref{rem:drift}. E3 scores Bernoulli(0.6) cells as walls, for which Static is the "
+            "correct label; E5 scores Bernoulli(0.5) cells as clutter, for which it is an error.}\n")
+    f.write("\\label{tab:e6}\n\\footnotesize\n\\setlength{\\tabcolsep}{5pt}\n\\begin{tabular}{ccccc}\n\\toprule\n")
+    sets = (("e2", "E2 ($\\lambda{=}1$)"), ("e2_decay097", "E2, $\\lambda{=}0.97$"), ("shipped", "Shipped"),
+            ("shipped_sym", "Shipped, symmetric"))
+    f.write("$m$ & " + " & ".join(l for _, l in sets) + " \\\\\n\\midrule\n")
+    f.write("$m^\\dagger$ & " + " & ".join(f"{float(S6[(k, '0.50')]['mean_field_threshold']):.3f}" for k, _ in sets) + " \\\\\n\\midrule\n")
+    for m in ("0.10", "0.20", "0.25", "0.30", "0.35", "0.40", "0.50", "0.60", "0.70", "0.80"):
+        f.write(f"{m} & " + " & ".join(f"{S6[(k, m)]['static_256']} ({S6[(k, m)]['ever_static_256']})" for k, _ in sets) + " \\\\\n")
     f.write("\\bottomrule\n\\end{tabular}\n\\end{table}\n")
 
 print("wrote", sorted(p.name for p in DATA.iterdir()), "and tables e0 e1 e2 e3 e3_full e4 e5 e5_choice e5_confusion e5_full fix")
+
+# sequential-test and real-data tables and the number macros of those parts
+import runpy  # noqa: E402
+runpy.run_path(str(Path(__file__).resolve().with_name("make_v2_artifacts.py")), run_name="__main__")

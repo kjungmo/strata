@@ -1,0 +1,13 @@
+dataset,res_m,W,status,windows_closed,seconds,peak_rss_kb
+lil_mapping,0.05,10,ok,1217,31.37654242,241648
+lil_static_0,0.05,10,ok,898,40.24733442,185344
+lil_dynamics_0,0.05,10,ok,240,6.26634949,58856
+lil_mapping,0.05,2,ok,6089,91.58957738,241592
+lil_static_0,0.05,2,ok,4491,85.22513789,185396
+lil_dynamics_0,0.05,2,ok,1200,14.44876603,59168
+lil_mapping,0.1,10,ok,1217,15.70119245,236468
+lil_static_0,0.1,10,ok,898,15.75636422,177020
+lil_dynamics_0,0.1,10,ok,240,3.324369586,51396
+lil_mapping,0.1,2,ok,6089,21.6996352,236532
+lil_static_0,0.1,2,ok,4491,23.39044859,177228
+lil_dynamics_0,0.1,2,ok,1200,3.942499318,51424

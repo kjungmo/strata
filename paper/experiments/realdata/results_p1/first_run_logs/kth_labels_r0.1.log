@@ -1,0 +1,4 @@
+STEP kth_labels_r0.1
+START 2026-10-14T09:37:12+09:00 host=DESKTOP-KCD7BRS load=4.23 4.44 4.38 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe kth-labels --gt <DATA_ROOT>/kth/00/gt_cloud.pcd --dir <DATA_ROOT>/kth/00 --res 0.1 --ground-h 0.30 --ego-radius 3.01 --out <DATA_ROOT>/p1/kth00/labels_r0.1.bin --meta <DATA_ROOT>/p1/kth00/labels_r0.1.meta
+END 2026-10-14T09:37:21+09:00 rc=0 load=5.10 4.62 4.43

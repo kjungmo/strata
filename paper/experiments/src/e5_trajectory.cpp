@@ -53,7 +53,7 @@ void wilson(int k, int n, double& lo, double& hi) {
 }
 
 LayeredMapParams e2Params() {  // identical to e2_periodicity.cpp params() except the rule
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1; p.l_hit = 1.0; p.l_miss = -1.0; p.l_min = -5.0; p.l_max = 5.0;
   p.survival_decay = 1.0; p.graduate_prob = 0.9; p.demote_prob = 0.4;
   p.min_observations = 5; p.prune_prob = 0.05; p.enable_periodicity = true;
@@ -62,7 +62,7 @@ LayeredMapParams e2Params() {  // identical to e2_periodicity.cpp params() excep
   return p;
 }
 LayeredMapParams shippedParams() {  // library defaults, one window per tick
-  LayeredMapParams p;
+  LayeredMapParams p; p.evidence_model = eval::armModel();   // legacy: the committed v0.1 results; sprt: the shipped test
   p.layer_interval = 1;
   return p;
 }
@@ -178,17 +178,20 @@ const char* cname(CellClass c) {
     case CellClass::Transient: return "T";
     case CellClass::Periodic: return "P";
     case CellClass::Static: return "S";
+    case CellClass::Intermittent: return "I";
   }
   return "?";
 }
 }  // namespace
 
-int main() {
+int main(int argc, char** argv) {
+  if (!eval::parseArm(argc, argv)) return 2;
+  const bool sprt = eval::sprtArm();
   const std::vector<std::pair<std::string, LayeredMapParams>> psets = {
       {"e2", e2Params()}, {"shipped", shippedParams()}};
 
   // ---------------------------------------------------------------- (1) calibration
-  eval::Csv cal("results/e5_calibration.csv");
+  eval::Csv cal(eval::armPath("results/e5_calibration.csv"));
   cal.header("delta,params,touch,m,cells,ever_1024,wilson_hi_1024,mean_lives");
   cal.row("#seed", kCalSeed, "", "", "", "", "", "");
   std::vector<double> worst_hi(kDeltas.size(), 0.0);
@@ -209,7 +212,7 @@ int main() {
         }
   }
   // detection cost on calibration seeds (reported, not part of the rule)
-  eval::Csv calc("results/e5_calibration_choice.csv");
+  eval::Csv calc(eval::armPath("results/e5_calibration_choice.csv"));
   calc.header("delta,worst_wilson_hi_1024,worst_ever_count,door_e2_p8_median,door_shipped_p24_median,meets_target,selected");
   int chosen = -1;
   for (std::size_t i = 0; i < kDeltas.size(); ++i) if (worst_hi[i] <= kTarget) chosen = int(i);
@@ -226,7 +229,7 @@ int main() {
   const std::vector<Rule> rules = {{"single_readout", 0.1, false}, {"spending", kChosen, true}};
 
   // ---------------------------------------------------------------- (2) held-out evaluation
-  eval::Csv ev("results/e5_trajectory.csv");
+  eval::Csv ev(eval::armPath("results/e5_trajectory.csv"));
   ev.header("rule,delta,params,touch,kind,m,cells,ever_64,ever_256,ever_1024,"
             "wilson_lo_1024,wilson_hi_1024,labelled,cell_windows,per_window_rate,"
             "per_window_ci_hi,mean_lives,mean_lives_reaching_T,bound_delta_x_lives");
@@ -257,7 +260,7 @@ int main() {
   }
 
   // detection delay on held-out seeds, both rules
-  eval::Csv dd("results/e5_doors.csv");
+  eval::Csv dd(eval::armPath("results/e5_doors.csv"));
   dd.header("rule,delta,params,door,period,on,flip,runs,median_first_n,never");
   dd.row("#seed", kEvalSeed + 95000, "", "", "", "", "", "", "", "");
   struct D { std::string ps; std::string name; int period, on; double flip; };
@@ -280,13 +283,16 @@ int main() {
   // Bernoulli(0.5) cells and 50 dynamic cells (a mover crosses the cell in a window
   // with probability 0.1). Correct labels: wall -> Static, door -> Periodic,
   // aperiodic and dynamic -> Transient or Unknown (not persistent, not periodic).
-  eval::Csv cf("results/e5_confusion.csv");
-  cf.header("rule,delta,readout,gt,pred_S,pred_P,pred_T,pred_U,ever_periodic");
-  cf.row("#seed", kEvalSeed + 97000, "scenes", 20, "", "", "", "", "");
+  eval::Csv cf(eval::armPath("results/e5_confusion.csv"));
+  // pred_U: erased or not yet known; pred_I (sprt arm only): read out as Intermittent.
+  cf.header(sprt ? "rule,delta,readout,gt,pred_S,pred_P,pred_T,pred_U,pred_I,ever_periodic"
+                 : "rule,delta,readout,gt,pred_S,pred_P,pred_T,pred_U,ever_periodic");
+  if (sprt) cf.row("#seed", kEvalSeed + 97000, "scenes", 20, "", "", "", "", "", "");
+  else cf.row("#seed", kEvalSeed + 97000, "scenes", 20, "", "", "", "", "");
   const std::vector<std::string> gts = {"wall", "door", "aperiodic", "dynamic"};
   for (const auto& r : rules) {
     std::vector<std::vector<std::vector<int>>> cnt(
-        2, std::vector<std::vector<int>>(4, std::vector<int>(4, 0)));
+        2, std::vector<std::vector<int>>(4, std::vector<int>(5, 0)));
     std::vector<std::vector<int>> ever(2, std::vector<int>(4, 0));
     const std::vector<int> readouts = {64, 256};
     for (int s = 0; s < 20; ++s) {
@@ -323,7 +329,7 @@ int main() {
           for (std::size_t c = 0; c < cells.size(); ++c) {
             const CellClass k = lm.classify(c);
             const int col = k == CellClass::Static ? 0 : k == CellClass::Periodic ? 1
-                          : k == CellClass::Transient ? 2 : 3;
+                          : k == CellClass::Transient ? 2 : k == CellClass::Intermittent ? 4 : 3;
             ++cnt[q][cells[c].gt][col];
             ever[q][cells[c].gt] += evp[q][c];
           }
@@ -332,8 +338,12 @@ int main() {
     }
     for (int q = 0; q < 2; ++q)
       for (int g = 0; g < 4; ++g)
-        cf.row(r.name, r.delta, q == 0 ? 64 : 256, gts[g], cnt[q][g][0], cnt[q][g][1],
-               cnt[q][g][2], cnt[q][g][3], ever[q][g]);
+        if (sprt)
+          cf.row(r.name, r.delta, q == 0 ? 64 : 256, gts[g], cnt[q][g][0], cnt[q][g][1],
+                 cnt[q][g][2], cnt[q][g][3], cnt[q][g][4], ever[q][g]);
+        else
+          cf.row(r.name, r.delta, q == 0 ? 64 : 256, gts[g], cnt[q][g][0], cnt[q][g][1],
+                 cnt[q][g][2], cnt[q][g][3], ever[q][g]);
   }
 
   std::cout << "E5: selected spending delta=" << kChosen << "\n";

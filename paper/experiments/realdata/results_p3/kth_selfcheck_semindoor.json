@@ -1,0 +1,25 @@
+{
+ "DA_oracle_ceiling": 94.41698648834043,
+ "dynamic_points_within_tol_of_a_static_point": 31742,
+ "gt_static_only": {
+  "AA": 97.16840355194708,
+  "DA": 94.41698648834043,
+  "HA": 97.12833039308816,
+  "SA": 100.0,
+  "gt_dynamic": 568546,
+  "gt_static": 25945776,
+  "map_points": 25945776,
+  "tol_m": 0.05
+ },
+ "remove_nothing": {
+  "AA": 0.0,
+  "DA": 0.0,
+  "HA": 0.0,
+  "SA": 100.0,
+  "gt_dynamic": 568546,
+  "gt_static": 25945776,
+  "map_points": 26514322,
+  "tol_m": 0.05
+ }
+}
+SELFCHECK PASS

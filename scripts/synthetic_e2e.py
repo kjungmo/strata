@@ -23,7 +23,7 @@ One window is `layer_interval` scans, or `window_period_s` of message time with
 on window boundaries. --drop F withholds a deterministic share F of the scans while
 time runs on, as a lossy best-effort link would; the node's /diagnostics must then
 report about F lost. Scan-counted windows stretch under loss and detune the door
-(--expect-detuned checks that negative control); time windows keep it periodic. Door cells are tested only where an open-door ray
+(--expect-detuned checks that negative control: the door is not Periodic and is Static in some published map); time windows keep it periodic. Door cells are tested only where an open-door ray
 actually walks through them (the backend's own Bresenham line or half-voxel march):
 a door cell the ray skips is never observed free, so it rightly graduates to Static.
 This is a ROS-path test (topics -> node -> map), not a field result: it shows the shipped parameters classify a clean scene as the
@@ -287,8 +287,14 @@ def check_grid(maps, final, detuned=False):
     f100, n100 = frac(door, v, lambda x: x == 100)
     if detuned:   # negative control: the stretched windows no longer match period_windows
         results.append((n75 == 0, f'negative control: door cells Periodic (75): {n75}/{len(door)} (need 0)'))
-        results.append((f100 >= 0.95, f'negative control: door cells Static (100): {n100}/{len(door)} '
-                                      f'= {f100:.3f} (need >= 0.95)'))
+        # Unrecognised, the door is taken for structure while it is closed. The legacy rule keeps it
+        # Static (f100 >= 0.95 in the final map); the sequential test demotes it again in the open phase,
+        # so "Static in the final map" depends on the phase the run ends in, and Static in some published
+        # map is the phase-free reading. Either one passes; both are printed.
+        ever100 = sum(1 for c in door if any(val(m)(c) == 100 for m in maps))
+        results.append((f100 >= 0.95 or ever100 >= 0.95 * len(door),
+                        f'negative control: door cells Static (100): {n100}/{len(door)} = {f100:.3f} in the final map, '
+                        f'{ever100}/{len(door)} in some of {len(maps)} maps (need >= 0.95 in one of the two)'))
     else:
         results.append((f75 >= 0.95, f'door cells Periodic (75): {n75}/{len(door)} = {f75:.3f} (need >= 0.95; '
                                      f'{len(skipped)} door cells the open-door ray skips are not tested)'))
@@ -359,9 +365,10 @@ def check_voxel(maps, final, size, detuned=False):
     results.append((n / len(wall) >= 0.95,
                     f'wall voxels in the static map: {n}/{len(wall)} = {n / len(wall):.3f} (need >= 0.95)'))
     n = len(door & static_final)
-    if detuned:   # negative control: the door graduates into the static map
-        results.append((n / len(door) >= 0.95, f'negative control: door voxels in the final static map: '
-                                               f'{n}/{len(door)} (need >= 0.95)'))
+    if detuned:   # negative control: the door graduates into the static map (in some map: see check_grid)
+        n_ever = len(door & static_ever)
+        results.append((n_ever / len(door) >= 0.95, f'negative control: door voxels in some static map: '
+                                                    f'{n_ever}/{len(door)} (need >= 0.95)'))
     else:
         results.append((n == 0, f'door voxels in the final static map: {n}/{len(door)} (need 0; '
                                 f'{len(skipped)} door voxels the open-door ray skips are not tested)'))
@@ -490,7 +497,7 @@ def main():
     ap.add_argument('--check-timeout', action='store_true',
                     help='after the stream, wait input_timeout_s and expect an ERROR status')
     ap.add_argument('--expect-detuned', action='store_true',
-                    help='negative control: expect the door Static, not Periodic (scan windows under loss)')
+                    help='negative control: expect the door not Periodic and Static in some published map (scan windows under loss)')
     ap.add_argument('--check-map-server', action='store_true',
                     help='grid2d: load the saved YAML in nav2_map_server and compare the map it serves, '
                          'cell by cell, with the last map the node published')

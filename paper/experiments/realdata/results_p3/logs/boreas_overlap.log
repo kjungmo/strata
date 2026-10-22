@@ -1,0 +1,30 @@
+STEP boreas_overlap
+START 2026-10-18T14:51:11+09:00 host=DESKTOP-KCD7BRS load=4.03 3.40 6.13 cores=12
+COMMIT a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT a5e6e63cc2ae2a584af7dfef0fac2c18b02f1fe7
+STRATA_CORE_TREE d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
+STRATA_CORE_TREE_PINNED d8db00efc9e04d1c1880cd55cf75bd90a018b5c0
+CMD <BUILD_DIR>/build/realdata/p3_probe boreas-overlap --seqs <DATA_ROOT>/boreas/boreas-2020-11-26-13-58,<DATA_ROOT>/boreas/boreas-2021-04-08-12-44,<DATA_ROOT>/boreas/boreas-2021-06-17-17-52
+boreas-2020-11-26-13-58 frames=1736 pose_rows_in_slice=1736 frames_without_pose_row=0 gps_rows_in_slice=36386 origin_lat_deg=43.7821 origin_lon_deg=-79.4661 first_row_east,north=(1.12727e-05,-1.21723e-05)
+enu_check,boreas-2020-11-26-13-58,rows=36386,worst_horizontal_diff_m=0.0550876,mean_dx_m=-0.0214951,mean_dy_m=0.0470807,first_row_geodetic_enu_at_reference=(0|0),limit_m=0.1,ok
+pose_convention,boreas-2020-11-26-13-58,rows=36386,moving_rows=33541,forward_minus_velocity_deg_p10/p50/p90=1.17131|1.54477|2.12097,worst_quadrant_median_deg=1.76884,quadrant_rows=14799|3753|11624|3365,gyro_corr=0.999995,gyro_rows=33536,limits_deg=4,gyro_min=0.99,ok
+boreas-2021-04-08-12-44 frames=1736 pose_rows_in_slice=1736 frames_without_pose_row=0 gps_rows_in_slice=36385 origin_lat_deg=43.7821 origin_lon_deg=-79.4662 first_row_east,north=(-4.30229,-0.148687)
+enu_check,boreas-2021-04-08-12-44,rows=36385,worst_horizontal_diff_m=0.055097,mean_dx_m=-0.0207415,mean_dy_m=0.0480315,first_row_geodetic_enu_at_reference=(-4.3022|-0.148672),limit_m=0.1,ok
+pose_convention,boreas-2021-04-08-12-44,rows=36385,moving_rows=30009,forward_minus_velocity_deg_p10/p50/p90=1.18923|1.57658|2.31396,worst_quadrant_median_deg=1.77141,quadrant_rows=11387|3869|11134|3619,gyro_corr=0.999997,gyro_rows=30005,limits_deg=4,gyro_min=0.99,ok
+boreas-2021-06-17-17-52 frames=1736 pose_rows_in_slice=1736 frames_without_pose_row=0 gps_rows_in_slice=36385 origin_lat_deg=43.7822 origin_lon_deg=-79.4661 first_row_east,north=(-0.449872,0.820963)
+enu_check,boreas-2021-06-17-17-52,rows=36385,worst_horizontal_diff_m=0.0551081,mean_dx_m=-0.0214079,mean_dy_m=0.0471316,first_row_geodetic_enu_at_reference=(-0.449873|0.820955),limit_m=0.1,ok
+pose_convention,boreas-2021-06-17-17-52,rows=36385,moving_rows=32983,forward_minus_velocity_deg_p10/p50/p90=1.16938|1.5676|2.15267,worst_quadrant_median_deg=1.60853,quadrant_rows=14724|4000|10719|3540,gyro_corr=0.999993,gyro_rows=32978,limits_deg=4,gyro_min=0.99,ok
+tile_m=10 rule: pass if every ordered pair has share_near >= 0.8 in the shared file frame
+frame,a,b,tiles_a,tiles_b,share_a_in_b,share_b_in_a,share_a_near_b,share_b_near_a
+file,boreas-2020-11-26-13-58,boreas-2021-04-08-12-44,167,144,0.838323,0.972222,0.898204,1
+file,boreas-2020-11-26-13-58,boreas-2021-06-17-17-52,167,175,0.964072,0.92,1,0.994286
+file,boreas-2021-04-08-12-44,boreas-2021-06-17-17-52,144,175,0.972222,0.8,1,0.885714
+altitude_pair,a,b,pairs_within_3m,median_dz_m(b-a),p10_dz_m,p90_dz_m
+altitude,boreas-2020-11-26-13-58,boreas-2021-04-08-12-44,1565,0.042451,0.021941,0.111297
+altitude,boreas-2020-11-26-13-58,boreas-2021-06-17-17-52,1704,0.0409937,0.0186817,0.131979
+altitude,boreas-2021-04-08-12-44,boreas-2021-06-17-17-52,1691,-0.00929033,-0.028369,0.0348135
+VERDICT boreas shared frame and tile overlap PASS (enu agreement of every session: ok; tile overlap: ok; rotation convention of every session: ok)
+step boreas_overlap rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/boreas_overlap.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/boreas_overlap.json rc=0
+END 2026-10-18T14:51:17+09:00 rc=0 load=4.03 3.41 6.12

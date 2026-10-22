@@ -1,0 +1,10 @@
+STEP lil_eval_lt_changes_dynamics_0_sprt_low_end_p1
+START 2026-10-18T16:32:01+09:00 host=DESKTOP-KCD7BRS load=5.83 5.06 4.20 cores=12
+COMMIT 724ecf40e15870f8ed1d459142da03ed212c7f4b
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 724ecf40e15870f8ed1d459142da03ed212c7f4b
+STRATA_CORE_TREE bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+STRATA_CORE_TREE_PINNED bf96e78bb16d164f02768fc7ae1738bb5bd35d2e
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' lil --dump '<OUT_DIR>/lil/dump_lt_changes_dynamics_0_sprt_low_end_p1.csv' --res 0.05 > '<RESULTS_DIR>/lil_lt_changes_dynamics_0_sprt_low_end_p1.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/lil_eval_lt_changes_dynamics_0_sprt_low_end_p1.json rc=0
+END 2026-10-18T16:32:03+09:00 rc=0 load=5.83 5.06 4.20

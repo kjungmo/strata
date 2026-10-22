@@ -1,0 +1,76 @@
+{
+ "after": {
+  "loadavg": "6.25 6.67 7.14 7/1021 1700678",
+  "meminfo": {
+   "MemAvailable": "8686616 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31222568 kB"
+  },
+  "time": "2026-10-19T00:55:36+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 106 1157968 pytest",
+   "99.6 13268 exp_lever_new3",
+   "99.6 13416 exp_lever_new3",
+   "99.6 13400 exp_lever_new3",
+   "99.6 13416 exp_lever_new3"
+  ]
+ },
+ "argv": [
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "arm-eval",
+  "--cache",
+  "/mnt/d/wsl/strata/p3/spires_04/cache.bin",
+  "--labels",
+  "/mnt/d/wsl/strata/p3/spires_04/labels_r0.2.bin",
+  "--arm",
+  "elite_like",
+  "--res",
+  "0.2",
+  "--window",
+  "20",
+  "--periodicity",
+  "1",
+  "--format",
+  "counts",
+  "--out",
+  "/mnt/d/wsl/strata/p3/spires_04/counts_elite_like_r0.2_W20_p1.csv",
+  "--meta",
+  "/mnt/d/wsl/strata/p3/spires_04/counts_elite_like_r0.2_W20_p1.meta"
+ ],
+ "before": {
+  "loadavg": "8.47 7.68 7.08 7/1018 1680403",
+  "meminfo": {
+   "MemAvailable": "9527260 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31229204 kB"
+  },
+  "time": "2026-10-19T00:36:10+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 102 239864 pytest",
+   "99.7  3456 gap_2011666",
+   "99.4 19332 exp_lever_new2",
+   "99.3 19344 exp_lever_new2",
+   "99.1 19360 exp_lever_new2"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
+  "commit": "e3cf02866252670fd0f5c7e298d66d7275aef0b0",
+  "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 63
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 1165.538,
+ "step": "spires_04_elite_like_r0.2_W20_p1"
+}

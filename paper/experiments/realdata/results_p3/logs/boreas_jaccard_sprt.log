@@ -1,0 +1,10 @@
+STEP boreas_jaccard_sprt
+START 2026-10-20T22:00:14+09:00 host=DESKTOP-KCD7BRS load=2.02 2.06 2.07 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' jaccard --ids '<OUT_DIR>/boreas/sprt_independent_s0_static.ids' '<OUT_DIR>/boreas/sprt_independent_s1_static.ids' '<OUT_DIR>/boreas/sprt_independent_s2_static.ids' --observed '<OUT_DIR>/boreas/sprt_independent_s0_observed.ids' '<OUT_DIR>/boreas/sprt_independent_s1_observed.ids' '<OUT_DIR>/boreas/sprt_independent_s2_observed.ids' --res 0.2 > '<RESULTS_DIR>/boreas_sprt_independent.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/boreas_jaccard_sprt.json rc=0
+END 2026-10-20T22:00:31+09:00 rc=0 load=2.10 2.07 2.08

@@ -1,0 +1,14 @@
+commit=91532aac3b945adc6e7664fa6405d9c1ed69c472
+tree_dirty_files_outside_results=0
+host=DESKTOP-KCD7BRS
+kernel=6.18.54.1-microsoft-standard-WSL2
+cores=12
+cpu=AMD Ryzen 5 5500GT with Radeon Graphics
+loadavg=8.77 7.98 7.01 15/762 704906
+mem_available_kb=8865852
+compiler=c++ (Ubuntu 9.4.0-1ubuntu1~20.04.2) 9.4.0
+cmake=cmake version 3.16.3
+python=Python 3.8.10
+numpy=1.17.4
+data_root=<DATA_ROOT>
+out_dir=<OUT_DIR>

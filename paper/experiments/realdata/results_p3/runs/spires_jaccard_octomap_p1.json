@@ -1,0 +1,59 @@
+{
+ "after": {
+  "loadavg": "3.73 2.81 4.18 2/1322 390851",
+  "meminfo": {
+   "MemAvailable": "8636632 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "32595424 kB"
+  },
+  "time": "2026-10-19T18:57:38+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "27.2 76364 python3",
+   "26.5 76380 python3",
+   "25.5 76444 python3",
+   "13.8 80632 fusion_node_mai",
+   "13.8 80972 fusion_node_mai"
+  ]
+ },
+ "argv": [
+  "bash",
+  "-c",
+  "python3 -I '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_eval.py' jaccard --ids '/mnt/d/wsl/strata/p3/spires_agree_octomap_p1_s0_static.ids' '/mnt/d/wsl/strata/p3/spires_agree_octomap_p1_s1_static.ids' '/mnt/d/wsl/strata/p3/spires_agree_octomap_p1_s2_static.ids' --observed '/mnt/d/wsl/strata/p3/spires_agree_octomap_p1_s0_observed.ids' '/mnt/d/wsl/strata/p3/spires_agree_octomap_p1_s1_observed.ids' '/mnt/d/wsl/strata/p3/spires_agree_octomap_p1_s2_observed.ids' --res 0.2 > '~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/spires_agree_octomap_p1.json'"
+ ],
+ "before": {
+  "loadavg": "3.53 2.75 4.17 3/1336 390829",
+  "meminfo": {
+   "MemAvailable": "8709640 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "32595424 kB"
+  },
+  "time": "2026-10-19T18:57:35+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "27.1 75748 python3",
+   "26.1 75772 python3",
+   "24.5 75836 python3",
+   "13.2 80576 fusion_node_mai",
+   "13.0 80916 fusion_node_mai"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "commit": "448b635d2e9aa3780d87ec76e7b001b6d3b19ae9",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 2,
+  "uncommitted_in_repository": 137
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 3.531,
+ "step": "spires_jaccard_octomap_p1"
+}

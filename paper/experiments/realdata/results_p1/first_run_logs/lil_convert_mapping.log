@@ -1,0 +1,4 @@
+STEP lil_convert_mapping
+START 2026-10-14T09:37:21+09:00 host=DESKTOP-KCD7BRS load=5.10 4.62 4.43 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe lil-convert --bag <DATA_ROOT>/lilocbench/bags/mapping.bag --gt <DATA_ROOT>/lilocbench/gt_x/mapping/gt_poses.txt --deskew 1 --out <DATA_ROOT>/p1/lil/cache_mapping.bin --meta <DATA_ROOT>/p1/lil/cache_mapping.meta
+END 2026-10-14T09:37:38+09:00 rc=0 load=6.37 4.95 4.55

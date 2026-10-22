@@ -1,0 +1,4 @@
+STEP lil_reference_r0.10
+START 2026-10-18T05:55:25+09:00 host=DESKTOP-KCD7BRS load=1.71 2.22 4.53 cores=12
+CMD <BUILD_DIR>/realdata/hitrate_probe lil-reference --cache <DATA_ROOT>/p1/lil/cache_mapping.bin --res 0.10 --min-touches 10 --occ 0.5 --free 0.05 --margin 1 --out <DATA_ROOT>/p1/lil/ref_r0.10.bin --meta <DATA_ROOT>/p1/lil/ref_r0.10.meta
+END 2026-10-18T05:55:42+09:00 rc=0 load=2.86 2.45 4.56

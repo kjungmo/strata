@@ -1,0 +1,9 @@
+STEP smoke_lil_refexport
+START 2026-10-18T11:44:41+09:00 host=DESKTOP-KCD7BRS load=3.71 4.32 5.19 cores=12
+COMMIT b545319e62b428685551e0aa05d15b9967146071
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT b545319e62b428685551e0aa05d15b9967146071
+CMD <BUILD_DIR>/build/realdata/p3_probe ref-export --labels <DATA_ROOT>/p1/lil/ref_r0.05.bin --res 0.05 --out <OUT_DIR>/smoke_lil/ref_r0.05.csv
+cells=109043 grid_width=1200
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_lil_refexport.json rc=0
+END 2026-10-18T11:44:41+09:00 rc=0 load=3.71 4.32 5.19

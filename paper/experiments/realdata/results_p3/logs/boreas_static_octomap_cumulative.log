@@ -1,0 +1,10 @@
+STEP boreas_static_octomap_cumulative
+START 2026-10-20T15:09:06+09:00 host=DESKTOP-KCD7BRS load=2.26 2.24 2.29 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD <BUILD_DIR>/build/realdata/p3_probe static-export --caches <OUT_DIR>/boreas/cache_boreas-2020-11-26-13-58.bin,<OUT_DIR>/boreas/cache_boreas-2021-04-08-12-44.bin,<OUT_DIR>/boreas/cache_boreas-2021-06-17-17-52.bin --arm octomap --res 0.2 --window 10 --periodicity 0 --mode cumulative --out-prefix <OUT_DIR>/boreas/octomap_cumulative --meta <OUT_DIR>/boreas/octomap_cumulative.meta
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/boreas_static_octomap_cumulative.json rc=0
+END 2026-10-20T16:38:35+09:00 rc=0 load=2.09 2.09 2.09

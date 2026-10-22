@@ -1,0 +1,12 @@
+# Real data and converted caches never enter the repository (licences allow statistics, not data).
+*.pcd
+*.bag
+*.bin
+*.zip
+*.npy
+*.cells.csv
+cells_*.csv
+# build trees and python litter
+build*/
+__pycache__/
+*.pyc

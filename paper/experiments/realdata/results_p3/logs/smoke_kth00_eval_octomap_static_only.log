@@ -1,0 +1,10 @@
+STEP smoke_kth00_eval_octomap_static_only
+START 2026-10-18T13:52:13+09:00 host=DESKTOP-KCD7BRS load=3.49 5.93 6.05 cores=12
+COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 38782a506cde55e95250c64cd87f17b8a5debac3
+STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+STRATA_CORE_TREE_PINNED 87bee34e3d6e7861d45eef80ad5069ff54fd12da
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' kth --gt '<DATA_ROOT>/kth/00/gt_cloud.pcd' --map '<OUT_DIR>/smoke_kth00/octomap_static_only.pcd' > '<RESULTS_DIR>/smoke_kth00_octomap_static_only.json'
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/smoke_kth00_eval_octomap_static_only.json rc=0
+END 2026-10-18T13:53:20+09:00 rc=0 load=9.90 7.37 6.54

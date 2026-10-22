@@ -13,7 +13,8 @@ class Grid2DBackend : public MapBackend {
   void closeWindows(int k) override;
   std::size_t staticCellCount() const override { return layered_.staticCells().size(); }
   std::size_t transientCellCount() const override { return layered_.transientCells().size(); }
-  // Renders static 100, periodic 75, transient obstacle 50 (hit in the open window,
+  std::size_t intermittentCellCount() const override { return layered_.intermittentCells().size(); }
+  // Renders static 100, periodic 75, transient or intermittent obstacle 50 (hit in the open window,
   // last observed as a hit, or live evidence leaning occupied, p > 0.5), free 0 (a ray
   // has cleared the cell and its last observation was free), never observed -1. The
   // bits live outside the classifier, so a pruned cell keeps them: free means "last
@@ -21,6 +22,8 @@ class Grid2DBackend : public MapBackend {
   GridMap toOccupancyGrid() const;
   bool observedFree(int gx, int gy) const;
   const LayeredMap& layered() const { return layered_; }
+  // Forwards to LayeredMap::setWindowObserver (read-only window observer).
+  void setWindowObserver(WindowObserver* observer) { layered_.setWindowObserver(observer); }
   const GridMeta& meta() const { return meta_; }
  private:
   void raycastClear(int gx0, int gy0, int gx1, int gy1);

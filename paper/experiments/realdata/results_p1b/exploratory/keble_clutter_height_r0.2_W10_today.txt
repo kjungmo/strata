@@ -1,0 +1,4 @@
+clutter cells with N >= 5: 15864; q90 overall 1.0000
+below -1.8 m                  609 cells (  3.8 %)  q90 1.0000
+person band -1.8..+0.5 m     5059 cells ( 31.9 %)  q90 1.0000
+above +0.5 m                10196 cells ( 64.3 %)  q90 1.0000

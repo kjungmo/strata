@@ -1,0 +1,57 @@
+{
+ "after": {
+  "loadavg": "1.34 1.26 1.16 1/1170 763841",
+  "meminfo": {
+   "MemAvailable": "9145940 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31978224 kB"
+  },
+  "time": "2026-10-20T07:19:27+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.7 437324 chrome",
+   " 3.0 13800 python3",
+   " 2.9 561884 2.1.303",
+   " 1.4 521100 2.1.303",
+   " 1.2 54396 chrome"
+  ]
+ },
+ "argv": [
+  "~/.cache/strata_p3_build/build/realdata/test_p3"
+ ],
+ "before": {
+  "loadavg": "1.34 1.26 1.16 1/1170 763682",
+  "meminfo": {
+   "MemAvailable": "9152132 kB",
+   "MemTotal": "12249904 kB",
+   "SwapFree": "31978224 kB"
+  },
+  "time": "2026-10-20T07:19:26+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 3.7 437324 chrome",
+   " 2.9 561884 2.1.303",
+   " 1.4 521100 2.1.303",
+   " 1.2 54396 chrome",
+   " 0.1 78472 Xvfb"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "commit": "134001ac35b5b8b67e5ccfa57d3151721dccc943",
+  "strata_core_tree_binary": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "strata_core_tree_head": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 18
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.783,
+ "step": "unit_cpp"
+}

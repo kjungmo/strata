@@ -1,0 +1,22 @@
+STEP validate_spires_keble03
+START 2026-10-18T11:16:04+09:00 host=DESKTOP-KCD7BRS load=5.07 5.73 5.81 cores=12
+COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 774812177c00c9279717c552d1fc38a43d0bcf62
+CMD <BUILD_DIR>/build/realdata/p3_probe spires-validate --zip <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-03/raw/lidar-clouds.zip --gt <DATA_ROOT>/spires/keble/sequences/2024-03-12-keble-college-03/processed/trajectory/gt-tum.txt --dt 0 --n 10
+members=2867 first=lidar-clouds/1710256033.970548000.pcd last=lidar-clouds/1710256319.814613000.pcd gt_poses=7343 gt_span=[1.71026e+09,1.71026e+09]
+lidar-clouds/1710256033.970548000.pcd bytes=2668960 points=55518 finite=55518 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.444 range_max=59.948 pose_ok=0 (before the first GT pose) kept=0
+lidar-clouds/1710256034.070343000.pcd bytes=2664016 points=55415 finite=55415 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.428 range_max=59.94 pose_ok=1 kept=53007
+lidar-clouds/1710256034.170642000.pcd bytes=2667856 points=55495 finite=55495 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.436 range_max=59.94 pose_ok=1 kept=53045
+lidar-clouds/1710256034.270196000.pcd bytes=2674240 points=55628 finite=55628 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.44 range_max=59.92 pose_ok=1 kept=53172
+lidar-clouds/1710256034.370182000.pcd bytes=2678944 points=55726 finite=55726 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.456 range_max=59.936 pose_ok=1 kept=53236
+lidar-clouds/1710256034.470148000.pcd bytes=2681536 points=55780 finite=55780 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.472 range_max=59.952 pose_ok=1 kept=53298
+lidar-clouds/1710256034.570096000.pcd bytes=2693344 points=56026 finite=56026 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.504 range_max=59.944 pose_ok=1 kept=53454
+lidar-clouds/1710256034.669858000.pcd bytes=2693392 points=56027 finite=56027 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.54 range_max=59.936 pose_ok=1 kept=53395
+lidar-clouds/1710256034.769930000.pcd bytes=2691616 points=55990 finite=55990 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.54 range_max=59.956 pose_ok=1 kept=53367
+lidar-clouds/1710256034.869985000.pcd bytes=2695456 points=56070 finite=56070 has_timestamp=1 name_time=1.71026e+09 point_time=[1.71026e+09,1.71026e+09] range_median=6.576 range_max=59.948 pose_ok=1 kept=53268
+scans_before_first_gt_pose=1 scans=10 dropped_no_pose=1 points_used=479242 points_no_pose=53068
+VERDICT spires reader OK
+step validate_spires_keble03 rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/validate_spires_keble03.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/validate_spires_keble03.json rc=0
+END 2026-10-18T11:16:04+09:00 rc=0 load=5.07 5.73 5.81

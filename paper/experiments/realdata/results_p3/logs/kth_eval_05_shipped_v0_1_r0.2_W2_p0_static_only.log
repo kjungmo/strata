@@ -1,0 +1,11 @@
+STEP kth_eval_05_shipped_v0_1_r0.2_W2_p0_static_only
+START 2026-10-21T19:30:25+09:00 host=DESKTOP-KCD7BRS load=1.29 1.29 1.28 cores=12
+COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+EXPERIMENT_DIR_UNCOMMITTED 0
+BINARY_COMMIT 134001ac35b5b8b67e5ccfa57d3151721dccc943
+STRATA_CORE_TREE c780639aec9402da556bd33b91ff9acbc06c0cd0
+STRATA_CORE_TREE_PINNED c780639aec9402da556bd33b91ff9acbc06c0cd0
+CMD bash -c python3 -I '<REALDATA_DIR>/p3_eval.py' kth --gt '<DATA_ROOT>/kth/05/gt_cloud.pcd' --map '<OUT_DIR>/kth_05/shipped_v0_1_r0.2_W2_p0_static_only.pcd' > '<RESULTS_DIR>/kth_05_shipped_v0_1_r0.2_W2_p0_static_only.json'
+step kth_eval_05_shipped_v0_1_r0.2_W2_p0_static_only rc=0 trace=~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/access/kth_eval_05_shipped_v0_1_r0.2_W2_p0_static_only.strace
+run log ~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/results_p3/runs/kth_eval_05_shipped_v0_1_r0.2_W2_p0_static_only.json rc=0
+END 2026-10-21T19:31:23+09:00 rc=0 load=1.14 1.25 1.26

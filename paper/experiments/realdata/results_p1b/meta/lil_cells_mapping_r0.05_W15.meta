@@ -1,0 +1,17 @@
+window_steps=15
+resolution_m=0.05
+frames=24354
+steps=12177
+windows_closed=811
+hits_total=19568060
+hits_off_grid=0
+engine_cells_end=117886
+observer_reports=10933498
+observer_reports_labelled=10196738
+observer_inconsistent=0
+window_origin_missing=0
+labelled_cells_in_file=109043
+labelled_cells_touched=109043
+seconds=28.43576822
+peak_rss_kb=241588
+grid_width=1200

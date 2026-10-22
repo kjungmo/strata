@@ -1,0 +1,66 @@
+{
+ "after": {
+  "loadavg": "5.07 5.73 5.81 4/803 815075",
+  "meminfo": {
+   "MemAvailable": "9560628 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849952 kB"
+  },
+  "time": "2026-10-18T11:16:04+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.9 73980 test_closed_loo",
+   "99.6 25624 strata_core_tes",
+   "96.7 577860 cc1plus",
+   " 6.6 612776 2.1.299",
+   " 3.2 191300 claude"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "validate_spires_keble03",
+  "~/.cache/strata_p3_build/build/realdata/p3_probe",
+  "spires-validate",
+  "--zip",
+  "~/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-03/raw/lidar-clouds.zip",
+  "--gt",
+  "~/datasets/strata/spires/keble/sequences/2024-03-12-keble-college-03/processed/trajectory/gt-tum.txt",
+  "--dt",
+  "0",
+  "--n",
+  "10"
+ ],
+ "before": {
+  "loadavg": "5.07 5.73 5.81 4/810 815046",
+  "meminfo": {
+   "MemAvailable": "9569012 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31849952 kB"
+  },
+  "time": "2026-10-18T11:16:04+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   "99.8 73980 test_closed_loo",
+   "94.0 15036 strata_core_tes",
+   "93.1 571800 cc1plus",
+   " 6.6 603352 2.1.299",
+   " 3.2 190552 claude"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "commit": "774812177c00c9279717c552d1fc38a43d0bcf62",
+  "uncommitted_in_experiment_dir": 4,
+  "uncommitted_in_repository": 19
+ },
+ "hash_inputs": false,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 0.263,
+ "step": "validate_spires_keble03"
+}

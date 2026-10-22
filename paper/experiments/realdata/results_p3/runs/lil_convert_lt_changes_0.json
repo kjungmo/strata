@@ -1,0 +1,82 @@
+{
+ "after": {
+  "loadavg": "6.21 5.27 4.31 5/796 1308162",
+  "meminfo": {
+   "MemAvailable": "10260840 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31941132 kB"
+  },
+  "time": "2026-10-18T16:32:40+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 100 25664 lever_final2",
+   " 100 25596 lever_final2",
+   " 100 25712 lever_final2",
+   " 100 25712 lever_final2",
+   "15.5 84752 python3"
+  ]
+ },
+ "argv": [
+  "bash",
+  "~/kangj/strata/.claude/worktrees/v2-sprt/paper/experiments/realdata/p3_traced.sh",
+  "lil_convert_lt_changes_0",
+  "~/.cache/strata_p3_build/build/realdata/hitrate_probe",
+  "lil-convert",
+  "--bag",
+  "~/datasets/strata/lilocbench/bags/lt_changes_0.bag",
+  "--gt",
+  "~/datasets/strata/lilocbench/gt_x/lt_changes_0/gt_poses.txt",
+  "--deskew",
+  "1",
+  "--anchor",
+  "start",
+  "--time-offset",
+  "-0.13",
+  "--out",
+  "/mnt/d/wsl/strata/p3/lil/cache_lt_changes_0.bin",
+  "--meta",
+  "/mnt/d/wsl/strata/p3/lil/cache_lt_changes_0.meta"
+ ],
+ "before": {
+  "loadavg": "6.35 5.26 4.29 7/794 1308114",
+  "meminfo": {
+   "MemAvailable": "10187060 kB",
+   "MemTotal": "12249900 kB",
+   "SwapFree": "31941132 kB"
+  },
+  "time": "2026-10-18T16:32:31+0900",
+  "top_cpu": [
+   "%CPU   RSS COMMAND",
+   " 100 25596 lever_final2",
+   " 100 25568 lever_final2",
+   " 100 25716 lever_final2",
+   " 100 25568 lever_final2",
+   "15.5 84752 python3"
+  ]
+ },
+ "cores": 12,
+ "git": {
+  "binary_commit": "724ecf40e15870f8ed1d459142da03ed212c7f4b",
+  "commit": "724ecf40e15870f8ed1d459142da03ed212c7f4b",
+  "strata_core_tree_binary": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "strata_core_tree_head": "bf96e78bb16d164f02768fc7ae1738bb5bd35d2e",
+  "uncommitted_in_experiment_dir": 0,
+  "uncommitted_in_repository": 54
+ },
+ "hash_inputs": true,
+ "host": "DESKTOP-KCD7BRS",
+ "inputs": [
+  {
+   "mtime": 1742193568.0,
+   "path": "~/datasets/strata/lilocbench/gt_x/lt_changes_0/gt_poses.txt",
+   "sha256": "32c1f451eced24dbd4891771c113aaf2dccfb9d67abf54036c3a2b0f42bcb461",
+   "size": 1409530
+  }
+ ],
+ "kernel": "6.18.54.1-microsoft-standard-WSL2",
+ "outputs": [],
+ "python": "3.8.10",
+ "returncode": 0,
+ "seconds": 8.925,
+ "step": "lil_convert_lt_changes_0"
+}

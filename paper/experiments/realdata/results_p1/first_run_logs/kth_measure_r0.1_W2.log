@@ -1,0 +1,4 @@
+STEP kth_measure_r0.1_W2
+START 2026-10-14T09:48:42+09:00 host=DESKTOP-KCD7BRS load=8.39 6.61 5.71 cores=12
+CMD /tmp/strata_p1_build/realdata/hitrate_probe kth-measure --dir <DATA_ROOT>/kth/00 --labels <DATA_ROOT>/p1/kth00/labels_r0.1.bin --res 0.1 --window 2 --out <DATA_ROOT>/p1/kth00/cells_r0.1_W2.csv --meta <DATA_ROOT>/p1/kth00/cells_r0.1_W2.meta
+END 2026-10-14T09:57:01+09:00 rc=0 load=8.67 6.70 5.95
