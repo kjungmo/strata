@@ -31,7 +31,9 @@ The engine (`strata_core/`), the node (`strata/`) and the check scripts
 (`scripts/`) that the manuscript describes are those of commit `708d62f`
 (2026-10-22; `strata_core` 0.2.0, with `evidence_model = legacy | sprt`). The first
 release of the manuscript pinned commit `312b09c` (2026-10-11, the v0.1 evidence
-rule). `a7559d4` (2026-10-19, phase P4a) added the evidence model `sprt`. `5c20bba` and
+rule). `0f5befc` (2026-10-18) added the evidence model `sprt`. `a7559d4` (2026-10-19, phase P4a) is
+the last commit of the v2 work in `strata_core/`, `strata/` and `scripts/` before the status-text
+commits. `5c20bba` and
 `708d62f` differ from it only in the status text of the node and the comments of
 `params/grid2d.yaml` and `params/voxel3d.yaml` (they state the scope of alpha and beta).
 `strata_core/` and `scripts/` are identical in the three commits.
@@ -41,13 +43,16 @@ and E6 in both arms, E7, and the E4 cell counts of the sprt arm) reproduces byte
 byte from the `strata_core` tree `c780639` of `a7559d4`, which is identical at the pin
 (`experiments/reproduction_log.txt`, lines of 2026-10-21 and 2026-10-22, sha256
 `07a4ce75...`). The real-data evaluation runs were built from the `strata_core` tree
-`bf96e78` or `c780639`; their source and header trees are identical (Appendix A, Real
-data). The calibration runs record their tree in their run manifests (`results_p1/`,
-`results_p1b/`). In `strata_core/`, `strata/` and `scripts/` only the node status text
+`bf96e78`, `d8db00e` or `c780639`; their source and header trees are identical (Appendix A, Real
+data). The calibration runs record a commit in their run manifests and step logs
+(`results_p1/`, `results_p1b/`); for P1b, `results_p1b/deviations.md` items 25 and 30 list the
+steps whose build tree is not recorded. In `strata_core/`, `strata/` and `scripts/` only the node status text
 and the two YAML comments changed between `a7559d4` and the pin; the results, the P3
 files and the manuscript changed in that interval too. No experiment builds or reads the
-status text or the comments, so the results hold for the pin. Only the manuscript was
-completed after the pin.
+status text or the comments, so the results hold for the pin. After the pin only documents and the
+checks of the paper changed (the manuscript, the READMEs, `SPEC.md`, the number check and its
+mutation report, the bibliography, and an editorial note in `PREREG_P3.md`); no file in
+`strata_core/`, `strata/` or `scripts/` and no result file changed.
 
 `experiments/number_guard.py` compares the tree ids of the three directories with
 `708d62f`. **A change to any of them fails the CI job `paper`** until the pin

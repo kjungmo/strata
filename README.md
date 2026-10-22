@@ -338,7 +338,7 @@ every number below is checked against the manuscript by `number_guard.py`):
   unknown, so a planner allowed to plan through unknown space plans through them.
 - **The error rates are per first test of a history, under independent windows.** Since the pin the status text of the
   node and the comments of the shipped parameter files state that scope.
-  On real clutter the realised per-cell rates are above `alpha` (paper §7.2), and the windows of a cell are
+  On real 2D clutter the realised per-cell rates are above `alpha` (paper §7.2), and the windows of a cell are
   correlated. Periodic is validated on synthetic streams only; the `(0.20, 0.70)` pair is provisional and
   not calibrated for 3D. The real-data numbers come from an offline harness with reference poses, so TF
   latency, transport loss, localiser error and stamp offsets are in none of them.

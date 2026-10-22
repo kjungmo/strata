@@ -576,7 +576,7 @@ if len(TARGETS) > 1:
 # Code that the paper pins: the tree ids of strata_core/, strata/ and scripts/ at
 # commit 708d62f (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
 # must come with a new pin in the paper. The pin moved twice on purpose: from 312b09c
-# (v0.1 engine, 11 October 2026) to a7559d4 (19 October 2026, phase P4a of the v2 plan),
+# (v0.1 engine, 11 October 2026) to a7559d4 (19 October 2026, phase P4a of the v2 plan; the evidence model sprt was added in 0f5befc, 18 October 2026),
 # and, in two further steps on 22 October 2026 (5c20bba, 708d62f), only the node status text and
 # the two parameter-file comments changed; the strata_core and scripts trees are the same as at a7559d4.
 PIN = "708d62f"
@@ -941,7 +941,7 @@ STRUCT = [
     (r"sections/", r"\d+-on/\d+-off|\d+-bit|\d+-byte|x86-64|SHA.256|\b[23]D\b|6-DoF|ROS 2|C\+\+17|Bernoulli\(\d?\.\d+\)|"
                    r"\d+ seeds of \d+|\d+th-percentile|O\(1\)|depth \d+|p\{\d?\.\d+\\linewidth\}|\d-on|\d+-window run",
      "name of a scenario, data type, standard or layout width"),
-    (r"sections/", r"\(20\d\d\)|Two 2026 works|(?:19|22) October 2026|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
+    (r"sections/", r"\(20\d\d\)|Two 2026 works|(?:18|19|22) October 2026|\\code\{0f5befc\}|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
      "year, date, version or licence identifier (versions are also checked against the records)"),
     (r"sections/", r"\\sname\\ 0\.2|\\sname\} 0\.2|[Vv]ersion 0\.2",
      "version of the engine (checked against strata_core/package.xml and CMakeLists.txt)"),
@@ -954,6 +954,8 @@ STRUCT = [
      r"\d+th percentile|at least 100 cells|at least 0\.65 or at most 0\.35|multiple of 16|at most 3\\% of cells",
      "threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings"),
     (r"sections/", r"lag-1", "name of a statistic"),
+    (r"sections/appendix", r"items 25 and 30|\(Amendment 3\)|, section 5\)",
+     "number of an item, amendment or section of a committed record (results_p1b/deviations.md, PREREG_P3.md, results_p3/P3_REPORT.md; the files are checked for the strings)"),
     (r"sections/", r"95\\% percentile interval", "confidence level that defines an interval"),
     (r"sections/", r"Eqs?\. \(\d+\)(?: and \(\d+\))?|Lemma \d+", "number of an equation or lemma of a cited source"),
     (r"sections/appendix", r"\\begin\{table\}\[H\]\s*\\centering\s*\\caption\{Symbols used.*?\\end\{table\}",
@@ -978,7 +980,9 @@ def guard_rules():
             ("PREREG.md", ("smallest multiple of 16", "<= 0.03", "(0.20, 0.65)", "(0.30, 0.75)")),
             ("PREREG_P3.md", ("W = 15", "1.0 s at 15 Hz", "0.05 m", "0.2 m", "0.1 m", "10 and 20 steps", "1.0 s and 2.0 s at 10 Hz", "321 frames", "64 beams", "960 frames",
                               "W = 10", "W = 2", "N_min = 5", "3 to 25 m")),
-            ("results_p3/deviations.md", ("9 GB",))):
+            ("results_p3/deviations.md", ("9 GB", "Amendment 3")),
+            ("results_p1b/deviations.md", ("\n25. **Build provenance", "\n30. **Clean-tree check")),
+            ("results_p3/P3_REPORT.md", ("\n## 5. Provenance",))):
         txt = pr(fn)
         for needle in needles:
             check(f"{fn} holds the restated fact {needle!r}", needle in txt)
