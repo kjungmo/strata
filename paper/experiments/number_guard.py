@@ -574,14 +574,14 @@ if len(TARGETS) > 1:
 
 
 # Code that the paper pins: the tree ids of strata_core/, strata/ and scripts/ at
-# commit 5c20bba (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
+# commit 708d62f (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
 # must come with a new pin in the paper. The pin moved twice on purpose: from 312b09c
 # (v0.1 engine, 11 October 2026) to a7559d4 (19 October 2026, phase P4a of the v2 plan),
-# and to 5c20bba (22 October 2026: only the node status text and the two parameter-file
-# comments changed; the strata_core and scripts trees are the same as at a7559d4).
-PIN = "5c20bba"
+# and, in two further steps on 22 October 2026 (5c20bba, 708d62f), only the node status text and
+# the two parameter-file comments changed; the strata_core and scripts trees are the same as at a7559d4.
+PIN = "708d62f"
 PIN_TREES = {"strata_core": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
-             "strata": "ffcf73f9ccb857e6244a1c78405e6a2d612292fa",
+             "strata": "bf95ea57f234a84f82d42f342e5a62947d940be2",
              "scripts": "3a7ef6330965552ccf5a72f7f7ad7c9c4cfd1b2a"}
 # Core regression tests by the defect or rule they cover (the paper's 10 / 9 / 8).
 CENTRING_TESTS = ("AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT8", "AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT24",

@@ -40,10 +40,12 @@ J.~E. Bresenham.
 \newblock \emph{IBM Systems Journal}, 4\penalty0 (1):\penalty0 25--30, 1965.
 \newblock \doi{10.1147/sj.41.0025}.
 
-\bibitem[Burnett et~al.(2022)Burnett, Yoon, Wu, Li, Zhang, Lu, Qian, Tseng, Lambert, Leung, Schoellig, and Barfoot]{burnett2022boreas}
+\bibitem[Burnett et~al.(2023)Burnett, Yoon, Wu, Li, Zhang, Lu, Qian, Tseng, Lambert, Leung, Schoellig, and Barfoot]{burnett2022boreas}
 K.~Burnett, D.~J. Yoon, Y.~Wu, A.~Z. Li, H.~Zhang, S.~Lu, J.~Qian, W.-K. Tseng, A.~Lambert, K.~Y.~K. Leung, A.~P. Schoellig, and T.~D. Barfoot.
 \newblock Boreas: A multi-season autonomous driving dataset.
-\newblock arXiv:2203.10168, 2022.
+\newblock \emph{The International Journal of Robotics Research}, 42\penalty0 (1--2):\penalty0 33--42, 2023.
+\newblock \doi{10.1177/02783649231160195}.
+\newblock arXiv:2203.10168.
 
 \bibitem[Chen and Sun(2026)]{chen2026layer}
 X.~Chen and B.~Sun.
@@ -60,7 +62,8 @@ D.~Duberg and P.~Jensfelt.
 \bibitem[Duberg et~al.(2024)Duberg, Zhang, Jia, and Jensfelt]{duberg2024dufomap}
 D.~Duberg, Q.~Zhang, M.~Jia, and P.~Jensfelt.
 \newblock {DUFOMap}: Efficient dynamic awareness mapping.
-\newblock \emph{IEEE Robotics and Automation Letters}, 2024.
+\newblock \emph{IEEE Robotics and Automation Letters}, 9\penalty0 (6):\penalty0 5038--5045, 2024.
+\newblock \doi{10.1109/LRA.2024.3387658}.
 \newblock arXiv:2403.01449.
 
 \bibitem[Gil et~al.(2025)Gil, Lee, Kim, and Kim]{gil2025elite}
@@ -96,7 +99,8 @@ D.~Hsu, S.~Kakade, and T.~Zhang.
 \bibitem[Jia et~al.(2024)Jia, Zhang, Yang, Wu, Liu, and Jensfelt]{jia2024beautymap}
 M.~Jia, Q.~Zhang, B.~Yang, J.~Wu, M.~Liu, and P.~Jensfelt.
 \newblock {BeautyMap}: Binary-encoded adaptable ground matrix for dynamic points removal in global maps.
-\newblock \emph{IEEE Robotics and Automation Letters}, 2024.
+\newblock \emph{IEEE Robotics and Automation Letters}, 9\penalty0 (7):\penalty0 6256--6263, 2024.
+\newblock \doi{10.1109/LRA.2024.3402625}.
 \newblock arXiv:2405.07283.
 
 \bibitem[Kim and Kim(2020)]{kim2020removert}
@@ -168,6 +172,7 @@ H.~Lim, S.~Hwang, and H.~Myung.
 G.~Lorden.
 \newblock Procedures for reacting to a change in distribution.
 \newblock \emph{Annals of Mathematical Statistics}, 42\penalty0 (6):\penalty0 1897--1908, 1971.
+\newblock \doi{10.1214/aoms/1177693055}.
 
 \bibitem[Lu et~al.(2014)Lu, Hershberger, and Smart]{lu2014layered}
 D.~V. Lu, D.~Hershberger, and W.~D. Smart.
@@ -280,10 +285,12 @@ E.~Stefanini, E.~Ciancolini, A.~Settimi, and L.~Pallottino.
 \newblock \url{https://github.com/strands-project/fremen}, 2017.
 \newblock Last commit December 2017; accessed 2026-09-30.
 
-\bibitem[Tao et~al.(2024)Tao, Munoz-Banon, Zhang, Wang, Fu, and Fallon]{tao2024spires}
-Y.~Tao, M.~A. Munoz-Banon, L.~Zhang, J.~Wang, L.~F.~T. Fu, and M.~Fallon.
+\bibitem[Tao et~al.(2026)Tao, Mu{\~n}oz-Ba{\~n}{\'o}n, Zhang, Wang, Fu, and Fallon]{tao2024spires}
+Y.~Tao, M.~A. Mu{\~n}oz-Ba{\~n}{\'o}n, L.~Zhang, J.~Wang, L.~F.~T. Fu, and M.~Fallon.
 \newblock The {Oxford Spires} dataset: Benchmarking large-scale {LiDAR}-visual localisation, reconstruction and radiance field methods.
-\newblock arXiv:2411.10546, 2024.
+\newblock \emph{The International Journal of Robotics Research}, 45\penalty0 (6):\penalty0 839--857, 2026.
+\newblock \doi{10.1177/02783649251369905}.
+\newblock arXiv:2411.10546.
 
 \bibitem[Thrun et~al.(2005)Thrun, Burgard, and Fox]{thrun2005probabilistic}
 S.~Thrun, W.~Burgard, and D.~Fox.
@@ -299,7 +306,8 @@ G.~D. Tipaldi, D.~Meyer-Delius, and W.~Burgard.
 \bibitem[Trekel et~al.(2025)Trekel, Guadagnino, L{\"a}be, Wiesmann, Aguiar, Behley, and Stachniss]{trekel2025lilocbench}
 N.~Trekel, T.~Guadagnino, T.~L{\"a}be, L.~Wiesmann, P.~Aguiar, J.~Behley, and C.~Stachniss.
 \newblock Benchmark for evaluating long-term localization in indoor environments under substantial static and dynamic scene changes.
-\newblock In \emph{IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, 2025.
+\newblock In \emph{2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)}, pages 10770--10777, 2025.
+\newblock \doi{10.1109/IROS60139.2025.11246416}.
 
 \bibitem[Wald(1947)]{wald1947sequential}
 A.~Wald.

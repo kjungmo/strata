@@ -28,18 +28,22 @@ authoritative. Numbers are authoritative only in `experiments/results/*.csv`.
 ## Code pin and tag
 
 The engine (`strata_core/`), the node (`strata/`) and the check scripts
-(`scripts/`) that the manuscript describes are those of commit `5c20bba`
+(`scripts/`) that the manuscript describes are those of commit `708d62f`
 (2026-10-22; `strata_core` 0.2.0, with `evidence_model = legacy | sprt`). The first
 release of the manuscript pinned commit `312b09c` (2026-10-11, the v0.1 evidence
-rule). The pin moved twice, on purpose, in the v2 work: to `a7559d4` (2026-10-19, adds
-the evidence model `sprt`; phase P4a) and to `5c20bba`, which differs from `a7559d4` only in
-the status text of the node and the comments of `params/grid2d.yaml` and
-`params/voxel3d.yaml` (they now state the scope of alpha and beta). `strata_core/` and
-`scripts/` are identical in the two commits. The harness, the results and the manuscript
-were completed after `5c20bba` without changing those three directories.
+rule). `a7559d4` (2026-10-19, phase P4a) added the evidence model `sprt`. `5c20bba` and
+`708d62f` differ from it only in the status text of the node and the comments of
+`params/grid2d.yaml` and `params/voxel3d.yaml` (they state the scope of alpha and beta).
+`strata_core/` and `scripts/` are identical in the three commits.
+
+The harness builds only `strata_core`. The harness and the result files were produced
+with the `strata_core` and `scripts/` trees of `a7559d4`, which are identical at the
+pin. Between `a7559d4` and the pin only the node status text and the two YAML comments
+changed. No experiment builds or reads them, so the results hold for the pin. Only the
+manuscript was completed after the pin.
 
 `experiments/number_guard.py` compares the tree ids of the three directories with
-`5c20bba`. **A change to any of them fails the CI job `paper`** until the pin
+`708d62f`. **A change to any of them fails the CI job `paper`** until the pin
 (`PIN`, `PIN_TREES` in the guard, and the pin sentence of the paper) is moved on
 purpose.
 
@@ -114,12 +118,14 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   Evaluation and Deployment-cautions sections against the manuscript sources (versions,
   dates and interface values are listed in `README_ALLOW`); its other sections quote
   interface values and behaviour of the node that no check reads.
-- Scope of alpha and beta in the code strings: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` carry the wording of Proposition ville (first test of a cell history, independent windows, Periodic veto off for beta, real per-cell rates above alpha) since the pin `5c20bba`. The comment on `alpha` and `beta` in `strata_core/include/strata_core/layered_map.hpp` still says only "hold for independent windows only (SPEC 3.2a)"; it is in the pinned `strata_core` tree, whose id is tied to the committed result hashes, and was not changed.
+- Scope of alpha and beta in the code strings: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` carry the wording of Proposition ville (first test of a cell history, independent windows, Periodic veto off for beta, real per-cell rates above alpha) since the pin `708d62f` (the first step was `5c20bba`; the pin adds the bound forms alpha/(1-beta) and beta/(1-alpha), the continuations of a kept periodic candidate as not covered, and the real-data clause only when the calibration label is not `user`). The comment on `alpha` and `beta` in `strata_core/include/strata_core/layered_map.hpp` still says only "hold for independent windows only (SPEC 3.2a)"; it is in the pinned `strata_core` tree, whose id is tied to the committed result hashes, and was not changed.
 - Release items: no tag `paper-v1` exists, so the text names commit `312b09c`;
   creating the tag is an author action. The code URL opens `main`, which is still the
-  v0.1 code; before submission merge the code or tag `5c20bba` and name that tag in the
-  pin sentence. The citation audit of the keys added in v2 is still open, and the
-  journal versions of the Boreas and Spires papers are unconfirmed (arXiv is cited).
+  v0.1 code; before submission merge the code or tag `708d62f` and name that tag in the
+  pin sentence. The citation audit of the keys added in v2 is
+  `CITATION_AUDIT_V2_2026-10-22.md` (in the submission-kit directory). It verified the
+  Boreas, Spires, DUFOMap, BeautyMap, LILocBench and Lorden entries against Crossref.
+  Only the metadata of `krajnik2014froctomap` is unverified.
 
 ## Build the PDF
 
