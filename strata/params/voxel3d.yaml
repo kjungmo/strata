@@ -19,11 +19,13 @@
                                   # "legacy": the v0.1 rule; it reads l_hit .. prune_prob below, which "sprt" ignores (nine keys)
     m0: 0.20                      # hit rate per window at or below which a cell is clutter
     m1: 0.70                      # hit rate per window at or above which a cell is structure
-    alpha: 0.01                   # bound on P(clutter at m0 or less graduates in the FIRST test of one cell history), independent windows only
-                                  # (paper Proposition ville). Restarts after a demotion are not covered; real windows are autocorrelated and the
-                                  # per-cell rate on real clutter was above alpha (paper section 4c). Not a guarantee for the whole map.
-    beta: 0.01                    # bound on P(structure at m1 or more is rejected in the FIRST test of one cell history), independent windows only,
-                                  # Periodic veto off; with the veto on, the bound is larger (paper Proposition ville)
+    alpha: 0.01                   # about alpha (alpha/(1-beta)) bounds P(clutter at m0 or less graduates in the FIRST test of one cell history),
+                                  # independent windows only (paper Proposition "Error bounds under independent windows"). Restarts after a demotion
+                                  # are not covered; real windows are autocorrelated and the per-cell rate on real clutter was above alpha
+                                  # (paper section "Evaluation on Held-Out Real Data"). Not a guarantee for the whole map.
+    beta: 0.01                    # about beta (beta/(1-alpha)) bounds P(structure at m1 or more is rejected in the FIRST test of one cell history),
+                                  # independent windows only, Periodic veto off; with the veto on, the bound is larger
+                                  # (paper Proposition "Error bounds under independent windows")
     n_max_undecided: 80           # touched windows after which an undecided, non-periodic cell is read out Intermittent (0: never)
     evidence_calibration: "fallback_2d_pair"
                                   # fallback_2d_pair: the 2D pair, NOT calibrated for 3D. On single-pass data most structure
