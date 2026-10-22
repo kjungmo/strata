@@ -1,7 +1,7 @@
 backend extent cells us usminus usplus
-grid2d 100 8553 nan nan nan
-grid2d 250 45657 nan nan nan
-grid2d 500 150096 nan nan nan
-voxel3d 100 85399 nan nan nan
-voxel3d 250 295300 nan nan nan
-voxel3d 500 661410 nan nan nan
+grid2d 100 8553 66.9 1.7 0.1
+grid2d 250 45657 256.8 0.2 1.1
+grid2d 500 150096 673.7 16.8 18.3
+voxel3d 100 85399 518.2 1.9 1.7
+voxel3d 250 295300 2163.3 83.5 29.5
+voxel3d 500 661410 6661.6 39.5 344.4
