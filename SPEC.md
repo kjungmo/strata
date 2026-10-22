@@ -611,7 +611,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
 streams, or `std::mt19937_64` raw output where the standard library must not matter) in
-`strata_core/test`, runnable with **no ROS** — **113 gtests across 12 suites** (7 of
+`strata_core/test`, runnable with **no ROS** — **114 gtests across 12 suites** (7 of
 them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
 CTest `defaults_match_yaml_and_prereg`:
 
@@ -650,7 +650,7 @@ CTest `defaults_match_yaml_and_prereg`:
 - **WindowObserver** (10): the read-only window hook reports exactly the touched
   cells with the hit-wins rule, changes no state, and leaves the map's read-outs
   byte-identical with and without it.
-- **Sprt** (38): derived quantities (default pair, the advisory pairs); validation of
+- **Sprt** (39): derived quantities (default pair, the advisory pairs); validation of
   every bad `(m0, m1, alpha, beta, n_max_undecided, sprt_ceiling)` on both sides of
   each bound; an always-hit wall graduates at exactly the derived window and never
   earlier (7 parameter sets, periodicity on and off); a long miss run before the gate is
@@ -880,7 +880,7 @@ has no pair to mismatch.
 ```bash
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j
-( cd build/core && ctest --output-on-failure )     # the 113 engine gtests and the defaults check
+( cd build/core && ctest --output-on-failure )     # the 114 engine gtests and the defaults check
 ```
 
 **Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**

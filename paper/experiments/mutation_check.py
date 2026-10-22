@@ -28,7 +28,9 @@ def bump(tok):
 
 def failures(root):
     r = subprocess.run([sys.executable, str(root / "paper/experiments/number_guard.py")], capture_output=True, text=True)
-    return {l for l in r.stdout.splitlines() if l.startswith("FAIL")} | ({"CRASH"} if "Traceback" in r.stderr else set())
+    # the cross-check of the companions would flag every changed numeral by itself and hide
+    # the checks of the manuscript that this run is meant to test
+    return {l for l in r.stdout.splitlines() if l.startswith("FAIL") and not l.startswith("FAIL [companions]")} | ({"CRASH"} if "Traceback" in r.stderr else set())
 
 
 def main():

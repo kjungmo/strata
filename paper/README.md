@@ -13,8 +13,8 @@ reviewed.
 |---|---|
 | [`arxiv_ref/`](arxiv_ref/) | **The manuscript** (LaTeX master: `main.tex`, `sections/`, generated `tables/` and `figures/data/`, `main.bib`, shipped `main.bbl`). Every other copy follows it. |
 | [`strata_paper.pdf`](strata_paper.pdf) | PDF built from `arxiv_ref/` |
-| [`strata_paper.md`](strata_paper.md) | Long-form Markdown companion: same numbers, claims and scope, more implementation detail |
-| [`strata_paper_KR.md`](strata_paper_KR.md) | Korean translation of the Markdown companion |
+| [`strata_paper.md`](strata_paper.md) | Markdown rendering of the manuscript, generated from the LaTeX master by [`arxiv_ref/tools/tex2md.py`](arxiv_ref/tools/tex2md.py): same text, numbers, claims and scope (figures are not reproduced) |
+| [`strata_paper_KR.md`](strata_paper_KR.md) | Korean translation of the Markdown rendering (hand-translated; the number guard requires the same numerals as the English file) |
 | [`arxiv_ref/NUMBERS.md`](arxiv_ref/NUMBERS.md) | Every quantitative claim and the CSV field or code line it comes from |
 | [`experiments/`](experiments/) | Harness (E0 calibration, E1–E7, both evidence arms), committed results, number guard |
 | [`experiments/realdata/`](experiments/realdata/) | Real-data calibration (P1, P1b), replay (P2) and test evaluation (P3): pre-registrations with amendments, result tables and JSON, reports, deviations |
@@ -40,10 +40,10 @@ changing those three directories.
 (`PIN`, `PIN_TREES` in the guard, and the pin sentence of the paper) is moved on
 purpose.
 
-The long-form companions (`strata_paper.md`, `strata_paper_KR.md`) still describe the
-code of `312b09c`. They are re-synced at the end of the v2 work; until then the guard
-lists their code-state checks (pin, tree ids, test counts, standard-library record,
-reproduction log) as `DEFERRED` and still checks their numbers against the result files.
+The Markdown companions (`strata_paper.md`, `strata_paper_KR.md`) were regenerated
+from the final master at the end of the v2 work (P5) and describe the same pin. The
+guard applies every check of the manuscript to `strata_paper.md` (nothing is deferred)
+and compares the numerals of the Korean file with the English one.
 
 ## Two arms: legacy and sprt
 
@@ -67,6 +67,8 @@ From the repository root, with a C++17 compiler, CMake, Eigen3 and GoogleTest
 bash paper/experiments/run_all.sh                   # build, unit tests, E0, E5, E1–E3, E6, E7, E4 cell counts
 python3 paper/arxiv_ref/tools/make_artifacts.py     # tables, plot data, the E4 sentences and (via make_v2_artifacts.py) the number macros of the manuscript
 python3 paper/experiments/number_guard.py           # every numeral against the CSVs and the code
+# after changing the manuscript: rebuild the PDF (below), then regenerate the Markdown rendering
+python3 paper/arxiv_ref/tools/tex2md.py paper/arxiv_ref paper/strata_paper.md   # reads main.aux for the numbers of sections, tables and equations
 bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs matplotlib and numpy)
 ```
 
@@ -86,7 +88,10 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   `bash paper/experiments/measure_e4.sh` on a quiet host: the script refuses to
   start above a load of 0.50, pins one core and writes every repeat to
   `results/e4_recordings/`. Run it three times; `make_artifacts.py` then writes the
-  E4 table, figure and sentences from the valid recordings. Earlier timings, all
+  E4 table, figure and sentences from the valid recordings. Three valid recordings
+  were taken on 2026-10-22 (a quiet host, load below 1.0 for ten minutes and none of the
+  benchmark, campaign or build processes of another project running); they agree within
+  a factor of 1.09 and the manuscript reports their range. Earlier timings, all
   from a loaded host, are kept in `results/e4_exploratory/`.
 - `experiments/mutation_check.py` changes every numeral of the manuscript in turn
   and reports those the guard misses (`experiments/mutation_report.txt`).
@@ -96,25 +101,17 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
 - `deploy_checks/jazzy_map_server/` holds one manual check that Jazzy's
   `nav2_map_server` loads a saved pair (not in CI).
 
-## Not under the number guard (re-sync list for phase P5)
+## Not under the number guard
 
-Three files quote numbers or describe the code, and the guard does not cover them fully.
-They are re-synced at the end of P5, together with the companions:
-
-- `strata_paper.md` and `strata_paper_KR.md`: the guard checks their numbers against the
-  result files, but they still describe the first pin, `312b09c`, and the legacy arm.
-- The top-level `README.md`: its numbers (E1 to E6 in the legacy arm, `1960` and `1120`
-  of 2000 in E6, the news entries) are typed by hand and no check reads them.
-  Legacy numbers in it are labelled legacy, the pair is called provisional, the 3D pair
-  is called not calibrated, and Periodic is called synthetic-only. P5 either puts the
-  file under `number_guard.py` or re-reads it against the result files by hand.
-  P5 also writes into it the deployer warnings of the manuscript (numbers only under
-  the guard): memory at 0.1 m and with the 3D veto on, no range crop in the node,
-  the median and upper-decile wait for a wall to become Static, the Undecided share,
-  not using the map as the only obstacle source, how Nav2 reads 50 and 75 (live
-  and saved map), the `~/map` topic name, and the extent of the shipped `grid2d` grid
-  (endpoints outside it are dropped; a sensor outside it clears nothing).
-- Code strings and comments of the next pin: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` state alpha and beta without the first-test scope. The next pin changes them to the wording of Proposition ville (per first test of a history, independent windows). The pin `312b09c` is not moved for this; the manuscript says so in its Provisional-defaults bullet.
+- The Korean companion `strata_paper_KR.md` is a hand translation. The guard requires that
+  its numerals (with a decimal point or at least three digits) equal those of
+  `strata_paper.md` and occur in the manuscript sources or the result files; it does not
+  check the wording.
+- The top-level `README.md`: the guard checks the numerals of its News, Overview,
+  Evaluation and Deployment-cautions sections against the manuscript sources (versions,
+  dates and interface values are listed in `README_ALLOW`); its other sections quote
+  interface values and behaviour of the node that no check reads.
+- Code strings and comments of the next pin: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` state alpha and beta without the first-test scope. The next pin changes them to the wording of Proposition ville (per first test of a history, independent windows). The pin `a7559d4` is not moved for this; the manuscript says so in its Provisional-defaults bullet.
 - Release items: no tag `paper-v1` exists, so the text names commit `312b09c`;
   creating the tag is an author action. The code URL opens `main`, which is still the
   v0.1 code; before submission merge the code or tag `a7559d4` and name that tag in the

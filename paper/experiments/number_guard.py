@@ -30,7 +30,15 @@ def tex_text(root):
     return t
 
 
-TARGETS = [("strata_paper.md", PAPER.read_text(encoding="utf-8"))]
+def md_text(t):
+    """The Markdown companion in the same plain form as tex_text(): math dollars and the
+    brace around an equals sign are dropped, so that one phrase checks both files."""
+    for a, b in (("{,}", ","), ("{=}", "="), ("$", "")):
+        t = t.replace(a, b)
+    return t
+
+
+TARGETS = [("strata_paper.md", md_text(PAPER.read_text(encoding="utf-8")))]
 if (ARXIV / "main.tex").exists():
     TARGETS.append(("arxiv_ref", tex_text(ARXIV)))
 failures = []
@@ -44,18 +52,12 @@ def rows(name):
         return [r for r in csv.DictReader(f) if not r[list(r)[0]].startswith("#")]
 
 
-# The long-form companions (strata_paper.md, strata_paper_KR.md) are not re-synced during
-# phases P1-P4 of the v2 plan (DESIGN_AND_PLAN section 6); they still describe the code of the
-# first pin, 312b09c. Their numbers are still checked against the result files, which are
-# unchanged for the legacy arm. The checks about the state of the code (pin, tree ids, test
-# counts, standard-library record, reproduction log) are DEFERRED for them, listed in the
-# output, and become ordinary checks again when the companions are regenerated or retired.
-# Remove DEFERRED_FOR_COMPANION then.
+# The companions are generated from the manuscript (paper/arxiv_ref/tools/tex2md.py builds
+# strata_paper.md from the LaTeX master; strata_paper_KR.md is its Korean translation), so
+# every check below applies to strata_paper.md as it does to the manuscript, and
+# companion_fidelity() compares the Korean file with the English one. Nothing is deferred.
 COMPANION = "strata_paper.md"
-DEFERRED_FOR_COMPANION = ("pin commit quoted", "strata_core/ is the tree", "strata/ is the tree", "scripts/ is the tree",
-                          "working tree: pinned", "core gtest", "node gtest", "tests quoted", "test count",
-                          "stdlib", "reproduction log", "reproduction compiler",
-                          "six MapBackend methods quoted", "E6 ever-Static within 256 windows quoted", "E7 seed quoted")
+DEFERRED_FOR_COMPANION = ()
 deferred = []
 
 
@@ -1450,6 +1452,63 @@ def guard_v2():
         check(f"forbidden wording absent: {label}", needle not in text, needle)
 
 
+def companion_fidelity():
+    """The Korean companion carries the numbers of the English one and no others: the
+    numerals with a decimal point or at least three digits (section, table and equation
+    numbers are not compared) must form the same set in both files, and every one of them
+    must occur in the manuscript sources, the bibliography or a committed result file."""
+    global target
+    target = "companions"
+    kr_path = HERE.parent / "strata_paper_KR.md"
+    check("Korean companion exists", kr_path.exists())
+    if not kr_path.exists():
+        return
+
+    def big(t):
+        t = t[t.index("# Abstract"):]
+        t = re.sub(r"\{#[^}]*\}", "", t)
+        t = re.sub(r"\\tag\{[^}]*\}", "", t)
+        t = re.sub(r"(?m)^#+ .*$", "", t)                                   # headings carry section numbers
+        t = re.sub(r"(§|Sections?\s)\s*\d+(?:\.\d+)*|\d+(?:\.\d+)*(?:\s*[-–]\s*\d+(?:\.\d+)*)?절", "", t)   # section references
+        return {x for x in re.findall(r"(?<![A-Za-z_\d.])\d+(?:\.\d+)?", t) if "." in x or len(x) >= 3}
+
+    en, kr = big(PAPER.read_text(encoding="utf-8")), big(kr_path.read_text(encoding="utf-8"))
+    check("Korean companion: numerals equal those of the English companion", en == kr,
+          f"only English: {sorted(en - kr)[:8]}; only Korean: {sorted(kr - en)[:8]}")
+    src = "\n".join([tex_text(ARXIV), (ARXIV / "main.bbl").read_text(encoding="utf-8"),
+                     *(f.read_text(encoding="utf-8", errors="ignore") for f in sorted(RESULTS.glob("*.csv")))])
+    known = set(re.findall(r"\d+(?:\.\d+)?", src))
+    unknown = sorted(x for x in en if x not in known)
+    check("companions: every numeral occurs in the manuscript sources or the result files", not unknown, str(unknown[:12]))
+
+
+README = HERE.parents[1] / "README.md"
+# numerals of the README that are not results: versions, dates, commit ids, interface values
+README_ALLOW = {"0.2.0", "0.1.0", "2026", "2025", "100", "75", "50", "254", "205", "0.196", "0.65", "400", "71", "114", "-10"}
+
+
+def readme_numbers():
+    """The README quotes numbers by hand. Those in its News, Overview, Evaluation and
+    Deployment-cautions sections must occur in the manuscript sources or the result files
+    (versions, dates and interface values are listed in README_ALLOW)."""
+    global target
+    target = "README.md"
+    sections = re.split(r"(?m)^## ", README.read_text(encoding="utf-8"))
+    body = "\n".join(sec for sec in sections if sec.split("\n", 1)[0].strip().lstrip("\U0001F4E2\U0001F4CA\u26A0\uFE0F ").startswith(
+        ("News", "Overview", "Evaluation", "Deployment cautions")))
+    body = re.sub(r"`[0-9a-f]{7}`|\]\([^)]*\)|results/[\w./-]+|\bE\d\b|\bE\d[\u2013-]E\d\b|\b\d{4}-\d{2}\b", "", body)
+    src = "\n".join([tex_text(ARXIV), md_text(PAPER.read_text(encoding="utf-8"))])
+    bad = []
+    for m in re.finditer(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)*(?![\w])", body):
+        x = m.group(0).rstrip(",")
+        if x in README_ALLOW or x.lstrip("-") in README_ALLOW or len(x.lstrip("-")) == 1:
+            continue
+        if not re.search(r"(?<![\d.,])" + re.escape(x.lstrip("-")) + r"(?!\d|\.\d)", src):
+            bad.append(x)
+    check("README.md: numerals of its News, Overview, Evaluation and Deployment-cautions sections occur in the manuscript", not bad,
+          str(sorted(set(bad))[:20]))
+
+
 COVER, MATHDEC, LOCK = {}, [], []
 LOCKFILE = ARXIV / "structural_numerals.tsv"
 if len(TARGETS) > 1:
@@ -1475,6 +1534,8 @@ if len(TARGETS) > 1:
     else:
         check("structural numerals equal the committed list (structural_numerals.tsv)", True)
 
+companion_fidelity()
+readme_numbers()
 print(f"PASS {len(passes)}")
 if deferred:
     print(f"DEFERRED {len(deferred)} code-state checks of the companion {COMPANION} (it is re-synced at the end of P5):")

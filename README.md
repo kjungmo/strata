@@ -82,7 +82,7 @@ paths a ground robot actually has:
 > **Evidence defaults (0.2.0).** Both backends graduate a cell with the sequential test of
 > [`SPEC.md` §3.2a](SPEC.md) at `m0 = 0.20`, `m1 = 0.70`, `alpha = beta = 0.01`. The pair was measured on one
 > 2D scanner dataset (0.05 m, 1.0 s windows) and is provisional. **`voxel3d` uses the same pair and it is *not*
-> calibrated for 3D**: on single-pass driving data most structure voxels stay undecided (KITTI 00 slice, 14 s;
+> calibrated for 3D**: on single-pass driving data most structure voxels stay undecided (on KITTI 00
 > structure voxels are touched in a median of 4 windows). The node logs this at start and shows it on `/diagnostics` (`<node>: evidence model`). Re-derive
 > `m0` and `m1` for your sensor, window length and resolution with `paper/experiments/realdata/hitrate_probe`.
 
@@ -93,7 +93,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 **transient** layers erode away.
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
-cell id, and is unit-tested with gtest **without ROS or PCL** (113 gtests across 12
+cell id, and is unit-tested with gtest **without ROS or PCL** (114 gtest cases across 12
 suites, plus 71 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
@@ -136,7 +136,7 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 > **STRATA: One Geometry-Free Persistence-and-Periodicity Engine for
 > Selectable 2D/3D Lifelong LiDAR Mapping**
 > · [PDF](paper/strata_paper.pdf) · [LaTeX source](paper/arxiv_ref/)
-> · [long-form Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
+> · [Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
 
 The manuscript is a preprint and has not been peer reviewed. It documents the
 architecture, the persistence and periodicity model, the seeded synthetic
@@ -179,7 +179,7 @@ cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 #    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 71 node gtests; the 113 engine
+colcon test --packages-select strata      # the 71 node gtests; the 114 engine
 colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 
@@ -264,8 +264,8 @@ suppresses the flicker.
 
 E4 estimates a flat **56 B/cell** footprint (periodicity off): `voxel3d` holds
 **4.4–10.0×** as many live cells as `grid2d` at equal extent, and `grid2d` is the
-cheaper backend per `integrate()` call in every timing recording (the paper gives
-a ratio only where recordings on a quiet host agree). E2 detects
+cheaper backend per `integrate()` call by **7.7–10.4×** over three recordings on a quiet
+host (one machine; the timings are not portable, `paper/experiments/results/e4_recordings/`). E2 detects
 50%-duty periodic doors at true-positive rate **2/3** (from 25 windows on)
 with no false positive on Bernoulli clutter at any read-out length from 8 to
 100 windows. The periodicity test is noise-calibrated and spends its level over
@@ -279,7 +279,7 @@ Periodic at the shipped period (1908 of 2000 cells in E5).
 labelling error is a false Static label. With the v0.1 defaults (the legacy arm, not
 the 0.2.0 default), 1960 of 2000 random clutter cells that are occupied in half of
 their windows end Static after 64 windows (E6, `results/e6_confusion.csv`): the
-graduation rule labels a cell Static when it is occupied in more than roughly 35 % of
+graduation rule labels a cell Static when it is occupied in more than roughly 0.354 (about a third) of
 the windows in which it is observed, and it cannot tell such clutter from a noisy wall
 of similar occupancy. `l_miss` and `survival_decay` move that threshold (paper, the
 remark "Which occupancy rates graduate" and the E6 table). The 0.2.0 default is the
@@ -308,6 +308,42 @@ to rerun it, start `ros2 launch strata grid2d.launch.py rviz:=false
 use_sim_time:=true` and run `python3 scripts/synthetic_e2e.py grid2d
 <params.yaml> --check-map-server` with the params file the node was launched
 with.
+
+## ⚠️ Deployment cautions
+
+What the paper measured and what it could not, in the form a deployer needs (paper §7–§8;
+every number below is checked against the manuscript by `number_guard.py`):
+
+- **Memory.** In `voxel3d` memory grows with the cells touched; Undecided cells are kept and
+  nothing is forgotten out of view, so over a lifelong run it is unbounded. The shipped 3D file
+  turns the Periodic veto on, and the veto costs memory: on 2,582,017 cells the peak was 221 MB
+  with the veto off and 1,212 MB with it on (a probe on ten frames of one Boreas session). At 0.1 m
+  with the veto on, all 14 runs that were started ran out of memory at the 9 GB limit of the harness.
+  The node crops no range (it drops only non-finite points): crop the cloud before the node.
+  `grid2d` is bounded by its fixed grid. The shipped grid covers 20 m by 20 m (400 by 400 cells of
+  0.05 m from the origin (-10, -10)); endpoints outside it are dropped silently, and a sensor outside
+  it clears nothing while its in-grid hits still count. Size the grid and its origin to the site.
+- **Walls become Static late.** On LILocBench wall runs a Static cell appears after a median of 33
+  windows (upper decile 156; one window is one second), and 14.21 % of the wall cells are not Static at
+  the end. On a single Spires pass up to 22.50 % of the non-ground structure ends Undecided.
+  A Static cell stays 100 until at least 5 all-miss touched windows have passed, and a cell no ray
+  re-observes stays 100 indefinitely, so a removed obstacle can stay lethal for a long time.
+- **Do not use this map as the only source of obstacles.** Only Static is drawn 100 on `~/map`
+  (a cell hit in the open window or last observed as a hit, and a Transient or Intermittent cell that
+  leans occupied, read 50; Periodic reads 75; every other cell reads 0 if it was last observed free and
+  -1 otherwise). Nav2's `StaticLayer` subscribes to `map` by default: set its `map_topic` to `~/map` or
+  remap it. With the default `trinary_costmap` true and `lethal_cost_threshold` 100, only 100 is lethal;
+  50 and 75 read as free space, and so does -1 when `track_unknown_space` is false (the costmap
+  default). A map saved with `~/save_map` and served by `nav2_map_server` reads every cell drawn 50 or 75 as
+  unknown, so a planner allowed to plan through unknown space plans through them.
+- **The error rates are per first test of a history, under independent windows.** The status text of the
+  node and the comments of the shipped parameter files state `alpha` and `beta` without that scope.
+  On real clutter the realised per-cell rates are above `alpha` (paper §7.2), and the windows of a cell are
+  correlated. Periodic is validated on synthetic streams only; the `(0.20, 0.70)` pair is provisional and
+  not calibrated for 3D. The real-data numbers come from an offline harness with reference poses, so TF
+  latency, transport loss, localiser error and stamp offsets are in none of them.
+- **Windows.** The shipped parameter files use one-second time windows; the code defaults of the node are
+  scan windows (`window_mode` `scans`, `layer_interval` 10), for which the pair is not calibrated.
 
 ## 🔌 Interface
 
@@ -513,8 +549,8 @@ See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame convent
 | Document | Contents |
 |---|---|
 | [`paper/strata_paper.pdf`](paper/strata_paper.pdf) | The manuscript (built from [`paper/arxiv_ref/`](paper/arxiv_ref/), the LaTeX master) |
-| [`paper/strata_paper.md`](paper/strata_paper.md) | Long-form Markdown companion (EN), more implementation detail; still describes the first pin `312b09c` until it is re-synced |
-| [`paper/strata_paper_KR.md`](paper/strata_paper_KR.md) | Korean translation of the companion |
+| [`paper/strata_paper.md`](paper/strata_paper.md) | Markdown rendering of the manuscript (EN), generated from the LaTeX master by `paper/arxiv_ref/tools/tex2md.py`; same text, numbers and claims |
+| [`paper/strata_paper_KR.md`](paper/strata_paper_KR.md) | Korean translation of that rendering |
 | [`paper/README.md`](paper/README.md) | What is where under `paper/`, the code pin, how to reproduce |
 | [`SPEC.md`](SPEC.md) | Design spec — algorithm, parameters, frames, module layout, test strategy |
 | [`paper/experiments/`](paper/experiments/) | Reproduction harness (E0 calibration, E1–E7) + `run_all.sh` + `number_guard.py` |
