@@ -46,7 +46,7 @@ fade. Sensor poses are full 6-DoF.
   `prune_prob` are read only then). **C++ library users:** rebuild against 0.2.0 (`MapBackend`, `LayeredMapParams` and `LayeredMap` change layout); `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, so set `evidence_model = EvidenceModel::Legacy` explicitly if you set the v0.1 keys, or they are ignored; and handle the new `CellClass::Intermittent` in your `switch` ([`SPEC.md` §5](SPEC.md)). The defaults `m0 = 0.20`, `m1 = 0.70` were measured on one 2D
   dataset and are provisional until the calibration is frozen
   (`paper/experiments/realdata/PREREG.md`). The paper (`paper/arxiv_ref`) is pinned to
-  `a7559d4` (the code of this release). It reports the synthetic suite in two arms (the
+  `5c20bba` (the code of this release). It reports the synthetic suite in two arms (the
   legacy v0.1 arm and the sprt arm, with E7 for the sequential test), a calibration of the
   pair on real data that did not freeze (the 2D pair is provisional, the 3D pair is not
   calibrated), and an evaluation of seven evidence rules on four public datasets that
@@ -55,7 +55,7 @@ fade. Sensor poses are full 6-DoF.
   of E0–E6 and E7 are committed under `paper/experiments/results/*_sprt.csv` and `e7_*.csv`.
 - **2026-10** — Paper and repository audited for submission: the first version of the
   manuscript described the code of commit `312b09c`; the manuscript now
-  describes `a7559d4` (see the entry above). Since the first release the periodicity test was corrected (centred
+  describes `5c20bba` (see the entry above). Since the first release the periodicity test was corrected (centred
   amplitude, calibrated significance, level spent over repeated read-outs) and
   the node gained time-based windows, input diagnostics and a verified map save.
   The package version string was still `0.1.0` then.
@@ -143,7 +143,7 @@ architecture, the persistence and periodicity model, the seeded synthetic
 characterization suite (calibration E0, experiments E1–E7, in a legacy and a sprt arm),
 a calibration of the shipped pair on real LiDAR data (not frozen) and a held-out
 evaluation of seven evidence rules on four public datasets, and it describes the
-code of commit `a7559d4`; the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
+code of commit `5c20bba`; the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
 
 ```bibtex
 @misc{kang2026strata,

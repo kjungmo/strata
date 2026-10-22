@@ -28,15 +28,18 @@ authoritative. Numbers are authoritative only in `experiments/results/*.csv`.
 ## Code pin and tag
 
 The engine (`strata_core/`), the node (`strata/`) and the check scripts
-(`scripts/`) that the manuscript describes are those of commit `a7559d4`
-(2026-10-19; `strata_core` 0.2.0, with `evidence_model = legacy | sprt`). The first
+(`scripts/`) that the manuscript describes are those of commit `5c20bba`
+(2026-10-22; `strata_core` 0.2.0, with `evidence_model = legacy | sprt`). The first
 release of the manuscript pinned commit `312b09c` (2026-10-11, the v0.1 evidence
-rule); the pin moved once, on purpose, in the v2 work (phase P4a).
-The harness, the results and the manuscript were completed after `a7559d4` without
-changing those three directories.
+rule). The pin moved twice, on purpose, in the v2 work: to `a7559d4` (2026-10-19, adds
+the evidence model `sprt`; phase P4a) and to `5c20bba`, which differs from `a7559d4` only in
+the status text of the node and the comments of `params/grid2d.yaml` and
+`params/voxel3d.yaml` (they now state the scope of alpha and beta). `strata_core/` and
+`scripts/` are identical in the two commits. The harness, the results and the manuscript
+were completed after `5c20bba` without changing those three directories.
 
 `experiments/number_guard.py` compares the tree ids of the three directories with
-`a7559d4`. **A change to any of them fails the CI job `paper`** until the pin
+`5c20bba`. **A change to any of them fails the CI job `paper`** until the pin
 (`PIN`, `PIN_TREES` in the guard, and the pin sentence of the paper) is moved on
 purpose.
 
@@ -111,10 +114,10 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   Evaluation and Deployment-cautions sections against the manuscript sources (versions,
   dates and interface values are listed in `README_ALLOW`); its other sections quote
   interface values and behaviour of the node that no check reads.
-- Code strings and comments of the next pin: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` state alpha and beta without the first-test scope. The next pin changes them to the wording of Proposition ville (per first test of a history, independent windows). The pin `a7559d4` is not moved for this; the manuscript says so in its Provisional-defaults bullet.
+- Scope of alpha and beta in the code strings: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` carry the wording of Proposition ville (first test of a cell history, independent windows, Periodic veto off for beta, real per-cell rates above alpha) since the pin `5c20bba`. The comment on `alpha` and `beta` in `strata_core/include/strata_core/layered_map.hpp` still says only "hold for independent windows only (SPEC 3.2a)"; it is in the pinned `strata_core` tree, whose id is tied to the committed result hashes, and was not changed.
 - Release items: no tag `paper-v1` exists, so the text names commit `312b09c`;
   creating the tag is an author action. The code URL opens `main`, which is still the
-  v0.1 code; before submission merge the code or tag `a7559d4` and name that tag in the
+  v0.1 code; before submission merge the code or tag `5c20bba` and name that tag in the
   pin sentence. The citation audit of the keys added in v2 is still open, and the
   journal versions of the Boreas and Spires papers are unconfirmed (arXiv is cited).
 

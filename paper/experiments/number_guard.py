@@ -574,12 +574,14 @@ if len(TARGETS) > 1:
 
 
 # Code that the paper pins: the tree ids of strata_core/, strata/ and scripts/ at
-# commit a7559d4 (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
-# must come with a new pin in the paper. The pin moved once on purpose, from 312b09c
-# (v0.1 engine, 11 October 2026), in phase P4a of the v2 plan.
-PIN = "a7559d4"
+# commit 5c20bba (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
+# must come with a new pin in the paper. The pin moved twice on purpose: from 312b09c
+# (v0.1 engine, 11 October 2026) to a7559d4 (19 October 2026, phase P4a of the v2 plan),
+# and to 5c20bba (22 October 2026: only the node status text and the two parameter-file
+# comments changed; the strata_core and scripts trees are the same as at a7559d4).
+PIN = "5c20bba"
 PIN_TREES = {"strata_core": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
-             "strata": "41af7663c940e2fc75dd5e0e07a53e86127515f9",
+             "strata": "ffcf73f9ccb857e6244a1c78405e6a2d612292fa",
              "scripts": "3a7ef6330965552ccf5a72f7f7ad7c9c4cfd1b2a"}
 # Core regression tests by the defect or rule they cover (the paper's 10 / 9 / 8).
 CENTRING_TESTS = ("AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT8", "AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT24",
@@ -629,7 +631,7 @@ def guard_code(full):
     in_paper("pin commit quoted", PIN)
     pin_date = git("show", "-s", "--format=%ad", "--date=short", PIN)
     if pin_date is not None:
-        check("pin date quoted in the text is the commit date", pin_date == "2026-10-19", str(pin_date))
+        check("pin date quoted in the text is the commit date", pin_date == "2026-10-22", str(pin_date))
     if git("rev-parse", "--is-inside-work-tree") == "true":
         for d, want in PIN_TREES.items():
             got = git("rev-parse", f"HEAD:{d}")
@@ -939,7 +941,7 @@ STRUCT = [
     (r"sections/", r"\d+-on/\d+-off|\d+-bit|\d+-byte|x86-64|SHA.256|\b[23]D\b|6-DoF|ROS 2|C\+\+17|Bernoulli\(\d?\.\d+\)|"
                    r"\d+ seeds of \d+|\d+th-percentile|O\(1\)|depth \d+|p\{\d?\.\d+\\linewidth\}|\d-on|\d+-window run",
      "name of a scenario, data type, standard or layout width"),
-    (r"sections/", r"\(20\d\d\)|Two 2026 works|19 October 2026|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
+    (r"sections/", r"\(20\d\d\)|Two 2026 works|(?:19|22) October 2026|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
      "year, date, version or licence identifier (versions are also checked against the records)"),
     (r"sections/", r"\\sname\\ 0\.2|\\sname\} 0\.2|[Vv]ersion 0\.2",
      "version of the engine (checked against strata_core/package.xml and CMakeLists.txt)"),
