@@ -6,7 +6,7 @@
 # The first run of this probe (2026-10-18 12:11 to 12:15, commits 214891e and c671879) printed its table to the terminal and was not saved;
 # its per-configuration files were overwritten except the last ones (results_p3/feas/original/). This script keeps everything it prints:
 # the table (results_p3/feas/feas_table.txt), the convert meta of every range window and the meta and time files of every configuration.
-# It was run again for the record after review finding 5, with the same 10 frames (the new reads are in access_log.tsv under feas_rerun_*).
+# It was run again for the record after review finding 5, with the same 10 frames (the new reads are in access_log.tsv.gz under feas_rerun_*).
 # Third run (PREREG_P3.md Amendment 4, the rotation convention was wrong in the first two): same 10 frames, steps feas_a4_*, records in results_p3/feas_a4/.
 set -u
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

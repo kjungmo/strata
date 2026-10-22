@@ -1,6 +1,6 @@
 # PREREG_P3: pre-registration of the phase 3 test evaluation
 
-Status: written and committed before any test evaluation. The commit time of this file, the access log `results_p3/access_log.tsv`
+Status: written and committed before any test evaluation. The commit time of this file, the access log `results_p3/access_log.tsv.gz` (gzip; `zcat` reads it)
 and the step logs in `results_p3/logs/` show the order. A change to anything below after the first test evaluation is an amendment
 (dated, committed before the run it affects, listed in `results_p3/deviations.md`).
 
@@ -126,7 +126,7 @@ Order (P1_DECISION_ADVICE section 7): (1) `lt_changes_dynamics_0`, (2) `lt_chang
 * One process at a time, `nice -n 19` (`reproduce_p3.sh`), binaries from a `git archive` copy of a committed tree, `-j4` for builds.
 * Every step is logged with host, load before and after, the top CPU users, commit, the command, return code, and the size and sha256 of its outputs (`results_p3/runs/<step>.json`);
   test inputs are listed with sizes and sha256 in `data_inputs_p3.sha256` (from the download verification) and checked at the `check` stage; inputs without a recorded sha256 are hashed by the run record.
-* Every step that touches a test-split file runs under `strace -f -e trace=openat,open`; the trace is committed (`results_p3/access/`), and `results_p3/access_log.tsv` lists every data file each step opened.
+* Every step that touches a test-split file runs under `strace -f -e trace=openat,open`; the trace is committed (`results_p3/access/`), and `results_p3/access_log.tsv.gz` (gzip; `zcat` reads it) lists every data file each step opened.
 * All arms, all conditions, all runs are reported, including failed ones (with the reason) and the ones with the Periodic veto off. A run is repeated only after a crash, with an identical configuration, and the
   repetition is listed. No number is chosen among runs.
 * No timing is measured in this phase (R6); the host load is recorded and only stated.
@@ -374,7 +374,7 @@ The exported points are the original frame points, at distance 0 from themselves
 ### 16.6 Records of the Boreas feasibility probe (finding 5). Corrects section 14
 
 Section 14 says the probe ran on "data that was already opened". More exactly: the probe ran **two arms of the engine (`shipped_v0_1` and `sprt`) on the first 10 frames of the test session boreas-2020-11-26-13-58** (the same 10 frames as the reader validation), with `static-export`. It computed no label, no rate and no metric, and nothing was chosen from a result except the range window and the veto switch, by cost.
-The files read are in `access_log.tsv` (`feas_boreas_convert*`). The first run printed its table to the terminal and did not save it. The files that survived are in `results_p3/feas/original/`; the probe was run again on the same 10 frames (`feas_rerun_boreas_convert_r*` in `access_log.tsv`),
+The files read are in `access_log.tsv.gz` (`feas_boreas_convert*`). The first run printed its table to the terminal and did not save it. The files that survived are in `results_p3/feas/original/`; the probe was run again on the same 10 frames (`feas_rerun_boreas_convert_r*` in `access_log.tsv.gz`),
 and its table and meta files are in `results_p3/feas/`. Cells and peak memory equal the table of section 14 in every row; the seconds differ with host load and are for planning only (R6). `deviations.md` carries the corrected order of events.
 
 ### 16.7 Re-pin (2026-10-18, before any evaluation)
@@ -643,5 +643,5 @@ No arm, label, window, resolution, threshold, verdict rule or metric changes. No
 3. Section 1 of the report gets the `lil-offset` diagnostic and the pair-skew bound per sequence (section 6.1). The diagnostic selected nothing.
 4. Rows defined after results existed are marked "added after the results were seen": the Spires ever-Static bound row (Amendments 12 and 13) and the near-wall thickening rows (Amendment 15).
 5. The Spires veto effect on the false-reject of non-ground structure is added to summary item 8. The at-or-below-`m0` rate quotes the block interval.
-6. A review of the report read test-split files (KITTI 05 `pcd/` frames twice under `strace`, `gt_cloud.pcd` once under `strace` and once untraced, first 400 bytes). Only reads. Rows are in `access_log.tsv` (`review4_*`); traces are in `results_p3/access/review4_kth_*.strace`.
-   Sub-item (2026-10-22, review 5): the reviewer also ran `p3_probe kth-export` read-only on KITTI 05 for `sprt` (00:51:21 to 00:54:46) and `shipped_v0_1` (to 00:58:15), 0.2 m, `W = 10`, veto on, policies `static_only` and `not_rejected`. Each export opened the 321 `pcd/*.pcd` frames twice and the `pcd/` directory once. From 00:58:27 to 01:17:44 the reviewer's evaluator opened `kth/05/gt_cloud.pcd` 5 times. Only reads; the exports were deleted after scoring. Rows are in `access_log.tsv` (`review5_*`); traces are in `results_p3/access/review5_kth_*.strace`.
+6. A review of the report read test-split files (KITTI 05 `pcd/` frames twice under `strace`, `gt_cloud.pcd` once under `strace` and once untraced, first 400 bytes). Only reads. Rows are in `access_log.tsv.gz` (`review4_*`); traces are in `results_p3/access/review4_kth_*.strace`.
+   Sub-item (2026-10-22, review 5): the reviewer also ran `p3_probe kth-export` read-only on KITTI 05 for `sprt` (00:51:21 to 00:54:46) and `shipped_v0_1` (to 00:58:15), 0.2 m, `W = 10`, veto on, policies `static_only` and `not_rejected`. Each export opened the 321 `pcd/*.pcd` frames twice and the `pcd/` directory once. From 00:58:27 to 01:17:44 the reviewer's evaluator opened `kth/05/gt_cloud.pcd` 5 times. Only reads; the exports were deleted after scoring. Rows are in `access_log.tsv.gz` (`review5_*`); traces are in `results_p3/access/review5_kth_*.strace`.

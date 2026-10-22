@@ -7,7 +7,7 @@
 #   env P3_RESULTS_DIR  default <this dir>/results_p3
 #       P3_DATA_PATTERN  regular expression (grep -E) for paths that count as data (default: datasets/strata)
 #       P3_ALLOW_DIRTY   1 = run although the experiment directory has uncommitted files (must be disclosed in the report)
-# The access log is <RESULTS>/access_log.tsv: time, step, commit, uncommitted files, path, number of open calls.
+# The access log is <RESULTS>/access_log.tsv.gz (gzip, one member per append; read it with zcat): time, step, commit, uncommitted files, path, number of open calls.
 # A command runs only from committed scripts: the harness files (p3_*, test_p3*, reproduce_p3.sh, PREREG_P3.md, the shared readers and CMakeLists.txt of this
 # directory) must be clean. Files of other phases in the same directory (results_*, mutation_p2.py, ...) are not part of the harness and do not count. Other agents edit
 # strata_core in the same worktree; that cannot change a script, and binaries are built from a `git archive` copy of a commit by
@@ -30,10 +30,10 @@ trace="$RES/access/$step.strace"
 start="$(date -Is)"
 strace -f -e trace=openat,open -o "$trace" "$@"
 rc=$?
-log="$RES/access_log.tsv"
-if [ ! -f "$log" ]; then printf 'time\tstep\tcommit\tuncommitted_files\tpath\topen_calls\n' > "$log"; fi
+log="$RES/access_log.tsv.gz"   # gzip members can be concatenated, so every append is its own member; zcat reads the whole log
+if [ ! -f "$log" ]; then printf 'time\tstep\tcommit\tuncommitted_files\tpath\topen_calls\n' | gzip -n -9 > "$log"; fi
 # successful opens only (a failed open ends in "= -1"); the path is the first quoted string of the call
 grep -E "$PATTERN" "$trace" | grep -v -E '= -1 ' | grep -o -E '"[^"]+"' | tr -d '"' | grep -E "$PATTERN" | sort | uniq -c |
-  while read -r n p; do printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$start" "$step" "$commit" "$dirty" "$p" "$n" >> "$log"; done
+  while read -r n p; do printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$start" "$step" "$commit" "$dirty" "$p" "$n"; done | gzip -n -9 >> "$log"
 echo "step $step rc=$rc trace=$trace"
 exit $rc

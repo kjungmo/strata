@@ -10,11 +10,11 @@ No test evaluation (`eval_*` stage) has been run. The only runs of an arm on tes
 2. 10:31 to 10:33 traced runs of two committed peek scripts (7f7ddca, 8331bf9) on Boreas `boreas-2020-11-26-13-58`: header and first rows of the pose CSVs, 96 bytes of the first `.bin`, the pose rows of the first 10 frames and the GPS rows of the first 0.2 s.
 3. 10:58 harness code and tests committed (6eb294f). No step before it used binaries.
 4. 11:05 to 11:16 reader validations under file-open traces on the first 10 records of one test file per reader (Keble 03, Boreas 2020-11-26, KITTI 05, semi-indoor, `lt_changes_0`, `lt_changes_dynamics_0`); the Boreas pose-only overlap gate at 11:16:14 reads
-   `lidar_poses.csv` and the first row of `gps_post_process.csv` of the three sessions and lists their `lidar/` directories. Every attempt is in `access_log.tsv`.
+   `lidar_poses.csv` and the first row of `gps_post_process.csv` of the three sessions and lists their `lidar/` directories. Every attempt is in `access_log.tsv.gz`.
 5. 11:16 to 11:50 smoke tests on CALIBRATION data (KITTI 00; `dynamics_0` with the run B cache and the `mapping` reference).
 6. 11:55:00 `PREREG_P3.md` committed (f208975). 11:55:07 stat record after (`test_split_stat_after*.tsv`): no file appeared, disappeared or changed in size, mtime or ctime (the heading of `test_split_stat_compare.md` says "phase 1b" and lists the
-   phase 1b allowed reads: that is the wording of `compare_stat.py`, not a statement about phase 3; the reads of phase 3 are in section 10 of `PREREG_P3.md` and in `access_log.tsv`).
-7. **12:11 to 12:15 Boreas feasibility probe** (`p3_feas_boreas.sh`, commits 214891e and c671879, after the commit of `PREREG_P3.md` at 11:55). `boreas-convert` of the first 10 frames of `boreas-2020-11-26-13-58` at three range windows (`feas_boreas_convert`, `_r50`, `_r25`, `_r15` in `access_log.tsv`),
+   phase 1b allowed reads: that is the wording of `compare_stat.py`, not a statement about phase 3; the reads of phase 3 are in section 10 of `PREREG_P3.md` and in `access_log.tsv.gz`).
+7. **12:11 to 12:15 Boreas feasibility probe** (`p3_feas_boreas.sh`, commits 214891e and c671879, after the commit of `PREREG_P3.md` at 11:55). `boreas-convert` of the first 10 frames of `boreas-2020-11-26-13-58` at three range windows (`feas_boreas_convert`, `_r50`, `_r25`, `_r15` in `access_log.tsv.gz`),
    then `static-export` of the 10-frame caches with the engine: first the arms `shipped_v0_1` and `sprt` at 3 to 50 m, 0.2 m, Periodic veto on (12:11 and 12:12), then the `sprt` arm over range windows, voxel sizes and veto switch. The same 10 frames had been opened for the reader validation. No label, rate or metric was computed.
    The terminal table was not saved and most per-configuration files were overwritten (the surviving files are in `feas/original/`). This corrects the sentence "No arm was run on a test sequence" that stood at the end of this file: two arms of the engine were run on 10 test frames.
 8. 12:16 Amendment 1 of `PREREG_P3.md` (Boreas configuration and measured cost); 12:19 Amendment 2 (how inputs and outputs are recorded).
@@ -22,7 +22,7 @@ No test evaluation (`eval_*` stage) has been run. The only runs of an arm on tes
 10. **Review of the harness (Opus), six findings.** Resolution below. The review read the first GPS rows of the three Boreas sessions with its own code (text pose files, outside the harness trace); the traced gate reads the same files.
 11. 13:34 stat record of every test-split file (`review/review_stat_before*.tsv`); 13:34 commits 95b97d9 (findings 2 and 3) and a68266b (findings 1 and 4).
 12. 13:35:59 Boreas gate re-run on pose files (traced, `boreas_overlap`, binary a68266b): PASS in the file frame, ENU worst miss 0.0551 m for each session, altitude columns within centimetres. The log of the first (11:16) gate, which used the wrong frame, is kept as `logs/boreas_overlap.attempt-20261018T133559.log`; this 13:35:59 log is `logs/boreas_overlap.attempt-20261018T141925.log`; the gate ran a third time at 14:19:25 with the pinned-engine binary (item 14) and its log is `logs/boreas_overlap.log`. The three runs read the same pose files; the result is identical.
-13. 13:37 to 13:39 feasibility probe repeated on the same 10 frames, with its table and meta files kept (`feas/`; `feas_rerun_boreas_convert_r*` in `access_log.tsv`). 13:41 Amendment 3 committed (f925cd2), before any evaluation.
+13. 13:37 to 13:39 feasibility probe repeated on the same 10 frames, with its table and meta files kept (`feas/`; `feas_rerun_boreas_convert_r*` in `access_log.tsv.gz`). 13:41 Amendment 3 committed (f925cd2), before any evaluation.
 14. 13:42 to 14:19 on the binary built from 38782a5: `check`, `unit`, `smoke_lil`, `smoke_kth`, `smoke_spires`, `boreas_gate` on the pinned engine (below).
 
 ### Defects found by the validations and smoke tests (each fixed in a commit, tests added)
@@ -85,7 +85,7 @@ Binary built from commit 38782a5 (`STRATA_CORE_TREE 87bee34e3d6e7861d45eef80ad50
 
 ### Test-split stat record, review work
 
-`review/review_stat_before*.tsv` (13:34:34) and `review/review_stat_after*.tsv` (taken after the last read) and their comparison `review/review_stat_compare.md`: no file appeared, disappeared or changed in size, mtime or ctime. As before, this shows only that no file was modified; the opens are in `access_log.tsv` (new rows: `boreas_overlap`, `feas_rerun_boreas_convert_r50`, `_r25`, `_r15`).
+`review/review_stat_before*.tsv` (13:34:34) and `review/review_stat_after*.tsv` (taken after the last read) and their comparison `review/review_stat_compare.md`: no file appeared, disappeared or changed in size, mtime or ctime. As before, this shows only that no file was modified; the opens are in `access_log.tsv.gz` (new rows: `boreas_overlap`, `feas_rerun_boreas_convert_r50`, `_r25`, `_r15`).
 
 ### Second review of the harness (Opus), two findings (2026-10-18, after Amendment 3)
 
@@ -110,7 +110,7 @@ Mutants of Amendment 4 (`a4` notes in `mutation_p3.py`): 30 mutants. The first p
 The 94 Boreas mutants of the earlier lists, rerun on the final tests: 91 killed, 3 equivalent survivors (the same three as before). The record is `results_p3/mutation_record_r2.md`.
 
 **Test-split stat record.** `test_split_stat_before_r2*.tsv` (14:39:57, before the first read of this work) and `test_split_stat_after_r2*.tsv` (after the last read), comparison `test_split_stat_compare_r2.md`: 6,648 files in each record; no file appeared, disappeared or changed in size, mtime or ctime. As before, this shows only that no file was modified.
-The opens are in `access_log.tsv` (steps `r2_explore_pose`, `validate_boreas_2020`, `boreas_overlap`, `feas_a4_boreas_convert_r*`): the GPS and lidar-pose text files of the three Boreas sessions and the first 10 lidar frames of 2020-11-26 only; no other lidar frame of any session was opened.
+The opens are in `access_log.tsv.gz` (steps `r2_explore_pose`, `validate_boreas_2020`, `boreas_overlap`, `feas_a4_boreas_convert_r*`): the GPS and lidar-pose text files of the three Boreas sessions and the first 10 lidar frames of 2020-11-26 only; no other lidar frame of any session was opened.
 
 ### Third review of the harness (Opus), three findings (2026-10-18, before any evaluation)
 
@@ -120,7 +120,7 @@ I did not disagree with any finding. No evaluation stage has run (`results_p3/ev
 |---|---|---|---|
 | 1 | The `octomap` and `elite_like` arms apply one increment per touched window, not per ray per scan, so they are not OctoMap and ELite. | Checked: `layered_map.cpp` `endWindow` adds `l_hit` or `l_miss` once per touched window; the smoke row `octomap` on KITTI 00 has SA 98.45 and DA 97.81. Amendment 6 states that every arm updates once per touched window, renames the rows "OctoMap parameters on window evidence" and "ELite factors on window evidence", and adds the words to the sentence beside each KTH table. No arm value changes. | `PREREG_P3.md` section 19 |
 | 2 | Section 12 has no recorded resolution; n_max 80 against the lead's 64 is missing from it. | Amendment 7 records a decision for each of the six items (five "keep as written", item 4 settled by Amendment 3) and decides n_max 80 with the figures. `guard_eval` refuses to run without the marker line `LEAD_P3_DECISIONS=amendment-N`. The decisions are the implementer's record of the lead's order to resolve the finding without changing an arm; the lead can replace any of them by a dated amendment before the first evaluation. | `PREREG_P3.md` section 20; `reproduce_p3.sh` `guard_eval` |
-| 3 | The reviewer read test-split files without strace. | Eight rows added to `access_log.tsv` (step `review3_untraced_reads`, open calls "unrecorded"). Listed below. A stat record was taken after the reads. | `access_log.tsv`; `review/review3_stat_*` |
+| 3 | The reviewer read test-split files without strace. | Eight rows added to `access_log.tsv.gz` (step `review3_untraced_reads`, open calls "unrecorded"). Listed below. A stat record was taken after the reads. | `access_log.tsv.gz`; `review/review3_stat_*` |
 
 **Reads of the reviewer (untraced).** Test split:
 
@@ -148,3 +148,7 @@ The reviewer computed no arm, label, metric or rate. The purpose was a reader ch
 11. **Two streams (2026-10-20 07:19 to 2026-10-21 03:22; Amendment 15, section 28.2).** `eval_boreas` (veto off) ran at the same time as `eval_spires` (veto off). Each stream ran one process at a time. No step of either stream failed during the overlap. The step logs record the load before and after each step.
 12. **KTH semi-indoor at 0.1 m, veto on (2026-10-21 18:32 to 18:48).** All seven arms ended with `std::bad_alloc` at the 9 GB address-space limit (`failed_steps.tsv`). The runs are not repeated: the identical command ends the same way. The same condition with the veto off finished (`kth_semindoor_*_r0.1_W10_p0_*`).
 13. **Final checks (2026-10-22).** `statafter` (stat of every test-split file after the evaluation; no change, `test_split_stat_compare.md`) and a confirming resume pass of `eval_boreas` (every step already finished; nothing was run again). The report was written by `make_report_p3.py` from the committed result files; `P3_REPORT_summary.md` and `P3_REPORT_appendix.md` are hand-written texts included by the script.
+
+## Storage format of the access log (2026-10-22)
+
+`access_log.tsv` (8,340,293 bytes) was over the 1 MB limit of `test_no_data_staged.sh`. It is now committed as `access_log.tsv.gz` (`gzip -n -9`, 176,231 bytes). `zcat access_log.tsv.gz | sha256sum` gives `6030048f0d91f5dadb699011c74e22d84c43d045ff9f9602f8f649d94f99a690`, the same as the old file. No row changed. `p3_traced.sh` now appends one gzip member per step. File names in the text above were renamed to `.gz`.
