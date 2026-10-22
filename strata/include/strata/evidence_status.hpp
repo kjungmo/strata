@@ -46,7 +46,9 @@ inline EvidenceStatus evidenceStatus(const strata_core::LayeredMapParams& p, con
     s.values.emplace_back("n_max_undecided", std::to_string(p.n_max_undecided));
     s.message = "sprt: clutter m0=" + num(p.m0) + ", structure m1=" + num(p.m1) + ", alpha=" + num(p.alpha) +
         ", beta=" + num(p.beta) + "; an always-hit cell graduates after " + std::to_string(d.latency) +
-        " windows; the error rates hold for independent windows";
+        " windows; alpha and beta bound only the first test of one cell history, for independent windows (alpha: clutter at"
+        " m0 or less graduates; beta: structure at m1 or more is rejected, Periodic veto off; with the veto on the"
+        " rejection bound is larger); restarts after a demotion are not covered; on real clutter the per-cell rate was above alpha";
   } else {
     s.values.emplace_back("min_observations", std::to_string(p.min_observations));
     s.message = "legacy (v0.1 arithmetic): a cell graduates once its smoothed log-odds reach graduate_prob after "
