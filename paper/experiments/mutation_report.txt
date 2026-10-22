@@ -7,7 +7,7 @@ sections/3b_evidence.tex: 114 numerals mutated, 114 caught, 0 survived
 sections/4_experiments.tex: 503 numerals mutated, 503 caught, 0 survived
 sections/4b_calibration.tex: 71 numerals mutated, 71 caught, 0 survived
 sections/4c_realdata.tex: 145 numerals mutated, 145 caught, 0 survived
-sections/5_discussion.tex: 87 numerals mutated, 87 caught, 0 survived
+sections/5_discussion.tex: 88 numerals mutated, 88 caught, 0 survived
 sections/6_conclusion.tex: 13 numerals mutated, 13 caught, 0 survived
 sections/appendix.tex: 129 numerals mutated, 129 caught, 0 survived
 figures/e1_f1.tex: 29 numerals mutated, 29 caught, 0 survived
@@ -43,4 +43,4 @@ tables/p3_spires.tex: 47 numerals mutated, 47 caught, 0 survived
 tables/p3_veto.tex: 12 numerals mutated, 12 caught, 0 survived
 tables/sprt_arm.tex: 14 numerals mutated, 14 caught, 0 survived
 figures/e4_cost.tex: 10 numerals mutated, 10 caught, 0 survived
-TOTAL: 2577 numerals mutated, 2577 caught, 0 survived
+TOTAL: 2578 numerals mutated, 2578 caught, 0 survived

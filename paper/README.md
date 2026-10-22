@@ -36,11 +36,18 @@ rule). `a7559d4` (2026-10-19, phase P4a) added the evidence model `sprt`. `5c20b
 `params/grid2d.yaml` and `params/voxel3d.yaml` (they state the scope of alpha and beta).
 `strata_core/` and `scripts/` are identical in the three commits.
 
-The harness builds only `strata_core`. The harness and the result files were produced
-with the `strata_core` and `scripts/` trees of `a7559d4`, which are identical at the
-pin. Between `a7559d4` and the pin only the node status text and the two YAML comments
-changed. No experiment builds or reads them, so the results hold for the pin. Only the
-manuscript was completed after the pin.
+The harness builds only `strata_core`. Every seeded synthetic result file (E0-E3, E5
+and E6 in both arms, E7, and the E4 cell counts of the sprt arm) reproduces byte for
+byte from the `strata_core` tree `c780639` of `a7559d4`, which is identical at the pin
+(`experiments/reproduction_log.txt`, lines of 2026-10-21 and 2026-10-22, sha256
+`07a4ce75...`). The real-data evaluation runs were built from the `strata_core` tree
+`bf96e78` or `c780639`; their source and header trees are identical (Appendix A, Real
+data). The calibration runs record their tree in their run manifests (`results_p1/`,
+`results_p1b/`). In `strata_core/`, `strata/` and `scripts/` only the node status text
+and the two YAML comments changed between `a7559d4` and the pin; the results, the P3
+files and the manuscript changed in that interval too. No experiment builds or reads the
+status text or the comments, so the results hold for the pin. Only the manuscript was
+completed after the pin.
 
 `experiments/number_guard.py` compares the tree ids of the three directories with
 `708d62f`. **A change to any of them fails the CI job `paper`** until the pin
@@ -118,7 +125,7 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   Evaluation and Deployment-cautions sections against the manuscript sources (versions,
   dates and interface values are listed in `README_ALLOW`); its other sections quote
   interface values and behaviour of the node that no check reads.
-- Scope of alpha and beta in the code strings: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` carry the wording of Proposition ville (first test of a cell history, independent windows, Periodic veto off for beta, real per-cell rates above alpha) since the pin `708d62f` (the first step was `5c20bba`; the pin adds the bound forms alpha/(1-beta) and beta/(1-alpha), the continuations of a kept periodic candidate as not covered, and the real-data clause only when the calibration label is not `user`). The comment on `alpha` and `beta` in `strata_core/include/strata_core/layered_map.hpp` still says only "hold for independent windows only (SPEC 3.2a)"; it is in the pinned `strata_core` tree, whose id is tied to the committed result hashes, and was not changed.
+- Scope of alpha and beta in the code strings: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` carry the wording of Proposition 'Error bounds under independent windows' (first test of a cell history, independent windows, Periodic veto off for beta, real per-cell rates above alpha) since the pin `708d62f` (the first step was `5c20bba`; the pin adds the bound forms alpha/(1-beta) and beta/(1-alpha), the continuations of a kept periodic candidate as not covered, and the real-data clause only when the calibration label is not `user`). Next code pin, recorded only (no change this round): (i) `params/grid2d.yaml` lines 26-28 and `params/voxel3d.yaml` lines 22-24 add 'continuations of a kept periodic candidate are not covered', and `voxel3d.yaml` scopes the real-data clause to '(real 2D clutter, shipped 2D pair)'; the current text is incomplete, not false (the 3D clutter rates of 28-37% bear out 'above alpha'); (ii) `test_evidence_status.cpp` asserts that the real-data clause is present for `measured_2d` and `fallback_2d_pair` and absent for `user`, and that 'continuations of a kept periodic candidate' is present. The status text already carries the full scope. The comment on `alpha` and `beta` in `strata_core/include/strata_core/layered_map.hpp` still says only "hold for independent windows only (SPEC 3.2a)"; it is in the pinned `strata_core` tree, whose id is tied to the committed result hashes, and was not changed.
 - Release items: no tag `paper-v1` exists, so the text names commit `312b09c`;
   creating the tag is an author action. The code URL opens `main`, which is still the
   v0.1 code; before submission merge the code or tag `708d62f` and name that tag in the
