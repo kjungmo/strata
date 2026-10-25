@@ -24,12 +24,15 @@ keywords:
   - FreMEn periodicity
   - ROS 2
 preferred-citation:
-  type: generic
+  type: article
   title: "STRATA: One Geometry-Free Persistence-and-Periodicity Engine for Selectable 2D/3D Lifelong LiDAR Mapping"
   authors:
     - family-names: Kang
       given-names: Jungmo
+      email: kangjmo91@gmail.com
       orcid: "https://orcid.org/0009-0002-0394-1861"
+  journal: "Preprints"
   year: 2026
-  url: "https://github.com/kjungmo/strata"
-  notes: "Preprint manuscript in paper/arxiv_ref of the repository; not peer reviewed"
+  doi: "10.20944/preprints202610.2339.v1"
+  url: "https://doi.org/10.20944/preprints202610.2339.v1"
+  notes: "Preprint, version 1, not peer reviewed. The repository manuscript (paper/arxiv_ref) may be ahead of the posted version; cite the exact source commit for reproducibility."
