@@ -1502,7 +1502,8 @@ def readme_numbers():
     sections = re.split(r"(?m)^## ", README.read_text(encoding="utf-8"))
     body = "\n".join(sec for sec in sections if sec.split("\n", 1)[0].strip().lstrip("\U0001F4E2\U0001F4CA\u26A0\uFE0F ").startswith(
         ("News", "Overview", "Evaluation", "Deployment cautions")))
-    body = re.sub(r"`[0-9a-f]{7}`|\]\([^)]*\)|results/[\w./-]+|\bE\d\b|\bE\d[\u2013-]E\d\b|\b\d{4}-\d{2}\b", "", body)
+    # DOIs are identifiers, not results: drop them like commit ids and link targets.
+    body = re.sub(r"`[0-9a-f]{7}`|\]\([^)]*\)|\b10\.\d{4,9}/[^\s)\]]+|results/[\w./-]+|\bE\d\b|\bE\d[\u2013-]E\d\b|\b\d{4}-\d{2}\b", "", body)
     src = "\n".join([tex_text(ARXIV), md_text(PAPER.read_text(encoding="utf-8"))])
     bad = []
     for m in re.finditer(r"(?<![\w.])-?\d[\d,]*(?:\.\d+)*(?![\w])", body):

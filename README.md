@@ -11,6 +11,7 @@ transient layers, at full 6-DoF.**
 [![License](https://img.shields.io/github/license/kjungmo/strata?color=blue)](LICENSE)
 ![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-22314E?logo=ros&logoColor=white)
 [![Paper (PDF)](https://img.shields.io/badge/paper-PDF-b31b1b?logo=adobeacrobatreader&logoColor=white)](paper/strata_paper.pdf)
+[![Preprint DOI](https://img.shields.io/badge/DOI-10.20944%2Fpreprints202610.2339.v1-blue)](https://doi.org/10.20944/preprints202610.2339.v1)
 [![Sponsor](https://img.shields.io/github/sponsors/kjungmo?logo=githubsponsors&color=ea4aaa)](https://github.com/sponsors/kjungmo)
 
 [Overview](#overview) · [Paper](#-paper) · [Install](#-prerequisites) ·
@@ -35,6 +36,8 @@ fade. Sensor poses are full 6-DoF.
 > corrupts the map; there is no correction here.
 
 ## 📢 News
+- **2026-10** — Preprint posted on Preprints.org (version 1, not peer
+  reviewed): [doi:10.20944/preprints202610.2339.v1](https://doi.org/10.20944/preprints202610.2339.v1).
 - **2026-10** — **Version 0.2.0, behaviour change** (branch `v2/evidence-sprt`, not yet
   merged or released): cells now graduate by a **sequential probability ratio test**
   (`evidence_model: sprt`, the new default) instead of the v0.1 log-odds rule. You state
@@ -135,6 +138,7 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 
 > **STRATA: One Geometry-Free Persistence-and-Periodicity Engine for
 > Selectable 2D/3D Lifelong LiDAR Mapping**
+> · [Preprint (Preprints.org, v1)](https://doi.org/10.20944/preprints202610.2339.v1)
 > · [PDF](paper/strata_paper.pdf) · [LaTeX source](paper/arxiv_ref/)
 > · [Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
 
@@ -146,13 +150,16 @@ evaluation of seven evidence rules on four public datasets, and it describes the
 code of commit `708d62f` (tag `paper-v2`); the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
 
 ```bibtex
-@misc{kang2026strata,
-  author     = {Jungmo Kang},
-  title      = {{STRATA}: One Geometry-Free Persistence-and-Periodicity Engine
-                for Selectable {2D/3D} Lifelong {LiDAR} Mapping},
-  year       = {2026},
-  howpublished = {GitHub: \url{https://github.com/kjungmo/strata}},
-  note       = {Preprint manuscript, not peer reviewed}
+@article{kang2026strata,
+  author  = {Kang, Jungmo},
+  title   = {{STRATA}: One Geometry-Free Persistence-and-Periodicity Engine
+             for Selectable {2D/3D} Lifelong {LiDAR} Mapping},
+  journal = {Preprints},
+  year    = {2026},
+  doi     = {10.20944/preprints202610.2339.v1},
+  url     = {https://doi.org/10.20944/preprints202610.2339.v1},
+  note    = {Preprint, version 1, not peer reviewed. Source and code at
+             \url{https://github.com/kjungmo/strata}},
 }
 ```
 
