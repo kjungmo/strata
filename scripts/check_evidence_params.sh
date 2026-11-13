@@ -47,7 +47,7 @@ if [ "$code" -eq 124 ] && grep -qF "not calibrated for backend voxel3d" <<< "$ou
 else echo "FAIL: voxel3d default start (exit $code)"; echo "$out" | tail -3; fail=1; fi
 # voxel3d with the export on starts and says what the exported voxels are; the default start does not say it
 out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p backend:=voxel3d -p export_undecided:=true -p periodic_min_periods:=2.0 2>&1); code=$?
-if [ "$code" -eq 124 ] && grep -qF "export_undecided is on" <<< "$out" && grep -qF "alpha covers Static cells only" <<< "$out"; then
+if [ "$code" -eq 124 ] && grep -qF "export_undecided is on" <<< "$out" && grep -qF "alpha bounds clutter becoming Static only" <<< "$out"; then
   echo "ok: backend:=voxel3d export_undecided:=true starts and warns that the exported voxels are not static"
 else echo "FAIL: voxel3d export start (exit $code)"; echo "$out" | tail -3; fail=1; fi
 out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p backend:=voxel3d 2>&1)
