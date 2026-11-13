@@ -457,7 +457,7 @@ std::string compareMaps(const A& real, const B& ref, const std::vector<CellId>& 
 
 // ------------------------------------------------------------------------------ scenario ----------
 
-enum class Kind { Wall, Periodic, Clutter, Burst, Both, Free, Flicker };
+enum class Kind { Wall, Periodic, Clutter, Burst, Both, Free, Flicker, Solid, Flip };
 
 struct CellPlan {
   CellId id;
@@ -531,7 +531,7 @@ std::vector<CellPlan> makePlans(Rng& rng, int windows) {
   for (int i = 0; i < n; ++i) {
     CellPlan c;
     c.id = static_cast<CellId>(i) * 104729 + ((i % 5 == 0) ? (1LL << 40) : 0) + 3;
-    c.kind = static_cast<Kind>(rng.below(7));
+    c.kind = static_cast<Kind>(rng.below(9));
     c.start = rng.below(windows / 2);
     c.stop = c.start + 20 + rng.below(windows);
     c.phase = rng.below(8);
@@ -570,6 +570,15 @@ void contacts(Rng& rng, const CellPlan& c, int w, LayeredMap& real, ReferenceLay
       break;
     case Kind::Flicker:
       if (rng.u() < 0.5) { if (rng.u() < 0.5) hit(); else miss(); }
+      break;
+    case Kind::Solid:   // hit in every touched window, with gaps: a constant cell for the whole run
+      if (active && rng.u() < 0.8) hit();
+      break;
+    case Kind::Flip:    // constant (all hit or all miss) for 30 windows, then mixed
+      if (active && rng.u() < 0.9) {
+        if (w < c.start + 30) { if (c.phase % 2) hit(); else miss(); }
+        else { if (rng.u() < 0.5) hit(); else miss(); }
+      }
       break;
   }
 }
@@ -979,5 +988,41 @@ TEST(CellMemory, TheNodeAndTheSlotHaveStatedSizes) {
   for (int h : {-3, 0, 1, 5, 8}) {
     LayeredMapParams p; p.periodicity.n_harmonics = h;
     EXPECT_EQ(LayeredMap(p).coeffSlotBytes(), (2u + 6u * static_cast<unsigned>(std::max(h, 0))) * 8u) << h;
+  }
+}
+
+TEST(CellMemory, TheConstantCellShortcutGivesTheBitsOfTheFullComputation) {
+  // FrozenPeriodicity has no shortcut: it is the full computation.
+  for (int H : {-1, 0, 1, 2, 3, 5}) {
+    for (int T : {1, 4, 8, 24}) {
+      const PeriodicityParams pp{T, H};
+      const PeriodicityKernel kernel(pp);
+      for (int mode = 0; mode < 4; ++mode) {   // all hit, all miss, constant then one flip, mixed
+        FrozenPeriodicity frozen(pp);
+        std::vector<double> slot(kernel.slotDoubles(), 0.0);
+        Rng rng(500 + H * 7 + T + mode);
+        int w = 0;
+        for (int step = 0; step < 90; ++step) {
+          w += 1 + rng.below(3);
+          bool occ = mode == 0 ? true : mode == 1 ? false : mode == 2 ? (step != 40 + (T % 3)) : rng.u() < 0.5;
+          if (mode == 3 && step < 30) occ = true;   // constant for a while, then mixed
+          frozen.gather(7, occ, w);
+          kernel.gather(slot.data(), occ, w);
+          const std::string tag = "H=" + std::to_string(H) + " T=" + std::to_string(T) + " mode " +
+                                  std::to_string(mode) + " step " + std::to_string(step);
+          EXPECT_TRUE(sameBits(frozen.amplitude(7), kernel.amplitude(slot.data()))) << tag;
+          EXPECT_TRUE(sameBits(frozen.falseAlarm(7), kernel.falseAlarm(slot.data()))) << tag;
+          EXPECT_TRUE(sameBits(frozen.predict(7, w + 1), kernel.predict(slot.data(), w + 1))) << tag;
+          for (int k = 0; k < std::max(H, 0); ++k) {
+            const HarmonicStat a = frozen.harmonic(7, k), b = kernel.harmonic(slot.data(), k);
+            EXPECT_TRUE(sameBits(a.dchi, b.dchi) && sameBits(a.amplitude, b.amplitude)) << tag;
+          }
+          for (double a_min : {-1.0, -0.0, 0.0, 1e-300, 0.3, 2.0})
+            for (double alpha : {0.0, 0.01, 0.2, 0.999, 1.0, 3.0})
+              for (bool spend : {false, true})
+                EXPECT_EQ(frozen.isPeriodic(7, a_min, alpha, spend), kernel.isPeriodic(slot.data(), a_min, alpha, spend)) << tag;
+        }
+      }
+    }
   }
 }

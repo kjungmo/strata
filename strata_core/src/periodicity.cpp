@@ -60,6 +60,25 @@ void PeriodicityKernel::gather(double* slot, bool occupied, int window_index) co
   }
 }
 
+// Constant cells. If s0 == 0 (never hit) or s0 == n (hit in every touched window), every centred
+// coefficient is exactly zero, so amplitude() is 0.0 and isPeriodic() is false without the harmonic
+// loop. Proof, for n > 0 and finite phases (cos and sin of a finite angle are finite, so no NaN or
+// infinity arises):
+//   s0 == 0: every gather added v = 0.0, so c[k] += 0.0 * ca adds +-0.0 to a sum that starts at +0.0;
+//     +0.0 + (+-0.0) = +0.0 in round-to-nearest, so c[k] = s[k] = +0.0. mean = 0.0 / n = +0.0 and
+//     mean * ec[k] = +-0.0, so c[k] - mean * ec[k] = +0.0 - (+-0.0) = +0.0.
+//   s0 == n: every gather added v = 1.0 and 1.0 * ca == ca exactly, so c[k] received the same
+//     additions as ec[k] from the same start: c[k] == ec[k] bit for bit, likewise s[k] == es[k]. s0 and
+//     n count by exact additions of 1.0 (below 2^53), so mean = n / n = 1.0, mean * ec[k] == ec[k]
+//     exactly, and c[k] - ec[k] = +0.0.
+//   In both cases ak = bk = 2.0 * (+0.0) / n = +0.0, sqrt(0.0) = +0.0 < 1e-12, so harmonicAmplitude
+//   returns 0.0 for every k. amplitude() then returns max(0.0, 0.0) = 0.0 (the gate also gives 0.0,
+//   and n == 0 gives 0.0 either way). In isPeriodic() the gate comes first and returns false, and in
+//   the loop the screen `a <= 0.0 || a < a_min` is true for a == 0.0 whatever a_min is, before the
+//   `alpha >= 1.0` branch is reached: it never returns true. The other read-outs (falseAlarm,
+//   harmonic, predict) are not shortened.
+static inline bool constantCell(const double* slot) { return slot[1] == 0.0 || slot[1] == slot[0]; }
+
 // Centred (mean-removed) FreMEn coefficient, as in Krajnik et al. (T-RO 2017):
 //   gamma_k = (1/n) sum_w (o_w - mean) e^{i(k+1) omega w}
 //           = (1/n) [ sum_w o_w e^{...} - mean * sum_w e^{...} ].
@@ -155,7 +174,7 @@ double PeriodicityKernel::predict(const double* slot, int window_index) const {
 }
 
 double PeriodicityKernel::amplitude(const double* slot) const {
-  if (!slot) return 0.0;
+  if (!slot || constantCell(slot)) return 0.0;
   const View cell = view(slot);
   if (gated(cell)) return 0.0;
   double amp = 0.0;
@@ -181,7 +200,7 @@ double PeriodicityKernel::spentLevel(double alpha, double n, int period_windows)
 }
 
 bool PeriodicityKernel::isPeriodic(const double* slot, double a_min, double alpha, bool spend) const {
-  if (!slot) return false;
+  if (!slot || constantCell(slot)) return false;
   const View cell = view(slot);
   if (gated(cell)) return false;
   const double H = std::max(1, params_.n_harmonics);

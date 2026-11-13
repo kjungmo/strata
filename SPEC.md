@@ -454,6 +454,14 @@ cannot grow, the close throws before it changes that cell, and the next close ha
 thin wrapper over the same kernel with its own map (one vector per id) and gives the same numbers
 bit for bit.
 
+**Cost of a close.** The phase terms (`cos` and `sin` of each harmonic and of its double) depend on
+the window index only, so a close computes them once, not once per touched cell. A cell that was
+never hit or hit in every touched window has centred coefficients of exactly zero (the sums of
+`o_w e^{i(k+1)ωw}` and of `e^{i(k+1)ωw}` are the same numbers, or all `±0`), so `amplitude` is `0`
+and the cell is not Periodic: the kernel returns that without the harmonic loop. The two
+shortcuts change no bit of any result (`TouchedClose` and `CellMemory` tests); the proof is in
+the comment in `periodicity.cpp`.
+
 **The amplitude is only meaningful after a full period has been observed** —
 before `period_windows` touched windows the harmonic estimate is withheld, so a
 freshly seen oscillating cell will not yet read as Periodic.
@@ -640,7 +648,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
 streams, or `std::mt19937_64` raw output where the standard library must not matter) in
-`strata_core/test`, runnable with **no ROS** — **124 gtests across 14 suites** (7 of
+`strata_core/test`, runnable with **no ROS** — **125 gtests across 14 suites** (7 of
 them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
 CTest `defaults_match_yaml_and_prereg`:
 
@@ -691,7 +699,7 @@ CTest `defaults_match_yaml_and_prereg`:
   created again by the next contact, the map is not copyable but can be moved with a
   window open, and an observer that throws mid-close leaves a list the next close can
   use (finished cells leave it, the failing one and the rest stay).
-- **CellMemory** (5): the periodicity kernel on a bare slot, the id-keyed
+- **CellMemory** (6): the periodicity kernel on a bare slot, the id-keyed
   `PeriodicityModel` and a frozen copy of the pre-kernel model (one vector per
   coefficient) give bit-equal `amplitude`, `falseAlarm`, `harmonic`, `predict` and
   `isPeriodic` on one gather sequence, for `n_harmonics` -1 to 8 and T = 1, 8, 24; a null or
@@ -700,7 +708,11 @@ CTest `defaults_match_yaml_and_prereg`:
   move; the map holds a slot exactly for the cells gathered and not erased (none with
   periodicity off, none after observe alone); the map element is 40 bytes (32 without the
   key) and the slot 112 bytes at `n_harmonics = 2`. `TouchedClose` also runs `n_harmonics`
-  -1, 0, 1, 3, 4, 5 and 8 against an oracle whose periodicity model is the frozen copy.
+  -1, 0, 1, 3, 4, 5 and 8 against an oracle whose periodicity model is the frozen copy, with
+  constant cells (never hit, always hit) and cells that turn from constant to mixed. Also: the
+  per-window phase table gives the same sums as computing the phases per cell, and the
+  constant-cell shortcut of `amplitude` and `isPeriodic` (below) gives the bits of the full
+  computation for all `a_min` and `alpha` (including `alpha >= 1`, a negative `a_min`).
 - **WindowObserver** (10): the read-only window hook reports exactly the touched
   cells with the hit-wins rule, changes no state, and leaves the map's read-outs
   byte-identical with and without it.
@@ -934,7 +946,7 @@ has no pair to mismatch.
 ```bash
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j
-( cd build/core && ctest --output-on-failure )     # the 124 engine gtests and the defaults check
+( cd build/core && ctest --output-on-failure )     # the 125 engine gtests and the defaults check
 ```
 
 **Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
