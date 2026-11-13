@@ -498,6 +498,10 @@ void MappingNode::onDiagnostics() {
   kv("seconds_since_last_integrate", buf);   // since start until the first one integrates
   // The tf2 text of the last failed lookup while the streak runs; "" when it is 0.
   kv("last_tf_error", tally_.last_tf_error);
+  // Map size and the cost of a window close: the close visits only the cells the closing window
+  // touched, so last_window_touched_cells (0 until the first window closes) is its work per close.
+  kv("cells", std::to_string(map_ ? map_->cellCount() : 0));
+  kv("last_window_touched_cells", std::to_string(map_ ? map_->lastWindowTouched() : 0));
   arr.status.push_back(st);
   // Constant standing note on the evidence model; level OK (a property, not a fault). A second
   // status, so the values and their order in the "input rate" status stay as they were.
