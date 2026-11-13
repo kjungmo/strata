@@ -449,7 +449,9 @@ is handed out again. A cell gets its slot at its first gather, so with `enable_p
 no slot is ever allocated; the slot of the default `n_harmonics = 2` is 112 bytes. A cell has an
 entry in the model exactly when it has a slot, and a missing slot reads as "no entry" in
 every function (`amplitude` 0, `isPeriodic` false, `falseAlarm` 1, `predict` 0.5, `harmonic` empty).
-A cell erased by pruning releases its slot, and a cell created again starts from zeros. If the pool
+A cell erased by pruning releases its slot, and a cell created again starts from zeros. The pool
+never shrinks: a freed slot is reused but its memory is not returned, so a spike of cells that
+are later pruned leaves the memory allocated (blocks of 4096 slots). If the pool
 cannot grow, the close throws before it changes that cell, and the next close handles it
 (`std::bad_alloc`; `std::length_error` past 2^31 - 1 slots). The id-keyed `PeriodicityModel` is a
 thin wrapper over the same kernel with its own map (one vector per id) and gives the same numbers
@@ -649,7 +651,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
 streams, or `std::mt19937_64` raw output where the standard library must not matter) in
-`strata_core/test`, runnable with **no ROS** — **125 gtests across 14 suites** (7 of
+`strata_core/test`, runnable with **no ROS** — **128 gtests across 14 suites** (7 of
 them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
 CTest `defaults_match_yaml_and_prereg`:
 
@@ -700,13 +702,16 @@ CTest `defaults_match_yaml_and_prereg`:
   created again by the next contact, the map is not copyable but can be moved with a
   window open, and an observer that throws mid-close leaves a list the next close can
   use (finished cells leave it, the failing one and the rest stay).
-- **CellMemory** (6): the periodicity kernel on a bare slot, the id-keyed
+- **CellMemory** (9): the periodicity kernel on a bare slot, the id-keyed
   `PeriodicityModel` and a frozen copy of the pre-kernel model (one vector per
   coefficient) give bit-equal `amplitude`, `falseAlarm`, `harmonic`, `predict` and
   `isPeriodic` on one gather sequence, for `n_harmonics` -1 to 8 and T = 1, 8, 24; a null or
   all-zero slot answers as a cell without an entry; the pool hands out zeroed slots in order,
   reuses freed slots (zeroed again), grows in blocks without moving a slot and survives a
-  move; the map holds a slot exactly for the cells gathered and not erased (none with
+  move; a moved-from map is a valid empty map that works again (periodicity on, no slot in use);
+  an observer that throws with periodicity on leaves each cell gathered exactly once after the
+  retry; a pool block that cannot be allocated (`operator new[]` replaced and armed in that test
+  binary) leaves the failing cell untouched and unlisted-free, and the next close finishes it; the map holds a slot exactly for the cells gathered and not erased (none with
   periodicity off, none after observe alone); the map element is 32 bytes (24 without the
   key) and the slot 112 bytes at `n_harmonics = 2`. `TouchedClose` also runs `n_harmonics`
   -1, 0, 1, 3, 4, 5 and 8 against an oracle whose periodicity model is the frozen copy, with
@@ -947,7 +952,7 @@ has no pair to mismatch.
 ```bash
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j
-( cd build/core && ctest --output-on-failure )     # the 125 engine gtests and the defaults check
+( cd build/core && ctest --output-on-failure )     # the 128 engine gtests and the defaults check
 ```
 
 **Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
@@ -998,20 +1003,22 @@ element and, with periodicity on, a 112-byte slot at `n_harmonics = 2`, plus the
 allocator overhead) and the work of their closes. It is not done, because it
 changes results and the claims that rest on them:
 
-- The sequential test (§3.2a) bounds the false graduation of a cell by Ville's inequality over
-  its uninterrupted history, from the first touched window. A miss-only cell that is dropped and
-  later hit starts a new history at the hit, without the misses before it. The statistic then
-  starts higher than it would have (misses lower it) and the age `n` at which the gate
-  `n >= period_windows` opens is smaller. Whether the bound still holds for the history that
-  the map now keeps is a new claim.
-- The periodicity sums count touched windows, misses included. A dropped cell loses the
-  windows in which it was only crossed, so its harmonic estimates, its `n` and its Periodic
-  label change.
+- The sequential test (§3.2a) would keep its error bound: a history that starts at the first hit
+  starts at a stopping time, and the windows are still independent, so Ville's inequality
+  applies to that history. What changes is comparability. A cell that was crossed before its first
+  hit would start at the hit without the misses before it, so its statistic starts higher, its
+  touch count `n` is smaller, and the counts and the labels differ from the current results.
+- The periodicity test is the real statistical gap. Its Chernoff bound assumes that the set of
+  touched windows does not depend on the occupancy values. A history that starts at a forced hit
+  violates that: the first window is occupied by construction, which biases the centred sums
+  and the false-alarm bound. The periodicity sums also count touched windows, misses included, so
+  a dropped cell loses the windows in which it was only crossed, and its harmonic estimates, its
+  `n` and its Periodic label change.
 - `observations`, the rejection time and the Intermittent read-out (`n_max_undecided`) all
   count touched windows from the first one.
 
-What would have to be shown first: (1) the error-rate statement for the history that is kept,
-with the dropped prefix treated as an adaptive choice; (2) the bit-for-bit oracle of the
+What would have to be shown first: (1) a periodicity error-rate statement for the history that is
+kept, with the forced first hit and the dropped prefix treated as an adaptive choice; (2) the bit-for-bit oracle of the
 `TouchedClose` tests replaced by an explicit statement of what is allowed to differ, and the
 experiment CSVs regenerated and compared with it; (3) the memory saved on real recordings
 against the lost detections, measured with the Periodic veto on and off.
