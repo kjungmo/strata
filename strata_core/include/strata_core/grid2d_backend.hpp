@@ -14,6 +14,8 @@ class Grid2DBackend : public MapBackend {
   std::size_t staticCellCount() const override { return layered_.staticCells().size(); }
   std::size_t transientCellCount() const override { return layered_.transientCells().size(); }
   std::size_t intermittentCellCount() const override { return layered_.intermittentCells().size(); }
+  std::size_t cellCount() const override { return layered_.cellCount(); }
+  std::size_t lastWindowTouched() const override { return layered_.lastWindowTouched(); }
   // Renders static 100, periodic 75, transient or intermittent obstacle 50 (hit in the open window,
   // last observed as a hit, or live evidence leaning occupied, p > 0.5), free 0 (a ray
   // has cleared the cell and its last observation was free), never observed -1. The

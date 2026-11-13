@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <limits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "strata_core/types.hpp"
 #include "strata_core/periodicity.hpp"
@@ -89,8 +90,8 @@ struct CellEvidence {
 // a miss in the same window), so exactly one of the two is true. Untouched cells are not
 // reported. window_index is windowCount() of the closing window (1 for the first).
 // closeWindows(k) reports its first window only; the k - 1 empty windows touch nothing.
-// The call order over cells is the iteration order of the internal hash map and carries
-// no meaning. The observer must not call mutating functions of the map and must outlive
+// The call order over cells is the order in which the window first touched them and carries
+// no meaning (it used to be the iteration order of the internal hash map). The observer must not call mutating functions of the map and must outlive
 // its registration. It has no effect on the map: with no observer set the only cost is
 // one pointer read per endWindow().
 class WindowObserver {
@@ -101,17 +102,29 @@ class WindowObserver {
 class LayeredMap {
  public:
   explicit LayeredMap(LayeredMapParams params);
+  // Not copyable: touched_ holds pointers into this object's own cells_. Moving is fine
+  // (a moved unordered_map keeps its elements where they are).
+  LayeredMap(const LayeredMap&) = delete;
+  LayeredMap& operator=(const LayeredMap&) = delete;
+  LayeredMap(LayeredMap&&) = default;
+  LayeredMap& operator=(LayeredMap&&) = default;
   // Non-owning; nullptr removes the observer. See WindowObserver.
   void setWindowObserver(WindowObserver* observer) { observer_ = observer; }
   void observeHit(CellId id);
   void observeMiss(CellId id);
   bool tick();
+  // Visits only the cells the closing window touched; the cost does not grow with the
+  // number of cells the map holds. Every other cell is left exactly as it was: an
+  // untouched cell's evidence and Fourier coefficients change only at a touched close, so
+  // its decay, amplitude, Periodic test, graduation, demotion and pruning outcome would
+  // be recomputed from the same values to the same result (see endWindow() in the source).
   void endWindow();
   // Close k >= 1 windows at once: the open window, then k - 1 windows that observed
   // nothing. A window with no observation changes no cell (decay, graduation,
   // demotion and pruning read only touched evidence or values the first close
   // already settled), so the empty ones only advance the window index. Exactly
-  // equivalent to k endWindow() calls; O(cells) instead of O(k * cells).
+  // equivalent to k endWindow() calls; O(cells touched by the open window) instead of
+  // O(k * cells).
   void closeWindows(int k);
   CellClass classify(CellId id) const;
   bool isStatic(CellId id) const;
@@ -128,6 +141,10 @@ class LayeredMap {
   int windowCount() const { return window_count_; }
   int integrationCount() const { return integration_count_; }
   std::size_t cellCount() const { return cells_.size(); }
+  // Number of cells the last closed window touched (0 before the first close, and after
+  // closeWindows(k) with k > 1, as after k endWindow() calls: the last of them touched
+  // nothing). Read-out for diagnostics; the close visits exactly these cells.
+  std::size_t lastWindowTouched() const { return last_window_touched_; }
   const LayeredMapParams& params() const { return params_; }
  private:
   static double sigmoid(double x);
@@ -135,7 +152,15 @@ class LayeredMap {
   LayeredMapParams params_;
   SprtDerived sprt_{};
   bool use_sprt_{false};
+  using Cell = std::pair<const CellId, CellEvidence>;
+  void touch(Cell& cell);
   std::unordered_map<CellId, CellEvidence> cells_;
+  // Cells that the open window touched, in order of first contact. Pointers to the elements
+  // of a std::unordered_map stay valid across rehash and across erase of other elements, so
+  // the close needs no second hash lookup per cell. A cell is erased only inside a close,
+  // and the close consumes and clears this list, so no entry can dangle. Not copyable (above).
+  std::vector<Cell*> touched_;
+  std::size_t last_window_touched_{0};
   PeriodicityModel periodicity_;
   WindowObserver* observer_{nullptr};
   int integration_count_{0};

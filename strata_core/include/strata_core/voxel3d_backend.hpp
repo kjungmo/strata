@@ -12,6 +12,8 @@ class Voxel3DBackend : public MapBackend {
   std::size_t staticCellCount() const override { return layered_.staticCells().size(); }
   std::size_t transientCellCount() const override { return layered_.transientCells().size(); }
   std::size_t intermittentCellCount() const override { return layered_.intermittentCells().size(); }
+  std::size_t cellCount() const override { return layered_.cellCount(); }
+  std::size_t lastWindowTouched() const override { return layered_.lastWindowTouched(); }
   std::vector<Eigen::Vector3d> staticPoints() const;
   CellId voxelId(const Eigen::Vector3d& p) const;
   Eigen::Vector3d voxelCenter(CellId id) const;

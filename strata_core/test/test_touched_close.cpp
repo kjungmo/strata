@@ -487,3 +487,85 @@ TEST(TouchedClose, EveryCloseMatchesTheFullSweepOracleBitForBit) {
   EXPECT_GT(sprt.intermittent_seen, 0);
 }
 
+TEST(TouchedClose, ClosesVisitOnlyTheCellsOfTheClosingWindow) {
+  for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+    LayeredMapParams p = base(m, true, 1);
+    LayeredMap map(p);
+    Rec rec; map.setWindowObserver(&rec);
+    EXPECT_EQ(map.lastWindowTouched(), 0u);
+    constexpr CellId N = 3000;
+    for (CellId c = 0; c < N; ++c) map.observeHit(c);
+    EXPECT_EQ(map.lastWindowTouched(), 0u) << "the open window is not closed yet";
+    map.endWindow();
+    EXPECT_EQ(map.lastWindowTouched(), static_cast<std::size_t>(N));
+    EXPECT_EQ(rec.ev.size(), static_cast<std::size_t>(N));
+    ASSERT_EQ(map.cellCount(), static_cast<std::size_t>(N)) << "one hit keeps a cell in both models";
+    for (int w = 0; w < 50; ++w) {
+      rec.ev.clear();
+      const CellId c = (w * 37) % N;
+      if (w % 2) map.observeHit(c); else map.observeMiss(c);
+      map.observeHit(c);   // a second contact of the same cell does not count it twice
+      map.endWindow();
+      EXPECT_EQ(map.lastWindowTouched(), 1u);
+      ASSERT_EQ(rec.ev.size(), 1u);
+      EXPECT_EQ(std::get<1>(rec.ev[0]), c);
+      EXPECT_EQ(map.cellCount(), static_cast<std::size_t>(N));
+    }
+    rec.ev.clear();
+    map.endWindow();   // nothing touched
+    EXPECT_EQ(map.lastWindowTouched(), 0u);
+    EXPECT_TRUE(rec.ev.empty());
+    map.observeMiss(5); map.observeMiss(6);
+    map.closeWindows(3);   // equals three endWindow() calls: the last of them touched nothing
+    EXPECT_EQ(rec.ev.size(), 2u);
+    EXPECT_EQ(map.lastWindowTouched(), 0u);
+    map.observeMiss(5);
+    map.tick();
+    EXPECT_EQ(map.lastWindowTouched(), 1u);
+  }
+}
+
+TEST(TouchedClose, ACellErasedAtACloseIsCreatedAgainByTheNextContact) {
+  for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+    LayeredMap map(base(m, false, 1));
+    const CellId c = 42, other = 43;
+    int erased_at = -1;
+    map.observeHit(other);   // keeps the map non-empty
+    for (int w = 1; w <= 200 && erased_at < 0; ++w) {
+      map.observeMiss(c);
+      map.endWindow();
+      if (map.classify(c) == CellClass::Unknown) erased_at = w;
+    }
+    ASSERT_GT(erased_at, 0) << "a cell with only misses is pruned (rejected)";
+    EXPECT_EQ(map.observations(c), 0);
+    EXPECT_EQ(map.cellCount(), 1u);
+    map.observeHit(c);   // re-created: touched in this window, a new history
+    map.endWindow();
+    EXPECT_EQ(map.lastWindowTouched(), 1u);
+    EXPECT_EQ(map.observations(c), 1);
+    EXPECT_EQ(map.cellCount(), 2u);
+    EXPECT_GT(map.occupancyProb(c), 0.5);
+  }
+}
+
+TEST(TouchedClose, TheMapCannotBeCopiedAndAMovedMapKeepsItsOpenWindow) {
+  static_assert(!std::is_copy_constructible<LayeredMap>::value, "a copy would alias the touched list");
+  static_assert(!std::is_copy_assignable<LayeredMap>::value, "a copy would alias the touched list");
+  LayeredMapParams p = base(EvidenceModel::Sprt, true, 1);
+  LayeredMap a(p);
+  ReferenceLayeredMap ref(p);
+  for (CellId c = 0; c < 500; ++c) { a.observeHit(c); ref.observeHit(c); }
+  LayeredMap b(std::move(a));   // moved with a window open
+  for (CellId c = 250; c < 750; ++c) { b.observeMiss(c); ref.observeMiss(c); }
+  b.endWindow(); ref.endWindow();
+  EXPECT_EQ(b.lastWindowTouched(), 750u);
+  std::vector<CellId> ids;
+  for (CellId c = 0; c < 750; ++c) ids.push_back(c);
+  EXPECT_EQ(compareMaps(b, ref, ids), "");
+  LayeredMap d(p);
+  d = std::move(b);             // and by assignment
+  for (CellId c = 0; c < 100; ++c) { d.observeHit(c); ref.observeHit(c); }
+  d.endWindow(); ref.endWindow();
+  EXPECT_EQ(d.lastWindowTouched(), 100u);
+  EXPECT_EQ(compareMaps(d, ref, ids), "");
+}
