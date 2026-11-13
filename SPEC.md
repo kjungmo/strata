@@ -360,9 +360,10 @@ warning at start and publishes the limitation on `/diagnostics` in the status
 
 #### Input density (3D)
 
-Do not thin the cloud before the node if you want to localize against the map. The default
-pair assumes the full cloud of the sensor. With sparse input the static map stays
-under-filled.
+On these recordings the default pair, which is not calibrated for 3D, left the static map
+under-filled with thinned input and worked with the full cloud. So do not thin the cloud
+before the node if the map is used for localization. That advice follows from the
+observation; it is not a rule that holds for every sensor or place.
 
 These numbers are measurements on three single-pass private indoor recordings of 69, 184 and
 335 s (0.2 m voxels, 1 s windows, default pair). Each is one run. There is no variance
@@ -375,7 +376,7 @@ estimate, so read them as one observation, not as a guarantee.
   |---|---|---|---|
   | about 2,200 points (thinned) | 0.76 | 0.78 m (drift) | 0.34 |
   | about 20,600 points (every second raw point) | 0.85 | 0.076 m | 1.00 |
-  | full cloud (about 41,200 valid points) | 0.89 | 0.076 m | 1.00 |
+  | full cloud (about 41,200 valid points) | 0.89 | 0.076 m | 0.99 |
   | plain accumulation of every hit voxel (reference) | 0.98 | 0.095 m | not stated |
 
   On the two shorter recordings density changed little (coverage 0.75 to 0.78, and 0.95 to 0.96).
@@ -397,16 +398,20 @@ estimate, so read them as one observation, not as a guarantee.
   | other | 7 to 17 % |
   | no usable normal | 26 to 49 % |
 
-  The shares are ranges over the three recordings. The measurement does not say that the
-  causes exclude each other, so do not add the rows.
+  The four causes are exclusive and sum to 100 % per recording. Each row is a range over the
+  three recordings, so the ranges do not sum to 100 %.
 - *A margin was tried and not adopted.* A rule that skips miss samples within 1 or 2 voxels
-  of the ray end was measured. At 2 voxels and thinned input, coverage rose from 0.76 to 0.81,
-  off-reference static voxels rose by 30 %, and tracking stayed poor (0.60 m). At full density
-  coverage moved by under 0.01 and tracking by under 0.005 m.
+  of the ray end was measured. At 1 voxel and thinned input, coverage rose from 0.76 to 0.77,
+  off-reference static voxels rose by about 5 %, and tracking stayed poor (0.68 m). At 2 voxels
+  and thinned input, coverage rose from 0.76 to 0.81, off-reference static voxels rose by 30 %,
+  and tracking stayed poor (0.60 m). At full density the margin changed coverage by under 0.01
+  and tracking by under 0.005 m.
+- *A lower pair, one measurement.* A pair with lower `m0` and `m1`, chosen on the same
+  recordings (so not validated), filled the map more and let more voxels through: on the longest
+  recording at full density coverage rose from 0.89 to 0.92 and off-reference static voxels from
+  24,322 to 34,232.
 
-A pair with lower `m0` and `m1` fills the map more and also lets more off-reference voxels
-through. This repository gives no recommended pair, because none was validated on held-out
-data.
+This repository gives no recommended pair, because none was validated on held-out data.
 
 ### 3.3 Survival decay (Persistence Filter)
 The `*= survival_decay` step every window pulls belief back toward unknown
