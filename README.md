@@ -96,7 +96,7 @@ by day, shut by night) are recognized as recurring rather than baked in; and
 **transient** layers erode away.
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
-cell id, and is unit-tested with gtest **without ROS or PCL** (114 gtest cases across 12
+cell id, and is unit-tested with gtest **without ROS or PCL** (118 gtest cases across 13
 suites, plus 71 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
@@ -186,7 +186,7 @@ cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 #    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 71 node gtests; the 114 engine
+colcon test --packages-select strata      # the 71 node gtests; the 118 engine
 colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 
@@ -518,9 +518,11 @@ message).
 Every status, from the first one, also carries `messages_received_total`,
 `messages_integrated_total`, `tf_failures_total`, `tf_failures_since_integrate`
 (the running streak, `0` again once a message integrates),
-`seconds_since_last_integrate` and `last_tf_error` (the tf2 text of the last
+`seconds_since_last_integrate`, `last_tf_error` (the tf2 text of the last
 failed lookup as one line of at most 120 bytes while the streak runs, empty
-otherwise). When messages arrive but cannot be placed, the level stays OK until
+otherwise), `cells` (cells the map holds) and `last_window_touched_cells` (cells the
+last closed window touched; a window close visits only those, so this is the work of one
+close, whatever `cells` is, and `0` until the first window closes). When messages arrive but cannot be placed, the level stays OK until
 `startup_timeout_s` (30 s) has passed since start and is WARN after it, as
 before, but the message is no longer `ok`: it reads `no usable TF map ->
 <frame> yet: N message(s) received on /scan, 0 integrated, N TF lookup(s)
