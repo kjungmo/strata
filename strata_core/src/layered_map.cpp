@@ -87,17 +87,17 @@ double LayeredMap::sigmoid(double x) { return 1.0 / (1.0 + std::exp(-x)); }
 
 // First contact of a cell in the open window (both counters 0): put it on the touched list.
 void LayeredMap::touch(Cell& cell) {
-  if (cell.second.ev.window_hits == 0 && cell.second.ev.window_misses == 0) touched_.push_back(&cell);
+  if (cell.second.window_hits == 0 && cell.second.window_misses == 0) touched_.push_back(&cell);
 }
 void LayeredMap::observeHit(CellId id) {
   auto it = cells_.try_emplace(id).first;
   touch(*it);
-  it->second.ev.window_hits++;
+  it->second.window_hits++;
 }
 void LayeredMap::observeMiss(CellId id) {
   auto it = cells_.try_emplace(id).first;
   touch(*it);
-  it->second.ev.window_misses++;
+  it->second.window_misses++;
 }
 
 bool LayeredMap::tick() {
@@ -148,11 +148,10 @@ void LayeredMap::endWindow() {
     for (; done < touched_.size(); ++done) {
       Cell* const cell = touched_[done];
       const CellId id = cell->first;
-      CellState& st = cell->second;
-      CellEvidence& e = st.ev;
+      CellState& e = cell->second;
       // First gather of this cell: take its slot before anything else changes, so that an allocation
       // failure leaves the cell exactly as it was (counters, evidence, no slot) and still listed.
-      if (params_.enable_periodicity && st.slot == CoeffPool::kNone) st.slot = pool_.acquire();
+      if (params_.enable_periodicity && e.slot == CoeffPool::kNone) e.slot = pool_.acquire();
       const bool occ = e.window_hits > 0;
       const bool freed = (!occ && e.window_misses > 0);
       if (observer) observer->onTouchedCell(window_count_, id, occ, freed);
@@ -161,13 +160,13 @@ void LayeredMap::endWindow() {
       e.log_odds *= params_.survival_decay;
       e.log_odds = std::min(params_.l_max, std::max(params_.l_min, e.log_odds));
       e.observations++;
-      if (params_.enable_periodicity) periodicity_.gather(pool_.at(st.slot), occ, phase_);
+      if (params_.enable_periodicity) periodicity_.gather(pool_.at(e.slot), occ, phase_);
       const double p = sigmoid(e.log_odds);
-      const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(st.slot)) : 0.0;
+      const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(e.slot)) : 0.0;
       // Periodic needs both an effect size (amp >= a_min) and noise-calibrated
       // significance (false-alarm probability <= periodic_false_alarm).
       const bool periodic = params_.enable_periodicity &&
-          periodicity_.isPeriodic(pool_.at(st.slot), params_.periodic_amplitude_min,
+          periodicity_.isPeriodic(pool_.at(e.slot), params_.periodic_amplitude_min,
                                   params_.periodic_false_alarm, params_.periodic_alpha_spending);
       // A strongly-periodic (semi-static) cell is predicted per phase, not baked permanently
       // Static; only non-periodic cells graduate to the persistent static map.
@@ -183,8 +182,8 @@ void LayeredMap::endWindow() {
       // periodic cell keeps its Fourier history (and so its growing n) until the
       // significance test resolves it, instead of restarting from n = 0.
       if (!e.graduated && p < params_.prune_prob && amp < params_.periodic_amplitude_min) {
-        if (st.slot != CoeffPool::kNone) pool_.release(st.slot);
-        cells_.erase(id);   // `cell`, `st` and `e` dangle from here; the loop does not use them again
+        if (e.slot != CoeffPool::kNone) pool_.release(e.slot);
+        cells_.erase(id);   // `cell` and `e` dangle from here; the loop does not use them again
       }
     }
   } catch (...) {
@@ -231,11 +230,10 @@ void LayeredMap::endWindowSprt() {
     for (; done < touched_.size(); ++done) {
       Cell* const cell = touched_[done];
       const CellId id = cell->first;
-      CellState& st = cell->second;
-      CellEvidence& e = st.ev;
+      CellState& e = cell->second;
       // First gather of this cell: take its slot before anything else changes, so that an allocation
       // failure leaves the cell exactly as it was (counters, evidence, no slot) and still listed.
-      if (params_.enable_periodicity && st.slot == CoeffPool::kNone) st.slot = pool_.acquire();
+      if (params_.enable_periodicity && e.slot == CoeffPool::kNone) e.slot = pool_.acquire();
       const bool occ = e.window_hits > 0;
       const bool freed = (!occ && e.window_misses > 0);
       if (observer) observer->onTouchedCell(window_count_, id, occ, freed);
@@ -243,10 +241,10 @@ void LayeredMap::endWindowSprt() {
       if (e.log_odds > d.ceiling) e.log_odds = d.ceiling;
       e.observations++;
       if (e.observations >= gate && e.log_odds < d.B) e.log_odds = d.B;
-      if (params_.enable_periodicity) periodicity_.gather(pool_.at(st.slot), occ, phase_);
-      const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(st.slot)) : 0.0;
+      if (params_.enable_periodicity) periodicity_.gather(pool_.at(e.slot), occ, phase_);
+      const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(e.slot)) : 0.0;
       const bool periodic = params_.enable_periodicity &&
-          periodicity_.isPeriodic(pool_.at(st.slot), params_.periodic_amplitude_min,
+          periodicity_.isPeriodic(pool_.at(e.slot), params_.periodic_amplitude_min,
                                   params_.periodic_false_alarm, params_.periodic_alpha_spending);
       if (!e.graduated && !periodic && e.log_odds >= d.A) {
         e.graduated = true;
@@ -262,8 +260,8 @@ void LayeredMap::endWindowSprt() {
       e.window_hits = 0; e.window_misses = 0;
       const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;
       if (rejected && amp < params_.periodic_amplitude_min) {
-        if (st.slot != CoeffPool::kNone) pool_.release(st.slot);
-        cells_.erase(id);   // `cell`, `st` and `e` dangle from here; the loop does not use them again
+        if (e.slot != CoeffPool::kNone) pool_.release(e.slot);
+        cells_.erase(id);   // `cell` and `e` dangle from here; the loop does not use them again
       }
     }
   } catch (...) {
@@ -273,18 +271,18 @@ void LayeredMap::endWindowSprt() {
   touched_.clear();
 }
 
-const double* LayeredMap::coeffOf(const CellState& st) const {
-  return st.slot == CoeffPool::kNone ? nullptr : pool_.at(st.slot);
+const double* LayeredMap::coeffOf(const CellState& e) const {
+  return e.slot == CoeffPool::kNone ? nullptr : pool_.at(e.slot);
 }
 
 int LayeredMap::observations(CellId id) const {
   auto it = cells_.find(id);
-  return it == cells_.end() ? 0 : it->second.ev.observations;
+  return it == cells_.end() ? 0 : it->second.observations;
 }
 
 double LayeredMap::occupancyProb(CellId id) const {
   auto it = cells_.find(id);
-  return it == cells_.end() ? 0.0 : sigmoid(it->second.ev.log_odds);
+  return it == cells_.end() ? 0.0 : sigmoid(it->second.log_odds);
 }
 
 double LayeredMap::periodicProb(CellId id) const {
@@ -295,29 +293,29 @@ double LayeredMap::periodicProb(CellId id) const {
 CellClass LayeredMap::classify(CellId id) const {
   auto it = cells_.find(id);
   if (it == cells_.end()) return CellClass::Unknown;
-  if (it->second.ev.graduated) return CellClass::Static;
+  if (it->second.graduated) return CellClass::Static;
   if (params_.enable_periodicity &&
       periodicity_.isPeriodic(coeffOf(it->second), params_.periodic_amplitude_min, params_.periodic_false_alarm,
                               params_.periodic_alpha_spending))
     return CellClass::Periodic;
   if (use_sprt_) {
-    const int n = it->second.ev.observations;
-    if (n >= std::max(1, params_.periodicity.period_windows) && it->second.ev.log_odds <= sprt_.B)
+    const int n = it->second.observations;
+    if (n >= std::max(1, params_.periodicity.period_windows) && it->second.log_odds <= sprt_.B)
       return CellClass::Unknown;                                    // rejected, kept only as a periodic candidate
     if (params_.n_max_undecided > 0 && n >= params_.n_max_undecided) return CellClass::Intermittent;
     return CellClass::Transient;
   }
-  if (sigmoid(it->second.ev.log_odds) >= params_.prune_prob) return CellClass::Transient;
+  if (sigmoid(it->second.log_odds) >= params_.prune_prob) return CellClass::Transient;
   return CellClass::Unknown;
 }
 
 bool LayeredMap::isStatic(CellId id) const {
   auto it = cells_.find(id);
-  return it != cells_.end() && it->second.ev.graduated;
+  return it != cells_.end() && it->second.graduated;
 }
 
 std::vector<CellId> LayeredMap::staticCells() const {
-  std::vector<CellId> o; for (auto& kv : cells_) if (kv.second.ev.graduated) o.push_back(kv.first); return o;
+  std::vector<CellId> o; for (auto& kv : cells_) if (kv.second.graduated) o.push_back(kv.first); return o;
 }
 std::vector<CellId> LayeredMap::transientCells() const {
   std::vector<CellId> o;

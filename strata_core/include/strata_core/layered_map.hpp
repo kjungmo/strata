@@ -148,12 +148,19 @@ class LayeredMap {
   std::size_t lastWindowTouched() const { return last_window_touched_; }
   const LayeredMapParams& params() const { return params_; }
  private:
-  // The map element of one cell: the evidence and the index of the cell's Fourier sums in pool_
-  // (CoeffPool::kNone until the cell is first gathered, which happens only with enable_periodicity).
-  // observeHit/observeMiss touch only this small node.
+  // The map element of one cell. It holds the fields of CellEvidence (same types, same meaning)
+  // and the index of the cell's Fourier sums in pool_ (CoeffPool::kNone until the cell is first
+  // gathered, which happens only with enable_periodicity). `graduated` shares a 4-byte word with the
+  // 31-bit slot index, so the element is 24 bytes, as CellEvidence is: a cell costs no more than before
+  // the pool when periodicity is off. observeHit/observeMiss touch only this small node.
   struct CellState {
-    CellEvidence ev;
-    std::uint32_t slot{CoeffPool::kNone};
+    double log_odds{0.0};
+    int observations{0};
+    int window_hits{0};
+    int window_misses{0};
+    std::uint32_t slot : 31;
+    std::uint32_t graduated : 1;
+    CellState() : slot(CoeffPool::kNone), graduated(0) {}
   };
   using Cell = std::pair<const CellId, CellState>;
  public:

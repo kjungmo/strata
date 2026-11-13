@@ -226,7 +226,7 @@ std::uint32_t CoeffPool::acquire() {
     idx = free_head_;
     std::memcpy(&free_head_, at(idx), sizeof free_head_);
   } else {
-    if (next_ >= kNone) throw std::length_error("CoeffPool: more than 2^32 - 2 live slots");
+    if (next_ >= kNone) throw std::length_error("CoeffPool: more than 2^31 - 1 live slots");
     idx = next_;
     if (idx / kBlockSlots >= blocks_.size()) {
       std::unique_ptr<double[]> b(new double[kBlockSlots * stride_]);   // may throw; nothing changed yet

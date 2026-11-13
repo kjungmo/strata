@@ -196,8 +196,8 @@ volumetrically; `grid2d` projects transformed endpoints onto its 2D plane.
 
 ### 3.1 Layered evidence per cell
 Each known cell holds `{ log_odds, observations, window_hits, window_misses,
-graduated }` (24 bytes in both evidence models) and, next to it in the same hash-map element,
-the cell's Fourier sums (`PeriodicityCoeff`, §3.5). Observations arrive per integration frame as **hits** (an endpoint
+graduated }` (24 bytes in both evidence models) and, in the same 24 bytes, the index of its Fourier
+sums (a slot of the pool, §3.5; `CellEvidence` documents the five fields). Observations arrive per integration frame as **hits** (an endpoint
 fell in the cell) and **misses** (a ray passed through the cell — free-space /
 negative information). Frames are grouped into **windows** of `layer_interval`
 ticks; the layered update runs once per window (`endWindow`).
@@ -439,10 +439,11 @@ significance term and restores the amplitude-only rule.
 **Storage.** The arithmetic above is `PeriodicityKernel`, which keeps no per-cell state: each
 function works on the slot it is given, `2 + 6 H` doubles with `H = max(0, n_harmonics)` (`n`, `s0`,
 then `c`, `s`, `ec`, `es`, `ec2`, `es2` of `H` entries each). `LayeredMap` keeps the slots in a
-pool (`CoeffPool`) and the cell holds only the index of its slot, next to `CellEvidence`, in the one
-`unordered_map` keyed by cell id. The map element is 40 bytes (key, 24 bytes of evidence, a 4-byte
-slot index; `LayeredMap::kCellPayloadBytes`), so `observeHit` and `observeMiss` touch only that
-small node. The pool allocates blocks of 4096 slots that are never moved or copied, so growth
+pool (`CoeffPool`) and the cell holds only the index of its slot, with the fields of `CellEvidence`,
+in the one `unordered_map` keyed by cell id. The 31-bit slot index shares a word with `graduated`,
+so the cell state is still 24 bytes and the map element 32 with the key
+(`LayeredMap::kCellPayloadBytes`): a cell costs what it cost before the pool when
+`enable_periodicity` is off. `observeHit` and `observeMiss` touch only that small node. The pool allocates blocks of 4096 slots that are never moved or copied, so growth
 costs one block and never a copy of the pool; a freed slot goes on a free list and is zeroed when it
 is handed out again. A cell gets its slot at its first gather, so with `enable_periodicity` off
 no slot is ever allocated; the slot of the default `n_harmonics = 2` is 112 bytes. A cell has an
@@ -450,7 +451,7 @@ entry in the model exactly when it has a slot, and a missing slot reads as "no e
 every function (`amplitude` 0, `isPeriodic` false, `falseAlarm` 1, `predict` 0.5, `harmonic` empty).
 A cell erased by pruning releases its slot, and a cell created again starts from zeros. If the pool
 cannot grow, the close throws before it changes that cell, and the next close handles it
-(`std::bad_alloc`; `std::length_error` past 2^32 - 2 slots). The id-keyed `PeriodicityModel` is a
+(`std::bad_alloc`; `std::length_error` past 2^31 - 1 slots). The id-keyed `PeriodicityModel` is a
 thin wrapper over the same kernel with its own map (one vector per id) and gives the same numbers
 bit for bit.
 
@@ -533,8 +534,8 @@ strata_core/                         # pure C++17 + Eigen, no ROS, no PCL
   include/strata_core/
     version.hpp           # STRATA_CORE_VERSION "0.2.0"
     types.hpp             # Pose2D, Pose3D(=Isometry3d), GridMeta, GridMap, CellId, world<->grid, flatten
-    periodicity.hpp       # PeriodicityKernel (stateless FreMEn-lite arithmetic), PeriodicityCoeff,
-                          # PeriodicityModel (id-keyed wrapper), CoeffPool
+    periodicity.hpp       # PeriodicityKernel (stateless FreMEn-lite arithmetic), CoeffPool,
+                          # PeriodicityModel (id-keyed wrapper)
     layered_map.hpp       # LayeredMap + LayeredMapParams + CellClass + CellEvidence (THE HEART)
     map_backend.hpp       # MapBackend interface + Observation
     grid2d_backend.hpp    # Grid2DBackend (2D occupancy, Bresenham clearing)
@@ -706,7 +707,7 @@ CTest `defaults_match_yaml_and_prereg`:
   all-zero slot answers as a cell without an entry; the pool hands out zeroed slots in order,
   reuses freed slots (zeroed again), grows in blocks without moving a slot and survives a
   move; the map holds a slot exactly for the cells gathered and not erased (none with
-  periodicity off, none after observe alone); the map element is 40 bytes (32 without the
+  periodicity off, none after observe alone); the map element is 32 bytes (24 without the
   key) and the slot 112 bytes at `n_harmonics = 2`. `TouchedClose` also runs `n_harmonics`
   -1, 0, 1, 3, 4, 5 and 8 against an oracle whose periodicity model is the frozen copy, with
   constant cells (never hit, always hit) and cells that turn from constant to mixed. Also: the
@@ -992,7 +993,7 @@ ros2 service call /strata/save_map std_srvs/srv/Trigger   # persist static map
 A ray that crosses free space calls `observeMiss` on every cell it passes, so the map holds a
 cell for every voxel any ray has crossed, most of them never hit. On a long 3D run most cells
 are such miss-only cells (the share depends on the site and the ray density). Not creating a
-cell for a miss on an unknown id would save the whole element for each of them (a 40-byte
+cell for a miss on an unknown id would save the whole element for each of them (a 32-byte
 element and, with periodicity on, a 112-byte slot at `n_harmonics = 2`, plus the hash node and
 allocator overhead) and the work of their closes. It is not done, because it
 changes results and the claims that rest on them:

@@ -63,12 +63,12 @@ class PeriodicityKernel {
 // slot where it is. Not copyable.
 class CoeffPool {
  public:
-  static constexpr std::uint32_t kNone = 0xFFFFFFFFu;     // "no slot"
+  static constexpr std::uint32_t kNone = 0x7FFFFFFFu;     // "no slot"; slot indices have 31 bits
   static constexpr std::size_t kBlockSlots = 4096;
   explicit CoeffPool(std::size_t slot_doubles);
   CoeffPool(CoeffPool&&) = default;
   CoeffPool& operator=(CoeffPool&&) = default;
-  // A zeroed slot. Throws std::bad_alloc (state unchanged) or std::length_error (2^32 - 2 slots live).
+  // A zeroed slot. Throws std::bad_alloc (state unchanged) or std::length_error (2^31 - 1 slots live).
   std::uint32_t acquire();
   void release(std::uint32_t idx) noexcept;
   double* at(std::uint32_t idx) { return blocks_[idx / kBlockSlots].get() + (idx % kBlockSlots) * stride_; }

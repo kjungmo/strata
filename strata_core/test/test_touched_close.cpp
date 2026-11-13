@@ -978,12 +978,14 @@ TEST(CellMemory, TheMapHoldsASlotExactlyForTheCellsGatheredAndNotErased) {
 }
 
 TEST(CellMemory, TheNodeAndTheSlotHaveStatedSizes) {
-  // Small node: key 8 + evidence 24 + slot index 4 (padded) = 40, as before the pool except for the
-  // index. The slot of the default n_harmonics = 2 is 2 + 6 * 2 = 14 doubles = 112 bytes.
+  // Small node: key 8 + 24 = 32 bytes of payload. The 24 are the fields of CellEvidence and the
+  // slot index (31 bits, sharing a word with `graduated`). The libstdc++ node adds the 8-byte link,
+  // which is 40 bytes in one 48-byte malloc chunk: the same chunk as before the pool.
+  // The slot of the default n_harmonics = 2 is 2 + 6 * 2 = 14 doubles = 112 bytes.
   static_assert(sizeof(double) == 8 && sizeof(CellId) == 8, "the sizes below assume LP64 doubles");
   EXPECT_EQ(sizeof(CellEvidence), 24u);
-  EXPECT_EQ(LayeredMap::kCellPayloadBytes, 40u);   // pair<const CellId, CellState>; CellState is 32
-  EXPECT_EQ(LayeredMap::kCellPayloadBytes - sizeof(CellId), 32u);
+  EXPECT_EQ(LayeredMap::kCellPayloadBytes, 32u);   // pair<const CellId, CellState>; CellState is 24
+  EXPECT_EQ(LayeredMap::kCellPayloadBytes - sizeof(CellId), 24u);
   EXPECT_EQ(LayeredMap(LayeredMapParams{}).coeffSlotBytes(), 112u);
   for (int h : {-3, 0, 1, 5, 8}) {
     LayeredMapParams p; p.periodicity.n_harmonics = h;
