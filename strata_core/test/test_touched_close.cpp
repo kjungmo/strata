@@ -2,8 +2,8 @@
 //
 // ReferenceLayeredMap below is the frozen oracle: the full-sweep algorithm of LayeredMap as it was
 // before the close was restricted to touched cells (every cell visited at every close, amplitude and
-// isPeriodic recomputed for all of them). It is built on the public PeriodicityModel, deriveSprt and
-// LayeredMapParams only. Only lines marked "instrumentation" are not part of the old algorithm; they
+// isPeriodic recomputed for all of them). It is built on FrozenPeriodicity (below: the 15f96e4 PeriodicityModel, copied
+// verbatim), deriveSprt and LayeredMapParams only. Only lines marked "instrumentation" are not part of the old algorithm; they
 // count events so that the test can show it is not vacuous.
 //
 // The real map and the oracle get the same random contact sequences. After every close the test
@@ -30,6 +30,193 @@
 using namespace strata_core;
 
 namespace {
+
+
+// ------------------------------------------------------------------ frozen periodicity ----------
+// Verbatim copy of PeriodicityModel as it was at 15f96e4: one std::vector<double> per coefficient and
+// its own hash map. It is the oracle's periodicity model, so the oracle does not depend on the code
+// under test. Comments are shortened; every expression and the order of every sum is the old one.
+class FrozenPeriodicity {
+ public:
+  explicit FrozenPeriodicity(PeriodicityParams p) : params_(p),
+    omega_(2.0 * M_PI / std::max(1, p.period_windows)) {}
+  void gather(CellId id, bool occupied, int window_index);
+  double predict(CellId id, int window_index) const;
+  double amplitude(CellId id) const;
+  double falseAlarm(CellId id) const;
+  HarmonicStat harmonic(CellId id, int k) const;
+  static double tailBound(double dchi);
+  static double spentLevel(double alpha, double n, int period_windows);
+  bool isPeriodic(CellId id, double a_min, double alpha, bool spend = false) const;
+  bool has(CellId id) const { return cells_.count(id) > 0; }
+  void erase(CellId id) { cells_.erase(id); }
+  std::size_t size() const { return cells_.size(); }
+ private:
+  struct Coeff {
+    double n{0}; double s0{0};
+    std::vector<double> c; std::vector<double> s;
+    std::vector<double> ec; std::vector<double> es;
+    std::vector<double> ec2; std::vector<double> es2;
+  };
+  void centred(const Coeff& cell, int k, double& ak, double& bk) const;
+  double harmonicAmplitude(const Coeff& cell, int k) const;
+  HarmonicStat stat(const Coeff& cell, int k) const;
+  bool gated(const Coeff& cell) const;
+  PeriodicityParams params_;
+  double omega_;
+  std::unordered_map<CellId, Coeff> cells_;
+};
+
+inline void FrozenPeriodicity::gather(CellId id, bool occupied, int window_index) {
+  auto& cell = cells_[id];
+  if (cell.c.empty()) {
+    const auto H = static_cast<std::size_t>(std::max(0, params_.n_harmonics));
+    cell.c.assign(H, 0.0); cell.s.assign(H, 0.0);
+    cell.ec.assign(H, 0.0); cell.es.assign(H, 0.0);
+    cell.ec2.assign(H, 0.0); cell.es2.assign(H, 0.0);
+  }
+  const double v = occupied ? 1.0 : 0.0;
+  cell.n += 1.0; cell.s0 += v;
+  for (int k = 0; k < params_.n_harmonics; ++k) {
+    const double a = (k + 1) * omega_ * window_index;
+    const double ca = std::cos(a), sa = std::sin(a);
+    cell.c[k] += v * ca;  cell.s[k] += v * sa;   // sum of o_w e^{i(k+1)wt}
+    cell.ec[k] += ca;     cell.es[k] += sa;      // sum of e^{i(k+1)wt} over touched windows
+    cell.ec2[k] += std::cos(2.0 * a); cell.es2[k] += std::sin(2.0 * a);   // doubled phase
+  }
+}
+
+// Centred (mean-removed) FreMEn coefficient, as in Krajnik et al. (T-RO 2017):
+//   gamma_k = (1/n) sum_w (o_w - mean) e^{i(k+1) omega w}
+//           = (1/n) [ sum_w o_w e^{...} - mean * sum_w e^{...} ].
+// Subtracting the mean times the phase sum of the *touched* windows makes the
+// coefficient exactly zero for any constant cell under any sampling pattern.
+inline void FrozenPeriodicity::centred(const Coeff& cell, int k, double& ak, double& bk) const {
+  const double mean = cell.s0 / cell.n;
+  ak = 2.0 * (cell.c[k] - mean * cell.ec[k]) / cell.n;
+  bk = 2.0 * (cell.s[k] - mean * cell.es[k]) / cell.n;
+}
+
+inline bool FrozenPeriodicity::gated(const Coeff& cell) const {
+  // A harmonic estimate needs at least one period's worth of touched windows.
+  return cell.n <= 0.0 || cell.n < static_cast<double>(params_.period_windows);
+}
+
+inline double FrozenPeriodicity::harmonicAmplitude(const Coeff& cell, int k) const {
+  double ak, bk; centred(cell, k, ak, bk);
+  const double amp = std::sqrt(ak * ak + bk * bk);
+  // A constant cell cancels to rounding error, not exactly zero; report 0.
+  return amp < 1e-12 ? 0.0 : amp;
+}
+
+// Noise-calibrated test quantities of harmonic k.
+// Least-squares fit of o_w = mu + A cos(theta_w) + B sin(theta_w) over the touched
+// windows (the floating-mean periodogram of Zechmeister & Kuerster 2009). With the
+// centred phase sums y = sum (o - mean) (cos, sin) and the centred phase-design
+// matrix M = sum (cos - cbar, sin - sbar)(cos - cbar, sin - sbar)^T, the variance
+// explained by the harmonic is dchi = y^T M^{-1} y. Because the centred phases sum
+// to zero, y = sum (o_w - m) (cos - cbar, sin - sbar) for ANY constant m, so under
+// an iid Bernoulli(m) null dchi is a quadratic form in the independent, 1/4-sub-
+// Gaussian variables o_w - m, whatever m is and whatever the sampling pattern.
+inline HarmonicStat FrozenPeriodicity::stat(const Coeff& cell, int k) const {
+  HarmonicStat h;
+  h.n = cell.n;
+  h.amplitude = harmonicAmplitude(cell, k);
+  const double n = cell.n;
+  const double mean = cell.s0 / n;
+  h.chi0 = n * mean * (1.0 - mean);
+  if (h.chi0 <= 1e-12) return h;                       // constant cell: nothing to explain
+  const double cb = cell.ec[k] / n, sb = cell.es[k] / n;
+  const double scc = 0.5 * (n + cell.ec2[k]) - n * cb * cb;
+  const double sss = 0.5 * (n - cell.ec2[k]) - n * sb * sb;
+  const double scs = 0.5 * cell.es2[k] - n * cb * sb;
+  const double yc = cell.c[k] - mean * cell.ec[k];
+  const double ys = cell.s[k] - mean * cell.es[k];
+  const double tr = scc + sss;
+  if (tr <= 1e-9 * n) return h;                        // all touches at one phase
+  const double det = scc * sss - scs * scs;
+  if (det <= 1e-9 * tr * tr) {
+    // Rank-1 phase design (e.g. the Nyquist harmonic, or two phases only): project
+    // onto the one identifiable direction. The rank-2 bound stays valid (it is
+    // larger than the rank-1 one), so this is conservative.
+    h.dchi = (yc * yc + ys * ys) / tr;
+  } else {
+    h.dchi = (sss * yc * yc - 2.0 * scs * yc * ys + scc * ys * ys) / det;
+  }
+  h.dchi = std::min(h.dchi, h.chi0);                   // guard rounding
+  return h;
+}
+
+// Chernoff tail bound for dchi under the iid-Bernoulli null (proof in the paper,
+// Proposition "calibrated test"): whitening gives dchi = |w|^2 with w a sum of
+// independent terms (o_w - m) b_w, sum b_w b_w^T = I_2, and o_w - m is 1/4-sub-
+// Gaussian (Hoeffding's lemma), so E exp(lambda |w|^2) <= (1 - lambda/2)^{-1}
+// (Gaussian decoupling). Optimising Chernoff over lambda gives, with x = 2 dchi,
+//   P(dchi >= r) <= x e^{1 - x}   for x > 1,
+// for ANY m and ANY (non-adaptive) set of touched phases.
+inline double FrozenPeriodicity::tailBound(double dchi) {
+  const double x = 2.0 * dchi;
+  if (!(x > 1.0)) return 1.0;
+  return std::min(1.0, x * std::exp(1.0 - x));
+}
+
+inline HarmonicStat FrozenPeriodicity::harmonic(CellId id, int k) const {
+  auto it = cells_.find(id);
+  if (it == cells_.end() || it->second.n <= 0.0 || k < 0 || k >= params_.n_harmonics)
+    return HarmonicStat{};
+  return stat(it->second, k);
+}
+
+inline double FrozenPeriodicity::predict(CellId id, int window_index) const {
+  auto it = cells_.find(id);
+  if (it == cells_.end() || it->second.n <= 0.0) return 0.5;
+  const auto& cell = it->second;
+  double val = cell.s0 / cell.n;
+  for (int k = 0; k < params_.n_harmonics; ++k) {
+    double ak, bk; centred(cell, k, ak, bk);
+    const double a = (k + 1) * omega_ * window_index;
+    val += ak * std::cos(a) + bk * std::sin(a);
+  }
+  return std::min(1.0, std::max(0.0, val));
+}
+
+inline double FrozenPeriodicity::amplitude(CellId id) const {
+  auto it = cells_.find(id);
+  if (it == cells_.end() || gated(it->second)) return 0.0;
+  double amp = 0.0;
+  for (int k = 0; k < params_.n_harmonics; ++k)
+    amp = std::max(amp, harmonicAmplitude(it->second, k));
+  return amp;
+}
+
+inline double FrozenPeriodicity::falseAlarm(CellId id) const {
+  auto it = cells_.find(id);
+  if (it == cells_.end() || gated(it->second)) return 1.0;
+  double best = 1.0;
+  for (int k = 0; k < params_.n_harmonics; ++k)
+    best = std::min(best, tailBound(stat(it->second, k).dchi));
+  return std::min(1.0, best * std::max(1, params_.n_harmonics));
+}
+
+inline double FrozenPeriodicity::spentLevel(double alpha, double n, int period_windows) {
+  const double T = std::max(1, period_windows);
+  if (n < T) return 0.0;
+  return alpha * T / (n * (n + 1.0));
+}
+
+inline bool FrozenPeriodicity::isPeriodic(CellId id, double a_min, double alpha, bool spend) const {
+  auto it = cells_.find(id);
+  if (it == cells_.end() || gated(it->second)) return false;
+  const double H = std::max(1, params_.n_harmonics);
+  const double level = spend ? spentLevel(alpha, it->second.n, params_.period_windows) : alpha;
+  for (int k = 0; k < params_.n_harmonics; ++k) {
+    const double a = harmonicAmplitude(it->second, k);
+    if (a <= 0.0 || a < a_min) continue;               // effect-size screen
+    if (alpha >= 1.0) return true;                     // significance test disabled
+    if (H * tailBound(stat(it->second, k).dchi) <= level) return true;
+  }
+  return false;
+}
 
 // ---------------------------------------------------------------------------- oracle ----------
 
@@ -218,7 +405,7 @@ class ReferenceLayeredMap {
   SprtDerived sprt_{};
   bool use_sprt_{false};
   std::unordered_map<CellId, CellEvidence> cells_;
-  PeriodicityModel periodicity_;
+  FrozenPeriodicity periodicity_;
   WindowObserver* observer_{nullptr};
   int integration_count_{0};
   int window_count_{0};
@@ -285,7 +472,7 @@ struct Counters {
 };
 
 struct Config {
-  const char* name;
+  std::string name;
   LayeredMapParams p;
 };
 
@@ -325,6 +512,15 @@ std::vector<Config> configs() {
     LayeredMapParams p = base(EvidenceModel::Legacy, false, 1);
     p.graduate_prob = 0.45; p.demote_prob = 0.45;
     c.push_back({"legacy graduate_prob == demote_prob", p});
+  }
+  // Harmonic counts around the compile-time cap: none, one, three, the cap. -1 was accepted before
+  // the cap existed and behaves as 0.
+  for (int h : {-1, 0, 1, 3, 4}) {
+    for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+      LayeredMapParams p = base(m, true, 1);
+      p.periodicity.n_harmonics = h;
+      c.push_back({std::string(m == EvidenceModel::Sprt ? "sprt" : "legacy") + " n_harmonics " + std::to_string(h), p});
+    }
   }
   return c;
 }
@@ -411,7 +607,7 @@ std::string runHistory(const Config& cfg, std::uint64_t seed, int windows, Count
         for (const auto& c : plans) contacts(rng, c, w, real, ref);
         if (r + 1 < rounds) {
           const bool a = real.tick(), b = ref.tick();
-          if (a != b) return std::string(cfg.name) + ": tick() result differs";
+          if (a != b) return cfg.name + ": tick() result differs";
           if (a) { ++tot.closes; }
           if (auto bad = check("tick", w); !bad.empty()) return bad;
         }
@@ -420,7 +616,7 @@ std::string runHistory(const Config& cfg, std::uint64_t seed, int windows, Count
     const double u = rng.u();
     if (u < 0.65) {
       const bool a = real.tick(), b = ref.tick();
-      if (a != b) return std::string(cfg.name) + ": tick() result differs";
+      if (a != b) return cfg.name + ": tick() result differs";
       if (a) { ++tot.closes; if (silent) ++tot.empty_closes; }
       if (auto bad = check("tick", w); !bad.empty()) return bad;
     } else if (u < 0.85) {
