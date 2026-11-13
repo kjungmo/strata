@@ -112,7 +112,6 @@ void LayeredMap::closeWindows(int k) {
   if (k <= 0) return;
   endWindow();
   window_count_ += k - 1;
-  if (k > 1) last_window_touched_ = 0;   // as after k endWindow() calls: the last one touched nothing
 }
 
 // Only the cells the closing window touched are visited (touched_). Why the others can be skipped,
@@ -138,42 +137,52 @@ void LayeredMap::endWindow() {
   last_window_touched_ = touched_.size();
   if (use_sprt_) { endWindowSprt(); return; }
   WindowObserver* const observer = observer_;
-  for (Cell* const cell : touched_) {
-    const CellId id = cell->first;
-    CellEvidence& e = cell->second;
-    const bool occ = e.window_hits > 0;
-    const bool freed = (!occ && e.window_misses > 0);
-    if (observer) observer->onTouchedCell(window_count_, id, occ, freed);
-    if (occ) e.log_odds += params_.l_hit;
-    else if (freed) e.log_odds += params_.l_miss;
-    e.log_odds *= params_.survival_decay;
-    e.log_odds = std::min(params_.l_max, std::max(params_.l_min, e.log_odds));
-    e.observations++;
-    if (params_.enable_periodicity) periodicity_.gather(id, occ, window_count_);
-    const double p = sigmoid(e.log_odds);
-    const double amp = params_.enable_periodicity ? periodicity_.amplitude(id) : 0.0;
-    // Periodic needs both an effect size (amp >= a_min) and noise-calibrated
-    // significance (false-alarm probability <= periodic_false_alarm).
-    const bool periodic = params_.enable_periodicity &&
-        periodicity_.isPeriodic(id, params_.periodic_amplitude_min,
-                                params_.periodic_false_alarm, params_.periodic_alpha_spending);
-    // A strongly-periodic (semi-static) cell is predicted per phase, not baked permanently
-    // Static; only non-periodic cells graduate to the persistent static map.
-    if (!e.graduated && !periodic && p >= params_.graduate_prob &&
-        e.observations >= params_.min_observations)
-      e.graduated = true;
-    // Demote on sustained free-space (Schmitt) OR once the cell reveals itself as
-    // strongly periodic: a semi-static cell must not stay baked into the static map.
-    if (e.graduated && (p <= params_.demote_prob || periodic))
-      e.graduated = false;
-    e.window_hits = 0; e.window_misses = 0;
-    // The prune guard uses the lenient effect-size screen only: a candidate
-    // periodic cell keeps its Fourier history (and so its growing n) until the
-    // significance test resolves it, instead of restarting from n = 0.
-    if (!e.graduated && p < params_.prune_prob && amp < params_.periodic_amplitude_min) {
-      periodicity_.erase(id);
-      cells_.erase(id);   // `cell` dangles from here; the loop does not use it again
+  // If the observer or an allocation throws, the cells before the failing one are done (counters reset,
+  // some erased) and leave the list; the failing cell and the rest keep their counters and stay
+  // listed, so the next close handles them and no entry dangles.
+  std::size_t done = 0;
+  try {
+    for (; done < touched_.size(); ++done) {
+      Cell* const cell = touched_[done];
+      const CellId id = cell->first;
+      CellEvidence& e = cell->second;
+      const bool occ = e.window_hits > 0;
+      const bool freed = (!occ && e.window_misses > 0);
+      if (observer) observer->onTouchedCell(window_count_, id, occ, freed);
+      if (occ) e.log_odds += params_.l_hit;
+      else if (freed) e.log_odds += params_.l_miss;
+      e.log_odds *= params_.survival_decay;
+      e.log_odds = std::min(params_.l_max, std::max(params_.l_min, e.log_odds));
+      e.observations++;
+      if (params_.enable_periodicity) periodicity_.gather(id, occ, window_count_);
+      const double p = sigmoid(e.log_odds);
+      const double amp = params_.enable_periodicity ? periodicity_.amplitude(id) : 0.0;
+      // Periodic needs both an effect size (amp >= a_min) and noise-calibrated
+      // significance (false-alarm probability <= periodic_false_alarm).
+      const bool periodic = params_.enable_periodicity &&
+          periodicity_.isPeriodic(id, params_.periodic_amplitude_min,
+                                  params_.periodic_false_alarm, params_.periodic_alpha_spending);
+      // A strongly-periodic (semi-static) cell is predicted per phase, not baked permanently
+      // Static; only non-periodic cells graduate to the persistent static map.
+      if (!e.graduated && !periodic && p >= params_.graduate_prob &&
+          e.observations >= params_.min_observations)
+        e.graduated = true;
+      // Demote on sustained free-space (Schmitt) OR once the cell reveals itself as
+      // strongly periodic: a semi-static cell must not stay baked into the static map.
+      if (e.graduated && (p <= params_.demote_prob || periodic))
+        e.graduated = false;
+      e.window_hits = 0; e.window_misses = 0;
+      // The prune guard uses the lenient effect-size screen only: a candidate
+      // periodic cell keeps its Fourier history (and so its growing n) until the
+      // significance test resolves it, instead of restarting from n = 0.
+      if (!e.graduated && p < params_.prune_prob && amp < params_.periodic_amplitude_min) {
+        periodicity_.erase(id);
+        cells_.erase(id);   // `cell` dangles from here; the loop does not use it again
+      }
     }
+  } catch (...) {
+    touched_.erase(touched_.begin(), touched_.begin() + static_cast<std::ptrdiff_t>(done));
+    throw;
   }
   touched_.clear();
 }
@@ -196,8 +205,8 @@ void LayeredMap::endWindow() {
 // has unchanged evidence and unchanged Fourier coefficients (both change only in the touched
 // branch), so amplitude() and isPeriodic(), which read only that cell's coefficients, return what
 // they returned at its last touched close. The tail of the step applied again to its own output
-// is a fixed point: a graduated cell stays graduated (it was not periodic, and l = ceiling >
-// demote_level because A > 0); one demoted because it is periodic stays ungraduated (still
+// is a fixed point: a graduated cell stays graduated (it was not periodic, and l > demote_level,
+// or the demote branch would have fired at that close); one demoted because it is periodic stays ungraduated (still
 // periodic); one demoted by the reverse test has l = 0 < A and n = 0 < gate, so it neither
 // graduates nor is rejected; a cell that was not erased has the same rejected and amp values, so
 // it is not erased now. Every cell is created by observeHit/observeMiss, hence touched in the
@@ -207,38 +216,48 @@ void LayeredMap::endWindowSprt() {
   WindowObserver* const observer = observer_;
   const SprtDerived& d = sprt_;
   const int gate = std::max(1, params_.periodicity.period_windows);
-  for (Cell* const cell : touched_) {
-    const CellId id = cell->first;
-    CellEvidence& e = cell->second;
-    const bool occ = e.window_hits > 0;
-    const bool freed = (!occ && e.window_misses > 0);
-    if (observer) observer->onTouchedCell(window_count_, id, occ, freed);
-    e.log_odds += occ ? d.l_hit : d.l_miss;
-    if (e.log_odds > d.ceiling) e.log_odds = d.ceiling;
-    e.observations++;
-    if (e.observations >= gate && e.log_odds < d.B) e.log_odds = d.B;
-    if (params_.enable_periodicity) periodicity_.gather(id, occ, window_count_);
-    const double amp = params_.enable_periodicity ? periodicity_.amplitude(id) : 0.0;
-    const bool periodic = params_.enable_periodicity &&
-        periodicity_.isPeriodic(id, params_.periodic_amplitude_min,
-                                params_.periodic_false_alarm, params_.periodic_alpha_spending);
-    if (!e.graduated && !periodic && e.log_odds >= d.A) {
-      e.graduated = true;
-      e.log_odds = d.ceiling;
-    }
-    if (e.graduated) {
-      if (periodic) e.graduated = false;
-      else if (e.log_odds <= d.demote_level) {
-        e.graduated = false; e.log_odds = 0.0;
-        e.observations = 0;                                         // the restarted test counts its own windows
+  // If the observer or an allocation throws, the cells before the failing one are done (counters reset,
+  // some erased) and leave the list; the failing cell and the rest keep their counters and stay
+  // listed, so the next close handles them and no entry dangles.
+  std::size_t done = 0;
+  try {
+    for (; done < touched_.size(); ++done) {
+      Cell* const cell = touched_[done];
+      const CellId id = cell->first;
+      CellEvidence& e = cell->second;
+      const bool occ = e.window_hits > 0;
+      const bool freed = (!occ && e.window_misses > 0);
+      if (observer) observer->onTouchedCell(window_count_, id, occ, freed);
+      e.log_odds += occ ? d.l_hit : d.l_miss;
+      if (e.log_odds > d.ceiling) e.log_odds = d.ceiling;
+      e.observations++;
+      if (e.observations >= gate && e.log_odds < d.B) e.log_odds = d.B;
+      if (params_.enable_periodicity) periodicity_.gather(id, occ, window_count_);
+      const double amp = params_.enable_periodicity ? periodicity_.amplitude(id) : 0.0;
+      const bool periodic = params_.enable_periodicity &&
+          periodicity_.isPeriodic(id, params_.periodic_amplitude_min,
+                                  params_.periodic_false_alarm, params_.periodic_alpha_spending);
+      if (!e.graduated && !periodic && e.log_odds >= d.A) {
+        e.graduated = true;
+        e.log_odds = d.ceiling;
+      }
+      if (e.graduated) {
+        if (periodic) e.graduated = false;
+        else if (e.log_odds <= d.demote_level) {
+          e.graduated = false; e.log_odds = 0.0;
+          e.observations = 0;                                         // the restarted test counts its own windows
+        }
+      }
+      e.window_hits = 0; e.window_misses = 0;
+      const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;
+      if (rejected && amp < params_.periodic_amplitude_min) {
+        periodicity_.erase(id);
+        cells_.erase(id);   // `cell` dangles from here; the loop does not use it again
       }
     }
-    e.window_hits = 0; e.window_misses = 0;
-    const bool rejected = !e.graduated && e.observations >= gate && e.log_odds <= d.B;
-    if (rejected && amp < params_.periodic_amplitude_min) {
-      periodicity_.erase(id);
-      cells_.erase(id);   // `cell` dangles from here; the loop does not use it again
-    }
+  } catch (...) {
+    touched_.erase(touched_.begin(), touched_.begin() + static_cast<std::ptrdiff_t>(done));
+    throw;
   }
   touched_.clear();
 }

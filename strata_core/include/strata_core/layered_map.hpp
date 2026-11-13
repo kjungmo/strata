@@ -91,7 +91,7 @@ struct CellEvidence {
 // reported. window_index is windowCount() of the closing window (1 for the first).
 // closeWindows(k) reports its first window only; the k - 1 empty windows touch nothing.
 // The call order over cells is the order in which the window first touched them and carries
-// no meaning (it used to be the iteration order of the internal hash map). The observer must not call mutating functions of the map and must outlive
+// no meaning. The observer must not call mutating functions of the map and must outlive
 // its registration. It has no effect on the map: with no observer set the only cost is
 // one pointer read per endWindow().
 class WindowObserver {
@@ -141,9 +141,9 @@ class LayeredMap {
   int windowCount() const { return window_count_; }
   int integrationCount() const { return integration_count_; }
   std::size_t cellCount() const { return cells_.size(); }
-  // Number of cells the last closed window touched (0 before the first close, and after
-  // closeWindows(k) with k > 1, as after k endWindow() calls: the last of them touched
-  // nothing). Read-out for diagnostics; the close visits exactly these cells.
+  // Number of cells the last close call visited: the cells the closing window touched (0
+  // before the first close). closeWindows(k) counts its first window, the only one that
+  // touches cells. Read-out for diagnostics.
   std::size_t lastWindowTouched() const { return last_window_touched_; }
   const LayeredMapParams& params() const { return params_; }
  private:
@@ -157,8 +157,10 @@ class LayeredMap {
   std::unordered_map<CellId, CellEvidence> cells_;
   // Cells that the open window touched, in order of first contact. Pointers to the elements
   // of a std::unordered_map stay valid across rehash and across erase of other elements, so
-  // the close needs no second hash lookup per cell. A cell is erased only inside a close,
-  // and the close consumes and clears this list, so no entry can dangle. Not copyable (above).
+  // the close reaches a touched cell without a hash lookup (it still looks up by id to erase
+  // a cell and in the periodicity model). A cell is erased only inside a close, and the close
+  // removes every cell it finishes from this list (all of them, or on an exception the
+  // finished prefix), so no entry dangles. Not copyable (above).
   std::vector<Cell*> touched_;
   std::size_t last_window_touched_{0};
   PeriodicityModel periodicity_;

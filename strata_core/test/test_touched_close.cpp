@@ -16,6 +16,7 @@
 #include <cstdint>
 #include <cstring>
 #include <set>
+#include <stdexcept>
 #include <sstream>
 #include <string>
 #include <tuple>
@@ -516,9 +517,9 @@ TEST(TouchedClose, ClosesVisitOnlyTheCellsOfTheClosingWindow) {
     EXPECT_EQ(map.lastWindowTouched(), 0u);
     EXPECT_TRUE(rec.ev.empty());
     map.observeMiss(5); map.observeMiss(6);
-    map.closeWindows(3);   // equals three endWindow() calls: the last of them touched nothing
+    map.closeWindows(3);   // the first window visits both cells; the two empty ones visit none
     EXPECT_EQ(rec.ev.size(), 2u);
-    EXPECT_EQ(map.lastWindowTouched(), 0u);
+    EXPECT_EQ(map.lastWindowTouched(), 2u) << "the cells the close call visited, not the last empty window";
     map.observeMiss(5);
     map.tick();
     EXPECT_EQ(map.lastWindowTouched(), 1u);
@@ -568,4 +569,65 @@ TEST(TouchedClose, TheMapCannotBeCopiedAndAMovedMapKeepsItsOpenWindow) {
   d.endWindow(); ref.endWindow();
   EXPECT_EQ(d.lastWindowTouched(), 100u);
   EXPECT_EQ(compareMaps(d, ref, ids), "");
+}
+
+namespace {
+struct ThrowAt : WindowObserver {
+  int throw_on{-1}, calls{0};
+  std::vector<CellId> seen;
+  void onTouchedCell(int, CellId id, bool, bool) override {
+    if (++calls == throw_on) throw std::runtime_error("observer failed");
+    seen.push_back(id);
+  }
+};
+}  // namespace
+
+TEST(TouchedClose, AnObserverThatThrowsMidCloseLeavesAListThatTheNextCloseCanUse) {
+  for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+    const LayeredMapParams p = base(m, false, 1);
+    auto window = [](LayeredMap& map) {
+      for (CellId c = 0; c < 5; ++c) map.observeMiss(c);   // only misses: pruned after some closes
+      map.observeHit(8);                                    // stays
+      map.endWindow();
+    };
+    int prune_window = 0;   // the close at which cells 0..4 are pruned, found on a probe map
+    {
+      LayeredMap probe(p);
+      for (int w = 1; w <= 200 && prune_window == 0; ++w) {
+        window(probe);
+        if (probe.cellCount() == 1u) prune_window = w;
+      }
+    }
+    ASSERT_GT(prune_window, 1);
+    LayeredMap map(p);
+    ThrowAt obs; map.setWindowObserver(&obs);
+    for (int w = 1; w < prune_window; ++w) window(map);
+    ASSERT_EQ(map.cellCount(), 6u);
+    // The pruning window. First contacts are 0..4, 8, then 5, 6, 7, 9 (calls 1..10). The observer
+    // throws on call 8 (cell 6): cells 0..4 (erased), 8 and 5 are finished, 6, 7 and 9 are not.
+    for (CellId c = 0; c < 5; ++c) map.observeMiss(c);
+    map.observeHit(8);
+    for (CellId c : {5, 6, 7, 9}) map.observeHit(c);
+    obs.calls = 0; obs.throw_on = 8;
+    EXPECT_THROW(map.endWindow(), std::runtime_error);
+    obs.throw_on = -1;
+    EXPECT_EQ(map.cellCount(), 5u) << "cells 0..4 are erased; 8, 5, 6, 7, 9 are held";
+    EXPECT_EQ(map.observations(5), 1);
+    EXPECT_EQ(map.observations(6), 0) << "the failing cell was not processed";
+    // The next close must visit exactly the unfinished cells and read no erased cell.
+    obs.seen.clear();
+    map.endWindow();
+    EXPECT_EQ(map.lastWindowTouched(), 3u);
+    std::sort(obs.seen.begin(), obs.seen.end());
+    EXPECT_EQ(obs.seen, (std::vector<CellId>{6, 7, 9}));
+    for (CellId c = 0; c < 5; ++c) EXPECT_EQ(map.classify(c), CellClass::Unknown);
+    for (CellId c : {5, 6, 7, 9}) EXPECT_EQ(map.observations(c), 1) << c;
+    EXPECT_EQ(map.cellCount(), 5u);
+    // The map keeps working, and a cell erased in the failed close is created again by a contact.
+    map.observeMiss(7); map.observeHit(0);
+    map.endWindow();
+    EXPECT_EQ(map.lastWindowTouched(), 2u);
+    EXPECT_EQ(map.observations(7), 2);
+    EXPECT_EQ(map.observations(0), 1);
+  }
 }
