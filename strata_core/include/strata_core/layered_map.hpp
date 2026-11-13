@@ -49,6 +49,15 @@ struct LayeredMapParams {
   // Spend periodic_false_alarm over the touch count (PeriodicityModel::spentLevel)
   // instead of using it at every read-out; false restores the single-read-out rule.
   bool periodic_alpha_spending{true};
+  // The Periodic LABEL (classify(), and the graduation block and demotion that follow it) also needs
+  // n >= periodic_min_periods * period_windows touched windows of Fourier history. Must be finite and >= 1.
+  // 1.0 is the rule before this field existed, bit for bit: the extra comparison only reads n, after the
+  // existing n >= T gate. The gate itself stays at T for everything else: the amplitude, the spent level
+  // spentLevel(alpha, n, T), the rejection gate and the prune guard (amp < periodic_amplitude_min). A larger
+  // value can only remove labels (the label at k is the label at 1 and n >= k T), so the false-alarm bound of
+  // the label still holds (the levels spent for T <= n < k T go unused). With k > 1 a periodic cell can
+  // graduate before n reaches k T and is demoted when the label arrives.
+  double periodic_min_periods{1.0};
   PeriodicityParams periodicity{};
 
   // ---- evidence_model = Sprt (version 0.2.0) -------------------------------------

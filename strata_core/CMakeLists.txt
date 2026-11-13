@@ -49,7 +49,8 @@ if(BUILD_TESTING OR STRATA_CORE_BUILD_TESTS)
     test/test_replay_p1.cpp
     test/test_touched_close.cpp
     test/test_cell_memory.cpp
-    test/test_undecided_export.cpp)
+    test/test_undecided_export.cpp
+    test/test_periodic_min_periods.cpp)
   add_executable(strata_core_tests ${STRATA_CORE_TESTS})
   target_link_libraries(strata_core_tests strata_core GTest::gtest GTest::gtest_main)
   add_test(NAME strata_core_tests COMMAND strata_core_tests)

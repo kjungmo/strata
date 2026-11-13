@@ -84,6 +84,9 @@ double undecidedExportLevel(const LayeredMapParams& p, double fraction) {
 LayeredMap::LayeredMap(LayeredMapParams params)
   : params_(params), periodicity_(params.periodicity),
     pool_(PeriodicityKernel::slotDoubles(params.periodicity.n_harmonics)) {
+  if (!(std::isfinite(params_.periodic_min_periods) && params_.periodic_min_periods >= 1.0))
+    throw std::invalid_argument("periodic_min_periods must be finite and >= 1, got " +
+                                std::to_string(params_.periodic_min_periods));
   if (params_.evidence_model == EvidenceModel::Sprt) {
     sprt_ = deriveSprt(params_);
     use_sprt_ = true;
@@ -177,7 +180,8 @@ void LayeredMap::endWindow() {
       // significance (false-alarm probability <= periodic_false_alarm).
       const bool periodic = params_.enable_periodicity &&
           periodicity_.isPeriodic(pool_.at(e.slot), params_.periodic_amplitude_min,
-                                  params_.periodic_false_alarm, params_.periodic_alpha_spending);
+                                  params_.periodic_false_alarm, params_.periodic_alpha_spending,
+                                  params_.periodic_min_periods);
       // A strongly-periodic (semi-static) cell is predicted per phase, not baked permanently
       // Static; only non-periodic cells graduate to the persistent static map.
       if (!e.graduated && !periodic && p >= params_.graduate_prob &&
@@ -255,7 +259,8 @@ void LayeredMap::endWindowSprt() {
       const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(e.slot)) : 0.0;
       const bool periodic = params_.enable_periodicity &&
           periodicity_.isPeriodic(pool_.at(e.slot), params_.periodic_amplitude_min,
-                                  params_.periodic_false_alarm, params_.periodic_alpha_spending);
+                                  params_.periodic_false_alarm, params_.periodic_alpha_spending,
+                                  params_.periodic_min_periods);
       if (!e.graduated && !periodic && e.log_odds >= d.A) {
         e.graduated = true;
         e.log_odds = d.ceiling;
@@ -306,7 +311,7 @@ CellClass LayeredMap::classify(CellId id) const {
   if (it->second.graduated) return CellClass::Static;
   if (params_.enable_periodicity &&
       periodicity_.isPeriodic(coeffOf(it->second), params_.periodic_amplitude_min, params_.periodic_false_alarm,
-                              params_.periodic_alpha_spending))
+                              params_.periodic_alpha_spending, params_.periodic_min_periods))
     return CellClass::Periodic;
   if (use_sprt_) {
     const int n = it->second.observations;

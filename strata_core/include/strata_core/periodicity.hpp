@@ -42,7 +42,10 @@ class PeriodicityKernel {
   double amplitude(const double* slot) const;
   double falseAlarm(const double* slot) const;
   HarmonicStat harmonic(const double* slot, int k) const;
-  bool isPeriodic(const double* slot, double a_min, double alpha, bool spend = false) const;
+  // min_periods >= 1 (default 1): the label also needs n >= min_periods * period_windows. n is the touch
+  // count of the slot, the n of the n >= T gate. The gate, the amplitude and the spent level keep T.
+  // At 1 the extra test never fires (n >= T already holds), so every result is that of the call without it.
+  bool isPeriodic(const double* slot, double a_min, double alpha, bool spend = false, double min_periods = 1.0) const;
   static double tailBound(double dchi);
   static double spentLevel(double alpha, double n, int period_windows);
   const PeriodicityParams& params() const { return params_; }
@@ -127,7 +130,8 @@ class PeriodicityModel {
   // H * FAP_k <= level, where level = alpha (single read-out) or
   // spentLevel(alpha, n, T) (spend = true). alpha >= 1 disables the significance
   // test (amplitude only).
-  bool isPeriodic(CellId id, double a_min, double alpha, bool spend = false) const;
+  // min_periods: see PeriodicityKernel::isPeriodic; the label also needs n >= min_periods * T touched windows.
+  bool isPeriodic(CellId id, double a_min, double alpha, bool spend = false, double min_periods = 1.0) const;
   bool has(CellId id) const { return cells_.count(id) > 0; }
   void erase(CellId id) { cells_.erase(id); }
   std::size_t size() const { return cells_.size(); }
