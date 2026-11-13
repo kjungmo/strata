@@ -208,3 +208,106 @@ TEST(CellMemory, TheConstantCellShortcutGivesTheBitsOfTheFullComputation) {
     }
   }
 }
+
+// ---- moved-from map, observer throw with periodicity on, pool growth failure ----------------------
+
+TEST(CellMemory, AMovedFromMapIsAValidEmptyMapThatCanBeUsedAgain) {
+  for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+    LayeredMapParams p = base(m, true, 1);
+    LayeredMap a(p);
+    a.observeHit(1); a.observeMiss(2); a.observeMiss(3); a.endWindow();
+    for (int w = 0; w < 200 && a.cellCount() > 1; ++w) { a.observeHit(1); a.observeMiss(2); a.observeMiss(3); a.endWindow(); }
+    ASSERT_EQ(a.cellCount(), 1u);   // some cells were pruned: the pool has a free list
+    ASSERT_GT(a.coeffSlotsInUse(), 0u);
+    LayeredMap b(std::move(a));
+    EXPECT_EQ(a.coeffSlotsInUse(), 0u);
+    EXPECT_EQ(a.cellCount(), 0u);
+    a.observeHit(5);
+    a.endWindow();                  // must not touch the pool of b
+    EXPECT_EQ(a.cellCount(), 1u);
+    EXPECT_EQ(a.coeffSlotsInUse(), 1u);
+    EXPECT_EQ(a.observations(5), 1);
+    EXPECT_EQ(b.cellCount(), 1u);
+    EXPECT_EQ(b.observations(1) > 0, true);
+    b.observeHit(1); b.endWindow();   // b still works
+    LayeredMap c(p);
+    c.observeHit(9); c.endWindow();
+    c = std::move(b);               // move assignment: c's own pool is dropped, b is emptied
+    EXPECT_EQ(b.coeffSlotsInUse(), 0u);
+    b.observeHit(7); b.endWindow();
+    EXPECT_EQ(b.coeffSlotsInUse(), 1u);
+    EXPECT_EQ(c.cellCount(), 1u);
+    EXPECT_EQ(c.coeffSlotsInUse(), 1u);
+  }
+}
+
+namespace {
+struct ThrowOnCall : WindowObserver {
+  int throw_on{-1}, calls{0};
+  void onTouchedCell(int, CellId, bool, bool) override { if (++calls == throw_on) throw std::runtime_error("observer failed"); }
+};
+}  // namespace
+
+TEST(CellMemory, AnObserverThatThrowsWithPeriodicityOnGathersEachCellExactlyOnce) {
+  for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+    const LayeredMapParams p = base(m, true, 1);
+    LayeredMap map(p);
+    ThrowOnCall obs; obs.throw_on = 3; map.setWindowObserver(&obs);
+    for (CellId c = 0; c < 5; ++c) map.observeHit(c);
+    EXPECT_THROW(map.endWindow(), std::runtime_error);   // cells 0 and 1 done; cell 2 failed in the observer
+    EXPECT_EQ(map.observations(0), 1);
+    EXPECT_EQ(map.observations(2), 0);
+    EXPECT_EQ(map.coeffSlotsInUse(), 3u) << "cell 2 got its slot before the observer ran; it holds zeros";
+    map.endWindow();                                     // retry: cells 2, 3, 4 (window index 2)
+    EXPECT_EQ(map.lastWindowTouched(), 3u);
+    EXPECT_EQ(map.coeffSlotsInUse(), 5u);
+    for (CellId c = 0; c < 5; ++c) EXPECT_EQ(map.observations(c), 1) << c;
+    // Cells 0, 1 were gathered at window 1, cells 2..4 at window 2, each once.
+    PeriodicityModel at1(p.periodicity), at2(p.periodicity);
+    at1.gather(0, true, 1); at2.gather(0, true, 2);
+    for (CellId c = 0; c < 5; ++c)
+      EXPECT_TRUE(sameBits(map.periodicProb(c), (c < 2 ? at1 : at2).predict(0, map.windowCount()))) << c;
+  }
+}
+
+// Fail one allocation of exactly the size of a pool block, once, in this binary only: operator new[]
+// is replaced by malloc plus an armed size. Nothing else in the tests allocates an array of that size.
+namespace {
+std::size_t g_fail_array_size = 0;
+}
+void* operator new[](std::size_t n) {
+  if (n == g_fail_array_size) { g_fail_array_size = 0; throw std::bad_alloc(); }
+  if (void* p = std::malloc(n ? n : 1)) return p;
+  throw std::bad_alloc();
+}
+void operator delete[](void* p) noexcept { std::free(p); }
+void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
+
+TEST(CellMemory, APoolBlockThatCannotBeAllocatedLeavesTheFailingCellUntouchedAndTheNextCloseRetriesIt) {
+  for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+    const LayeredMapParams p = base(m, true, 1);
+    LayeredMap map(p);
+    const std::size_t block_bytes = CoeffPool::kBlockSlots * map.coeffSlotBytes();
+    const CellId first = static_cast<CellId>(CoeffPool::kBlockSlots);   // the first block holds exactly these
+    const CellId n = first + 2;
+    for (CellId c = 0; c < first; ++c) map.observeHit(c);
+    map.endWindow();
+    ASSERT_EQ(map.coeffSlotsInUse(), CoeffPool::kBlockSlots);
+    for (CellId c = 0; c < n; ++c) map.observeHit(c);   // two new cells: they need a second block
+    g_fail_array_size = block_bytes;
+    EXPECT_THROW(map.endWindow(), std::bad_alloc);
+    EXPECT_EQ(g_fail_array_size, 0u) << "the armed failure fired";
+    const CellId failing = static_cast<CellId>(CoeffPool::kBlockSlots);
+    EXPECT_EQ(map.coeffSlotsInUse(), CoeffPool::kBlockSlots) << "no slot was taken for the failing cell";
+    EXPECT_EQ(map.observations(0), 2) << "the cells before it were finished";
+    EXPECT_EQ(map.observations(failing), 0) << "the failing cell keeps its counters and evidence";
+    EXPECT_EQ(map.observations(failing + 1), 0) << "and so do the cells after it";
+    EXPECT_EQ(map.cellCount(), static_cast<std::size_t>(n));
+    map.endWindow();   // retry
+    EXPECT_EQ(map.lastWindowTouched(), 2u);
+    EXPECT_EQ(map.coeffSlotsInUse(), static_cast<std::size_t>(n));
+    EXPECT_EQ(map.observations(failing), 1);
+    EXPECT_EQ(map.observations(failing + 1), 1);
+    EXPECT_EQ(map.observations(0), 2) << "finished cells are not visited again";
+  }
+}

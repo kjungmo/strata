@@ -162,6 +162,14 @@ class LayeredMap {
     std::uint32_t graduated : 1;
     CellState() : slot(CoeffPool::kNone), graduated(0) {}
   };
+  // CellEvidence is the documented record of the five fields, not the stored type; the two must keep
+  // the same size and the same field offsets.
+  static_assert(sizeof(CellState) == sizeof(CellEvidence), "a cell must stay as small as its evidence record");
+  static_assert(offsetof(CellState, log_odds) == offsetof(CellEvidence, log_odds) &&
+                offsetof(CellState, observations) == offsetof(CellEvidence, observations) &&
+                offsetof(CellState, window_hits) == offsetof(CellEvidence, window_hits) &&
+                offsetof(CellState, window_misses) == offsetof(CellEvidence, window_misses),
+                "the shared fields must sit where CellEvidence has them");
   using Cell = std::pair<const CellId, CellState>;
  public:
   // Bytes of one map element (key, evidence, slot index), without the hash map's node link and the
@@ -169,7 +177,8 @@ class LayeredMap {
   static constexpr std::size_t kCellPayloadBytes = sizeof(Cell);
   // Bytes of the Fourier sums of one cell that has them, for this map's n_harmonics.
   std::size_t coeffSlotBytes() const { return pool_.slotDoubles() * sizeof(double); }
-  // Cells that hold Fourier sums now: the cells gathered at least once and not erased since.
+  // Cells that hold Fourier sums now: the cells gathered at least once and not erased since, and a
+  // cell reached by a close whose observer then threw (it holds a slot of zeros until the next close).
   // Always 0 with enable_periodicity off. Read-out for tests and tools.
   std::size_t coeffSlotsInUse() const { return pool_.inUse(); }
  private:

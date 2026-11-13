@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <memory>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include "strata_core/types.hpp"
 namespace strata_core {
@@ -60,14 +61,25 @@ class PeriodicityKernel {
 // Fixed-stride slots in blocks of kBlockSlots that are never moved, so growth allocates one block
 // and never copies or reallocates a slot (no 2x peak). Freed slots are reused (a free list kept
 // inside the freed slots). A slot is zeroed whenever it is handed out. Moving the pool keeps every
-// slot where it is. Not copyable.
+// slot where it is. Not copyable. The pool never shrinks: a freed slot is reused, never returned.
 class CoeffPool {
  public:
   static constexpr std::uint32_t kNone = 0x7FFFFFFFu;     // "no slot"; slot indices have 31 bits
   static constexpr std::size_t kBlockSlots = 4096;
   explicit CoeffPool(std::size_t slot_doubles);
-  CoeffPool(CoeffPool&&) = default;
-  CoeffPool& operator=(CoeffPool&&) = default;
+  // A moved-from pool is a valid empty pool with the same slot size: it holds no blocks and no
+  // slots, and acquire() starts again from slot 0.
+  CoeffPool(CoeffPool&& o) noexcept
+    : stride_(o.stride_), blocks_(std::move(o.blocks_)), next_(std::exchange(o.next_, 0)),
+      free_head_(std::exchange(o.free_head_, kNone)), in_use_(std::exchange(o.in_use_, 0)) { o.blocks_.clear(); }
+  CoeffPool& operator=(CoeffPool&& o) noexcept {
+    if (this != &o) {
+      stride_ = o.stride_; blocks_ = std::move(o.blocks_); o.blocks_.clear();
+      next_ = std::exchange(o.next_, 0); free_head_ = std::exchange(o.free_head_, kNone);
+      in_use_ = std::exchange(o.in_use_, 0);
+    }
+    return *this;
+  }
   // A zeroed slot. Throws std::bad_alloc (state unchanged) or std::length_error (2^31 - 1 slots live).
   std::uint32_t acquire();
   void release(std::uint32_t idx) noexcept;
