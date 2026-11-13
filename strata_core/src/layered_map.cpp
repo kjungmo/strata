@@ -73,7 +73,7 @@ SprtDerived deriveSprt(const LayeredMapParams& p) {
 
 double undecidedExportLevel(const LayeredMapParams& p, double fraction) {
   if (!(std::isfinite(fraction) && fraction > 0.0 && fraction <= 1.0))
-    throw std::invalid_argument("undecided_min_evidence must be in (0, 1], got " + std::to_string(fraction));
+    throw std::invalid_argument("fraction must be in (0, 1], got " + std::to_string(fraction));
   if (p.evidence_model == EvidenceModel::Sprt) return fraction * deriveSprt(p).A;
   if (!(std::isfinite(p.graduate_prob) && p.graduate_prob > 0.0 && p.graduate_prob < 1.0))
     throw std::invalid_argument("graduate_prob must be in (0, 1) to export undecided cells with evidence_model legacy, got " +

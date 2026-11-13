@@ -16,7 +16,7 @@ class Voxel3DBackend : public MapBackend {
   std::size_t lastWindowTouched() const override { return layered_.lastWindowTouched(); }
   std::vector<Eigen::Vector3d> staticPoints() const;
   // Centres of the undecided voxels with statistic >= min_log_odds (LayeredMap::undecidedCells(min_log_odds)).
-  // Not static: they carry no error bound (SPEC 3.2a). Read-only.
+  // Not static: they carry no error bound (SPEC 3.6). Read-only.
   std::vector<Eigen::Vector3d> provisionalPoints(double min_log_odds) const;
   CellId voxelId(const Eigen::Vector3d& p) const;
   Eigen::Vector3d voxelCenter(CellId id) const;

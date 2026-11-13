@@ -40,8 +40,8 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
       throw std::invalid_argument(std::string("export_undecided: ") + e.what());
     }
     RCLCPP_WARN(get_logger(), "export_undecided is on: voxels whose statistic reached %g of the graduation threshold "
-                "are published and saved with the static voxels. They are not static: alpha covers Static cells only, "
-                "and a saved PCD does not mark them (SPEC 3.2a)", undecided_min_evidence);
+                "are published and saved with the static voxels. They are not static: alpha bounds clutter becoming Static only, "
+                "and a saved PCD does not mark them (SPEC 3.6)", undecided_min_evidence);
   }
   buildEvidenceStatus(lp);
   layer_interval_ = lp.layer_interval;
@@ -612,7 +612,8 @@ void MappingNode::onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> 
       const std::string pcd = save_path_ + ".pcd";
       if (cloud.empty()) {
         res->success = false;
-        res->message = "no static voxels to save";
+        res->message = export_undecided_ ? "no voxels to save (no static and no exported undecided voxels)"
+                                         : "no static voxels to save";
       } else {
         cloud.width = cloud.size();
         cloud.height = 1;

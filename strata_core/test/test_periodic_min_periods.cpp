@@ -93,12 +93,12 @@ TEST(PeriodicMinPeriods, MapLabelFollowsTheCountAndAGraduatedDoorIsDemotedWhenTh
       const bool want = raw && nOf(pm, 6) >= k * p.periodicity.period_windows;
       ASSERT_EQ(m.classify(6) == CellClass::Periodic, want) << "k=" << k << " window " << w;
       if (want && first_label < 0) first_label = w;
-      if (raw && !want) { ++withheld; if (m.isStatic(6)) ++price; }
-      if (want) EXPECT_FALSE(m.isStatic(6));                // the label demotes and blocks graduation
+      if (raw && !want) { ++withheld; if (m.isStatic(6)) { ++price; } }
+      if (want) { EXPECT_FALSE(m.isStatic(6)); }            // the label demotes and blocks graduation
     }
     ASSERT_GT(first_label, 0) << "k=" << k;
     EXPECT_GE(first_label, static_cast<long>(k * p.periodicity.period_windows));
-    if (k == 1.0) EXPECT_EQ(withheld, 0);
+    if (k == 1.0) { EXPECT_EQ(withheld, 0); }
     if (k > 1.0) { EXPECT_GT(withheld, 0); static_between += price; }
   }
   EXPECT_GT(static_between, 0);   // with k > 1 the door sits in the static map before the label: the price of the option
@@ -150,20 +150,26 @@ TEST(PeriodicMinPeriods, ALargerKNeverAddsALabelOnTheSameHistory) {
   // Same occupancy history, no pruning in the way: the labels at k = 2, 3 are subsets of the labels at k = 1.
   PeriodicityParams pp; pp.period_windows = 8; pp.n_harmonics = 2;
   Rng rng(5);
-  long extra = 0, checks = 0;
+  long extra = 0, checks = 0, removed = 0;
   for (int cell = 0; cell < 200; ++cell) {
     PeriodicityModel pm(pp);
     const double m = 0.05 + 0.9 * rng.u();
     for (int n = 1; n <= 80; ++n) {
-      pm.gather(0, rng.u() < m, n);
+      const bool door = (cell % 2 == 0) ? (((n % 8) < 4) != (rng.u() < 0.1)) : (rng.u() < m);   // half the cells are noisy doors
+      pm.gather(0, door, n);
       const bool l1 = pm.isPeriodic(0, 0.3, 0.2, true, 1.0), l2 = pm.isPeriodic(0, 0.3, 0.2, true, 2.0),
                  l3 = pm.isPeriodic(0, 0.3, 0.2, true, 3.0);
       if ((l2 && !l1) || (l3 && !l2)) ++extra;
+      if (l1 && !l2) ++removed;
+      const bool f1 = pm.isPeriodic(0, 0.3, 1.0, false, 1.0), f2 = pm.isPeriodic(0, 0.3, 1.0, false, 2.0);   // amplitude-only
+      if (f2 && !f1) ++extra;
+      if (f1 && !f2) ++removed;
       ++checks;
     }
   }
   EXPECT_EQ(extra, 0);
   EXPECT_EQ(checks, 200 * 80);
+  EXPECT_GT(removed, 0);   // not vacuous: k = 2 removes labels that k = 1 gives
 }
 
 TEST(PeriodicMinPeriods, ValidationAcceptsOneOrMoreAndNamesTheParameterOtherwise) {
@@ -176,6 +182,38 @@ TEST(PeriodicMinPeriods, ValidationAcceptsOneOrMoreAndNamesTheParameterOtherwise
         p.periodic_min_periods = bad;
         try { LayeredMap m(p); FAIL() << "accepted " << bad; }
         catch (const std::invalid_argument& e) { EXPECT_NE(std::string(e.what()).find("periodic_min_periods"), std::string::npos) << e.what(); }
+      }
+    }
+  }
+}
+
+TEST(PeriodicMinPeriods, ProductsThatRoundUpNeedExactlyTheirCount) {
+  // 2.2 * 25 = 55.00000000000001 and 1.1 * 10 = 11.000000000000002 in doubles: the bound is the ceiling with 1e-9 of
+  // slack, so these need 55 and 11 windows, not 56 and 12.
+  struct Case { int T; double k; int need; };
+  for (const Case& c : {Case{25, 2.2, 55}, Case{10, 1.1, 11}, Case{8, 2.0, 16}, Case{24, 1.5, 36}}) {
+    PeriodicityParams pp; pp.period_windows = c.T; pp.n_harmonics = 2;
+    PeriodicityModel pm(pp);
+    int first = -1;
+    for (int n = 1; n <= 4 * c.T && first < 0; ++n) {
+      pm.gather(0, (n % c.T) < c.T / 2, n);                  // a square wave of period T: amplitude-only label at n = T
+      if (pm.isPeriodic(0, 0.3, 1.0, false, c.k)) first = n;
+    }
+    EXPECT_EQ(first, c.need) << "T=" << c.T << " k=" << c.k;
+  }
+}
+
+TEST(PeriodicMinPeriods, ANonPositivePeriodKeepsTodaysBehaviourAtEveryK) {
+  // period_windows <= 0 is not validated; the label must be the old one there, whatever k is.
+  for (int T : {0, -3}) {
+    PeriodicityParams pp; pp.period_windows = T; pp.n_harmonics = 2;
+    PeriodicityModel pm(pp);
+    Rng rng(77);
+    for (int n = 1; n <= 40; ++n) {
+      pm.gather(0, rng.u() < 0.5, n);
+      for (bool spend : {false, true}) {
+        const bool raw = pm.isPeriodic(0, 0.3, 0.2, spend);
+        for (double k : {1.0, 2.0, 3.5}) EXPECT_EQ(pm.isPeriodic(0, 0.3, 0.2, spend, k), raw) << "T=" << T << " n=" << n;
       }
     }
   }

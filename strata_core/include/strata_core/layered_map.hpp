@@ -20,7 +20,7 @@ namespace strata_core {
 //   Periodic, Static: the cell is labelled Periodic, or it has graduated.
 //   Unknown: no cell, or (Sprt) a rejected cell kept only as a periodic candidate.
 // Undecided is an alias of Transient (same value), so switch statements and stored values keep working;
-// a switch must not list both.
+// a switch must not list both. Intermittent cells are undecided too, but they keep their own enumerator.
 enum class CellClass { Unknown, Transient, Periodic, Static, Intermittent, Undecided = Transient };
 // How a cell's evidence is accumulated and when it graduates.
 //   Legacy: the v0.1 rule l <- decay * (l + x), graduate at graduate_prob after
@@ -50,7 +50,8 @@ struct LayeredMapParams {
   // instead of using it at every read-out; false restores the single-read-out rule.
   bool periodic_alpha_spending{true};
   // The Periodic LABEL (classify(), and the graduation block and demotion that follow it) also needs
-  // n >= periodic_min_periods * period_windows touched windows of Fourier history. Must be finite and >= 1.
+  // n >= ceil(periodic_min_periods * period_windows - 1e-9) touched windows of Fourier history (the 1e-9 keeps
+  // 2.2 * 25 at 55, not 56). Must be finite and >= 1.
   // 1.0 is the rule before this field existed, bit for bit: the extra comparison only reads n, after the
   // existing n >= T gate. The gate itself stays at T for everything else: the amplitude, the spent level
   // spentLevel(alpha, n, T), the rejection gate and the prune guard (amp < periodic_amplitude_min). A larger
@@ -99,7 +100,7 @@ struct SprtDerived {
 SprtDerived deriveSprt(const LayeredMapParams& p);
 // Log-odds level at which an undecided cell is exported with LayeredMap::undecidedCells(level):
 // fraction * A for Sprt (A = ln((1 - beta) / alpha), the graduation threshold), fraction * logit(graduate_prob)
-// for Legacy. Throws std::invalid_argument unless 0 < fraction <= 1 (finite), and, for Legacy, unless
+// for Legacy. Throws std::invalid_argument (the message names `fraction`) unless 0 < fraction <= 1 (finite), and, for Legacy, unless
 // 0 < graduate_prob < 1.
 double undecidedExportLevel(const LayeredMapParams& p, double fraction);
 struct CellEvidence {
@@ -160,7 +161,6 @@ class LayeredMap {
   // Cells classify() reads as Transient, which is the same value as Undecided (see CellClass). Intermittent
   // cells are not in this list; intermittentCells() has them.
   std::vector<CellId> transientCells() const;
-  std::vector<CellId> undecidedCells() const { return transientCells(); }
   // Undecided cells whose statistic has reached min_log_odds: classify() is Transient or Intermittent (both
   // are undecided; Static, Periodic and the rejected-but-kept Unknown cells are not) and log_odds >=
   // min_log_odds, so a cell exactly at the level is in. Order of the map's iteration. Read-only; allocates only

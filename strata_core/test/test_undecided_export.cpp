@@ -57,8 +57,8 @@ TEST(UndecidedExport, AliasIsTheSameValueAndTheAccessorEqualsTransientCells) {
     LayeredMapParams p = model == EvidenceModel::Sprt ? Sprt1() : Legacy1();
     LayeredMap m(p);
     feedLadder(m);
-    EXPECT_EQ(m.undecidedCells(), m.transientCells());              // same cells, same order
-    EXPECT_FALSE(m.undecidedCells().empty());
+    EXPECT_EQ(m.undecidedCells(-kInf), m.transientCells());         // no Intermittent here: the same cells, same order
+    EXPECT_FALSE(m.transientCells().empty());
     for (CellId id = 1; id <= 5; ++id) EXPECT_EQ(m.classify(id) == CellClass::Undecided, m.classify(id) == CellClass::Transient);
   }
 }
@@ -130,8 +130,7 @@ TEST(UndecidedExport, IntermittentCellsAreUndecidedAndExportedAboveTheLevel) {
   }
   ASSERT_EQ(m.classify(10), CellClass::Intermittent);
   ASSERT_EQ(m.classify(11), CellClass::Intermittent);
-  EXPECT_TRUE(m.transientCells().empty());                  // Intermittent is not in transientCells()/undecidedCells()
-  EXPECT_TRUE(m.undecidedCells().empty());
+  EXPECT_TRUE(m.transientCells().empty());                  // Intermittent is not in transientCells(); it has its own accessor
   EXPECT_EQ(asSet(m.undecidedCells(undecidedExportLevel(p, 0.5))), (std::set<CellId>{10}));
   EXPECT_EQ(asSet(m.undecidedCells(0.0)), (std::set<CellId>{10, 11}));
   EXPECT_EQ(asSet(m.undecidedCells(-kInf)), (std::set<CellId>{10, 11}));
@@ -150,7 +149,7 @@ TEST(UndecidedExport, StaticPeriodicAndRejectedButKeptCellsAreNeverExported) {
     if (c == CellClass::Unknown && m.cellCount() >= 1) { ++unknown_alive; EXPECT_EQ(got.count(9), 0u) << "window " << (w + 1); }
     if (c == CellClass::Periodic) { ++periodic_seen; EXPECT_EQ(got.count(9), 0u) << "window " << (w + 1); }
     if (c == CellClass::Static) { ++static_seen; EXPECT_EQ(got.count(9), 0u) << "window " << (w + 1); }
-    if (c == CellClass::Transient || c == CellClass::Intermittent) EXPECT_EQ(got.count(9), 1u) << "window " << (w + 1);
+    if (c == CellClass::Transient || c == CellClass::Intermittent) { EXPECT_EQ(got.count(9), 1u) << "window " << (w + 1); }
     if (w >= 4) { ASSERT_EQ(m.classify(20), CellClass::Static); EXPECT_EQ(got.count(20), 0u); }
   }
   EXPECT_GT(unknown_alive, 0);          // the rejected-but-kept branch was reached
@@ -173,15 +172,15 @@ TEST(UndecidedExport, ErasedCellsAreNotExportedAndTheCallChangesNothing) {
   EXPECT_EQ(m.cellCount(), cells);
   EXPECT_EQ(m.lastWindowTouched(), touched);
   EXPECT_EQ(m.occupancyProb(8), prob);
-  const LayeredMap& cm = m;                                  // the accessors are const
-  EXPECT_EQ(cm.undecidedCells(0.0).size(), cm.undecidedCells(0.0).size());
+  const LayeredMap& cm = m;                                  // the accessor is const
+  EXPECT_EQ(cm.undecidedCells(0.0), a);
 }
 
 TEST(UndecidedExport, ExportLevelValidatesTheFractionAndLegacyGraduateProb) {
   const LayeredMapParams p = Sprt1();
   for (double f : {0.0, -0.1, 1.0000001, 2.0, kNaN, kInf, -kInf}) {
     try { (void)undecidedExportLevel(p, f); FAIL() << "fraction " << f; }
-    catch (const std::invalid_argument& e) { EXPECT_NE(std::string(e.what()).find("undecided_min_evidence"), std::string::npos) << e.what(); }
+    catch (const std::invalid_argument& e) { EXPECT_NE(std::string(e.what()).find("fraction"), std::string::npos) << e.what(); }
   }
   EXPECT_NO_THROW(undecidedExportLevel(p, 1.0));
   EXPECT_NO_THROW(undecidedExportLevel(p, 1e-9));
@@ -221,4 +220,27 @@ TEST(UndecidedExport, VoxelBackendProvisionalPointsAreTheCentresOfTheUndecidedVo
   EXPECT_TRUE(b.provisionalPoints(level).empty());
   ASSERT_EQ(b.staticPoints().size(), 1u);
   EXPECT_TRUE(b.staticPoints()[0].isApprox(b.voxelCenter(id)));
+}
+
+TEST(UndecidedExport, WithAStricterPeriodicLabelAPeriodicCellIsExportedUntilTheLabelArrives) {
+  // 3 on / 5 off, T = 8, amplitude-only label. At k = 1 the label arrives at window 8 or later and removes the cell
+  // from the export; at k = 2 the cell is undecided and above the level until n reaches 16.
+  LayeredMapParams p = Sprt1(); p.enable_periodicity = true; p.n_max_undecided = 0;
+  p.periodicity.period_windows = 8; p.periodicity.n_harmonics = 3;
+  p.periodic_alpha_spending = false; p.periodic_false_alarm = 1.0;
+  LayeredMapParams q = p; q.periodic_min_periods = 2.0;
+  LayeredMap a(p), b(q);
+  const double level = undecidedExportLevel(p, 0.5);
+  long only_with_k2 = 0, exported_k2 = 0;
+  for (int w = 1; w <= 24; ++w) {
+    if (((w - 1) % 8) < 3) { a.observeHit(1); b.observeHit(1); } else { a.observeMiss(1); b.observeMiss(1); }
+    a.tick(); b.tick();
+    const bool ea = !a.undecidedCells(level).empty(), eb = !b.undecidedCells(level).empty();
+    if (b.classify(1) == CellClass::Periodic) { EXPECT_FALSE(eb) << "window " << w; EXPECT_GE(w, 16); }
+    if (a.classify(1) == CellClass::Periodic) { EXPECT_FALSE(ea) << "window " << w; }
+    if (eb) ++exported_k2;
+    if (eb && !ea && a.classify(1) == CellClass::Periodic) ++only_with_k2;
+  }
+  EXPECT_GT(only_with_k2, 0);   // k = 1 had labelled the cell Periodic while k = 2 still exports it
+  EXPECT_GT(exported_k2, 0);
 }

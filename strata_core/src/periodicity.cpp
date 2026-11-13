@@ -205,7 +205,9 @@ bool PeriodicityKernel::isPeriodic(const double* slot, double a_min, double alph
   if (gated(cell)) return false;
   // Label only: a stricter count withholds the answer and changes nothing below. After the gate n >= T,
   // so at min_periods = 1 this never fires and the arithmetic that follows is untouched.
-  if (cell.n < min_periods * static_cast<double>(params_.period_windows)) return false;
+  // ceil with 1e-9 of slack, so that 2.2 * 25 = 55.00000000000001 needs 55 windows and not 56. For min_periods = 1 and
+  // an integer T the bound is T exactly, and for T <= 0 it is <= 0, so the test never fires there either.
+  if (cell.n < std::ceil(min_periods * static_cast<double>(params_.period_windows) - 1e-9)) return false;
   const double H = std::max(1, params_.n_harmonics);
   const double level = spend ? spentLevel(alpha, cell.n, params_.period_windows) : alpha;
   for (int k = 0; k < params_.n_harmonics; ++k) {
