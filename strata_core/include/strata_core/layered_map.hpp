@@ -8,9 +8,20 @@
 #include "strata_core/types.hpp"
 #include "strata_core/periodicity.hpp"
 namespace strata_core {
-// Intermittent (sprt only): undecided after n_max_undecided touched windows and not
-// Periodic. It is a read-out; the test keeps running and the cell can still graduate.
-enum class CellClass { Unknown, Transient, Periodic, Static, Intermittent };
+// What classify() returns. Read Transient as "undecided", not as "a transient object".
+//   Transient (alias Undecided), evidence_model = Sprt: the sequential test has not decided the
+//     cell. It has not graduated, it is not Periodic, and it is not rejected. It says nothing about
+//     movement: a voxel seen once is Transient. A wall under sparse input stays Transient for a long time.
+//   Transient (alias Undecided), evidence_model = Legacy: not graduated, not Periodic, and the
+//     log-odds are at least prune_prob. The v0.1 rule has no rejection step: a cell that is not Static
+//     and not yet pruned is Transient.
+//   Intermittent (Sprt only): undecided after n_max_undecided touched windows and not Periodic. It is a
+//     read-out; the test keeps running and the cell can still graduate. It is undecided too.
+//   Periodic, Static: the cell is labelled Periodic, or it has graduated.
+//   Unknown: no cell, or (Sprt) a rejected cell kept only as a periodic candidate.
+// Undecided is an alias of Transient (same value), so switch statements and stored values keep working;
+// a switch must not list both.
+enum class CellClass { Unknown, Transient, Periodic, Static, Intermittent, Undecided = Transient };
 // How a cell's evidence is accumulated and when it graduates.
 //   Legacy: the v0.1 rule l <- decay * (l + x), graduate at graduate_prob after
 //           min_observations windows. Reproduced bit for bit; opt in by name.
@@ -77,6 +88,11 @@ struct SprtDerived {
 // Throws std::invalid_argument unless 0 < m0 < m1 < 1, 0 < alpha, beta and
 // alpha + beta < 1 (all finite), and sprt_ceiling is NaN or finite and >= A.
 SprtDerived deriveSprt(const LayeredMapParams& p);
+// Log-odds level at which an undecided cell is exported with LayeredMap::undecidedCells(level):
+// fraction * A for Sprt (A = ln((1 - beta) / alpha), the graduation threshold), fraction * logit(graduate_prob)
+// for Legacy. Throws std::invalid_argument unless 0 < fraction <= 1 (finite), and, for Legacy, unless
+// 0 < graduate_prob < 1.
+double undecidedExportLevel(const LayeredMapParams& p, double fraction);
 struct CellEvidence {
   double log_odds{0.0};
   int observations{0};
@@ -132,7 +148,17 @@ class LayeredMap {
   double occupancyProb(CellId id) const;
   double periodicProb(CellId id) const;
   std::vector<CellId> staticCells() const;
+  // Cells classify() reads as Transient, which is the same value as Undecided (see CellClass). Intermittent
+  // cells are not in this list; intermittentCells() has them.
   std::vector<CellId> transientCells() const;
+  std::vector<CellId> undecidedCells() const { return transientCells(); }
+  // Undecided cells whose statistic has reached min_log_odds: classify() is Transient or Intermittent (both
+  // are undecided; Static, Periodic and the rejected-but-kept Unknown cells are not) and log_odds >=
+  // min_log_odds, so a cell exactly at the level is in. Order of the map's iteration. Read-only; allocates only
+  // the result. The statistic is l for Sprt and the clamped log-odds for Legacy; undecidedExportLevel() gives
+  // the level for a fraction of the graduation threshold. NaN selects nothing. Cost O(cells) with a cheap
+  // test per cell; classify() runs only on the cells at or above the level.
+  std::vector<CellId> undecidedCells(double min_log_odds) const;
   std::vector<CellId> periodicCells() const;
   std::vector<CellId> intermittentCells() const;
   // Number of touched windows of a known cell (0 if unknown); read-out for tests and tools.

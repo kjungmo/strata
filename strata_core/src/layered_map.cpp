@@ -71,6 +71,16 @@ SprtDerived deriveSprt(const LayeredMapParams& p) {
   return d;
 }
 
+double undecidedExportLevel(const LayeredMapParams& p, double fraction) {
+  if (!(std::isfinite(fraction) && fraction > 0.0 && fraction <= 1.0))
+    throw std::invalid_argument("undecided_min_evidence must be in (0, 1], got " + std::to_string(fraction));
+  if (p.evidence_model == EvidenceModel::Sprt) return fraction * deriveSprt(p).A;
+  if (!(std::isfinite(p.graduate_prob) && p.graduate_prob > 0.0 && p.graduate_prob < 1.0))
+    throw std::invalid_argument("graduate_prob must be in (0, 1) to export undecided cells with evidence_model legacy, got " +
+                                std::to_string(p.graduate_prob));
+  return fraction * std::log(p.graduate_prob / (1.0 - p.graduate_prob));
+}
+
 LayeredMap::LayeredMap(LayeredMapParams params)
   : params_(params), periodicity_(params.periodicity),
     pool_(PeriodicityKernel::slotDoubles(params.periodicity.n_harmonics)) {
@@ -320,6 +330,15 @@ std::vector<CellId> LayeredMap::staticCells() const {
 std::vector<CellId> LayeredMap::transientCells() const {
   std::vector<CellId> o;
   for (auto& kv : cells_) if (classify(kv.first) == CellClass::Transient) o.push_back(kv.first);
+  return o;
+}
+std::vector<CellId> LayeredMap::undecidedCells(double min_log_odds) const {
+  std::vector<CellId> o;
+  for (auto& kv : cells_) {
+    if (!(kv.second.log_odds >= min_log_odds)) continue;         // cheap test first; false for NaN
+    const CellClass c = classify(kv.first);
+    if (c == CellClass::Transient || c == CellClass::Intermittent) o.push_back(kv.first);
+  }
   return o;
 }
 std::vector<CellId> LayeredMap::intermittentCells() const {
