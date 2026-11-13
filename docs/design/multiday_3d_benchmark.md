@@ -6,8 +6,7 @@ named next to them; anything not found there is written "not verified".
 ## Purpose
 
 The claim "remove what changed, keep what persists" has only been exercised in 2D and on synthetic
-data. Single-pass recordings cannot test it: a voxel is touched in few windows (SPEC 3.2a, "Input density
-(3D)"), and nothing changes between visits. A benchmark needs several sessions of one place in 3D LiDAR,
+data. Single-pass recordings cannot test it: few cells are touched in `n_max_undecided` windows (SPEC 3.2a, Truncation), and nothing changes between visits. A benchmark needs several sessions of one place in 3D LiDAR,
 with poses good enough to align them.
 
 ## Candidate datasets
@@ -17,7 +16,7 @@ with poses good enough to align them.
 - Sessions and span: 27 sessions, 8 Jan 2012 to 5 Apr 2013, routes and times of day vary; 34.9 h, 147.4 km in
   total (about 1.29 h and 5.5 km per session). Same page.
 - Size on disk: Velodyne archive 16 GB for session 2012-01-08; the same page lists 95 GB for 2012-03-31, which
-  looks like a typo. Total Velodyne size: not verified.
+  is unusually large (not verified). Total Velodyne size: not verified.
 - Licence: ODbL 1.0, contents under DbCL 1.0; cite the IJRR 2016 paper; adapted public versions stay open. Same page.
 - Pose source: ground truth from a SLAM graph, interpolated by odometry to about 100 Hz; a covariance file per
   session. Same page. Its accuracy as a reference for map-change evaluation: not verified.

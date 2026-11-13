@@ -98,7 +98,7 @@ means *not decided yet*, not "a moving object": under the default test the cell 
 been rejected (see **Classes** in the Interface section).
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
-cell id, and is unit-tested with gtest **without ROS or PCL** (143 gtest cases across 16
+cell id, and is unit-tested with gtest **without ROS or PCL** (146 gtest cases across 16
 suites, plus 71 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
@@ -188,7 +188,7 @@ cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 #    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 71 node gtests; the 143 engine
+colcon test --packages-select strata      # the 71 node gtests; the 146 engine
 colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 
@@ -427,8 +427,8 @@ Transient). After `n_max_undecided` touched windows it reads `Intermittent`, whi
 
 **Optional: undecided voxels in the 3D map (`export_undecided`, default off).** With `export_undecided: true`
 `~/map_points` and the saved PCD also hold undecided voxels whose statistic reached `undecided_min_evidence`
-(default 0.5) of the graduation threshold. These voxels are not static: the error rate `alpha` covers Static cells
-only, they carry no such bound, and the PCD does not mark them, so a loader reads them as static points.
+(default 0.5) of the graduation threshold. These voxels are not static: `alpha` bounds clutter (hit rate <= m0) becoming Static,
+these voxels are not Static and carry no such bound, and the PCD does not mark them, so a loader reads them as static points.
 `/diagnostics` shows their number as `undecided_exported_cells`. grid2d refuses the option. See
 [`SPEC.md` §3.6](SPEC.md).
 

@@ -84,7 +84,7 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 |---|---|---|---|
 | `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame`; with `export_undecided` also the centers of undecided voxels above `undecided_min_evidence` (§3.6), unmarked |
-| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` single-quoted and relative to the YAML, resolution and origin written to read back exactly, "C" locale); voxel3d → PCD. Written to `.tmp` files and fsynced, then renamed and the directory fsynced: a save that fails before the renames leaves the previous pair untouched; the PGM is renamed first and the YAML second, so a crash or failure between the two renames can pair the new PGM with the previous YAML (map_server takes the image name from the YAML, so no rename order avoids this with fixed names). To make that pair detectable the YAML also carries `strata_image_bytes` and `strata_image_sha256` (size and SHA-256 of the exact PGM bytes written; map_server ignores them and does not check them, `check_saved_map.py` does, see §6.1). `success: false` with the path and reason when a file cannot be written (e.g. a missing directory), `save_path` has no file name (empty or ending in `/`), or voxel3d has no static voxel |
+| `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` single-quoted and relative to the YAML, resolution and origin written to read back exactly, "C" locale); voxel3d → PCD. Written to `.tmp` files and fsynced, then renamed and the directory fsynced: a save that fails before the renames leaves the previous pair untouched; the PGM is renamed first and the YAML second, so a crash or failure between the two renames can pair the new PGM with the previous YAML (map_server takes the image name from the YAML, so no rename order avoids this with fixed names). To make that pair detectable the YAML also carries `strata_image_bytes` and `strata_image_sha256` (size and SHA-256 of the exact PGM bytes written; map_server ignores them and does not check them, `check_saved_map.py` does, see §6.1). `success: false` with the path and reason when a file cannot be written (e.g. a missing directory), `save_path` has no file name (empty or ending in `/`), or voxel3d has no voxel to save (no static voxel, and with `export_undecided` no exported undecided voxel either: the save succeeds whenever the set of points written is not empty) |
 | `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total, and, in every status from the first one, messages_received_total, messages_integrated_total, tf_failures_total, tf_failures_since_integrate, seconds_since_last_integrate, last_tf_error, cells, last_window_touched_cells, undecided_exported_cells (see "Input states on `/diagnostics`" below). From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was), and before that the message names the failing lookup at the level the other checks give; ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
 
 ### Input states on `/diagnostics`
@@ -525,14 +525,14 @@ the comment in `periodicity.cpp`.
 
 **Label count (`periodic_min_periods`).** The predicate above gives the Periodic *label* once `n >= T`.
 `periodic_min_periods = k` (default 1, finite, `>= 1`) adds a second count for the label only:
-`n >= k T`, where `n` is the touch count of the cell's Fourier history (the `n` of the `n >= T` gate; it
+`n >= ceil(k T - 1e-9)` (the slack keeps `k = 2.2`, `T = 25` at 55 windows, not 56), where `n` is the touch count of the cell's Fourier history (the `n` of the `n >= T` gate; it
 is not `observations`, which a reverse-test demotion restarts). Nothing else reads `k`: the amplitude,
 the spent level `spentLevel(alpha, n, T)`, the rejection gate and the prune guard (`amp <
 periodic_amplitude_min`) keep `T`.
 - *Default.* At `k = 1` the new comparison cannot fire (`n >= T` already holds when it runs) and it
   touches no floating-point value, so every result is unchanged bit for bit (`TouchedClose` against the
   frozen oracle; the seeded CSVs of the experiment harness byte for byte).
-- *False alarms.* For the same touched windows the label at `k` is the label at 1 and `n >= k T`, so a
+- *False alarms.* For the same touched windows the label at `k` is the label at 1 and `n >= ceil(k T - 1e-9)`, so a
   larger `k` removes labels and cannot add one. The alpha-spending bound (a bound per uninterrupted
   history) still holds; the levels spent for `T <= n < k T` are unused. In the full pipeline the history of
   a cell can differ with `k` (a label blocks graduation, and so changes `l` and the rejection), and
@@ -542,8 +542,11 @@ periodic_amplitude_min`) keep `T`.
   through the prune guard, as before.
 - *Price.* Graduation is blocked by the label only. With `k > 1` a truly periodic cell can graduate to
   Static before `n` reaches `k T` and stays in the static map until the label arrives, where it is demoted.
-  Single-pass recordings that gave a few dozen Periodic cells by chance are the case for `k > 1`; a
-  door seen for one period is the case against.
+  Measured on three single-pass private indoor recordings (69, 184 and 335 one-second windows; single runs,
+  all other parameters at their defaults): the Periodic cells at the end were 2, 55 and 71 at `k = 1`, 0, 0
+  and 12 at `k = 2`, and 0, 0 and 0 at `k = 3`. A single pass cannot confirm a period. The cells that lost the
+  label mostly stay undecided; a few graduate to Static (the static count rose by 1, 3 and 16 at `k = 2`) or are
+  rejected. That is the case for `k > 1`; a door seen for one period is the case against. The default stays 1.
 - *Validation.* `LayeredMap` throws `std::invalid_argument` for a value below 1, NaN or infinite, and the
   node refuses to start, whether or not `enable_periodicity` is set.
 
@@ -615,7 +618,7 @@ exported by this rule. Intermittent cells are in: they are undecided too, and `t
 list them, `undecidedCells(min_log_odds)` does. The library calls are `LayeredMap::undecidedCells(min_log_odds)`
 (read-only, allocates only the result), `undecidedExportLevel(params, f)` (the level for `f`) and
 `Voxel3DBackend::provisionalPoints(min_log_odds)`.
-- **No error bound.** The error-rate statement (`alpha`, §3.2a) covers Static cells only. An exported
+- **No error bound.** The error-rate statement (`alpha`, §3.2a) bounds clutter (hit rate at most `m0`) becoming Static, and covers Static cells only. An exported
   undecided cell carries no such bound. For independent windows and a hit rate at most `m0`, the chance that
   the first test of a history ever reaches `f * A` is at most `exp(-f A)` (Ville, as in §3.2a): about 0.1 at
   `f = 0.5` and the default pair, against about 0.01 for `A`. Real clutter was above these figures (§3.2a), so
@@ -718,7 +721,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 1. Rebuild against 0.2.0. `MapBackend` gains a virtual (`intermittentCellCount`), and `LayeredMapParams` and `LayeredMap` change layout.
 2. If you set the v0.1 keys (`l_hit`, `graduate_prob` and the others), set `evidence_model = EvidenceModel::Legacy` too. `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, which ignores those keys without an error.
 3. Handle `CellClass::Intermittent` in every `switch` over `CellClass`. With `Legacy` it never occurs.
-4. Later additions, all source compatible: `CellClass::Undecided` (an alias of `Transient`; do not list both in one `switch`), `LayeredMap::undecidedCells()` and `undecidedCells(min_log_odds)`, `undecidedExportLevel()`, `Voxel3DBackend::provisionalPoints()`, the field `LayeredMapParams::periodic_min_periods` (default 1; the layout changes, so rebuild) and a defaulted last parameter `min_periods` of `PeriodicityKernel::isPeriodic` and `PeriodicityModel::isPeriodic` (the signature changes, so rebuild; calls compile unchanged).
+4. Later additions, all source compatible: `CellClass::Undecided` (an alias of `Transient`; do not list both in one `switch`), `LayeredMap::undecidedCells(min_log_odds)`, `undecidedExportLevel()`, `Voxel3DBackend::provisionalPoints()`, the field `LayeredMapParams::periodic_min_periods` (default 1; the layout changes, so rebuild) and a defaulted last parameter `min_periods` of `PeriodicityKernel::isPeriodic` and `PeriodicityModel::isPeriodic` (the signature changes, so rebuild; calls compile unchanged).
 
 ### Layered persistence engine (`LayeredMapParams`, legacy keys)
 | Param | Default | Meaning |
@@ -783,7 +786,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
 streams, or `std::mt19937_64` raw output where the standard library must not matter) in
-`strata_core/test`, runnable with **no ROS** — **143 gtests across 16 suites** (7 of
+`strata_core/test`, runnable with **no ROS** — **146 gtests across 16 suites** (7 of
 them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
 CTest `defaults_match_yaml_and_prereg`:
 
@@ -851,19 +854,19 @@ CTest `defaults_match_yaml_and_prereg`:
   per-window phase table gives the same sums as computing the phases per cell, and the
   constant-cell shortcut of `amplitude` and `isPeriodic` (below) gives the bits of the full
   computation for all `a_min` and `alpha` (including `alpha >= 1`, a negative `a_min`).
-- **UndecidedExport** (8): `CellClass::Undecided` is the value of `Transient` and
-  `undecidedCells()` equals `transientCells()`; `undecidedCells(min)` at exact levels, with the boundary
+- **UndecidedExport** (9): `CellClass::Undecided` is the value of `Transient` and
+  `undecidedCells(-inf)` equals `transientCells()` when no cell is Intermittent; `undecidedCells(min)` at exact levels, with the boundary
   (a cell exactly at the level is in, the next double above is out), for sprt (`f * A`) and legacy
   (`f * logit(graduate_prob)`); Intermittent cells are in above the level and not in `transientCells()`;
   Static, Periodic, rejected-but-kept and erased cells are never in; the call changes nothing; the level
   function rejects a bad fraction and a bad legacy `graduate_prob`; `provisionalPoints` gives the centers of
   the undecided voxels and hands a graduated voxel to `staticPoints`.
-- **PeriodicMinPeriods** (7): the label at `k` is the old label and `n >= k T` for `k` 1, 1.5, 2, 3
+- **PeriodicMinPeriods** (9): the label at `k` is the old label and `n >= ceil(k T - 1e-9)` for `k` 1, 1.5, 2, 3
   (kernel, four `(T, H, alpha)` settings); amplitude and `falseAlarm` do not take `k`; on a square-wave door the map's
-  Periodic label equals an independent model's label and `n >= k T`, and with `k > 1` the door sits in the
+  Periodic label equals an independent model's label and `n >= ceil(k T - 1e-9)`, and with `k > 1` the door sits in the
   static map before the label; cells that are never labelled are identical for `k` 1 and 3 at every window
   (sprt and legacy, 300 cells, 400 windows); a larger `k` never adds a label on the same history;
-  validation names the parameter.
+  products that round up need exactly their count (`k = 2.2`, `T = 25`: 55); a period of 0 or less keeps the old label at every `k`; with `export_undecided` and `k = 2` a periodic cell is exported until the label arrives; validation names the parameter.
 - **WindowObserver** (10): the read-only window hook reports exactly the touched
   cells with the hit-wins rule, changes no state, and leaves the map's read-outs
   byte-identical with and without it.
@@ -1097,7 +1100,7 @@ has no pair to mismatch.
 ```bash
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j
-( cd build/core && ctest --output-on-failure )     # the 143 engine gtests and the defaults check
+( cd build/core && ctest --output-on-failure )     # the 146 engine gtests and the defaults check
 ```
 
 **Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
