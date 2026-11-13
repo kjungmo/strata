@@ -25,6 +25,24 @@ MappingNode::MappingNode(const rclcpp::NodeOptions& options)
   const double publish_period = declare_parameter<double>("publish_period", 1.0);
 
   const strata_core::LayeredMapParams lp = readLayerParams();
+  // Optional export of undecided voxels with the static ones (voxel3d only; default off, SPEC 5).
+  export_undecided_ = declare_parameter<bool>("export_undecided", false);
+  const double undecided_min_evidence = declare_parameter<double>("undecided_min_evidence", 0.5);
+  if (!(std::isfinite(undecided_min_evidence) && undecided_min_evidence > 0.0 && undecided_min_evidence <= 1.0))
+    throw std::invalid_argument("undecided_min_evidence must be in (0, 1], got " + std::to_string(undecided_min_evidence));
+  if (export_undecided_) {
+    if (backend_ == "grid2d")
+      throw std::invalid_argument("export_undecided is implemented for backend voxel3d only: grid2d already draws "
+                                  "undecided cells as 50, and a saved grid has no class for provisional cells");
+    try {
+      undecided_level_ = strata_core::undecidedExportLevel(lp, undecided_min_evidence);
+    } catch (const std::invalid_argument& e) {
+      throw std::invalid_argument(std::string("export_undecided: ") + e.what());
+    }
+    RCLCPP_WARN(get_logger(), "export_undecided is on: voxels whose statistic reached %g of the graduation threshold "
+                "are published and saved with the static voxels. They are not static: alpha covers Static cells only, "
+                "and a saved PCD does not mark them (SPEC 3.2a)", undecided_min_evidence);
+  }
   buildEvidenceStatus(lp);
   layer_interval_ = lp.layer_interval;
   period_windows_ = lp.periodicity.period_windows;
@@ -127,6 +145,10 @@ strata_core::LayeredMapParams MappingNode::readLayerParams() {
   p.alpha = declare_parameter<double>("alpha", def.alpha);
   p.beta = declare_parameter<double>("beta", def.beta);
   p.n_max_undecided = declare_parameter<int>("n_max_undecided", def.n_max_undecided);
+  // The Periodic label also needs n >= periodic_min_periods * period_windows touched windows (1: as before).
+  p.periodic_min_periods = declare_parameter<double>("periodic_min_periods", def.periodic_min_periods);
+  if (!(std::isfinite(p.periodic_min_periods) && p.periodic_min_periods >= 1.0))
+    throw std::invalid_argument("periodic_min_periods must be finite and >= 1, got " + std::to_string(p.periodic_min_periods));
   // Where the pair comes from. Without the key, the 2D pair is measured for grid2d only; voxel3d
   // reuses it uncalibrated, so the default for voxel3d is the fallback label (and its warning).
   const std::string calibration_default = backend_ == "voxel3d" ? "fallback_2d_pair" : "measured_2d";
@@ -502,6 +524,8 @@ void MappingNode::onDiagnostics() {
   // touched, so last_window_touched_cells (the last close call; 0 until the first window closes) is its work per close.
   kv("cells", std::to_string(map_ ? map_->cellCount() : 0));
   kv("last_window_touched_cells", std::to_string(map_ ? map_->lastWindowTouched() : 0));
+  // Undecided voxels in the last published or saved map (0 with export_undecided off).
+  kv("undecided_exported_cells", std::to_string(undecided_exported_));
   arr.status.push_back(st);
   // Constant standing note on the evidence model; level OK (a property, not a fault). A second
   // status, so the values and their order in the "input rate" status stay as they were.
@@ -527,6 +551,18 @@ void MappingNode::onDiagnostics() {
   }
 }
 
+// The static voxels, and with export_undecided on the undecided ones above the level. Caller holds mtx_.
+std::vector<Eigen::Vector3d> MappingNode::voxelOutputPoints() {
+  std::vector<Eigen::Vector3d> pts = voxel_->staticPoints();
+  undecided_exported_ = 0;
+  if (export_undecided_) {
+    const std::vector<Eigen::Vector3d> extra = voxel_->provisionalPoints(undecided_level_);
+    undecided_exported_ = extra.size();
+    pts.insert(pts.end(), extra.begin(), extra.end());
+  }
+  return pts;
+}
+
 void MappingNode::onPublish() {
   std::lock_guard<std::mutex> lk(mtx_);
   if (backend_ == "grid2d") {
@@ -546,7 +582,7 @@ void MappingNode::onPublish() {
   } else {
     if (!voxel_) return;
     pcl::PointCloud<pcl::PointXYZ> cloud;
-    for (const auto& pt : voxel_->staticPoints())
+    for (const auto& pt : voxelOutputPoints())
       cloud.push_back(pcl::PointXYZ(static_cast<float>(pt.x()),
                                     static_cast<float>(pt.y()),
                                     static_cast<float>(pt.z())));
@@ -569,7 +605,7 @@ void MappingNode::onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> 
       res->message = w.message;
     } else {
       pcl::PointCloud<pcl::PointXYZ> cloud;
-      for (const auto& pt : voxel_->staticPoints())
+      for (const auto& pt : voxelOutputPoints())
         cloud.push_back(pcl::PointXYZ(static_cast<float>(pt.x()),
                                       static_cast<float>(pt.y()),
                                       static_cast<float>(pt.z())));

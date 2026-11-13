@@ -50,3 +50,9 @@
     periodic_alpha_spending: true
     period_windows: 24
     n_harmonics: 2
+    periodic_min_periods: 1.0     # the Periodic LABEL also needs n >= periodic_min_periods * period_windows touched windows (>= 1; 1 is the
+                                  # rule of earlier versions). A stricter label can only lower the false-alarm rate of the label; a periodic cell
+                                  # may graduate to Static before the label arrives and is demoted then (SPEC 3.5)
+    # ---- optional export of undecided cells (SPEC 3.2a) ----
+    export_undecided: false       # voxel3d only; true is refused with grid2d (it already draws undecided cells as 50)
+    undecided_min_evidence: 0.5   # fraction f in (0, 1] of the graduation threshold (f * A for sprt); read only when export_undecided is true

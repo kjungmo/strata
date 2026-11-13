@@ -25,6 +25,12 @@ bad 'need alpha > 0, beta > 0 and alpha + beta < 1' alpha:=0.6 beta:=0.5
 bad 'need alpha > 0, beta > 0 and alpha + beta < 1' alpha:=0.0
 bad 'n_max_undecided must be >= 0' n_max_undecided:=-1
 bad 'evidence_calibration must be' evidence_calibration:=bogus
+bad 'periodic_min_periods must be finite and >= 1' periodic_min_periods:=0.5
+bad 'periodic_min_periods must be finite and >= 1' periodic_min_periods:=0.0
+bad 'undecided_min_evidence must be in (0, 1]' undecided_min_evidence:=0.0
+bad 'undecided_min_evidence must be in (0, 1]' undecided_min_evidence:=1.5
+bad 'export_undecided is implemented for backend voxel3d only' export_undecided:=true
+bad 'graduate_prob must be in (0, 1)' backend:=voxel3d export_undecided:=true evidence_model:=legacy graduate_prob:=1.0
 # legacy starts, and the sprt keys are not validated then
 out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p evidence_model:=legacy -p m0:=5.0 2>&1); code=$?
 if [ "$code" -ne 124 ]; then echo "FAIL: legacy start exited $code"; echo "$out" | tail -3; fail=1
@@ -39,6 +45,13 @@ out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p backend:=voxel3d 
 if [ "$code" -eq 124 ] && grep -qF "not calibrated for backend voxel3d" <<< "$out" && grep -qF "NOT calibrated for voxel3d" <<< "$out"; then
   echo "ok: backend:=voxel3d without a YAML warns that the pair is not calibrated"
 else echo "FAIL: voxel3d default start (exit $code)"; echo "$out" | tail -3; fail=1; fi
+# voxel3d with the export on starts and says what the exported voxels are; the default start does not say it
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p backend:=voxel3d -p export_undecided:=true -p periodic_min_periods:=2.0 2>&1); code=$?
+if [ "$code" -eq 124 ] && grep -qF "export_undecided is on" <<< "$out" && grep -qF "alpha covers Static cells only" <<< "$out"; then
+  echo "ok: backend:=voxel3d export_undecided:=true starts and warns that the exported voxels are not static"
+else echo "FAIL: voxel3d export start (exit $code)"; echo "$out" | tail -3; fail=1; fi
+out=$(timeout 8 ros2 run strata strata_node_main --ros-args -p backend:=voxel3d 2>&1)
+if grep -qF "export_undecided is on" <<< "$out"; then echo "FAIL: the default voxel3d start says the export is on"; fail=1; else echo "ok: the default start does not export undecided voxels"; fi
 # grid2d with the key left out stays measured_2d and does not warn
 out=$(timeout 8 ros2 run strata strata_node_main 2>&1)
 if grep -qF "not calibrated for backend" <<< "$out"; then echo "FAIL: grid2d default start warns"; fail=1; else echo "ok: grid2d default start does not warn"; fi

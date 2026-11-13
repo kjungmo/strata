@@ -50,3 +50,11 @@
     periodic_alpha_spending: true
     period_windows: 24
     n_harmonics: 2
+    periodic_min_periods: 1.0     # the Periodic LABEL also needs n >= periodic_min_periods * period_windows touched windows (>= 1; 1 is the
+                                  # rule of earlier versions). A stricter label can only lower the false-alarm rate of the label; a periodic cell
+                                  # may graduate to Static before the label arrives and is demoted then (SPEC 3.5)
+    # ---- optional export of undecided cells (SPEC 3.2a) ----
+    export_undecided: false       # true: undecided voxels whose statistic reached undecided_min_evidence of the graduation threshold
+                                  # are published and saved with the static ones. They are NOT static: alpha covers Static cells only,
+                                  # and a saved PCD does not mark them.
+    undecided_min_evidence: 0.5   # fraction f in (0, 1]: statistic >= f * A for sprt, f * logit(graduate_prob) for legacy
