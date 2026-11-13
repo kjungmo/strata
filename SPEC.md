@@ -283,7 +283,9 @@ has run `n_max_undecided` windows.
 **Truncation.** An undecided, non-periodic cell is read out `Intermittent` once
 `n >= n_max_undecided` (`0`: never), where `n` is the window count of the current test
 (restarted by a reverse-test demotion). It is a read-out only; the test continues, and the
-cell can still graduate or be rejected. `n_max_undecided = 80` is the smallest multiple
+cell can still graduate or be rejected. A single-pass recording rarely produces
+`Intermittent` cells: few cells are touched in `n_max_undecided` (80) windows, so zero
+`Intermittent` cells in a short walk-through is expected, not a defect. `n_max_undecided = 80` is the smallest multiple
 of 16 for which the share still undecided at the zero-drift rate `m*` is at most 3 %
 (1.5 % at 80; `PREREG.md`).
 
@@ -355,6 +357,56 @@ with the pair (0.15, 0.65)) 73 % of structure voxels stay undecided
 (`paper/experiments/realdata/results_p2/replay_kitti.txt`). A lifelong mapper needs revisits. The node logs a
 warning at start and publishes the limitation on `/diagnostics` in the status
 `<node>: evidence model`.
+
+#### Input density (3D)
+
+Do not thin the cloud before the node if you want to localize against the map. The default
+pair assumes the full cloud of the sensor. With sparse input the static map stays
+under-filled.
+
+These numbers are measurements on three single-pass private indoor recordings of 69, 184 and
+335 s (0.2 m voxels, 1 s windows, default pair). Each is one run. There is no variance
+estimate, so read them as one observation, not as a guarantee.
+
+- *Effect on the map.* On the longest recording the static map covered a share of the
+  reference structure that the scans saw, and a localizer tracked against it:
+
+  | Input per scan | Coverage | Tracking RMSE (planar) | Scans accepted |
+  |---|---|---|---|
+  | about 2,200 points (thinned) | 0.76 | 0.78 m (drift) | 0.34 |
+  | about 20,600 points (every second raw point) | 0.85 | 0.076 m | 1.00 |
+  | full cloud (about 41,200 valid points) | 0.89 | 0.076 m | 1.00 |
+  | plain accumulation of every hit voxel (reference) | 0.98 | 0.095 m | not stated |
+
+  On the two shorter recordings density changed little (coverage 0.75 to 0.78, and 0.95 to 0.96).
+- *Hit rate against the pair.* On the longest recording the median per-window hit rate of
+  voxels on reference structure was 0.44 at about 2,200 points per scan and 0.67 at full
+  density. The default `m1` is 0.70. The zero-drift rate `m*` of the default pair is 0.4391
+  (`deriveSprt`).
+- *Cost of density.* Static voxels farther than 0.3 m from the reference rose from 7,223 to
+  24,322 with density on that recording (9.9 % to 12.5 % of the static voxels). Denser input
+  also graduates more off-reference voxels.
+- *Why structure voxels get miss windows.* A miss window is a window with a ray sample in the
+  voxel and no return in it. At the thinned density, on the three recordings, the share of
+  such windows by cause was:
+
+  | Cause | Share |
+  |---|---|
+  | the ray ended within one voxel of the sample (a surface that straddles voxels; the ray walk already stops about half a voxel short) | 20 to 29 % |
+  | grazing incidence, over 70 degrees from the surface normal | 20 to 33 % |
+  | other | 7 to 17 % |
+  | no usable normal | 26 to 49 % |
+
+  The shares are ranges over the three recordings. The measurement does not say that the
+  causes exclude each other, so do not add the rows.
+- *A margin was tried and not adopted.* A rule that skips miss samples within 1 or 2 voxels
+  of the ray end was measured. At 2 voxels and thinned input, coverage rose from 0.76 to 0.81,
+  off-reference static voxels rose by 30 %, and tracking stayed poor (0.60 m). At full density
+  coverage moved by under 0.01 and tracking by under 0.005 m.
+
+A pair with lower `m0` and `m1` fills the map more and also lets more off-reference voxels
+through. This repository gives no recommended pair, because none was validated on held-out
+data.
 
 ### 3.3 Survival decay (Persistence Filter)
 The `*= survival_decay` step every window pulls belief back toward unknown

@@ -409,6 +409,14 @@ with only -1, 0 and 100 served. The synthetic scene's final map holds free,
 static, periodic and unknown cells but no transient (50) cell, which shares the
 periodic shade in the PGM.
 
+**Input density (3D).** Do not thin the cloud before the node if the map is to be used for
+localization: the default pair assumes the sensor's full cloud. On three single-pass private
+indoor recordings (single runs), thinning to about 2,200 points per scan left the static map
+under-filled and a localizer tracking against it drifted; full density did not. The
+measurements, their limits and the options that were not adopted are in
+[`SPEC.md` §3.2a "Input density (3D)"](SPEC.md). Single-pass recordings also rarely produce
+`Intermittent` cells, so zero of them in a short walk-through is expected.
+
 **Checking a saved pair.** The checker is installed with the package:
 
 ```bash
