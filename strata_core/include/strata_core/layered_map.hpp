@@ -184,6 +184,7 @@ class LayeredMap {
   std::size_t last_window_touched_{0};
   PeriodicityKernel periodicity_;   // parameters only; the sums live in pool_, one slot per gathered cell
   CoeffPool pool_;
+  PeriodicityKernel::PhaseTable phase_;   // the open close's phase terms, filled at the start of a close
   WindowObserver* observer_{nullptr};
   int integration_count_{0};
   int window_count_{0};   // 2^31 windows is 68 years at 1 s windows, 13.6 years at 0.2 s

@@ -21,6 +21,30 @@ PeriodicityKernel::View PeriodicityKernel::view(const double* slot) const {
   return v;
 }
 
+void PeriodicityKernel::phases(int window_index, PhaseTable& table) const {
+  const std::size_t H = static_cast<std::size_t>(H_);
+  table.ca.resize(H); table.sa.resize(H); table.c2.resize(H); table.s2.resize(H);
+  for (int k = 0; k < params_.n_harmonics; ++k) {
+    const double a = (k + 1) * omega_ * window_index;
+    table.ca[k] = std::cos(a); table.sa[k] = std::sin(a);
+    table.c2[k] = std::cos(2.0 * a); table.s2[k] = std::sin(2.0 * a);
+  }
+}
+
+void PeriodicityKernel::gather(double* slot, bool occupied, const PhaseTable& table) const {
+  const std::size_t H = static_cast<std::size_t>(H_);
+  double* const c = slot + 2; double* const s = c + H; double* const ec = s + H;
+  double* const es = ec + H; double* const ec2 = es + H; double* const es2 = ec2 + H;
+  const double v = occupied ? 1.0 : 0.0;
+  slot[0] += 1.0; slot[1] += v;
+  for (int k = 0; k < params_.n_harmonics; ++k) {
+    const double ca = table.ca[k], sa = table.sa[k];
+    c[k] += v * ca;  s[k] += v * sa;   // sum of o_w e^{i(k+1)wt}
+    ec[k] += ca;     es[k] += sa;      // sum of e^{i(k+1)wt} over touched windows
+    ec2[k] += table.c2[k]; es2[k] += table.s2[k];   // doubled phase
+  }
+}
+
 void PeriodicityKernel::gather(double* slot, bool occupied, int window_index) const {
   const std::size_t H = static_cast<std::size_t>(H_);
   double* const c = slot + 2; double* const s = c + H; double* const ec = s + H;

@@ -136,6 +136,8 @@ void LayeredMap::closeWindows(int k) {
 void LayeredMap::endWindow() {
   ++window_count_;
   last_window_touched_ = touched_.size();
+  // cos and sin of the harmonics depend on the window index only: once per close, not once per cell.
+  if (params_.enable_periodicity && !touched_.empty()) periodicity_.phases(window_count_, phase_);
   if (use_sprt_) { endWindowSprt(); return; }
   WindowObserver* const observer = observer_;
   // If the observer or an allocation throws, the cells before the failing one are done (counters reset,
@@ -159,7 +161,7 @@ void LayeredMap::endWindow() {
       e.log_odds *= params_.survival_decay;
       e.log_odds = std::min(params_.l_max, std::max(params_.l_min, e.log_odds));
       e.observations++;
-      if (params_.enable_periodicity) periodicity_.gather(pool_.at(st.slot), occ, window_count_);
+      if (params_.enable_periodicity) periodicity_.gather(pool_.at(st.slot), occ, phase_);
       const double p = sigmoid(e.log_odds);
       const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(st.slot)) : 0.0;
       // Periodic needs both an effect size (amp >= a_min) and noise-calibrated
@@ -241,7 +243,7 @@ void LayeredMap::endWindowSprt() {
       if (e.log_odds > d.ceiling) e.log_odds = d.ceiling;
       e.observations++;
       if (e.observations >= gate && e.log_odds < d.B) e.log_odds = d.B;
-      if (params_.enable_periodicity) periodicity_.gather(pool_.at(st.slot), occ, window_count_);
+      if (params_.enable_periodicity) periodicity_.gather(pool_.at(st.slot), occ, phase_);
       const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(st.slot)) : 0.0;
       const bool periodic = params_.enable_periodicity &&
           periodicity_.isPeriodic(pool_.at(st.slot), params_.periodic_amplitude_min,

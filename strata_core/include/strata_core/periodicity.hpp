@@ -31,6 +31,12 @@ class PeriodicityKernel {
   std::size_t slotDoubles() const { return slotDoubles(params_.n_harmonics); }
   // slot must hold slotDoubles() zero-initialised doubles or the sums gathered so far.
   void gather(double* slot, bool occupied, int window_index) const;
+  // The phase terms of gather() depend on the window index only. phases() computes them once per
+  // window, with the expressions gather(slot, occupied, window_index) uses; gather(slot, occupied, table)
+  // then adds the same numbers in the same order, so both overloads give the same bits.
+  struct PhaseTable { std::vector<double> ca, sa, c2, s2; };   // entry k: harmonic k + 1
+  void phases(int window_index, PhaseTable& table) const;
+  void gather(double* slot, bool occupied, const PhaseTable& table) const;
   double predict(const double* slot, int window_index) const;
   double amplitude(const double* slot) const;
   double falseAlarm(const double* slot) const;

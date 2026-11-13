@@ -842,6 +842,8 @@ TEST(CellMemory, KernelWrapperAndFrozenModelAgreeToTheBit) {
       const PeriodicityKernel kernel(pp);
       std::vector<double> slot(kernel.slotDoubles(), 0.0);   // all zero: "no entry yet"
       const double* const zero = slot.data();
+      std::vector<double> slot2(kernel.slotDoubles(), 0.0);   // the same history through a per-window phase table
+      PeriodicityKernel::PhaseTable table;
       const CellId id = 77;
       Rng rng(1000 + H * 31 + T);
       auto agree = [&](const double* sl, int step) {
@@ -879,6 +881,10 @@ TEST(CellMemory, KernelWrapperAndFrozenModelAgreeToTheBit) {
         frozen.gather(id, occ, w);
         wrapper.gather(id, occ, w);
         kernel.gather(slot.data(), occ, w);
+        kernel.phases(w, table);
+        kernel.gather(slot2.data(), occ, table);
+        ASSERT_EQ(std::memcmp(slot.data(), slot2.data(), slot.size() * sizeof(double)), 0)
+            << "phase table path differs, H=" << H << " T=" << T << " step " << step;
         if (step < 12 || step % 7 == 0) agree(slot.data(), step);
       }
       EXPECT_TRUE(wrapper.has(id));
