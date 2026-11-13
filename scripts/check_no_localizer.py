@@ -176,7 +176,7 @@ def main():
             # The names and their order: the earlier values first, unchanged, then the new ones.
             names = [kv.key for kv in s.values]
             ok = ok and names in (['window_mode'] + TAIL + NEW, WINDOW + TAIL + NEW)
-            ok = ok and int(v['cells']) >= 0 and int(v['last_window_touched_cells']) >= 0
+            ok = ok and 0 <= int(v['last_window_touched_cells']) <= int(v['cells'])   # a close visits cells the map holds
             # The cause of the running streak: one bounded line, set exactly while it runs.
             err = v['last_tf_error']
             ok = ok and (err != '') == (int(v['tf_failures_since_integrate']) > 0)

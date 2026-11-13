@@ -102,7 +102,7 @@ window, and no window closes while nothing integrates):
 | `seconds_since_last_integrate` | steady seconds since the last integrated message; until the first one, since the node started |
 | `last_tf_error` | why the last lookup of the running streak failed: the tf2 exception text as one line (control characters and line breaks become one space, bytes that are not well-formed UTF-8 become `?`, at most 120 bytes, ending in `...` when cut). Set exactly while `tf_failures_since_integrate` is above 0; the empty string otherwise |
 | `cells` | cells the map holds (all classes, including undecided cells), as `LayeredMap::cellCount()` |
-| `last_window_touched_cells` | cells the last closed window touched, as `LayeredMap::lastWindowTouched()`; `0` until the first window closes, and after a close of k > 1 windows at once (as after k single closes: the last of them touched nothing). A window close visits only these cells, so this is the work of one close, whatever `cells` is |
+| `last_window_touched_cells` | cells the last close call visited, as `LayeredMap::lastWindowTouched()`: the cells the closing window touched (a close of k > 1 windows at once counts its first window, the only one that touches cells); `0` until the first window closes. A window close visits only these cells, so this is the work of one close, whatever `cells` is |
 
 `last_tf_error` is cleared when a message integrates and does not keep the last
 text: a status that reads `ok` beside an old error would have to be read
@@ -620,7 +620,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
 streams, or `std::mt19937_64` raw output where the standard library must not matter) in
-`strata_core/test`, runnable with **no ROS** — **118 gtests across 13 suites** (7 of
+`strata_core/test`, runnable with **no ROS** — **119 gtests across 13 suites** (7 of
 them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
 CTest `defaults_match_yaml_and_prereg`:
 
@@ -656,7 +656,7 @@ CTest `defaults_match_yaml_and_prereg`:
 - **PeriodicitySpending** (4): the spent levels are zero below the n ≥ T gate
   and sum to alpha; the per-read-out rule is not trajectory-valid but spending
   is; doors are still detected, later; the amplitude-only rule is unaffected.
-- **TouchedClose** (4): the window close visits only the cells the closing window
+- **TouchedClose** (5): the window close visits only the cells the closing window
   touched, and nothing else changes. A frozen copy of the full-sweep algorithm (every
   cell visited at every close) is the oracle; both maps get the same random contact
   sequences (sprt and legacy, periodicity on and off, `layer_interval` 1, 3 and 4,
@@ -667,8 +667,10 @@ CTest `defaults_match_yaml_and_prereg`:
   order, `classify`, `isStatic`, `observations`, `occupancyProb` and `periodicProb` of
   every id (bit equality) and the observer events as a multiset are equal. Also:
   `lastWindowTouched()` equals the number of cells touched (one cell per window in a
-  3,000-cell map), an erased cell is created again by the next contact, and the map
-  is not copyable but can be moved with a window open.
+  3,000-cell map; after `closeWindows(k)` it counts the first window), an erased cell is
+  created again by the next contact, the map is not copyable but can be moved with a
+  window open, and an observer that throws mid-close leaves a list the next close can
+  use (finished cells leave it, the failing one and the rest stay).
 - **WindowObserver** (10): the read-only window hook reports exactly the touched
   cells with the hit-wins rule, changes no state, and leaves the map's read-outs
   byte-identical with and without it.
@@ -902,7 +904,7 @@ has no pair to mismatch.
 ```bash
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j
-( cd build/core && ctest --output-on-failure )     # the 118 engine gtests and the defaults check
+( cd build/core && ctest --output-on-failure )     # the 119 engine gtests and the defaults check
 ```
 
 **Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
