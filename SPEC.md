@@ -196,7 +196,8 @@ volumetrically; `grid2d` projects transformed endpoints onto its 2D plane.
 
 ### 3.1 Layered evidence per cell
 Each known cell holds `{ log_odds, observations, window_hits, window_misses,
-graduated }` (24 bytes in both evidence models). Observations arrive per integration frame as **hits** (an endpoint
+graduated }` (24 bytes in both evidence models) and, next to it in the same hash-map element,
+the cell's Fourier sums (`PeriodicityCoeff`, §3.5). Observations arrive per integration frame as **hits** (an endpoint
 fell in the cell) and **misses** (a ray passed through the cell — free-space /
 negative information). Frames are grouped into **windows** of `layer_interval`
 ticks; the layered update runs once per window (`endWindow`).
@@ -435,6 +436,24 @@ of calibration is detection delay: a 50 %-duty door needs about two periods of
 touches instead of one. Setting `periodic_false_alarm >= 1` disables the
 significance term and restores the amplitude-only rule.
 
+**Storage.** The arithmetic above is `PeriodicityKernel`, which keeps no per-cell state: each
+function works on the slot it is given, `2 + 6 H` doubles with `H = max(0, n_harmonics)` (`n`, `s0`,
+then `c`, `s`, `ec`, `es`, `ec2`, `es2` of `H` entries each). `LayeredMap` keeps the slots in a
+pool (`CoeffPool`) and the cell holds only the index of its slot, next to `CellEvidence`, in the one
+`unordered_map` keyed by cell id. The map element is 40 bytes (key, 24 bytes of evidence, a 4-byte
+slot index; `LayeredMap::kCellPayloadBytes`), so `observeHit` and `observeMiss` touch only that
+small node. The pool allocates blocks of 4096 slots that are never moved or copied, so growth
+costs one block and never a copy of the pool; a freed slot goes on a free list and is zeroed when it
+is handed out again. A cell gets its slot at its first gather, so with `enable_periodicity` off
+no slot is ever allocated; the slot of the default `n_harmonics = 2` is 112 bytes. A cell has an
+entry in the model exactly when it has a slot, and a missing slot reads as "no entry" in
+every function (`amplitude` 0, `isPeriodic` false, `falseAlarm` 1, `predict` 0.5, `harmonic` empty).
+A cell erased by pruning releases its slot, and a cell created again starts from zeros. If the pool
+cannot grow, the close throws before it changes that cell, and the next close handles it
+(`std::bad_alloc`; `std::length_error` past 2^32 - 2 slots). The id-keyed `PeriodicityModel` is a
+thin wrapper over the same kernel with its own map (one vector per id) and gives the same numbers
+bit for bit.
+
 **The amplitude is only meaningful after a full period has been observed** —
 before `period_windows` touched windows the harmonic estimate is withheld, so a
 freshly seen oscillating cell will not yet read as Periodic.
@@ -506,7 +525,8 @@ strata_core/                         # pure C++17 + Eigen, no ROS, no PCL
   include/strata_core/
     version.hpp           # STRATA_CORE_VERSION "0.2.0"
     types.hpp             # Pose2D, Pose3D(=Isometry3d), GridMeta, GridMap, CellId, world<->grid, flatten
-    periodicity.hpp       # PeriodicityModel (FreMEn-lite incremental Fourier)
+    periodicity.hpp       # PeriodicityKernel (stateless FreMEn-lite arithmetic), PeriodicityCoeff,
+                          # PeriodicityModel (id-keyed wrapper), CoeffPool
     layered_map.hpp       # LayeredMap + LayeredMapParams + CellClass + CellEvidence (THE HEART)
     map_backend.hpp       # MapBackend interface + Observation
     grid2d_backend.hpp    # Grid2DBackend (2D occupancy, Bresenham clearing)
@@ -581,7 +601,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 | Param | Default | Meaning |
 |---|---|---|
 | `period_windows` | `24` | windows per period (FreMEn base period) |
-| `n_harmonics` | `2` | number of Fourier harmonics tracked per cell |
+| `n_harmonics` | `2` | number of Fourier harmonics tracked per cell (0 or a negative value tracks none); each cell that is gathered holds `2 + 6 n_harmonics` doubles of sums |
 
 ### grid2d geometry
 | Param | Default | Meaning |
@@ -620,7 +640,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
 streams, or `std::mt19937_64` raw output where the standard library must not matter) in
-`strata_core/test`, runnable with **no ROS** — **119 gtests across 13 suites** (7 of
+`strata_core/test`, runnable with **no ROS** — **124 gtests across 14 suites** (7 of
 them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
 CTest `defaults_match_yaml_and_prereg`:
 
@@ -671,6 +691,16 @@ CTest `defaults_match_yaml_and_prereg`:
   created again by the next contact, the map is not copyable but can be moved with a
   window open, and an observer that throws mid-close leaves a list the next close can
   use (finished cells leave it, the failing one and the rest stay).
+- **CellMemory** (5): the periodicity kernel on a bare slot, the id-keyed
+  `PeriodicityModel` and a frozen copy of the pre-kernel model (one vector per
+  coefficient) give bit-equal `amplitude`, `falseAlarm`, `harmonic`, `predict` and
+  `isPeriodic` on one gather sequence, for `n_harmonics` -1 to 8 and T = 1, 8, 24; a null or
+  all-zero slot answers as a cell without an entry; the pool hands out zeroed slots in order,
+  reuses freed slots (zeroed again), grows in blocks without moving a slot and survives a
+  move; the map holds a slot exactly for the cells gathered and not erased (none with
+  periodicity off, none after observe alone); the map element is 40 bytes (32 without the
+  key) and the slot 112 bytes at `n_harmonics = 2`. `TouchedClose` also runs `n_harmonics`
+  -1, 0, 1, 3, 4, 5 and 8 against an oracle whose periodicity model is the frozen copy.
 - **WindowObserver** (10): the read-only window hook reports exactly the touched
   cells with the hit-wins rule, changes no state, and leaves the map's read-outs
   byte-identical with and without it.
@@ -904,7 +934,7 @@ has no pair to mismatch.
 ```bash
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j
-( cd build/core && ctest --output-on-failure )     # the 119 engine gtests and the defaults check
+( cd build/core && ctest --output-on-failure )     # the 124 engine gtests and the defaults check
 ```
 
 **Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
@@ -944,6 +974,34 @@ ros2 service call /strata/save_map std_srvs/srv/Trigger   # persist static map
 - **No multi-session merge or loop closure in v0.1.** Each run builds one map;
   merging maps across sessions and closing loops are roadmap items, alongside
   TSDF surfaces and learned ephemerality.
+
+### Not creating miss-only cells (not implemented)
+
+A ray that crosses free space calls `observeMiss` on every cell it passes, so the map holds a
+cell for every voxel any ray has crossed, most of them never hit. On a long 3D run most cells
+are such miss-only cells (the share depends on the site and the ray density). Not creating a
+cell for a miss on an unknown id would save the whole element for each of them (a 40-byte
+element and, with periodicity on, a 112-byte slot at `n_harmonics = 2`, plus the hash node and
+allocator overhead) and the work of their closes. It is not done, because it
+changes results and the claims that rest on them:
+
+- The sequential test (§3.2a) bounds the false graduation of a cell by Ville's inequality over
+  its uninterrupted history, from the first touched window. A miss-only cell that is dropped and
+  later hit starts a new history at the hit, without the misses before it. The statistic then
+  starts higher than it would have (misses lower it) and the age `n` at which the gate
+  `n >= period_windows` opens is smaller. Whether the bound still holds for the history that
+  the map now keeps is a new claim.
+- The periodicity sums count touched windows, misses included. A dropped cell loses the
+  windows in which it was only crossed, so its harmonic estimates, its `n` and its Periodic
+  label change.
+- `observations`, the rejection time and the Intermittent read-out (`n_max_undecided`) all
+  count touched windows from the first one.
+
+What would have to be shown first: (1) the error-rate statement for the history that is kept,
+with the dropped prefix treated as an adaptive choice; (2) the bit-for-bit oracle of the
+`TouchedClose` tests replaced by an explicit statement of what is allowed to differ, and the
+experiment CSVs regenerated and compared with it; (3) the memory saved on real recordings
+against the lost detections, measured with the Periodic veto on and off.
 
 ---
 
