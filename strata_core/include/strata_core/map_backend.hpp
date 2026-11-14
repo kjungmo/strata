@@ -15,5 +15,9 @@ class MapBackend {
   // Cells read out as Intermittent (evidence_model sprt: undecided after n_max_undecided
   // touched windows). Not pure, so a backend written for 0.1.0 still compiles.
   virtual std::size_t intermittentCellCount() const { return 0; }
+  // Cells the map holds, and cells the last closed window touched (LayeredMap::cellCount,
+  // LayeredMap::lastWindowTouched). Not pure, for the same reason.
+  virtual std::size_t cellCount() const { return 0; }
+  virtual std::size_t lastWindowTouched() const { return 0; }
 };
 }  // namespace strata_core

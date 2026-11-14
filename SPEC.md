@@ -85,11 +85,11 @@ There is **no `/initialpose`** — `strata` does not initialize a filter.
 | `~/map` (`/strata/map`) | `nav_msgs/OccupancyGrid` (transient_local) | grid2d | static→100, periodic→75, transient→50 (last observed as a hit, or leans occupied), free→0 (last observed free, kept after pruning), unknown→-1 |
 | `~/map_points` (`/strata/map_points`) | `sensor_msgs/PointCloud2` | voxel3d | centers of graduated static voxels, in `global_frame` |
 | `~/save_map` (`/strata/save_map`) | `std_srvs/srv/Trigger` (service) | both | grid2d → PGM + map_server YAML (`image:` single-quoted and relative to the YAML, resolution and origin written to read back exactly, "C" locale); voxel3d → PCD. Written to `.tmp` files and fsynced, then renamed and the directory fsynced: a save that fails before the renames leaves the previous pair untouched; the PGM is renamed first and the YAML second, so a crash or failure between the two renames can pair the new PGM with the previous YAML (map_server takes the image name from the YAML, so no rename order avoids this with fixed names). To make that pair detectable the YAML also carries `strata_image_bytes` and `strata_image_sha256` (size and SHA-256 of the exact PGM bytes written; map_server ignores them and does not check them, `check_saved_map.py` does, see §6.1). `success: false` with the path and reason when a file cannot be written (e.g. a missing directory), `save_path` has no file name (empty or ending in `/`), or voxel3d has no static voxel |
-| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total, and, in every status from the first one, messages_received_total, messages_integrated_total, tf_failures_total, tf_failures_since_integrate, seconds_since_last_integrate, last_tf_error (see "Input states on `/diagnostics`" below). From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was), and before that the message names the failing lookup at the level the other checks give; ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
+| `/diagnostics` | `diagnostic_msgs/DiagnosticArray` | both | once a second (wall timer), status `<node name>: input rate` (hardware_id: namespace and input topic): window_mode, sensors, scans_in_window, empty_windows, window_duration_s, input_rate_hz, nominal_rate_hz, dropped_in_window, tf_failures_in_window, recent_drop_fraction, mean_window_duration_s, window_duration_cv, effective_period_s (from the last window close; one rate monitor per sensor frame, at most 16, a frame with no message over 10 window closes is forgotten), seconds_since_last_message, windows_closed_total, and, in every status from the first one, messages_received_total, messages_integrated_total, tf_failures_total, tf_failures_since_integrate, seconds_since_last_integrate, last_tf_error, cells, last_window_touched_cells (see "Input states on `/diagnostics`" below). From the third window: WARN in `scans` mode on loss above `rate_warn_drop_fraction`, duration cv > 0.2, or (with `expected_scan_rate_hz` > 0, per sensor) a mean window more than 10 % off `layer_interval / (expected_scan_rate_hz x sensors)`; in `time` mode on empty windows or a window with under half the expected messages; in both on more TF failures than integrated messages or more than 16 frames. Also WARN on zero stamps in the last second (dropped in `time` mode) or, in `time` mode, when no window has closed for 10 window periods (and 2 s; ROS clock under `use_sim_time`) although messages arrive; WARN when `use_sim_time` is true and the ROS clock has not advanced for 3 s while messages arrive (no `/clock`); WARN (ERROR once something was integrated) when messages arrive but TF lookups fail and nothing was integrated for `startup_timeout_s` (`input_timeout_s` once something was), and before that the message names the failing lookup at the level the other checks give; ERROR after `input_timeout_s` without input, or `startup_timeout_s` before the first message |
 
 ### Input states on `/diagnostics`
 
-Six values are in **every** `<node name>: input rate` status, from the first one,
+Eight values are in **every** `<node name>: input rate` status, from the first one,
 after the values listed above and in this order (the window values need a closed
 window, and no window closes while nothing integrates):
 
@@ -101,6 +101,8 @@ window, and no window closes while nothing integrates):
 | `tf_failures_since_integrate` | the running failure streak: TF failures since the last integrated message, `0` again as soon as one integrates |
 | `seconds_since_last_integrate` | steady seconds since the last integrated message; until the first one, since the node started |
 | `last_tf_error` | why the last lookup of the running streak failed: the tf2 exception text as one line (control characters and line breaks become one space, bytes that are not well-formed UTF-8 become `?`, at most 120 bytes, ending in `...` when cut). Set exactly while `tf_failures_since_integrate` is above 0; the empty string otherwise |
+| `cells` | cells the map holds (all classes, including undecided cells), as `LayeredMap::cellCount()` |
+| `last_window_touched_cells` | cells the last close call visited, as `LayeredMap::lastWindowTouched()`: the cells the closing window touched (a close of k > 1 windows at once counts its first window, the only one that touches cells); `0` until the first window closes. A window close visits only these cells, so this is the work of one close, whatever `cells` is |
 
 `last_tf_error` is cleared when a message integrates and does not keep the last
 text: a status that reads `ok` beside an old error would have to be read
@@ -198,6 +200,13 @@ graduated }` (24 bytes in both evidence models). Observations arrive per integra
 fell in the cell) and **misses** (a ray passed through the cell — free-space /
 negative information). Frames are grouped into **windows** of `layer_interval`
 ticks; the layered update runs once per window (`endWindow`).
+The update visits only the cells the closing window touched, so a close costs time in
+proportion to those cells, not to the cells the map holds. An untouched cell is left as it
+was: its evidence and Fourier coefficients change only when it is touched, and its
+graduation, demotion and pruning tests give the result they gave at its last touched
+close. The result is bit for bit that of a sweep over every cell (`TouchedClose` tests).
+The order of the observer calls within one close is the order of first contact and carries
+no meaning.
 
 ### 3.2 Log-odds occupancy (`evidence_model = legacy`)
 This section and §3.3–§3.4 describe the v0.1 rule. The default rule is §3.2a.
@@ -611,7 +620,7 @@ on an unusable `sprt` configuration (`0 < m0 < m1 < 1`, `alpha, beta > 0`,
 Every algorithmic claim has a deterministic gtest (injected window index, no
 wall-clock, no `rand()`; the statistical tests use fixed-seed `std::mt19937`
 streams, or `std::mt19937_64` raw output where the standard library must not matter) in
-`strata_core/test`, runnable with **no ROS** — **114 gtests across 12 suites** (7 of
+`strata_core/test`, runnable with **no ROS** — **119 gtests across 13 suites** (7 of
 them, `ReplayP1`, need the phase 1 cell tables and skip without them), plus the
 CTest `defaults_match_yaml_and_prereg`:
 
@@ -647,6 +656,21 @@ CTest `defaults_match_yaml_and_prereg`:
 - **PeriodicitySpending** (4): the spent levels are zero below the n ≥ T gate
   and sum to alpha; the per-read-out rule is not trajectory-valid but spending
   is; doors are still detected, later; the amplitude-only rule is unaffected.
+- **TouchedClose** (5): the window close visits only the cells the closing window
+  touched, and nothing else changes. A frozen copy of the full-sweep algorithm (every
+  cell visited at every close) is the oracle; both maps get the same random contact
+  sequences (sprt and legacy, periodicity on and off, `layer_interval` 1, 3 and 4,
+  hit and miss on one cell in one window, cells silent for many windows, closes with
+  nothing touched, `closeWindows(k)`, `graduate_prob <= demote_prob`, 10 seeds of 400
+  windows each, with erasure, re-creation, graduation, demotion and Periodic labels
+  asserted to occur). After every close the cell count, the four cell lists with their
+  order, `classify`, `isStatic`, `observations`, `occupancyProb` and `periodicProb` of
+  every id (bit equality) and the observer events as a multiset are equal. Also:
+  `lastWindowTouched()` equals the number of cells touched (one cell per window in a
+  3,000-cell map; after `closeWindows(k)` it counts the first window), an erased cell is
+  created again by the next contact, the map is not copyable but can be moved with a
+  window open, and an observer that throws mid-close leaves a list the next close can
+  use (finished cells leave it, the failing one and the rest stay).
 - **WindowObserver** (10): the read-only window hook reports exactly the touched
   cells with the hit-wins rule, changes no state, and leaves the map's read-outs
   byte-identical with and without it.
@@ -796,7 +820,7 @@ missing), messages with a transform stamped at each message (row 6: `ok`,
 streak 0, the total kept, no TF text left, `last_tf_error` empty), the
 transform stopped again (row 8, then row 9), and nothing published (row 3). In
 every status of the run it requires the earlier values in their order (3 before
-a window close, 15 after) followed by the six new ones, and `last_tf_error` to
+a window close, 15 after) followed by the eight new ones, and `last_tf_error` to
 be one line of at most 120 bytes that is set exactly while the streak is above
 0. Rows 2 and 7 are covered by the gtests only. Verified on Humble; no Jazzy
 job exists.
@@ -880,7 +904,7 @@ has no pair to mismatch.
 ```bash
 cmake -S strata_core -B build/core -DSTRATA_CORE_BUILD_TESTS=ON
 cmake --build build/core -j
-( cd build/core && ctest --output-on-failure )     # the 114 engine gtests and the defaults check
+( cd build/core && ctest --output-on-failure )     # the 119 engine gtests and the defaults check
 ```
 
 **Full ROS 2 build & test (Humble; this repository at `<ws>/src/strata`, run from `<ws>`):**
