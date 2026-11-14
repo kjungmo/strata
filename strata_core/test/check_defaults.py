@@ -13,7 +13,8 @@ Checks, with no ROS and no YAML library:
   3. evidence_calibration says what is true: grid2d "measured_2d", voxel3d "fallback_2d_pair" while
      the 3D status is not frozen;
   4. the node declares each evidence parameter from the library default (def.m0 ...), not from a
-     second literal, and reads evidence_calibration;
+     second literal, and reads evidence_calibration; it declares periodic_min_periods from the library
+     default, and export_undecided (false) and undecided_min_evidence (0.5) with the YAML values;
   5. every parameter the node declares is in each shipped YAML (except the other backend's), and every
      YAML key is declared by the node;
   6. the /diagnostics status (strata/include/strata/evidence_status.hpp) carries the note "provisional
@@ -119,6 +120,15 @@ def main(root):
     for k in ('m0', 'm1', 'alpha', 'beta', 'n_max_undecided'):
         if not re.search(r'declare_parameter<\w+>\("%s",\s*def\.%s\)' % (k, k), node):
             problems.append(f'mapping_node.cpp does not declare "{k}" from the library default def.{k}')
+    if not re.search(r'declare_parameter<double>\("periodic_min_periods",\s*def\.periodic_min_periods\)', node):
+        problems.append('mapping_node.cpp does not declare "periodic_min_periods" from the library default def.periodic_min_periods')
+    # node-only parameters of the optional undecided export: off by default, fraction 0.5, the same in both YAMLs
+    for k, lit in (('export_undecided', 'false'), ('undecided_min_evidence', '0.5')):
+        if not re.search(r'declare_parameter<\w+>\("%s",\s*%s\)' % (k, re.escape(lit)), node):
+            problems.append(f'mapping_node.cpp does not declare "{k}" with the default {lit}')
+        for b, y in yamls.items():
+            if num(y.get(k, 'missing')) != num(lit):
+                problems.append(f'{b}.yaml {k}: {y.get(k)} but the node default is {lit}')
     if 'declare_parameter<std::string>("evidence_model", "sprt")' not in node:
         problems.append('mapping_node.cpp does not declare evidence_model with the default "sprt"')
     # 6. the /diagnostics read-out says what PREREG.json says: while the 2D pair is not frozen the status carries the

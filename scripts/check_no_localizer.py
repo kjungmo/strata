@@ -20,8 +20,8 @@ level, the message and the values of every `<node>: input rate` status on the wa
   E  nothing published             ERROR "no input on <topic> for ..."
 
 and that messages_received_total, messages_integrated_total, tf_failures_total,
-tf_failures_since_integrate, seconds_since_last_integrate, last_tf_error, cells and
-last_window_touched_cells are in every status, after the values that were there before, whose names and order must not change
+tf_failures_since_integrate, seconds_since_last_integrate, last_tf_error, cells,
+last_window_touched_cells and undecided_exported_cells are in every status, after the values that were there before, whose names and order must not change
 (the window values such as tf_failures_in_window only appear once a window has closed,
 and no window closes while nothing integrates). last_tf_error is one line of at most
 120 bytes, and is set exactly while tf_failures_since_integrate is above 0.
@@ -47,7 +47,8 @@ from tf2_ros import TransformBroadcaster
 
 ALWAYS = ['messages_received_total', 'messages_integrated_total', 'tf_failures_total',
           'tf_failures_since_integrate']
-NEW = ALWAYS + ['seconds_since_last_integrate', 'last_tf_error', 'cells', 'last_window_touched_cells']
+NEW = ALWAYS + ['seconds_since_last_integrate', 'last_tf_error', 'cells', 'last_window_touched_cells',
+                'undecided_exported_cells']
 # The values published before the input counts were added: names and order are fixed.
 WINDOW = ['window_mode', 'sensors', 'scans_in_window', 'empty_windows', 'window_duration_s', 'input_rate_hz',
           'nominal_rate_hz', 'dropped_in_window', 'tf_failures_in_window', 'recent_drop_fraction',
@@ -177,6 +178,7 @@ def main():
             names = [kv.key for kv in s.values]
             ok = ok and names in (['window_mode'] + TAIL + NEW, WINDOW + TAIL + NEW)
             ok = ok and 0 <= int(v['last_window_touched_cells']) <= int(v['cells'])   # a close visits cells the map holds
+            ok = ok and int(v['undecided_exported_cells']) == 0   # the shipped default exports no undecided cell
             # The cause of the running streak: one bounded line, set exactly while it runs.
             err = v['last_tf_error']
             ok = ok and (err != '') == (int(v['tf_failures_since_integrate']) > 0)

@@ -71,9 +71,22 @@ SprtDerived deriveSprt(const LayeredMapParams& p) {
   return d;
 }
 
+double undecidedExportLevel(const LayeredMapParams& p, double fraction) {
+  if (!(std::isfinite(fraction) && fraction > 0.0 && fraction <= 1.0))
+    throw std::invalid_argument("fraction must be in (0, 1], got " + std::to_string(fraction));
+  if (p.evidence_model == EvidenceModel::Sprt) return fraction * deriveSprt(p).A;
+  if (!(std::isfinite(p.graduate_prob) && p.graduate_prob > 0.0 && p.graduate_prob < 1.0))
+    throw std::invalid_argument("graduate_prob must be in (0, 1) to export undecided cells with evidence_model legacy, got " +
+                                std::to_string(p.graduate_prob));
+  return fraction * std::log(p.graduate_prob / (1.0 - p.graduate_prob));
+}
+
 LayeredMap::LayeredMap(LayeredMapParams params)
   : params_(params), periodicity_(params.periodicity),
     pool_(PeriodicityKernel::slotDoubles(params.periodicity.n_harmonics)) {
+  if (!(std::isfinite(params_.periodic_min_periods) && params_.periodic_min_periods >= 1.0))
+    throw std::invalid_argument("periodic_min_periods must be finite and >= 1, got " +
+                                std::to_string(params_.periodic_min_periods));
   if (params_.evidence_model == EvidenceModel::Sprt) {
     sprt_ = deriveSprt(params_);
     use_sprt_ = true;
@@ -167,7 +180,8 @@ void LayeredMap::endWindow() {
       // significance (false-alarm probability <= periodic_false_alarm).
       const bool periodic = params_.enable_periodicity &&
           periodicity_.isPeriodic(pool_.at(e.slot), params_.periodic_amplitude_min,
-                                  params_.periodic_false_alarm, params_.periodic_alpha_spending);
+                                  params_.periodic_false_alarm, params_.periodic_alpha_spending,
+                                  params_.periodic_min_periods);
       // A strongly-periodic (semi-static) cell is predicted per phase, not baked permanently
       // Static; only non-periodic cells graduate to the persistent static map.
       if (!e.graduated && !periodic && p >= params_.graduate_prob &&
@@ -245,7 +259,8 @@ void LayeredMap::endWindowSprt() {
       const double amp = params_.enable_periodicity ? periodicity_.amplitude(pool_.at(e.slot)) : 0.0;
       const bool periodic = params_.enable_periodicity &&
           periodicity_.isPeriodic(pool_.at(e.slot), params_.periodic_amplitude_min,
-                                  params_.periodic_false_alarm, params_.periodic_alpha_spending);
+                                  params_.periodic_false_alarm, params_.periodic_alpha_spending,
+                                  params_.periodic_min_periods);
       if (!e.graduated && !periodic && e.log_odds >= d.A) {
         e.graduated = true;
         e.log_odds = d.ceiling;
@@ -296,7 +311,7 @@ CellClass LayeredMap::classify(CellId id) const {
   if (it->second.graduated) return CellClass::Static;
   if (params_.enable_periodicity &&
       periodicity_.isPeriodic(coeffOf(it->second), params_.periodic_amplitude_min, params_.periodic_false_alarm,
-                              params_.periodic_alpha_spending))
+                              params_.periodic_alpha_spending, params_.periodic_min_periods))
     return CellClass::Periodic;
   if (use_sprt_) {
     const int n = it->second.observations;
@@ -320,6 +335,15 @@ std::vector<CellId> LayeredMap::staticCells() const {
 std::vector<CellId> LayeredMap::transientCells() const {
   std::vector<CellId> o;
   for (auto& kv : cells_) if (classify(kv.first) == CellClass::Transient) o.push_back(kv.first);
+  return o;
+}
+std::vector<CellId> LayeredMap::undecidedCells(double min_log_odds) const {
+  std::vector<CellId> o;
+  for (auto& kv : cells_) {
+    if (!(kv.second.log_odds >= min_log_odds)) continue;         // cheap test first; false for NaN
+    const CellClass c = classify(kv.first);
+    if (c == CellClass::Transient || c == CellClass::Intermittent) o.push_back(kv.first);
+  }
   return o;
 }
 std::vector<CellId> LayeredMap::intermittentCells() const {

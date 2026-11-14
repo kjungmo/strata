@@ -93,10 +93,12 @@ paths a ground robot actually has:
 observation that accumulate over time. Durable layers — seen again and again —
 consolidate into the permanent **static** map; **periodic** layers (a door open
 by day, shut by night) are recognized as recurring rather than baked in; and
-**transient** layers erode away.
+**transient** layers erode away. In the code and on the outputs, the class `Transient` (alias `Undecided`)
+means *not decided yet*, not "a moving object": under the default test the cell has neither graduated nor
+been rejected (see **Classes** in the Interface section).
 
 **Design principle.** The map engine is pure C++17 + Eigen, keyed by an integer
-cell id, and is unit-tested with gtest **without ROS or PCL** (128 gtest cases across 14
+cell id, and is unit-tested with gtest **without ROS or PCL** (146 gtest cases across 16
 suites, plus 71 node tests). rclcpp, tf2, and PCL live only in the ROS node
 package. Because persistence, hysteresis, and periodicity are implemented once,
 the behavior is identical across the 2D and 3D backends.
@@ -186,7 +188,7 @@ cmake --build build/core -j && ( cd build/core && ctest --output-on-failure )
 #    place this repo at <ws>/src/strata, then from <ws>:
 colcon build --symlink-install
 source install/setup.bash
-colcon test --packages-select strata      # the 71 node gtests; the 128 engine
+colcon test --packages-select strata      # the 71 node gtests; the 146 engine
 colcon test-result --verbose              # gtests run in step 1, not under colcon
 #    (RoboStack/conda Humble users: run the above inside your activated env.)
 
@@ -417,6 +419,23 @@ measurements, their limits and the options that were not adopted are in
 [`SPEC.md` §3.2a "Input density (3D)"](SPEC.md). Single-pass recordings also rarely produce
 `Intermittent` cells, so zero of them in a short walk-through is expected.
 
+**Classes.** Read the class `Transient` as **undecided** (`CellClass::Undecided` is an alias of the same
+value). Under the default sequential test it means "the test has not decided this cell yet": it has not
+graduated, is not Periodic and is not rejected, and it says nothing about movement (a voxel seen once is
+Transient). After `n_max_undecided` touched windows it reads `Intermittent`, which is undecided too. Under
+`evidence_model: legacy` it means "not graduated, not Periodic, not yet pruned". Details: [`SPEC.md` §3.6](SPEC.md).
+
+**Optional: undecided voxels in the 3D map (`export_undecided`, default off).** With `export_undecided: true`
+`~/map_points` and the saved PCD also hold undecided voxels whose statistic reached `undecided_min_evidence`
+(default 0.5) of the graduation threshold. These voxels are not static: `alpha` bounds clutter (hit rate <= m0) becoming Static,
+these voxels are not Static and carry no such bound, and the PCD does not mark them, so a loader reads them as static points.
+`/diagnostics` shows their number as `undecided_exported_cells`. grid2d refuses the option. See
+[`SPEC.md` §3.6](SPEC.md).
+
+**Optional: stricter Periodic label (`periodic_min_periods`, default 1).** The Periodic label needs
+`periodic_min_periods x period_windows` touched windows (1 is the rule of earlier versions). A value above 1 can only
+remove labels, and a periodic cell may sit in the static map until the label arrives. See [`SPEC.md` §3.5](SPEC.md).
+
 **Checking a saved pair.** The checker is installed with the package:
 
 ```bash
@@ -528,7 +547,8 @@ Every status, from the first one, also carries `messages_received_total`,
 (the running streak, `0` again once a message integrates),
 `seconds_since_last_integrate`, `last_tf_error` (the tf2 text of the last
 failed lookup as one line of at most 120 bytes while the streak runs, empty
-otherwise), `cells` (cells the map holds) and `last_window_touched_cells` (cells the
+otherwise), `cells` (cells the map holds), `undecided_exported_cells` (undecided voxels in
+the last published or saved voxel map; `0` with `export_undecided` off) and `last_window_touched_cells` (cells the
 last close call visited, the ones its window touched; a close of several windows at once
 counts its first window. A window close visits only those, so this is the work of one
 close, whatever `cells` is; `0` until the first window closes). When messages arrive but cannot be placed, the level stays OK until
@@ -573,6 +593,7 @@ See [`SPEC.md`](SPEC.md) §2 for the full I/O contract and REP-105 frame convent
 | [`SPEC.md`](SPEC.md) | Design spec — algorithm, parameters, frames, module layout, test strategy |
 | [`paper/experiments/`](paper/experiments/) | Reproduction harness (E0 calibration, E1–E7) + `run_all.sh` + `number_guard.py` |
 | [`paper/figures/README.md`](paper/figures/README.md) | Figure design notes and CSV sources |
+| [`docs/design/multiday_3d_benchmark.md`](docs/design/multiday_3d_benchmark.md) | Design note (not implemented): a multi-day 3D benchmark on public repeated-route datasets |
 
 ## 🗺️ Roadmap
 

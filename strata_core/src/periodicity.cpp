@@ -199,10 +199,15 @@ double PeriodicityKernel::spentLevel(double alpha, double n, int period_windows)
   return alpha * T / (n * (n + 1.0));
 }
 
-bool PeriodicityKernel::isPeriodic(const double* slot, double a_min, double alpha, bool spend) const {
+bool PeriodicityKernel::isPeriodic(const double* slot, double a_min, double alpha, bool spend, double min_periods) const {
   if (!slot || constantCell(slot)) return false;
   const View cell = view(slot);
   if (gated(cell)) return false;
+  // Label only: a stricter count withholds the answer and changes nothing below. After the gate n >= T,
+  // so at min_periods = 1 this never fires and the arithmetic that follows is untouched.
+  // ceil with 1e-9 of slack, so that 2.2 * 25 = 55.00000000000001 needs 55 windows and not 56. For min_periods = 1 and
+  // an integer T the bound is T exactly, and for T <= 0 it is <= 0, so the test never fires there either.
+  if (cell.n < std::ceil(min_periods * static_cast<double>(params_.period_windows) - 1e-9)) return false;
   const double H = std::max(1, params_.n_harmonics);
   const double level = spend ? spentLevel(alpha, cell.n, params_.period_windows) : alpha;
   for (int k = 0; k < params_.n_harmonics; ++k) {
@@ -265,7 +270,7 @@ HarmonicStat PeriodicityModel::harmonic(CellId id, int k) const { return kernel_
 double PeriodicityModel::predict(CellId id, int window_index) const { return kernel_.predict(slot(id), window_index); }
 double PeriodicityModel::amplitude(CellId id) const { return kernel_.amplitude(slot(id)); }
 double PeriodicityModel::falseAlarm(CellId id) const { return kernel_.falseAlarm(slot(id)); }
-bool PeriodicityModel::isPeriodic(CellId id, double a_min, double alpha, bool spend) const {
-  return kernel_.isPeriodic(slot(id), a_min, alpha, spend);
+bool PeriodicityModel::isPeriodic(CellId id, double a_min, double alpha, bool spend, double min_periods) const {
+  return kernel_.isPeriodic(slot(id), a_min, alpha, spend, min_periods);
 }
 }  // namespace strata_core

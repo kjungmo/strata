@@ -1,5 +1,6 @@
 #pragma once
 #include <chrono>
+#include <cstddef>
 #include <cstdint>
 #include <map>
 #include <memory>
@@ -69,6 +70,7 @@ class MappingNode : public rclcpp::Node {
     return std::chrono::duration<double>(Steady::now() - start_wall_).count();
   }
   void onDiagnostics();   // 1 Hz wall timer: publishes /diagnostics even without input
+  std::vector<Eigen::Vector3d> voxelOutputPoints();   // static voxels (+ undecided ones with export_undecided); caller holds mtx_
   void onSave(const std::shared_ptr<std_srvs::srv::Trigger::Request> req,
               std::shared_ptr<std_srvs::srv::Trigger::Response> res);
 
@@ -77,6 +79,9 @@ class MappingNode : public rclcpp::Node {
   std::string evidence_model_, evidence_calibration_, evidence_message_;
   std::vector<std::pair<std::string, std::string>> evidence_values_;
   strata_core::MapBackend* map_{nullptr};   // the selected backend
+  bool export_undecided_{false};            // voxel3d: also publish and save undecided voxels (default off)
+  double undecided_level_{0.0};             // their statistic threshold, from undecided_min_evidence
+  std::size_t undecided_exported_{0};       // how many the last publish or save added; read and written under mtx_
   std::string window_mode_;                 // "scans" (layer_interval) or "time" (window_period_s)
   double window_period_s_{1.0};
   double drop_warn_{0.05};
