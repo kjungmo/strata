@@ -2,8 +2,8 @@
 //
 // ReferenceLayeredMap below is the frozen oracle: the full-sweep algorithm of LayeredMap as it was
 // before the close was restricted to touched cells (every cell visited at every close, amplitude and
-// isPeriodic recomputed for all of them). It is built on the public PeriodicityModel, deriveSprt and
-// LayeredMapParams only. Only lines marked "instrumentation" are not part of the old algorithm; they
+// isPeriodic recomputed for all of them). It is built on FrozenPeriodicity (below: the 15f96e4 PeriodicityModel, copied
+// verbatim), deriveSprt and LayeredMapParams only. Only lines marked "instrumentation" are not part of the old algorithm; they
 // count events so that the test can show it is not vacuous.
 //
 // The real map and the oracle get the same random contact sequences. After every close the test
@@ -27,9 +27,13 @@
 #include "strata_core/layered_map.hpp"
 #include "strata_core/periodicity.hpp"
 
+#include "test_support.hpp"
+
 using namespace strata_core;
+using namespace strata_test;
 
 namespace {
+
 
 // ---------------------------------------------------------------------------- oracle ----------
 
@@ -218,7 +222,7 @@ class ReferenceLayeredMap {
   SprtDerived sprt_{};
   bool use_sprt_{false};
   std::unordered_map<CellId, CellEvidence> cells_;
-  PeriodicityModel periodicity_;
+  FrozenPeriodicity periodicity_;
   WindowObserver* observer_{nullptr};
   int integration_count_{0};
   int window_count_{0};
@@ -227,26 +231,12 @@ class ReferenceLayeredMap {
 
 // ------------------------------------------------------------------------------ helpers ----------
 
-struct Rng {   // raw mt19937_64 output only, so the sequences do not depend on the standard library
-  std::uint64_t s;
-  explicit Rng(std::uint64_t seed) : s(seed * 0x9E3779B97F4A7C15ull + 0x1234567ull) {}
-  std::uint64_t next() {   // splitmix64
-    std::uint64_t z = (s += 0x9E3779B97F4A7C15ull);
-    z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9ull;
-    z = (z ^ (z >> 27)) * 0x94D049BB133111EBull;
-    return z ^ (z >> 31);
-  }
-  double u() { return static_cast<double>(next() >> 11) * (1.0 / 9007199254740992.0); }
-  int below(int n) { return static_cast<int>(next() % static_cast<std::uint64_t>(n)); }
-};
-
 using Event = std::tuple<int, CellId, bool, bool>;
 struct Rec : WindowObserver {
   std::vector<Event> ev;
   void onTouchedCell(int w, CellId id, bool hit, bool miss) override { ev.emplace_back(w, id, hit, miss); }
 };
 
-bool sameBits(double a, double b) { return std::memcmp(&a, &b, sizeof a) == 0; }
 
 template <class A, class B>
 std::string compareMaps(const A& real, const B& ref, const std::vector<CellId>& ids) {
@@ -270,7 +260,7 @@ std::string compareMaps(const A& real, const B& ref, const std::vector<CellId>& 
 
 // ------------------------------------------------------------------------------ scenario ----------
 
-enum class Kind { Wall, Periodic, Clutter, Burst, Both, Free, Flicker };
+enum class Kind { Wall, Periodic, Clutter, Burst, Both, Free, Flicker, Solid, Flip };
 
 struct CellPlan {
   CellId id;
@@ -285,18 +275,9 @@ struct Counters {
 };
 
 struct Config {
-  const char* name;
+  std::string name;
   LayeredMapParams p;
 };
-
-LayeredMapParams base(EvidenceModel m, bool periodicity, int layer_interval) {
-  LayeredMapParams p;
-  p.evidence_model = m;
-  p.enable_periodicity = periodicity;
-  p.layer_interval = layer_interval;
-  p.periodicity.period_windows = 8;
-  return p;
-}
 
 std::vector<Config> configs() {
   std::vector<Config> c;
@@ -326,6 +307,14 @@ std::vector<Config> configs() {
     p.graduate_prob = 0.45; p.demote_prob = 0.45;
     c.push_back({"legacy graduate_prob == demote_prob", p});
   }
+  // Harmonic counts: negative (behaves as none), none, one, three, four, and above four (5, 8).
+  for (int h : {-1, 0, 1, 3, 4, 5, 8}) {
+    for (EvidenceModel m : {EvidenceModel::Sprt, EvidenceModel::Legacy}) {
+      LayeredMapParams p = base(m, true, 1);
+      p.periodicity.n_harmonics = h;
+      c.push_back({std::string(m == EvidenceModel::Sprt ? "sprt" : "legacy") + " n_harmonics " + std::to_string(h), p});
+    }
+  }
   return c;
 }
 
@@ -335,7 +324,7 @@ std::vector<CellPlan> makePlans(Rng& rng, int windows) {
   for (int i = 0; i < n; ++i) {
     CellPlan c;
     c.id = static_cast<CellId>(i) * 104729 + ((i % 5 == 0) ? (1LL << 40) : 0) + 3;
-    c.kind = static_cast<Kind>(rng.below(7));
+    c.kind = static_cast<Kind>(rng.below(9));
     c.start = rng.below(windows / 2);
     c.stop = c.start + 20 + rng.below(windows);
     c.phase = rng.below(8);
@@ -375,6 +364,15 @@ void contacts(Rng& rng, const CellPlan& c, int w, LayeredMap& real, ReferenceLay
     case Kind::Flicker:
       if (rng.u() < 0.5) { if (rng.u() < 0.5) hit(); else miss(); }
       break;
+    case Kind::Solid:   // hit in every touched window, with gaps: a constant cell for the whole run
+      if (active && rng.u() < 0.8) hit();
+      break;
+    case Kind::Flip:    // constant (all hit or all miss) for 30 windows, then mixed
+      if (active && rng.u() < 0.9) {
+        if (w < c.start + 30) { if (c.phase % 2) hit(); else miss(); }
+        else { if (rng.u() < 0.5) hit(); else miss(); }
+      }
+      break;
   }
 }
 
@@ -411,7 +409,7 @@ std::string runHistory(const Config& cfg, std::uint64_t seed, int windows, Count
         for (const auto& c : plans) contacts(rng, c, w, real, ref);
         if (r + 1 < rounds) {
           const bool a = real.tick(), b = ref.tick();
-          if (a != b) return std::string(cfg.name) + ": tick() result differs";
+          if (a != b) return cfg.name + ": tick() result differs";
           if (a) { ++tot.closes; }
           if (auto bad = check("tick", w); !bad.empty()) return bad;
         }
@@ -420,7 +418,7 @@ std::string runHistory(const Config& cfg, std::uint64_t seed, int windows, Count
     const double u = rng.u();
     if (u < 0.65) {
       const bool a = real.tick(), b = ref.tick();
-      if (a != b) return std::string(cfg.name) + ": tick() result differs";
+      if (a != b) return cfg.name + ": tick() result differs";
       if (a) { ++tot.closes; if (silent) ++tot.empty_closes; }
       if (auto bad = check("tick", w); !bad.empty()) return bad;
     } else if (u < 0.85) {

@@ -1,5 +1,6 @@
 #pragma once
 #include <cstddef>
+#include <cstdint>
 #include <limits>
 #include <unordered_map>
 #include <utility>
@@ -147,23 +148,59 @@ class LayeredMap {
   std::size_t lastWindowTouched() const { return last_window_touched_; }
   const LayeredMapParams& params() const { return params_; }
  private:
+  // The map element of one cell. It holds the fields of CellEvidence (same types, same meaning)
+  // and the index of the cell's Fourier sums in pool_ (CoeffPool::kNone until the cell is first
+  // gathered, which happens only with enable_periodicity). `graduated` shares a 4-byte word with the
+  // 31-bit slot index, so the element is 24 bytes, as CellEvidence is: a cell costs no more than before
+  // the pool when periodicity is off. observeHit/observeMiss touch only this small node.
+  struct CellState {
+    double log_odds{0.0};
+    int observations{0};
+    int window_hits{0};
+    int window_misses{0};
+    std::uint32_t slot : 31;
+    std::uint32_t graduated : 1;
+    CellState() : slot(CoeffPool::kNone), graduated(0) {}
+  };
+  // CellEvidence is the documented record of the five fields, not the stored type; the two must keep
+  // the same size and the same field offsets.
+  static_assert(sizeof(CellState) == sizeof(CellEvidence), "a cell must stay as small as its evidence record");
+  static_assert(offsetof(CellState, log_odds) == offsetof(CellEvidence, log_odds) &&
+                offsetof(CellState, observations) == offsetof(CellEvidence, observations) &&
+                offsetof(CellState, window_hits) == offsetof(CellEvidence, window_hits) &&
+                offsetof(CellState, window_misses) == offsetof(CellEvidence, window_misses),
+                "the shared fields must sit where CellEvidence has them");
+  using Cell = std::pair<const CellId, CellState>;
+ public:
+  // Bytes of one map element (key, evidence, slot index), without the hash map's node link and the
+  // allocator's own overhead. Pinned by a test so that growth is noticed; NOT the memory per cell.
+  static constexpr std::size_t kCellPayloadBytes = sizeof(Cell);
+  // Bytes of the Fourier sums of one cell that has them, for this map's n_harmonics.
+  std::size_t coeffSlotBytes() const { return pool_.slotDoubles() * sizeof(double); }
+  // Cells that hold Fourier sums now: the cells gathered at least once and not erased since, and a
+  // cell reached by a close whose observer then threw (it holds a slot of zeros until the next close).
+  // Always 0 with enable_periodicity off. Read-out for tests and tools.
+  std::size_t coeffSlotsInUse() const { return pool_.inUse(); }
+ private:
   static double sigmoid(double x);
   void endWindowSprt();
   LayeredMapParams params_;
   SprtDerived sprt_{};
   bool use_sprt_{false};
-  using Cell = std::pair<const CellId, CellEvidence>;
   void touch(Cell& cell);
-  std::unordered_map<CellId, CellEvidence> cells_;
+  const double* coeffOf(const CellState& st) const;   // null: the cell has no sums
+  std::unordered_map<CellId, CellState> cells_;
   // Cells that the open window touched, in order of first contact. Pointers to the elements
   // of a std::unordered_map stay valid across rehash and across erase of other elements, so
-  // the close reaches a touched cell without a hash lookup (it still looks up by id to erase
-  // a cell and in the periodicity model). A cell is erased only inside a close, and the close
+  // the close reaches a touched cell and, through its slot index, its Fourier sums without a hash
+  // lookup (it still looks up by id to erase a cell). A cell is erased only inside a close, and the close
   // removes every cell it finishes from this list (all of them, or on an exception the
   // finished prefix), so no entry dangles. Not copyable (above).
   std::vector<Cell*> touched_;
   std::size_t last_window_touched_{0};
-  PeriodicityModel periodicity_;
+  PeriodicityKernel periodicity_;   // parameters only; the sums live in pool_, one slot per gathered cell
+  CoeffPool pool_;
+  PeriodicityKernel::PhaseTable phase_;   // the open close's phase terms, filled at the start of a close
   WindowObserver* observer_{nullptr};
   int integration_count_{0};
   int window_count_{0};   // 2^31 windows is 68 years at 1 s windows, 13.6 years at 0.2 s
