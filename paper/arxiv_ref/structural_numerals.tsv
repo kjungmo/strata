@@ -862,6 +862,7 @@ sections/5_discussion.tex	10	instead of 15, and one with 	duty cycle, share or c
 sections/5_discussion.tex	0.6	upancy: E3 scores Bernoulli(	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	0.5	lls and E5 scores Bernoulli(	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	0.2	r 256 windows (E6). Version 	version of the engine (checked against strata_core/package.xml and CMakeLists.txt)
+sections/5_discussion.tex	0.97	on is not lost with \lambda=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/5_discussion.tex	3	, with revisit-rich data in 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	2	odic; field deployment on a 	name of a scenario, data type, standard or layout width
 sections/5_discussion.tex	3	a 2D wheeled platform and a 	name of a scenario, data type, standard or layout width
