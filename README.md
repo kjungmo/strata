@@ -49,7 +49,9 @@ fade. Sensor poses are full 6-DoF.
   `prune_prob` are read only then). **C++ library users:** rebuild against 0.2.0 (`MapBackend`, `LayeredMapParams` and `LayeredMap` change layout; `LayeredMap` and the two backends are no longer copyable, and `MapBackend` gained the virtuals `cellCount()` and `lastWindowTouched()`, both defaulting to 0); `LayeredMapParams{}` now defaults to `EvidenceModel::Sprt`, so set `evidence_model = EvidenceModel::Legacy` explicitly if you set the v0.1 keys, or they are ignored; and handle the new `CellClass::Intermittent` in your `switch` ([`SPEC.md` §5](SPEC.md)). The defaults `m0 = 0.20`, `m1 = 0.70` were measured on one 2D
   dataset and are provisional until the calibration is frozen
   (`paper/experiments/realdata/PREREG.md`). The paper (`paper/arxiv_ref`) is pinned to
-  `708d62f` (the code of this release). It reports the synthetic suite in two arms (the
+  `874c17d`. The first public version of the paper pinned `708d62f`; the window close, the
+  storage of the Fourier sums and three optional parameters changed after it, and every
+  seeded result is byte for byte the same. The paper reports the synthetic suite in two arms (the
   legacy v0.1 arm and the sprt arm, with E7 for the sequential test), a calibration of the
   pair on real data that did not freeze (the 2D pair is provisional, the 3D pair is not
   calibrated), and an evaluation of seven evidence rules on four public datasets that
@@ -58,7 +60,7 @@ fade. Sensor poses are full 6-DoF.
   of E0–E6 and E7 are committed under `paper/experiments/results/*_sprt.csv` and `e7_*.csv`.
 - **2026-10** — Paper and repository audited for submission: the first version of the
   manuscript described the code of commit `312b09c`; the manuscript now
-  describes `708d62f` (see the entry above). Since the first release the periodicity test was corrected (centred
+  described `708d62f` and now describes `874c17d` (see the entry above). Since the first release the periodicity test was corrected (centred
   amplitude, calibrated significance, level spent over repeated read-outs) and
   the node gained time-based windows, input diagnostics and a verified map save.
   The package version string was still `0.1.0` then.
@@ -149,7 +151,7 @@ architecture, the persistence and periodicity model, the seeded synthetic
 characterization suite (calibration E0, experiments E1–E7, in a legacy and a sprt arm),
 a calibration of the shipped pair on real LiDAR data (not frozen) and a held-out
 evaluation of seven evidence rules on four public datasets, and it describes the
-code of commit `708d62f` (tag `paper-v2`); the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
+code of commit `874c17d` (the tag `paper-v2` marks the first public version of the paper, which pinned `708d62f`); the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
 
 ```bibtex
 @article{kang2026strata,
@@ -273,8 +275,9 @@ suppresses the flicker.
 
 E4 estimates a flat **56 B/cell** footprint (periodicity off): `voxel3d` holds
 **4.4–10.0×** as many live cells as `grid2d` at equal extent, and `grid2d` is the
-cheaper backend per `integrate()` call by **7.7–10.4×** over three recordings on a quiet
-host (one machine; the timings are not portable, `paper/experiments/results/e4_recordings/`). E2 detects
+cheaper backend per `integrate()` call in every timing file (one machine; the three quiet-host
+recordings of the current code disagree on the size of the ratio by more than the 20% that the
+paper allows, so no ratio is reported; `paper/experiments/results/e4_recordings/`). E2 detects
 50%-duty periodic doors at true-positive rate **2/3** (from 25 windows on)
 with no false positive on Bernoulli clutter at any read-out length from 8 to
 100 windows. The periodicity test is noise-calibrated and spends its level over
