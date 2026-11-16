@@ -2,19 +2,19 @@ file	numeral	preceding text	reason
 sections/0_abstract.tex	0.85	at the OctoMap increments (+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.4	OctoMap increments (+0.85, -	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.2	 error bound rests. \sname\ 	version of the engine (checked against strata_core/package.xml and CMakeLists.txt)
+sections/0_abstract.tex	2	ry-free state machine for a 	name of a scenario, data type, standard or layout width
+sections/0_abstract.tex	3	machine for a 2D grid and a 	name of a scenario, data type, standard or layout width
 sections/0_abstract.tex	1	ald's closed form. At a lag-	name of a statistic
 sections/0_abstract.tex	0.23	 a lag-1 autocorrelation of 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.5	AcTw{} times \alpha, and at 	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/0_abstract.tex	0.01	h exceed the nominal \alpha=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
+sections/0_abstract.tex	05	pposite direction, on KITTI 	identifier of a dataset sequence or of a pair of sequences
+sections/0_abstract.tex	0.2	ite direction, on KITTI 05 (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
 sections/0_abstract.tex	0.20	uence, so the shipped pair (	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.70	, so the shipped pair (0.20,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.01	the shipped pair (0.20,0.70,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	0.01	hipped pair (0.20,0.70,0.01,	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/0_abstract.tex	3	.01) is provisional and the 	name of a scenario, data type, standard or layout width
-sections/0_abstract.tex	0.01	h exceed the nominal \alpha=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
-sections/0_abstract.tex	05	pposite direction, on KITTI 	identifier of a dataset sequence or of a pair of sequences
-sections/0_abstract.tex	0.2	ite direction, on KITTI 05 (	dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; the files are checked for the strings
-sections/0_abstract.tex	2	ry-free state machine for a 	name of a scenario, data type, standard or layout width
-sections/0_abstract.tex	3	machine for a 2D grid and a 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	2	the FreMEn line: maintain a 	name of a scenario, data type, standard or layout width
 sections/1_introduction.tex	0.85	ld choose. The increments (+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/1_introduction.tex	0.4	ose. The increments (+0.85,-	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
@@ -879,7 +879,7 @@ sections/6_conclusion.tex	0.01	 nominal per-history \alpha=	inline or displayed 
 sections/6_conclusion.tex	2	cell state machine serves a 	name of a scenario, data type, standard or layout width
 sections/6_conclusion.tex	3	hine serves a 2D grid and a 	name of a scenario, data type, standard or layout width
 sections/appendix.tex	2.0	s released under the Apache-	year, date, version or licence identifier (versions are also checked against the records)
-sections/appendix.tex	2	 license at and targets ROS 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	2	{paper-v2}) and targets ROS 	name of a scenario, data type, standard or layout width
 sections/appendix.tex	22	e of commit \code{708d62f} (	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	2026	 \code{708d62f} (22 October 	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	0	} was added in commit \code{	year, date, version or licence identifier (versions are also checked against the records)
