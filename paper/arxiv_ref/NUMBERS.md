@@ -17,7 +17,7 @@ check of `numbers_v2.tex` (below, item 5) replaces it.
 
 1. regenerates every generated file and compares it with the committed one;
 2. recomputes the quoted results from the CSVs and the code and requires the resulting phrases in the text;
-3. compares the git tree ids of `strata_core/`, `strata/` and `scripts/` with those of commit `708d62f`, and fails on uncommitted
+3. compares the git tree ids of `strata_core/`, `strata/` and `scripts/` with those of commit `a1ec675`, and fails on uncommitted
    changes in them;
 4. locates **every numeral** of the hand-written sources (`sections/*.tex`, captions of the hand-written figures) and requires it
    to be tied to a recomputed value or to be listed as structural. Counts at the last run:
@@ -25,21 +25,22 @@ check of `numbers_v2.tex` (below, item 5) replaces it.
 | Numerals | Kind |
 |---:|---|
 | 107 | source: equal to a recomputed value (bare number, any location in the file) |
-| 119 | source: inside a phrase recomputed from the results or the code |
+| 124 | source: inside a phrase recomputed from the results or the code |
 | 248 | source: tied at this sentence to a value recomputed from the results or the code |
 | 19 | structural: duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval |
 | 1 | structural: confidence level that defines an interval |
-| 495 | structural: inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text |
-| 123 | structural: name of a scenario, data type, standard or layout width |
+| 504 | structural: inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text |
+| 132 | structural: name of a scenario, data type, standard or layout width |
 | 257 | structural: plot layout (axis limits, sizes, tick positions, styles) |
 | 102 | structural: scenario size or grid restated by hand from the harness source named in the sentence (not parsed) |
-| 51 | structural: dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; both files are checked for the strings |
-| 41 | structural: identifier of a dataset sequence or of a pair of sequences |
+| 58 | structural: dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; both files are checked for the strings |
+| 46 | structural: identifier of a dataset sequence or of a pair of sequences |
 | 13 | structural: threshold or definition of a pre-registered rule, restated by hand from PREREG_P1.md, PREREG_P1B.md and PREREG.md; the files are checked for the strings |
 | 11 | structural: version of the engine (checked against `package.xml` and `CMakeLists.txt`) |
 | 6 | structural: name of a statistic (lag-1) |
 | 4 | structural: number of an equation or lemma of a cited source |
-| 4 | structural: year, date, version or licence identifier (versions are also checked against the records) |
+| 4 | structural: number of an item, amendment or section of a committed record (`results_p1b/deviations.md`, `PREREG_P3.md`, `results_p3/P3_REPORT.md`; the files are checked for the strings) |
+| 17 | structural: year, date, version or licence identifier (versions are also checked against the records) |
 
 5. (`guard_v2`) checks every macro of `numbers_v2.tex` against a second source and enforces the wording rails:
    - every `Pt...` macro (real-data evaluation) is a number of the generated `P3_REPORT.md` (made from the JSON files by
@@ -69,7 +70,7 @@ Limits, stated plainly:
   `paper/experiments/mutation_report.txt`.
 - The Markdown companion is checked for the presence of the recomputed phrases only (step 2), not numeral by numeral.
 
-**Code pin.** The paper is pinned to `strata_core/`, `strata/` and `scripts/` at commit `708d62f` (`0f5befc` added the evidence model `sprt` (18 October 2026); `a7559d4` is the last commit of the v2 work in the three directories before the status-text commits; `5c20bba` and `708d62f` changed only node status text and YAML comments; the first release of the manuscript pinned `312b09c`, no tag; first code release (v0.1.0) `a82f935`). E0–E3, E5, E6 (both arms) and E7 reproduce their
+**Code pin.** The paper is pinned to `strata_core/`, `strata/` and `scripts/` at commit `a1ec675` (`0f5befc` added the evidence model `sprt` (18 October 2026); `a7559d4` is the last commit of the v2 work in the three directories before the status-text commits; `5c20bba` and `708d62f` changed only node status text and YAML comments, and `708d62f` is the pin of the first public version of the manuscript; `874c17d` adds the touched-cell window close, the slot pool for the Fourier sums and three optional parameters with default-neutral values; `a1ec675` changed only the comments of `voxel3d.yaml`; the first release of the manuscript pinned `312b09c`, no tag; first code release (v0.1.0) `a82f935`). E0–E3, E5, E6 (both arms) and E7 reproduce their
 committed CSVs byte for byte (`check_reproduction.sh`; compilers in `paper/experiments/reproduction_log.txt`). Under libc++ seven
 of the 39 seeded files differ: four of 19 in the legacy arm and three of 20 in the sprt arm and E7, `e4_cells_sprt.csv` among them
 (`check_stdlib.sh`, record in `results/stdlib_libcxx/summary.txt`).
@@ -78,6 +79,10 @@ of the 39 seeded files differ: four of 19 in the legacy arm and three of 20 in t
 latency or a ratio only if at least three valid recordings exist and their backend ratios agree within 20 % at every extent;
 otherwise it reports the direction and the exact cell counts (`tools/make_artifacts.py`, section E4). Every earlier timing file,
 all taken on a loaded host, is kept in `results/e4_exploratory/` with an index.
+The three valid recordings of the earlier pin `708d62f` (tree `c780639`) are kept in `results/e4_recordings_708d62f/`; the tools and
+the guard read only `results/e4_recordings/`, whose recordings must carry the pinned `strata_core` tree. The three recordings of
+the pin `874c17d` (2026-11-16) disagree by more than 20 % on the backend ratio at 100² (7.0-8.7), so by the rule the paper reports the
+direction and the cell counts only.
 
 **Centring fix (2026-09-28).** All E1–E3 results are from the corrected engine
 (centred FreMEn coefficients, branch `fix/periodicity-centering`). The same harness
@@ -107,7 +112,7 @@ byte-identical; the E2 sweep and E3 periodic were rerun; E4 was not rerun.
 ## Code facts
 | Claim | Where | Source |
 |---|---|---|
-| 114 unit tests (gtest cases): 10 regression tests for the amplitude defect, 9 for the significance test, 8 for the spent level | intro, overview fig, §4.1 | count of `TEST(` in `strata_core/test/*.cpp` (guard-checked); 7 of the 10 centring cases fail on v0.1.0; 3 of the 9 significance cases fail under the amplitude-only rule; the 8 spending cases did not compile before `spentLevel`/`periodic_alpha_spending` existed |
+| 146 unit tests (gtest cases): 10 regression tests for the amplitude defect, 9 for the significance test, 8 for the spent level | intro, overview fig, §4.1 | count of `TEST(` in `strata_core/test/*.cpp` (guard-checked); 7 of the 10 centring cases fail on v0.1.0; 3 of the 9 significance cases fail under the amplitude-only rule; the 8 spending cases did not compile before `spentLevel`/`periodic_alpha_spending` existed |
 | Engine defaults 10 / 0.85 / -0.4 / ±5 / 0.97 / 0.8 / 0.45 / 3 / 0.05 / true / 0.3 / 0.2 (spent, `periodic_alpha_spending` true) / 24 / 2 | Table 10 | `strata_core/include/strata_core/layered_map.hpp` (`LayeredMapParams`), `periodicity.hpp` (`PeriodicityParams`), `strata/params/{grid2d,voxel3d}.yaml` |
 | Grid 400×400, 0.05 m, origin (-10,-10); voxel 0.2 m; publish 1.0 s | Table 10 caption | `strata/params/*.yaml` |
 | 21-bit fields, offset 2^20, shifts 42/21; representable index range −2^20 to 2^20−1 per axis, not range-checked (hence "sparse, no preallocated extent", not "unbounded") | Eq. (4), §3.1 | `strata_core/src/voxel3d_backend.cpp` (`kOff`, `kBits`; `voxelId` has no range check) |
@@ -115,12 +120,12 @@ byte-identical; the E2 sweep and E3 periodic were rerun; E4 was not rerun.
 | 71 node gtest cases (guard-checked); per file 6 / 7 / 18 / 4 / 25 (window clock, TF wait, input status, rate monitor, map writer) | Table 13 (node behaviour) | count of `TEST(` in `strata/test/*.cpp` (guard-checked) |
 | TF wait 0.1 s / 1 s cap / frozen after 1 s / 20 ms grace; stalled clock WARN after 3 s; 16 frames, forgotten after 10 closes; re-anchor at half a window back or 10^6 ahead; named after 1 s; no-window WARN at 10 periods and 2 s | Table 13 | constants in `strata/include/strata/{mapping_node,tf_wait,window_clock,input_status}.hpp`, `mapping_node.cpp` (guard-checked) |
 | PGM shades 254 / 100 / 0 / 205, thresholds 0.65 / 0.196; 160,000 cells = 400 x 400 | Table 13 | `strata/include/strata/map_writer.hpp`, `strata/params/grid2d.yaml` (guard-checked) |
-| Six `MapBackend` methods | §3.5 | `strata_core/include/strata_core/map_backend.hpp` (guard-checked) |
+| Eight `MapBackend` methods (five pure, three non-pure counters) | §3.5 | `strata_core/include/strata_core/map_backend.hpp` (guard-checked) |
 | Node parameters: `window_mode` time (code default scans), `window_period_s` 1.0, `expected_scan_rate_hz` 0, `rate_warn_drop_fraction` 0.05, `input_timeout_s` 5, `startup_timeout_s` 30 | Table 10 caption | `strata/params/*.yaml`, `mapping_node.cpp` (guard-checked) |
-| Pin `708d62f` (`0f5befc` added the evidence model `sprt` (18 October 2026); `a7559d4` is the last commit of the v2 work in the three directories before the status-text commits; `5c20bba` and `708d62f` changed only node status text and YAML comments; the first release of the manuscript pinned `312b09c`, no tag; first code release (v0.1.0) `a82f935`) | Appendix A, Remark 1 | git tree ids in `number_guard.py` (`PIN_TREES`); `git log` |
+| Pin `a1ec675` (`0f5befc` added the evidence model `sprt` (18 October 2026); `a7559d4` is the last commit of the v2 work in the three directories before the status-text commits; `5c20bba` and `708d62f` changed only node status text and YAML comments, and `708d62f` is the pin of the first public version of the manuscript; `874c17d` adds the touched-cell window close, the slot pool for the Fourier sums and three optional parameters with default-neutral values; `a1ec675` changed only the comments of `voxel3d.yaml`; the first release of the manuscript pinned `312b09c`, no tag; first code release (v0.1.0) `a82f935`) | Appendix A, Remark 1 | git tree ids in `number_guard.py` (`PIN_TREES`); `git log` |
 | Per-experiment parameter deviations | Table 11 | `paper/experiments/src/e{1..4}_*.cpp` `params()` |
 | QoS / topics / service | Table 12 | `strata/src/mapping_node.cpp` |
-| Apache-2.0, ubuntu-latest CI | Appendix A | `LICENSE`, `.github/workflows/ci.yml` |
+| Apache-2.0, ubuntu-22.04 CI | Appendix A | `LICENSE`, `.github/workflows/ci.yml` |
 | 56 B per cell (an estimate for the periodicity-off path: evidence record + hash node; Fourier record and bucket arrays excluded, as the text states) | abstract, intro, §3.5, §4, §5, Table 5 | `e4_throughput.csv:bytes_per_cell` (all rows 56); Fourier record = `PeriodicityModel::Coeff` in `periodicity.hpp` (2 scalars + 6 vectors of H) |
 | 24-byte record + ~32 B node overhead | §3.5 | `sizeof(CellEvidence)` (double + 3 int + bool, padded) from `layered_map.hpp`; ~32 B is the harness's documented estimate (`paper/experiments/src/e4_throughput.cpp`), not a measurement |
 

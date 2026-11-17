@@ -77,13 +77,11 @@ The \emph{periodicity gate} $n\ge T$ closes the prune/maturity race of Propositi
 
 \begin{algorithm}[t]
 \caption{\code{endWindow} for \code{evidence\_model = sprt}, as in \code{layered\_map.cpp}}\label{alg:endwindowsprt}
-\KwIn{live cells $\mathcal{X}$ with window counters; derived $\lhit,\lmiss,A,B,\ell_{\max}$; gate $T$}
-\ForEach{live cell $i$}{
-  \If{$i$ was touched}{
-    $\ell_i\gets\min\big(\ell_i+o_i\,\lhit+f_i\,\lmiss,\,\ell_{\max}\big)$, $n_i\gets n_i+1$\tcp*{Eq.~\eqref{eq:score}}
-    \lIf{$n_i\ge T$}{$\ell_i\gets\max(\ell_i,B)$}
-    update the Fourier model $\boldsymbol{\phi}_i$ with $(o_i,w)$ and recompute $\pi_i$\;
-  }
+\KwIn{cells $\mathcal{X}_w$ touched in the closing window, with window counters; derived $\lhit,\lmiss,A,B,\ell_{\max}$; gate $T$}
+\ForEach{cell $i\in\mathcal{X}_w$}{
+  $\ell_i\gets\min\big(\ell_i+o_i\,\lhit+f_i\,\lmiss,\,\ell_{\max}\big)$, $n_i\gets n_i+1$\tcp*{Eq.~\eqref{eq:score}}
+  \lIf{$n_i\ge T$}{$\ell_i\gets\max(\ell_i,B)$}
+  update the Fourier model $\boldsymbol{\phi}_i$ with $(o_i,w)$ and recompute $\pi_i$\;
   \If{$\lnot g_i\land\lnot\pi_i\land\ell_i\ge A$}{$g_i\gets\text{true}$, $\ell_i\gets\ell_{\max}$\tcp*{graduate}}
   \If{$g_i$}{\lIf{$\pi_i$}{$g_i\gets\text{false}$}\lElseIf{$\ell_i\le\ell_{\max}-A$}{$g_i\gets\text{false}$, $\ell_i\gets0$, $n_i\gets0$}}
   \lIf{$\lnot g_i\land n_i\ge T\land\ell_i\le B\land a_i<\amin$}{erase $i$ and $\boldsymbol{\phi}_i$\tcp*[f]{rejected}}

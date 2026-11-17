@@ -469,8 +469,8 @@ def guard_arxiv():
           == [(r["recall"], r["precision"], r["pred_static"]) for r in e1])
     ntests = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                  for f in (HERE.parents[1] / "strata_core/test").glob("*.cpp"))
-    check("114 core gtest cases", ntests == 114, str(ntests))
-    in_paper("114 tests quoted", "114 ")
+    check("146 core gtest cases", ntests == 146, str(ntests))
+    in_paper("146 tests quoted", "146 ")
     quoted = {int(n) for n in re.findall(r"(\d+)(?:~|\s)+(?:gtest cases|behaviou?r-level tests|unit tests)", text)}
     nnode = sum(len(re.findall(r"^TEST(?:_F)?\(", f.read_text(), re.M))
                 for f in (HERE.parents[1] / "strata/test").glob("*.cpp"))
@@ -574,15 +574,21 @@ if len(TARGETS) > 1:
 
 
 # Code that the paper pins: the tree ids of strata_core/, strata/ and scripts/ at
-# commit 708d62f (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
-# must come with a new pin in the paper. The pin moved twice on purpose: from 312b09c
+# commit a1ec675 (strata_core 0.2.0: evidence_model legacy | sprt). A change to any of them
+# must come with a new pin in the paper. The pin moved four times on purpose: from 312b09c
 # (v0.1 engine, 11 October 2026) to a7559d4 (19 October 2026, phase P4a of the v2 plan; the evidence model sprt was added in 0f5befc, 18 October 2026),
-# and, in two further steps on 22 October 2026 (5c20bba, 708d62f), only the node status text and
-# the two parameter-file comments changed; the strata_core and scripts trees are the same as at a7559d4.
-PIN = "708d62f"
-PIN_TREES = {"strata_core": "c780639aec9402da556bd33b91ff9acbc06c0cd0",
-             "strata": "bf95ea57f234a84f82d42f342e5a62947d940be2",
-             "scripts": "3a7ef6330965552ccf5a72f7f7ad7c9c4cfd1b2a"}
+# then, in two further steps on 22 October 2026 (5c20bba, 708d62f), only the node status text and
+# the two parameter-file comments changed (the strata_core and scripts trees are the same as at a7559d4),
+# and finally to 874c17d (14 November 2026): the window close visits only the touched cells, the Fourier sums sit in a
+# slot pool, and three optional parameters were added with defaults that keep every seeded result byte for byte,
+# and last to a1ec675 (16 November 2026), which changed only the comments of strata/params/voxel3d.yaml (the strata_core and scripts trees are those of 874c17d).
+PIN = "a1ec675"
+PIN_TREES = {"strata_core": "e01fc06c81d73f7aafc65eaef73671323106a1ed",
+             "strata": "5eb3b8796c4f51c842d19484fcbe25b4751fc649",
+             "scripts": "e3be19250c1f265a5a6a63b005a2e9bb00612b35"}
+# strata_core trees of earlier pins whose seeded results are byte for byte those of the current pin
+# (a7559d4 and 708d62f share one). Reproduction-log lines of these trees are kept as history.
+EARLIER_CORE_TREES = {"c780639aec9402da556bd33b91ff9acbc06c0cd0"}
 # Core regression tests by the defect or rule they cover (the paper's 10 / 9 / 8).
 CENTRING_TESTS = ("AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT8", "AlwaysOccupiedHasZeroAmplitudeAtEveryLengthT24",
                   "ConstantCellUnderUnevenPhaseCoverageHasZeroAmplitude", "SquareWaveDetectedAtNonMultiplesOfPeriod",
@@ -631,7 +637,7 @@ def guard_code(full):
     in_paper("pin commit quoted", PIN)
     pin_date = git("show", "-s", "--format=%ad", "--date=short", PIN)
     if pin_date is not None:
-        check("pin date quoted in the text is the commit date", pin_date == "2026-10-22", str(pin_date))
+        check("pin date quoted in the text is the commit date", pin_date == "2026-11-16", str(pin_date))
     if git("rev-parse", "--is-inside-work-tree") == "true":
         for d, want in PIN_TREES.items():
             got = git("rev-parse", f"HEAD:{d}")
@@ -692,10 +698,12 @@ def guard_code(full):
              (root / "strata_core/include/strata_core/map_backend.hpp").read_text())):
         check(f"code: {label}", tok in src)
     mb_hpp = (root / "strata_core/include/strata_core/map_backend.hpp").read_text()
-    check("MapBackend has five pure virtual methods and one non-pure counter (intermittentCellCount, returns 0)",
+    check("MapBackend has five pure virtual methods and three non-pure counters (intermittentCellCount, cellCount, lastWindowTouched; each returns 0)",
           mb_hpp.count(") = 0;") + mb_hpp.count(") const = 0;") == 5
-          and "virtual std::size_t intermittentCellCount() const { return 0; }" in mb_hpp)
-    in_paper("six MapBackend methods quoted", "six methods")
+          and all(f"virtual std::size_t {n}() const {{ return 0; }}" in mb_hpp
+                  for n in ("intermittentCellCount", "cellCount", "lastWindowTouched"))
+          and mb_hpp.count("virtual") == 9)   # eight methods and the destructor
+    in_paper("eight MapBackend methods quoted", "eight methods")
 
     # ---- shipped YAML files against the code defaults and the parameter table ----
     def yaml_params(name):
@@ -785,9 +793,12 @@ def guard_code(full):
         in_paper("E4 admission threshold quoted", "load average is below 0.50")
         in_paper("E4 after-run threshold quoted", "afterwards is 1.50 or more")
         in_paper("E4 number of timing files quoted", f"In all {len(allr)} timing files")
-        if len(valid) < 3:
+        # the tool reports latencies only if at least three valid recordings agree within 20 % in the ratio at every extent
+        vr_ = [ratios(p)[0] for p, _ in valid]
+        agree = len(valid) >= 3 and all(max(r[i] for r in vr_) / min(r[i] for r in vr_) <= 1.20 for i in range(3))
+        if not agree:
             in_paper("E4 exploratory ratio range at 100^2", f"({min(r[0] for r in allr):.1f}–{max(r[0] for r in allr):.1f}× at 100^2)")
-            check("E4: no latency in the paper without three valid recordings",
+            check("E4: no latency in the paper without three valid recordings that agree within 20 %",
                   "integrate} [min, max]" not in (ARXIV / "tables" / "e4.tex").read_text())
         else:
             in_paper("E4 number of valid recordings quoted", f"{len(valid)} quiet-host recordings")
@@ -909,8 +920,11 @@ def guard_code(full):
     log = [l for l in (HERE / "reproduction_log.txt").read_text().splitlines() if l.startswith("REPRODUCED")]
     cur = [l for l in log if f"seeded results sha256 {h.hexdigest()}" in l]
     check("reproduction log: at least one line for the committed seeded results", len(cur) >= 1, h.hexdigest())
+    check("reproduction log: a line for the pinned strata_core tree",
+          any(f"strata_core tree {PIN_TREES['strata_core']}" in l for l in cur))
     for l in cur:
-        check("reproduction log line: pinned strata_core tree", f"strata_core tree {PIN_TREES['strata_core']}" in l, l[:80])
+        check("reproduction log line: the pinned strata_core tree or an earlier pin with the same results",
+              any(f"strata_core tree {t}" in l for t in {PIN_TREES["strata_core"]} | EARLIER_CORE_TREES), l[:80])
         m = re.search(r"\| [^|]*?(\d+\.\d+\.\d+)\s*\|", l)
         in_paper(f"reproduction compiler GCC {m.group(1)} quoted", f"GCC {m.group(1)}")
 
@@ -938,10 +952,10 @@ STRUCT = [
     (r"sections/", r"\d+\\?%[ -]*(?:duty|flipped|flips|Wilson|intervals?|of (?:its|their|them)|upper)|Wilson 95|95\\?% (?:interval|upper)|"
                    r"\d+\\,\\?% (?:loss|of the scans)|below \d+\\?% to above \d+\\?%|at least \d+\\,\\?%",
      "duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval"),
-    (r"sections/", r"\d+-on/\d+-off|\d+-bit|\d+-byte|x86-64|SHA.256|\b[23]D\b|6-DoF|ROS 2|C\+\+17|Bernoulli\(\d?\.\d+\)|"
+    (r"sections/", r"\d+-on/\d+-off|\d+-bit|\d+-byte|x86-64|ubuntu-22\.04|SHA.256|\b[23]D\b|6-DoF|ROS 2|C\+\+17|Bernoulli\(\d?\.\d+\)|"
                    r"\d+ seeds of \d+|\d+th-percentile|O\(1\)|depth \d+|p\{\d?\.\d+\\linewidth\}|\d-on|\d+-window run",
      "name of a scenario, data type, standard or layout width"),
-    (r"sections/", r"\(20\d\d\)|Two 2026 works|(?:18|19|22) October 2026|\\code\{0f5befc\}|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
+    (r"sections/", r"\(20\d\d\)|Two 2026 works|(?:18|19|22) October 2026|(?:14|16) November 2026|\\code\{0f5befc\}|\\code\{708d62f\}|\\code\{874c17d\}|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",
      "year, date, version or licence identifier (versions are also checked against the records)"),
     (r"sections/", r"\\sname\\ 0\.2|\\sname\} 0\.2|[Vv]ersion 0\.2",
      "version of the engine (checked against strata_core/package.xml and CMakeLists.txt)"),
