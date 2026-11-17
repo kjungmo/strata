@@ -411,13 +411,12 @@ with only -1, 0 and 100 served. The synthetic scene's final map holds free,
 static, periodic and unknown cells but no transient (50) cell, which shares the
 periodic shade in the PGM.
 
-**Input density (3D).** Do not thin the cloud before the node if the map is to be used for
-localization. On three single-pass private indoor recordings (single runs), the default pair,
-which is not calibrated for 3D, left the static map under-filled with clouds thinned to about
-2,200 points per scan, and a localizer tracking against it drifted; with the full cloud it did not. The
-measurements, their limits and the options that were not adopted are in
-[`SPEC.md` §3.2a "Input density (3D)"](SPEC.md). Single-pass recordings also rarely produce
-`Intermittent` cells, so zero of them in a short walk-through is expected.
+**Input density (3D).** The default pair is not calibrated for 3D. Thinning the cloud before the
+node lowers the per-window hit rate of voxels on structure, so fewer of them reach `m1` and the static
+map can come out under-filled. If the map is used for localization, prefer the full cloud. This has not
+been measured on a public dataset yet ([`SPEC.md` §3.2a "Input density (3D)"](SPEC.md),
+[`docs/design/multiday_3d_benchmark.md`](docs/design/multiday_3d_benchmark.md)). Single-pass runs also
+rarely produce `Intermittent` cells, so zero of them in a short walk-through is expected.
 
 **Classes.** Read the class `Transient` as **undecided** (`CellClass::Undecided` is an alias of the same
 value). Under the default sequential test it means "the test has not decided this cell yet": it has not
