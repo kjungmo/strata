@@ -30,7 +30,7 @@ check of `numbers_v2.tex` (below, item 5) replaces it.
 | 19 | structural: duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval |
 | 1 | structural: confidence level that defines an interval |
 | 504 | structural: inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text |
-| 131 | structural: name of a scenario, data type, standard or layout width |
+| 132 | structural: name of a scenario, data type, standard or layout width |
 | 257 | structural: plot layout (axis limits, sizes, tick positions, styles) |
 | 102 | structural: scenario size or grid restated by hand from the harness source named in the sentence (not parsed) |
 | 58 | structural: dataset configuration (resolution, window length, rate, range, beams, memory limit) restated by hand from PREREG_P1B.md and PREREG_P3.md; both files are checked for the strings |
@@ -125,7 +125,7 @@ byte-identical; the E2 sweep and E3 periodic were rerun; E4 was not rerun.
 | Pin `a1ec675` (`0f5befc` added the evidence model `sprt` (18 October 2026); `a7559d4` is the last commit of the v2 work in the three directories before the status-text commits; `5c20bba` and `708d62f` changed only node status text and YAML comments, and `708d62f` is the pin of the first public version of the manuscript; `874c17d` adds the touched-cell window close, the slot pool for the Fourier sums and three optional parameters with default-neutral values; `a1ec675` changed only the comments of `voxel3d.yaml`; the first release of the manuscript pinned `312b09c`, no tag; first code release (v0.1.0) `a82f935`) | Appendix A, Remark 1 | git tree ids in `number_guard.py` (`PIN_TREES`); `git log` |
 | Per-experiment parameter deviations | Table 11 | `paper/experiments/src/e{1..4}_*.cpp` `params()` |
 | QoS / topics / service | Table 12 | `strata/src/mapping_node.cpp` |
-| Apache-2.0, ubuntu-latest CI | Appendix A | `LICENSE`, `.github/workflows/ci.yml` |
+| Apache-2.0, ubuntu-22.04 CI | Appendix A | `LICENSE`, `.github/workflows/ci.yml` |
 | 56 B per cell (an estimate for the periodicity-off path: evidence record + hash node; Fourier record and bucket arrays excluded, as the text states) | abstract, intro, §3.5, §4, §5, Table 5 | `e4_throughput.csv:bytes_per_cell` (all rows 56); Fourier record = `PeriodicityModel::Coeff` in `periodicity.hpp` (2 scalars + 6 vectors of H) |
 | 24-byte record + ~32 B node overhead | §3.5 | `sizeof(CellEvidence)` (double + 3 int + bool, padded) from `layered_map.hpp`; ~32 B is the harness's documented estimate (`paper/experiments/src/e4_throughput.cpp`), not a measurement |
 

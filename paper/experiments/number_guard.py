@@ -952,7 +952,7 @@ STRUCT = [
     (r"sections/", r"\d+\\?%[ -]*(?:duty|flipped|flips|Wilson|intervals?|of (?:its|their|them)|upper)|Wilson 95|95\\?% (?:interval|upper)|"
                    r"\d+\\,\\?% (?:loss|of the scans)|below \d+\\?% to above \d+\\?%|at least \d+\\,\\?%",
      "duty cycle, share or confidence level that defines a scenario, a threshold of a check or an interval"),
-    (r"sections/", r"\d+-on/\d+-off|\d+-bit|\d+-byte|x86-64|SHA.256|\b[23]D\b|6-DoF|ROS 2|C\+\+17|Bernoulli\(\d?\.\d+\)|"
+    (r"sections/", r"\d+-on/\d+-off|\d+-bit|\d+-byte|x86-64|ubuntu-22\.04|SHA.256|\b[23]D\b|6-DoF|ROS 2|C\+\+17|Bernoulli\(\d?\.\d+\)|"
                    r"\d+ seeds of \d+|\d+th-percentile|O\(1\)|depth \d+|p\{\d?\.\d+\\linewidth\}|\d-on|\d+-window run",
      "name of a scenario, data type, standard or layout width"),
     (r"sections/", r"\(20\d\d\)|Two 2026 works|(?:18|19|22) October 2026|(?:14|16) November 2026|\\code\{0f5befc\}|\\code\{708d62f\}|\\code\{874c17d\}|v0\.1\.0|GCC \d+\.\d+\.\d+|clang \d+\.\d+\.\d+|Apache-2\.0",

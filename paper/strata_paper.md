@@ -943,7 +943,7 @@ STRATA is released under the Apache-2.0 license at <https://github.com/kjungmo/s
 
 From the repository root:
 
-- Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on `ubuntu-latest`):
+- Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on `ubuntu-22.04`):
 
 ```bash
 cmake -S strata_core -B build -DSTRATA_CORE_BUILD_TESTS=ON

@@ -10,7 +10,7 @@
 
 \noindent From the repository root:
 \begin{itemize}
-  \item Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on \code{ubuntu-latest}):
+  \item Core engine and unit tests, no ROS required (continuous integration runs the same build with g++, Eigen3 and GoogleTest on \code{ubuntu-22.04}):
 \begin{quote}\small\ttfamily
 cmake -S strata\_core -B build -DSTRATA\_CORE\_BUILD\_TESTS=ON\\
 cmake -{}-build build \&\& (cd build \&\& ctest)

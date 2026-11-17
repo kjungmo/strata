@@ -899,6 +899,7 @@ sections/appendix.tex	64	 with libstdc++, on one x86-	name of a scenario, data t
 sections/appendix.tex	0.1	ve by one window (at \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/appendix.tex	3	m \code{d8db00e} (Amendment 	number of an item, amendment or section of a committed record (results_p1b/deviations.md, PREREG_P3.md, results_p3/P3_REPORT.md; the files are checked for the strings)
 sections/appendix.tex	5	rectory differs ( , section 	number of an item, amendment or section of a committed record (results_p1b/deviations.md, PREREG_P3.md, results_p3/P3_REPORT.md; the files are checked for the strings)
+sections/appendix.tex	22.04	 GoogleTest on \code{ubuntu-	name of a scenario, data type, standard or layout width
 sections/appendix.tex	2	e{sprt\_ceiling}, NaN for A+	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/appendix.tex	2	[H] \centering \caption{ROS 	name of a scenario, data type, standard or layout width
 sections/appendix.tex	6	 is transformed with a full 	name of a scenario, data type, standard or layout width

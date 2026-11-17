@@ -943,7 +943,7 @@ STRATA는 Apache-2.0 라이선스로 <https://github.com/kjungmo/strata/tree/pap
 
 저장소 루트에서:
 
-- 핵심 엔진과 단위 시험, ROS 불필요(지속적 통합은 `ubuntu-latest`에서 g++, Eigen3, GoogleTest로 같은 빌드를 돌린다):
+- 핵심 엔진과 단위 시험, ROS 불필요(지속적 통합은 `ubuntu-22.04`에서 g++, Eigen3, GoogleTest로 같은 빌드를 돌린다):
 
 ```bash
 cmake -S strata_core -B build -DSTRATA_CORE_BUILD_TESTS=ON
