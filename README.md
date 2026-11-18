@@ -59,7 +59,7 @@ fade. Sensor poses are full 6-DoF.
   not from the ROS node, and Periodic is validated on synthetic streams only. The sprt arm
   of E0–E6 and E7 are committed under `paper/experiments/results/*_sprt.csv` and `e7_*.csv`.
 - **2026-10** — Paper and repository audited for submission: the first version of the
-  manuscript described the code of commit `312b09c`; the manuscript now
+  manuscript described the code of commit `312b09c`; the manuscript later
   described `708d62f` and now describes `a1ec675` (see the entry above). Since the first release the periodicity test was corrected (centred
   amplitude, calibrated significance, level spent over repeated read-outs) and
   the node gained time-based windows, input diagnostics and a verified map save.
@@ -151,7 +151,7 @@ architecture, the persistence and periodicity model, the seeded synthetic
 characterization suite (calibration E0, experiments E1–E7, in a legacy and a sprt arm),
 a calibration of the shipped pair on real LiDAR data (not frozen) and a held-out
 evaluation of seven evidence rules on four public datasets, and it describes the
-code of commit `a1ec675` (the tag `paper-v2` marks the first public version of the paper, which pinned `708d62f`); the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
+code of commit `a1ec675` (the tag `paper-v2.1` marks this version of the paper; the tag `paper-v2` stays on the first public version, which pinned `708d62f`); the first release of the manuscript is commit `312b09c`. If you use `strata` in academic work, please cite:
 
 ```bibtex
 @article{kang2026strata,
@@ -277,7 +277,7 @@ E4 estimates a flat **56 B/cell** footprint (periodicity off): `voxel3d` holds
 **4.4–10.0×** as many live cells as `grid2d` at equal extent, and `grid2d` is the
 cheaper backend per `integrate()` call in every timing file (one machine; the three quiet-host
 recordings of the current code disagree on the size of the ratio by more than the 20% that the
-paper allows, so no ratio is reported; `paper/experiments/results/e4_recordings/`). E2 detects
+paper allows at 100² (7.0–8.7×; 9.3–10.0× at 250², 10.9–11.5× at 500²), so no ratio is reported and the ranges only show the disagreement; `paper/experiments/results/e4_recordings/`). E2 detects
 50%-duty periodic doors at true-positive rate **2/3** (from 25 windows on)
 with no false positive on Bernoulli clutter at any read-out length from 8 to
 100 windows. The periodicity test is noise-calibrated and spends its level over

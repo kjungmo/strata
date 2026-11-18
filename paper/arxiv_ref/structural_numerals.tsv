@@ -877,7 +877,7 @@ sections/6_conclusion.tex	0.01	 nominal per-history \alpha=	inline or displayed 
 sections/6_conclusion.tex	2	cell state machine serves a 	name of a scenario, data type, standard or layout width
 sections/6_conclusion.tex	3	hine serves a 2D grid and a 	name of a scenario, data type, standard or layout width
 sections/appendix.tex	2.0	s released under the Apache-	year, date, version or licence identifier (versions are also checked against the records)
-sections/appendix.tex	2	{paper-v2}) and targets ROS 	name of a scenario, data type, standard or layout width
+sections/appendix.tex	2	aper-v2.1}) and targets ROS 	name of a scenario, data type, standard or layout width
 sections/appendix.tex	16	e of commit \code{a1ec675} (	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	2026	\code{a1ec675} (16 November 	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	708	uscript pinned commit \code{	year, date, version or licence identifier (versions are also checked against the records)
@@ -895,6 +895,7 @@ sections/appendix.tex	708	its, the last of them \code{	year, date, version or li
 sections/appendix.tex	708	which is identical in \code{	year, date, version or licence identifier (versions are also checked against the records)
 sections/appendix.tex	25	 logs ( , ); for P1b, items 	number of an item, amendment or section of a committed record (results_p1b/deviations.md, PREREG_P3.md, results_p3/P3_REPORT.md; the files are checked for the strings)
 sections/appendix.tex	30	 , ); for P1b, items 25 and 	number of an item, amendment or section of a committed record (results_p1b/deviations.md, PREREG_P3.md, results_p3/P3_REPORT.md; the files are checked for the strings)
+sections/appendix.tex	22.04	rkflow ( , now \code{ubuntu-	name of a scenario, data type, standard or layout width
 sections/appendix.tex	64	 with libstdc++, on one x86-	name of a scenario, data type, standard or layout width
 sections/appendix.tex	0.1	ve by one window (at \delta=	inline or displayed mathematics: symbol, index, exponent, design constant written as symbol = value, or a constant derived in the text
 sections/appendix.tex	3	m \code{d8db00e} (Amendment 	number of an item, amendment or section of a committed record (results_p1b/deviations.md, PREREG_P3.md, results_p3/P3_REPORT.md; the files are checked for the strings)
