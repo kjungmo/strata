@@ -31,7 +31,7 @@ The engine (`strata_core/`), the node (`strata/`) and the check scripts
 (`scripts/`) that the manuscript describes are those of commit `a1ec675`
 (2026-11-16; `strata_core` 0.2.0, with `evidence_model = legacy | sprt`). The first
 public version of the manuscript (preprint v1) pinned commit `708d62f` (2026-10-22), and the
-tag `paper-v2` marks that revision. Before it, the first release of the manuscript pinned commit
+tag `paper-v2` marks that revision and stays on it (this version of the manuscript is marked by the tag `paper-v2.1`). Before it, the first release of the manuscript pinned commit
 `312b09c` (2026-10-11, the v0.1 evidence rule). `0f5befc` (2026-10-18) added the evidence
 model `sprt`. `a7559d4` (2026-10-19, phase P4a) is the last commit of the v2 work in
 `strata_core/`, `strata/` and `scripts/` before the status-text commits. `5c20bba` and
@@ -54,7 +54,7 @@ log were redone.
 
 The harness builds only `strata_core`. Every seeded synthetic result file (E0-E3, E5
 and E6 in both arms, E7, and the E4 cell counts of the sprt arm) reproduces byte for
-byte from the `strata_core` tree `e01fc06` of `874c17d`, and from the tree `c780639` of `a7559d4`,
+byte from the `strata_core` tree `e01fc06` of `a1ec675`, and from the tree `c780639` of `a7559d4`,
 which is identical in `708d62f` (`experiments/reproduction_log.txt`, its last three lines, sha256
 `07a4ce75...`). The E4 recordings of the earlier pin (tree `c780639`) are kept in
 `experiments/results/e4_recordings_708d62f/`; the paper reads only the recordings of the new tree in
@@ -122,7 +122,7 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   E4 table, figure and sentences from the valid recordings. Three valid recordings
   of the pin `708d62f` (tree `c780639`, 2026-10-22; they agreed within a factor of 1.09) are kept in
   `results/e4_recordings_708d62f/`; the tools do not read them, because the pinned tree changed.
-  Three valid recordings of the pin `874c17d` (tree `e01fc06`) were taken on 2026-11-16 (load
+  Three valid recordings of the pin `a1ec675` (tree `e01fc06`, the same as in `874c17d`) were taken on 2026-11-16 (load
   below 0.50 at the start, as the script requires); they disagree on the ratio between the backends by
   more than the 20% that the rule allows (at 100^2 the ratios are 7.0 to 8.7), so the manuscript reports the
   direction and the cell counts but no latency and no ratio. Earlier timings, all
@@ -146,11 +146,7 @@ bash paper/experiments/plot/run_all_plots.sh        # Matplotlib figures (needs 
   dates and interface values are listed in `README_ALLOW`); its other sections quote
   interface values and behaviour of the node that no check reads.
 - Scope of alpha and beta in the code strings: the status text of the node (`evidence_status.hpp`) and the comments of `params/grid2d.yaml` and `params/voxel3d.yaml` carry the wording of Proposition 'Error bounds under independent windows' (first test of a cell history, independent windows, Periodic veto off for beta, real per-cell rates above alpha) since the pin `708d62f` (the first step was `5c20bba`; the pin adds the bound forms alpha/(1-beta) and beta/(1-alpha), the continuations of a kept periodic candidate as not covered, and the real-data clause only when the calibration label is not `user`). Next code pin, recorded only (no change this round): (i) `params/grid2d.yaml` lines 26-28 and `params/voxel3d.yaml` lines 22-24 add 'continuations of a kept periodic candidate are not covered', and `voxel3d.yaml` scopes the real-data clause to '(real 2D clutter, shipped 2D pair)'; the current text is incomplete, not false (the 3D clutter rates of 28-37% bear out 'above alpha'); (ii) `test_evidence_status.cpp` asserts that the real-data clause is present for `measured_2d` and `fallback_2d_pair` and absent for `user`, and that 'continuations of a kept periodic candidate' is present. The status text already carries the full scope. The comment on `alpha` and `beta` in `strata_core/include/strata_core/layered_map.hpp` still says only "hold for independent windows only (SPEC 3.2a)"; it is in the pinned `strata_core` tree, whose id is tied to the committed result hashes, and was not changed.
-- Release items: the local annotated tag `paper-v2` marks the revision that carries the v2
-  manuscript and its reproduction scripts (the code it describes is `708d62f`, the pin of the first public version; this revision pins `a1ec675` and is not tagged); the
-  code URL of the paper opens `tree/paper-v2`. The tag is not pushed: pushing the branch
-  `v2/evidence-sprt` and the tag is an author action, and the URL resolves only after it. `main` is still the
-  v0.1 code, and the first release of the manuscript has no tag (it pinned `312b09c`). The citation audit of the keys added in v2 is
+- Release items: the tag `paper-v2` is on origin and stays on the v1 revision (the code it describes is `708d62f`, the pin of the first public version). The code URL of this version of the paper opens `tree/paper-v2.1`; the tag `paper-v2.1` is created on the upload commit and this version pins `a1ec675`. `main` carries `strata_core` 0.2.0, and the first release of the manuscript has no tag (it pinned `312b09c`). The citation audit of the keys added in v2 is
   `CITATION_AUDIT_V2_2026-10-22.md` (in the submission-kit directory). It verified the
   Boreas, Spires, DUFOMap, BeautyMap, LILocBench and Lorden entries against Crossref.
   Only the metadata of `krajnik2014froctomap` is unverified.
