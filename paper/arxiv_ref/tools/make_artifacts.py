@@ -429,6 +429,9 @@ all_ratios = [e4_ratios(e4_medians(p)) for p in expl_files] + [e4_ratios(r[2]) f
 n_all = len(all_ratios)
 direction_all = all(x > 1.0 for rr in all_ratios for x in rr)
 n_expl = len(expl_files) + len(invalid)
+# ratios of the files that were not valid quiet-host recordings (exploratory + invalid): the sentence about them
+others = [e4_ratios(e4_medians(p)) for p in expl_files] + [e4_ratios(r[2]) for r in invalid]
+assert len(others) == n_expl
 
 vr = [e4_ratios(r[2]) for r in valid]
 spread = [max(rr[i] for rr in vr) / min(rr[i] for rr in vr) for i in range(3)] if valid else []
@@ -521,10 +524,12 @@ def rng(i, rr):
 with open(TAB / "e4_text.tex", "w") as f:
     f.write(HDR % "e4_throughput.csv, e4_recordings/, e4_exploratory/")
     f.write("% E4 sentences that depend on the timing recordings; rule in tools/make_artifacts.py.\n")
-    proto = ("with \\nolinkurl{paper/experiments/measure_e4.sh}: the script refuses to start unless the 1-minute load "
-             "average is below 0.50, pins the benchmark to one core, discards one warm-up run per configuration, records "
-             "the load and the largest CPU consumers before and after, and marks a recording invalid when the load "
-             "afterwards is 1.50 or more")
+    proto_a = "with \\nolinkurl{paper/experiments/measure_e4.sh}"
+    proto_b = ("the script refuses to start unless the 1-minute load "
+               "average is below 0.50, pins the benchmark to one core, discards one warm-up run per configuration, records "
+               "the load and the largest CPU consumers before and after, and marks a recording invalid when the load "
+               "afterwards is 1.50 or more")
+    proto = proto_a + ": " + proto_b
     if full:
         env = valid[0][1]
         gcc = env["compiler"].split()[-1]
@@ -546,10 +551,14 @@ with open(TAB / "e4_text.tex", "w") as f:
         f.write("\\newcommand{\\EfourLimit}{E4's timings are %d recordings on one quiet host and are not portable.}\n" % len(valid))
     else:
         if len(valid) >= E4_MIN_RECORDINGS:
-            why = ("The %d recordings taken on a quiet host %s still disagree on the ratio between the backends by more than "
-                   "20\\,\\%% (%s$\\times$ at $100^2$, %s$\\times$ at $250^2$, %s$\\times$ at $500^2$), so we report no "
-                   "latency and no ratio"
-                   % (len(valid), proto, rng(0, vr), rng(1, vr), rng(2, vr)))
+            words = {3: "Three", 4: "Four", 5: "Five", 6: "Six"}
+            lab = ("$100^2$", "$250^2$", "$500^2$")
+            over = [lab[i] for i in range(3) if spread[i] > E4_MAX_SPREAD]
+            why = ("%s quiet-host recordings were taken with \\nolinkurl{paper/experiments/measure_e4.sh} (protocol: %s). "
+                   "Their ratios disagree by more than the 20\\,\\%% we allow at %s (%s$\\times$ at $100^2$, "
+                   "%s$\\times$ at $250^2$, %s$\\times$ at $500^2$), so we report no latency and no ratio; "
+                   "the ranges only show the disagreement"
+                   % (words.get(len(valid), str(len(valid))), proto_b, " and ".join(over), rng(0, vr), rng(1, vr), rng(2, vr)))
         else:
             have = ("No such recording exists" if not valid else
                     "%s such recording%s, fewer than the three we require"
@@ -558,10 +567,10 @@ with open(TAB / "e4_text.tex", "w") as f:
         f.write("\\newcommand{\\EfourSetup}{%s.}\n" % why)
         f.write("\\newcommand{\\EfourResult}{In all %d timing files that exist, \\code{grid2d}'s \\code{integrate()} is "
                 "cheaper than \\code{voxel3d}'s at every tested extent. %s taken on a loaded host or "
-                "marked invalid, and in those the ratio of median latencies varies between files (%s$\\times$ at $100^2$), "
+                "marked invalid, and across those files the ratio of median latencies varies (%s$\\times$ at $100^2$), "
                 "so only the direction is reported; all files are kept in \\nolinkurl{results/e4_exploratory/} and "
                 "\\nolinkurl{results/e4_recordings/} (Table~\\ref{tab:e4}, Figure~\\ref{fig:e4}).}\n"
-                % (n_all, "All of them were" if n_expl == n_all else "%d of them were" % n_expl, rng(0, all_ratios)))
+                % (n_all, "All of them were" if n_expl == n_all else "%d of them were" % n_expl, rng(0, others)))
         f.write("\\newcommand{\\EfourIntro}{\\code{grid2d} is cheaper per call than \\code{voxel3d} at every tested extent "
                 "in every timing recording, by a factor that we do not report because it was not measured reliably, alongside}\n")
         f.write("\\newcommand{\\EfourLimit}{E4 reports no latency: its timing recordings establish only which backend is "

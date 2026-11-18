@@ -797,7 +797,10 @@ def guard_code(full):
         vr_ = [ratios(p)[0] for p, _ in valid]
         agree = len(valid) >= 3 and all(max(r[i] for r in vr_) / min(r[i] for r in vr_) <= 1.20 for i in range(3))
         if not agree:
-            in_paper("E4 exploratory ratio range at 100^2", f"({min(r[0] for r in allr):.1f}–{max(r[0] for r in allr):.1f}× at 100^2)")
+            # the sentence covers the files that are not valid quiet-host recordings (exploratory and invalid ones)
+            valid_paths = {p for p, _ in valid}
+            oth = [ratios(p)[0] for p in files + recs if p not in valid_paths]
+            in_paper("E4 exploratory ratio range at 100^2", f"({min(r[0] for r in oth):.1f}–{max(r[0] for r in oth):.1f}× at 100^2)")
             check("E4: no latency in the paper without three valid recordings that agree within 20 %",
                   "integrate} [min, max]" not in (ARXIV / "tables" / "e4.tex").read_text())
         else:
