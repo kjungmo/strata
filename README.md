@@ -11,7 +11,7 @@ transient layers, at full 6-DoF.**
 [![License](https://img.shields.io/github/license/kjungmo/strata?color=blue)](LICENSE)
 ![ROS 2 Humble](https://img.shields.io/badge/ROS_2-Humble-22314E?logo=ros&logoColor=white)
 [![Paper (PDF)](https://img.shields.io/badge/paper-PDF-b31b1b?logo=adobeacrobatreader&logoColor=white)](paper/strata_paper.pdf)
-[![Preprint DOI](https://img.shields.io/badge/DOI-10.20944%2Fpreprints202610.2339.v1-blue)](https://doi.org/10.20944/preprints202610.2339.v1)
+[![Preprint DOI](https://img.shields.io/badge/DOI-10.20944%2Fpreprints202610.2339.v2-blue)](https://doi.org/10.20944/preprints202610.2339.v2)
 [![Sponsor](https://img.shields.io/github/sponsors/kjungmo?logo=githubsponsors&color=ea4aaa)](https://github.com/sponsors/kjungmo)
 
 [Overview](#overview) · [Paper](#-paper) · [Install](#-prerequisites) ·
@@ -36,6 +36,7 @@ fade. Sensor poses are full 6-DoF.
 > corrupts the map; there is no correction here.
 
 ## 📢 News
+- **2026-11-20** — Version 2 of the preprint was posted on Preprints.org (not peer reviewed): [doi:10.20944/preprints202610.2339.v2](https://doi.org/10.20944/preprints202610.2339.v2). Version 1 remains available at [doi:10.20944/preprints202610.2339.v1](https://doi.org/10.20944/preprints202610.2339.v1).
 - **2026-10** — Preprint posted on Preprints.org (version 1, not peer
   reviewed): [doi:10.20944/preprints202610.2339.v1](https://doi.org/10.20944/preprints202610.2339.v1).
 - **2026-10** — **Version 0.2.0, behaviour change** (branch `v2/evidence-sprt`, not yet
@@ -142,7 +143,7 @@ See [`SPEC.md`](SPEC.md) for the full design (algorithm, parameters, frames, and
 
 > **STRATA: One Geometry-Free Persistence-and-Periodicity Engine for
 > Selectable 2D/3D Lifelong LiDAR Mapping**
-> · [Preprint (Preprints.org, v1)](https://doi.org/10.20944/preprints202610.2339.v1)
+> · [Preprint (Preprints.org, v2)](https://doi.org/10.20944/preprints202610.2339.v2)
 > · [PDF](paper/strata_paper.pdf) · [LaTeX source](paper/arxiv_ref/)
 > · [Markdown](paper/strata_paper.md) · [한국어](paper/strata_paper_KR.md)
 
@@ -160,9 +161,9 @@ code of commit `a1ec675` (the tag `paper-v2.1` marks this version of the paper; 
              for Selectable {2D/3D} Lifelong {LiDAR} Mapping},
   journal = {Preprints},
   year    = {2026},
-  doi     = {10.20944/preprints202610.2339.v1},
-  url     = {https://doi.org/10.20944/preprints202610.2339.v1},
-  note    = {Preprint, version 1, not peer reviewed. Source and code at
+  doi     = {10.20944/preprints202610.2339.v2},
+  url     = {https://doi.org/10.20944/preprints202610.2339.v2},
+  note    = {Preprint, version 2, not peer reviewed. Source and code at
              \url{https://github.com/kjungmo/strata}},
 }
 ```
